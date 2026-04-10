@@ -78,17 +78,12 @@ const sourceRow = (sig) => {
 };
 
 const renderCard = (row) => {
-  // B2C becomes the card headline; B2B becomes a muted subtitle directly beneath.
-  // If only one exists, show just that (no subtitle). Fall back to TREND_NAME
-  // (the coalesced view value) if both are missing.
-  const b2c = row.TREND_NAME_B2C || null;
+  // TREND_NAME is the B2C-first coalesced headline from V_TREND_DASHBOARD
+  // (COALESCE(B2C, B2B, topic)). B2B is shown as a muted subtitle when it
+  // exists and differs from the headline.
+  const headline = row.TREND_NAME ?? "(untitled trend)";
   const b2b = row.TREND_NAME_B2B || null;
-  const fallback = row.TREND_NAME ?? "(untitled trend)";
-  let headline, subtitle;
-  if (b2c && b2b) { headline = b2c; subtitle = b2b; }
-  else if (b2c)   { headline = b2c; subtitle = null; }
-  else if (b2b)   { headline = b2b; subtitle = null; }
-  else            { headline = fallback; subtitle = null; }
+  const subtitle = b2b && b2b !== headline ? b2b : null;
 
   const summary = esc(row.SUMMARY_SHORT ?? "");
   const category = row.CATEGORY ? chip(row.CATEGORY) : "";

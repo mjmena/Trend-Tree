@@ -3,8 +3,10 @@
 --
 -- Stable schema for the Trend Agent dashboard. Each row powers one trend card.
 -- KEY_DATA_POINTS is populated from per-source headline metrics in
--- FCT_TREND_SOURCE_METRICS. ENGAGEMENT_METRICS remains a placeholder empty
--- array and will be populated as social integrations mature.
+-- FCT_TREND_SOURCE_METRICS. Cultural-context fields (voice of customer,
+-- vibe shift, narrative, drivers, seasonality, geography) come from the
+-- Grok specialist output in DIM_TREND_ENRICHMENT and replace the former
+-- ENGAGEMENT_METRICS placeholder.
 --
 -- Usage:
 --   SELECT * FROM V_TREND_DASHBOARD ORDER BY HEAT_INDEX DESC LIMIT 25;
@@ -41,6 +43,7 @@ SELECT
     -- Card header
     m.TREND_ID,
     COALESCE(d.TREND_NAME_B2C, d.TREND_NAME_B2B, m.TREND_TOPIC) AS TREND_NAME,
+    d.TREND_NAME_B2B,
     d.CATEGORY,
     d.SUBCATEGORY,
     mt.MACROTREND_TAGS,
@@ -63,14 +66,22 @@ SELECT
          AND sm.HEADLINE_METRIC > 0
     )                                            AS KEY_DATA_POINTS,
 
-    -- Engagement metrics (placeholder — populate as social integrations mature)
-    PARSE_JSON('[]')                             AS ENGAGEMENT_METRICS,
+    -- Cultural context (Grok specialist — source-grounded via Bluesky)
+    d.VOICE_OF_CUSTOMER,
+    d.VIBE_SHIFT,
+    d.SOCIAL_NARRATIVE,
+    d.CULTURAL_DRIVERS,
+    d.SEASONAL_RELEVANCE,
+    d.GEOGRAPHIC_HOTSPOTS,
 
     -- Top 5 signals by PageRank
     ts.TOP_SIGNALS,
 
     -- Related trends (vector similarity from taxonomy view)
-    r.RELATED_TRENDS
+    r.RELATED_TRENDS,
+
+    -- Enrichment freshness
+    d.ENRICHED_AT
 
 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
 LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d ON m.TREND_ID = d.TREND_ID

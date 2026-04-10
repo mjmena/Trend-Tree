@@ -60,9 +60,8 @@ const buildPrompt = (row, target) => {
   return `You are curating sources for a trend-intelligence newsletter. Pick the BEST ${target} URLs that are ALIVE AND RELEVANT to this trend. Use Google Search to find replacements if fewer than ${target} of the supplied URLs are on-topic, or if no candidates were supplied at all.
 
 TREND
-  Name (B2C):  ${row.TREND_NAME_B2C ?? "(none)"}
+  Name:        ${row.TREND_NAME ?? "(none)"}
   Name (B2B):  ${row.TREND_NAME_B2B ?? "(none)"}
-  Fallback:    ${row.TREND_NAME ?? "(none)"}
   Category:    ${row.CATEGORY ?? "(none)"} / ${row.SUBCATEGORY ?? "-"}
   Summary:     ${row.SUMMARY_SHORT ?? "(none)"}
 
