@@ -1,7 +1,52 @@
 schema: workflow/2022.04
-name: dispatcher
+name: Enrichment Dispatcher
 settings:
   error_notification: true
+  lambda_memory: 2048
+  lambda_timeout: 600
+  network: net_5Lnie3
 triggers:
 - id: dc_MDunJAD
-
+steps:
+- namespace: claim_lock
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      query: |-
+        UPDATE MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
+        SET STATUS = 'IN_PROGRESS',
+            STARTED_AT = CURRENT_TIMESTAMP()
+        WHERE TREND_ID = :1
+          AND STATUS IN ('PENDING', 'IN_PROGRESS', 'FAILED')
+      params:
+      - "{{steps.trigger.event.TREND_ID}}"
+- namespace: orchestrate
+  runtime: nodejs20.x
+  uses: "./orchestrate/entry.js"
+  props:
+    trend_id: "{{steps.trigger.event.TREND_ID}}"
+    enrichment_type: "{{steps.trigger.event.QUEUE_ENRICHMENT_TYPE}}"
+    trend_event: "{{steps.trigger.event}}"
+- namespace: mark_failed
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      query: |-
+        UPDATE MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
+        SET STATUS = 'FAILED',
+            COMPLETED_AT = CURRENT_TIMESTAMP(),
+            ERROR_MESSAGE = LEFT(:2, 500),
+            RETRY_COUNT = COALESCE(RETRY_COUNT, 0) + 1
+        WHERE TREND_ID = :1
+          AND :2 IS NOT NULL
+          AND :2 != ''
+          AND STATUS = 'IN_PROGRESS'
+      params:
+      - "{{steps.trigger.event.TREND_ID}}"
+      - "{{steps.orchestrate.$return_value.error_message}}"
