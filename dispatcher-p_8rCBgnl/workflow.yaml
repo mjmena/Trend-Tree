@@ -46,19 +46,25 @@ steps:
     snowflake:
       authProvisionId: apn_yghdQYJ
     sql:
+      value: |-
+        UPDATE MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
+        SET STATUS = 'FAILED',
+            COMPLETED_AT = CURRENT_TIMESTAMP(),
+            ERROR_MESSAGE = LEFT('{{steps.orchestrate.$return_value.error_message}}', 500),
+            RETRY_COUNT = COALESCE(RETRY_COUNT, 0) + 1
+        WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
+          AND '{{steps.orchestrate.$return_value.error_message}}' != ''
+          AND STATUS = 'IN_PROGRESS'
       query: |-
         UPDATE MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
         SET STATUS = 'FAILED',
             COMPLETED_AT = CURRENT_TIMESTAMP(),
-            ERROR_MESSAGE = LEFT(:2, 500),
+            ERROR_MESSAGE = LEFT('{{steps.orchestrate.$return_value.error_message}}', 500),
             RETRY_COUNT = COALESCE(RETRY_COUNT, 0) + 1
-        WHERE TREND_ID = :1
-          AND :2 IS NOT NULL
-          AND :2 != ''
+        WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
+          AND '{{steps.orchestrate.$return_value.error_message}}' != ''
           AND STATUS = 'IN_PROGRESS'
-      params:
-      - "{{steps.normalize_event.$return_value.trend_id}}"
-      - "{{steps.orchestrate.$return_value.error_message}}"
+      params: []
 - namespace: respond
   runtime: nodejs20.x
   uses: "./respond/entry.js"

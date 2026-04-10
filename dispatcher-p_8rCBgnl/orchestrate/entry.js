@@ -27,6 +27,20 @@ const DEFAULT_SOURCES_URL = "https://eoqw249vy2xnwyv.m.pipedream.net"; // source
 const DEFAULT_LLM_URL     = "https://eod25mq0qt8tk4q.m.pipedream.net"; // llm-enrichment-p_YyC86Zo
 const DEFAULT_WRITE_URL   = "https://eobhhpl77hkx33c.m.pipedream.net"; // write-p_o7CWa2K
 
+// mark_failed inlines this string directly into a Snowflake UPDATE via
+// mustache substitution (no parameter binding), so any embedded single
+// quote would terminate the SQL string literal early. Strip quotes and
+// control chars and cap at 480 chars (the column is LEFT-truncated to
+// 500 by the UPDATE itself, but we leave a small margin).
+function sanitizeErrorMessage(msg) {
+  if (!msg) return "";
+  return String(msg)
+    .replace(/['\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 480);
+}
+
 async function postJson(url, body, { timeoutMs = 500_000 } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -99,7 +113,7 @@ export default defineComponent({
       );
     } catch (e) {
       return {
-        error_message: `sources failed: ${e.message}`,
+        error_message: sanitizeErrorMessage(`sources failed: ${e.message}`),
         stage: "sources",
         trend_id: trendId,
       };
@@ -117,7 +131,7 @@ export default defineComponent({
         );
       } catch (e) {
         return {
-          error_message: `llm failed: ${e.message}`,
+          error_message: sanitizeErrorMessage(`llm failed: ${e.message}`),
           stage: "llm",
           trend_id: trendId,
           sources: sourcesResp,
@@ -142,7 +156,7 @@ export default defineComponent({
       );
     } catch (e) {
       return {
-        error_message: `write failed: ${e.message}`,
+        error_message: sanitizeErrorMessage(`write failed: ${e.message}`),
         stage: "write",
         trend_id: trendId,
         sources: sourcesResp,
