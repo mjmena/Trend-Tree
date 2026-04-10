@@ -32,11 +32,9 @@ export default defineComponent({
       enrichment_type: cs.enrichment_type,
       tier: cs.tier,
       skip_dim: cs.skip_dim,
-      trend_name: cs.payload?.trend_name ?? null,
+      trend_name_b2c: cs.payload?.trend_name_b2c ?? null,
       category: cs.payload?.category ?? null,
       source_coverage: cs.source_coverage ?? 0,
-      commercial_score: cs.commercial_score ?? null,
-      agreement_score: cs.agreement_score ?? null,
       llm_total_tokens: cs.llm_total_tokens ?? 0,
       llm_cost_estimate: cs.llm_cost_estimate ?? 0,
       merge_dim_rows: rowCount(this.merge_dim_result),
@@ -45,8 +43,7 @@ export default defineComponent({
     };
 
     console.log(`\n=== Write complete: ${body.trend_id} [${body.tier}] ===`);
-    console.log(`  Trend: "${body.trend_name}" (${body.category})`);
-    console.log(`  Commercial: ${body.commercial_score}, Agreement: ${body.agreement_score}`);
+    console.log(`  Trend: "${body.trend_name_b2c}" (${body.category})`);
     console.log(`  Queue rows updated: ${body.update_queue_rows}`);
 
     await $.respond({
