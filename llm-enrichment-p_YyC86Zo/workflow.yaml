@@ -6,4 +6,41 @@ settings:
   lambda_timeout: 600
 triggers:
 - id: hi_vmHK662
-
+steps:
+- namespace: load_llm_context
+  runtime: nodejs20.x
+  uses: "./load_llm_context/entry.js"
+  props:
+    trend_id: "{{steps.trigger.event.body.trend_id}}"
+- namespace: enrich_llm_gemini
+  runtime: nodejs20.x
+  uses: "./enrich_llm_gemini/entry.js"
+  props:
+    enrich_context: "{{steps.load_llm_context.$return_value}}"
+- namespace: enrich_llm_grok
+  runtime: nodejs20.x
+  uses: "./enrich_llm_grok/entry.js"
+  props:
+    enrich_context: "{{steps.load_llm_context.$return_value}}"
+- namespace: enrich_llm_chatgpt
+  runtime: nodejs20.x
+  uses: "./enrich_llm_chatgpt/entry.js"
+  props:
+    enrich_context: "{{steps.load_llm_context.$return_value}}"
+- namespace: enrich_llm_claude
+  runtime: nodejs20.x
+  uses: "./enrich_llm_claude/entry.js"
+  props:
+    enrich_context: "{{steps.load_llm_context.$return_value}}"
+    gemini_output: "{{steps.enrich_llm_gemini.$return_value}}"
+    grok_output: "{{steps.enrich_llm_grok.$return_value}}"
+    chatgpt_output: "{{steps.enrich_llm_chatgpt.$return_value}}"
+- namespace: return_llm_output
+  runtime: nodejs20.x
+  uses: "./return_llm_output/entry.js"
+  props:
+    enrich_context: "{{steps.load_llm_context.$return_value}}"
+    gemini_output: "{{steps.enrich_llm_gemini.$return_value}}"
+    grok_output: "{{steps.enrich_llm_grok.$return_value}}"
+    chatgpt_output: "{{steps.enrich_llm_chatgpt.$return_value}}"
+    claude_output: "{{steps.enrich_llm_claude.$return_value}}"

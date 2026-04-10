@@ -1,0 +1,122 @@
+// Pipedream Workflow Step: Gemini specialist — validation + categorization
+//
+// Round 1 specialist. Receives the enrich_context bundle from load_llm_context
+// and asks Gemini to validate the trend and provide categorization +
+// competitive landscape analysis.
+//
+// Gemini is good at web-grounded factual answers, making it ideal for
+// validation ("is this a real trend?") and competitor identification.
+
+export default {
+  name: "LLM Enrich: Gemini",
+  description: "Gemini specialist — trend validation, categorization, competitive landscape",
+  version: "0.0.1",
+  props: {
+    google_gemini: {
+      type: "app",
+      app: "google_gemini",
+    },
+    enrich_context: {
+      type: "object",
+      label: "Trend enrichment context",
+      description: "Output from the load_llm_context step",
+    },
+  },
+  async run() {
+    const ctx = this.enrich_context;
+    if (!ctx || !ctx.trend_topic) {
+      console.log("No LLM context from load_llm_context step, skipping");
+      return null;
+    }
+    if (ctx.enrichment_type && ctx.enrichment_type !== "FULL") {
+      console.log(`Enrichment type is ${ctx.enrichment_type}, skipping Gemini LLM call`);
+      return null;
+    }
+
+    const s = ctx.sources || {};
+    const gdelt = s.gdelt || {};
+    const wiki = s.wikimedia || {};
+    const bsky = s.bluesky || {};
+    const gt = s.google_trends || {};
+    const amz = s.amazon || {};
+    const pin = s.pinterest || {};
+    const tt = s.tiktok || {};
+
+    const prompt = `You are a consumer trends analyst. Analyze this detected trend and provide a structured assessment.
+
+TREND: ${ctx.trend_topic}
+CLUSTER SIZE: ${ctx.cluster_size} signals from cross-source matching
+HEAT INDEX: ${ctx.heat_index}/100
+VELOCITY: ${ctx.velocity}
+
+TOP SIGNALS (by PageRank centrality):
+${(ctx.top_signals || []).map((s, i) => `${i + 1}. "${s.title || "untitled"}" (${s.source || "unknown"}, ${s.domain || "N/A"})`).join("\n") || "(no signals)"}
+
+RELATED HASHTAGS: ${(ctx.hashtags || []).length > 0 ? ctx.hashtags.join(", ") : "(none)"}
+
+SOURCE EVIDENCE:
+- Media coverage: ${gdelt.gdelt_article_count_7d ?? 0} articles across ${gdelt.gdelt_domain_count_7d ?? 0} domains (tone: ${gdelt.gdelt_tone_avg ?? "N/A"})
+- Wikipedia: "${wiki.wiki_article_title ?? "no match"}" — ${wiki.wiki_pageviews_7d ?? 0} views/week, ${wiki.wiki_pageview_growth_pct ?? "N/A"}% WoW growth
+- Social: ${bsky.social_post_count_7d ?? 0} Bluesky posts, avg ${bsky.social_avg_engagement ?? 0} engagement
+- Social sentiment: +${bsky.social_sentiment?.positive ?? 0} / -${bsky.social_sentiment?.negative ?? 0} / neutral ${bsky.social_sentiment?.neutral ?? 0}
+- Google Trends: search interest ${gt.gt_interest_score ?? "N/A"}/100, ${(gt.gt_related_queries || []).length} related queries
+- Amazon: ${amz.amazon_product_count ?? 0} related products trending on Amazon Movers & Shakers${amz.amazon_avg_price ? ` (avg $${amz.amazon_avg_price})` : ""}
+- Pinterest: ${pin.pinterest_trend_count ?? 0} trending articles${(pin.pinterest_categories || []).length > 0 ? ` (${pin.pinterest_categories.map((c) => c.category).join(", ")})` : ""}
+- TikTok: ${tt.tiktok_hashtag_count ?? 0} trending hashtags${tt.tiktok_best_rank ? `, best rank #${tt.tiktok_best_rank}` : ""}${tt.tiktok_total_views ? `, ${tt.tiktok_total_views.toLocaleString()} views` : ""}
+
+IMPORTANT: Base your assessment ONLY on the source evidence above. If data is missing or insufficient for a field, output null rather than speculating. Do not invent statistics or cite information not provided.
+
+Respond in valid JSON with these fields:
+{
+  "is_valid_trend": boolean,         // true if this represents a real emerging consumer/lifestyle trend, not noise
+  "validation_reasoning": string,    // 1-2 sentences explaining your assessment
+  "category": string,                // one of: wellness, food_beverage, beauty, fitness, fashion, home_living, sustainability, consumer_tech, personal_care, social_lifestyle, entertainment, travel, parenting, other
+  "subcategory": string,             // more specific within the category
+  "lifecycle_stage": string,         // one of: emerging, growing, mainstream, saturated
+  "competitor_landscape": [          // brands/companies active in this space
+    {"brand": string, "position": string, "activity_level": "high"|"medium"|"low"}
+  ],
+  "confidence": number               // 0.0-1.0 how confident you are in this assessment
+}`;
+
+    try {
+      // Use Gemini via Google AI API
+      const resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${this.google_gemini.$auth.api_key}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseMimeType: "application/json",
+              temperature: 0.3,
+            },
+          }),
+        },
+      );
+
+      if (!resp.ok) throw new Error(`Gemini HTTP ${resp.status}: ${await resp.text()}`);
+      const data = await resp.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const result = JSON.parse(text);
+
+      // Token usage tracking
+      const usage = data.usageMetadata || {};
+      result._token_usage = {
+        input: usage.promptTokenCount || 0,
+        output: usage.candidatesTokenCount || 0,
+        model: "gemini-2.5-flash",
+      };
+
+      console.log(`Gemini: valid=${result.is_valid_trend}, category=${result.category}/${result.subcategory}, lifecycle=${result.lifecycle_stage}, confidence=${result.confidence}`);
+      console.log(`  Competitors: ${(result.competitor_landscape || []).map((c) => c.brand).join(", ")}`);
+      console.log(`  Tokens: ${result._token_usage.input} in / ${result._token_usage.output} out`);
+
+      return result;
+    } catch (e) {
+      console.log(`Gemini error: ${e.message}`);
+      return null;
+    }
+  },
+};
