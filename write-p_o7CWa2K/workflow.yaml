@@ -38,7 +38,10 @@ steps:
     sql:
       query: |-
         MERGE INTO MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT AS tgt
-        USING (SELECT PARSE_JSON(:1) AS p) AS src
+        USING (
+          SELECT PARSE_JSON(:1) AS p
+          WHERE PARSE_JSON(:1):trend_id IS NOT NULL
+        ) AS src
         ON tgt.TREND_ID = src.p:trend_id::STRING
         WHEN MATCHED THEN UPDATE SET
           TREND_NAME              = src.p:trend_name::STRING,
