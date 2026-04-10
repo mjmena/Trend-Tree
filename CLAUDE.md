@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A GitHub-synced Pipedream project. Each top-level directory is one Pipedream workflow. Currently the only workflow is `llm-enrichment-p_YyC86Zo`. Pipedream watches this repo and redeploys workflows when commits land on `production`. Editing a step file here, committing, and pushing is the correct way to change workflow behavior — do **not** edit in the Pipedream UI if you can avoid it, because the next sync will overwrite manual changes.
+A GitHub-synced Pipedream project. Each top-level directory is one Pipedream workflow. The current workflows are: `dispatcher-p_8rCBgnl` (orchestrator), `sources-p_7NCy36w` (source metrics fetcher), `llm-enrichment-p_YyC86Zo` (multi-model LLM chain), and `write-p_o7CWa2K` (Snowflake persister), plus 8 per-source ingestion workflows under `ingestion/`. Pipedream watches this repo and redeploys workflows when commits land on `production`. Editing a step file here, committing, and pushing is the correct way to change workflow behavior — do **not** edit in the Pipedream UI if you can avoid it, because the next sync will overwrite manual changes.
 
 - Pipedream workspace (`org_id`): `o_qOIvyEa` (mcclatchy)
 - Project: `proj_x9sLmqO` ("Trend Tree")
@@ -15,7 +15,7 @@ A GitHub-synced Pipedream project. Each top-level directory is one Pipedream wor
 
 - Workflow id: `p_YyC86Zo`, HTTP trigger id `hi_vmHK662`, endpoint `https://eod25mq0qt8tk4q.m.pipedream.net`
 - Input contract: `POST { "trend_id": "<uuid>" }` — nothing else. Every other piece of data is read from Snowflake using the `trend_id`.
-- Output contract: synchronous JSON via `$.respond()` in the final step — the response body contains `enrich_context`, all four specialist outputs, the Claude synthesis, models used, token totals, and cost estimate. (Requires the trigger's "Return a custom response" toggle to be **on**; this toggle is not exposed in the Pipedream REST API and can only be set in the UI.)
+- Output contract: synchronous JSON via `$.respond()` in the final step — the response body contains `enrich_context`, all three specialist outputs, the Claude synthesis, models used, token totals, and cost estimate. (Requires the trigger's "Return a custom response" toggle to be **on**; this toggle is not exposed in the Pipedream REST API and can only be set in the UI.)
 - Read-only on Snowflake. This workflow does not write `DIM_TREND_ENRICHMENT`, `FCT_TREND_ENRICHMENT_HISTORY`, or update `STG_ENRICHMENT_QUEUE` — that's out of scope. See "Where this sits in the bigger picture" below.
 
 ### Step chain
@@ -29,18 +29,13 @@ POST /  (hi_vmHK662)
   ├─ build_llm_context    custom code  → assembles enrich_context (no DB access)
   ├─ enrich_llm_gemini    custom code  → Gemini 2.5 Flash  (validation + categorization)
   ├─ enrich_llm_grok      custom code  → Grok 3 Mini Fast  (cultural context)
-  ├─ enrich_llm_chatgpt   custom code  → GPT-4o-mini       (content strategy + STEPPS)
   ├─ enrich_llm_claude    custom code  → Claude Sonnet 4.6 (synthesizer)
   └─ return_llm_output    custom code  → $.respond() with full payload
 ```
 
 ### Enrichment-type gating (important)
 
-All four LLM steps early-return `null` unless `enrich_context.enrichment_type === "FULL"`. The type comes from `STG_ENRICHMENT_QUEUE.ENRICHMENT_TYPE` (`FULL` | `SOURCES_ONLY` | `REFRESH`), falling back to `"FULL"` if there is no queue row. A `SOURCES_ONLY` run still succeeds HTTP-200 with a valid `enrich_context`, zero tokens, and all four LLM outputs set to `null` — this is correct behavior, not a bug.
-
-### Claude validity gate
-
-`enrich_llm_claude` has a cost-saving gate: if Gemini says `is_valid_trend=false` with `confidence >= 0.8` **and** `source_coverage <= 2`, it skips the Claude API call entirely and returns a minimal response with `_gated: true`. `return_llm_output` surfaces this as `gated: true` in the top-level response body.
+All three LLM steps early-return `null` unless `enrich_context.enrichment_type === "FULL"`. The type comes from `STG_ENRICHMENT_QUEUE.ENRICHMENT_TYPE` (`FULL` | `SOURCES_ONLY` | `REFRESH`), falling back to `"FULL"` if there is no queue row. A `SOURCES_ONLY` run still succeeds HTTP-200 with a valid `enrich_context`, zero tokens, and all three LLM outputs set to `null` — this is correct behavior, not a bug.
 
 ## Where this sits in the bigger picture
 
@@ -54,7 +49,7 @@ This workflow is step 3 of a planned 4-step orchestrator:
 The legacy monolithic version of this pipeline still lives at `/home/marty/dev/trends-sql/pipedream/enrichment/` (copy-pasted into Pipedream manually, polling trigger, all steps in one workflow). **Do not modify those files** — they are still running in production as the current enrichment path. This repo is the replacement; the cutover happens when the orchestrator exists.
 
 Related repos on this machine:
-- `/home/marty/dev/trends-sql` — Snowflake DDL (`sql/`), SQL procedures (`PROC_*`), tasks (`TASK_*`), tables, views, docs (`schema.md`, `docs/enrichment-flow.md`), and the current manual Pipedream step files under `pipedream/enrichment/`. This is the authoritative source for the data model and the prompt/schema shapes the LLM steps use.
+- `/home/marty/dev/trends-sql` — legacy monolithic enrichment pipeline still present for reference. DDL files previously lived here but were migrated into `Trend-Tree/sql/` as part of the source-first enrichment conversion. The legacy Pipedream step files under `pipedream/enrichment/` are being decommissioned during the cutover.
 - `/home/marty/dev/CRM-Proof-Pipeline` — other GitHub-synced Pipedream workflows for the same workspace; useful as a reference for working patterns (see "Pipedream gotchas" below).
 
 ## Pipedream gotchas (learned the hard way)
@@ -102,7 +97,7 @@ curl -sS -X POST https://eod25mq0qt8tk4q.m.pipedream.net \
 ```
 
 - A FULL run takes **~100-120 s** wall-clock (Claude synthesis is most of it) and returns ~35–40KB of JSON.
-- A SOURCES_ONLY run returns in ~5-8 s with all four LLM outputs `null`.
+- A SOURCES_ONLY run returns in ~5-8 s with all three LLM outputs `null`.
 - If the response is HTML (`<p><b>Success!</b></p>`), the trigger's custom_response toggle is off — see gotcha #6.
 
 ### Verifying runs without the Pipedream UI
@@ -115,4 +110,4 @@ Pipedream's REST API does **not** expose per-step return values or console outpu
 
 ## Cost baseline (mid-2026 pricing)
 
-A full FULL-type run on a 4-source-coverage trend costs ~**$0.06** (~11k tokens total). Claude Sonnet is ~75% of that. `return_llm_output` computes this from `_token_usage` on each step and surfaces `llm_total_tokens` + `llm_cost_estimate` in the response. The `COST_PER_M` rate table in `return_llm_output/entry.js` must stay in sync with the one in `trends-sql/pipedream/enrichment/enrich_write_snowflake.mjs`.
+A full FULL-type run on a 4-source-coverage trend currently costs ~**$0.06** (~11k tokens total) on the legacy 4-specialist pipeline. Claude Sonnet is ~75% of that. After the source-first cutover (ChatGPT dropped, Claude prompt narrowed), both numbers should drop — **TODO: re-measure after the first post-cutover live run**. `return_llm_output` computes this from `_token_usage` on each step and surfaces `llm_total_tokens` + `llm_cost_estimate` in the response.
