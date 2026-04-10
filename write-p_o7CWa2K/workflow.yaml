@@ -41,10 +41,7 @@ steps:
     sql:
       value: |-
         MERGE INTO MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT AS tgt
-        USING (
-          SELECT PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$) AS p
-          WHERE PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id IS NOT NULL
-        ) AS src
+        USING (SELECT PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$) AS p) AS src
         ON tgt.TREND_ID = src.p:trend_id::STRING
         WHEN MATCHED THEN UPDATE SET
           TREND_NAME              = src.p:trend_name::STRING,
@@ -85,7 +82,7 @@ steps:
           LLM_COST_ESTIMATE       = src.p:llm_cost_estimate::FLOAT,
           ENRICHED_AT             = CURRENT_TIMESTAMP(),
           ENRICHMENT_VERSION      = COALESCE(tgt.ENRICHMENT_VERSION, 0) + 1
-        WHEN NOT MATCHED THEN INSERT (
+        WHEN NOT MATCHED AND src.p:trend_id IS NOT NULL THEN INSERT (
           TREND_ID, TREND_NAME, SUMMARY, CATEGORY, SUBCATEGORY, LIFECYCLE_STAGE,
           IS_VALID_TREND, CONFIDENCE_SCORE, TREND_COMMERCIAL_SCORE, SOURCE_COVERAGE_BREADTH,
           TARGET_DEMOGRAPHICS, TARGET_PSYCHOGRAPHICS, AUDIENCE_PERSONAS, PURCHASE_INTENT_SIGNALS,
@@ -119,10 +116,7 @@ steps:
         )
       query: |-
         MERGE INTO MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT AS tgt
-        USING (
-          SELECT PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$) AS p
-          WHERE PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id IS NOT NULL
-        ) AS src
+        USING (SELECT PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$) AS p) AS src
         ON tgt.TREND_ID = src.p:trend_id::STRING
         WHEN MATCHED THEN UPDATE SET
           TREND_NAME              = src.p:trend_name::STRING,
@@ -163,7 +157,7 @@ steps:
           LLM_COST_ESTIMATE       = src.p:llm_cost_estimate::FLOAT,
           ENRICHED_AT             = CURRENT_TIMESTAMP(),
           ENRICHMENT_VERSION      = COALESCE(tgt.ENRICHMENT_VERSION, 0) + 1
-        WHEN NOT MATCHED THEN INSERT (
+        WHEN NOT MATCHED AND src.p:trend_id IS NOT NULL THEN INSERT (
           TREND_ID, TREND_NAME, SUMMARY, CATEGORY, SUBCATEGORY, LIFECYCLE_STAGE,
           IS_VALID_TREND, CONFIDENCE_SCORE, TREND_COMMERCIAL_SCORE, SOURCE_COVERAGE_BREADTH,
           TARGET_DEMOGRAPHICS, TARGET_PSYCHOGRAPHICS, AUDIENCE_PERSONAS, PURCHASE_INTENT_SIGNALS,
@@ -214,24 +208,25 @@ steps:
           LLM_TOTAL_TOKENS, LLM_COST_ESTIMATE
         )
         SELECT
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id::STRING, CURRENT_DATE(),
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):source_metrics_snapshot,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):source_coverage_breadth::NUMBER,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):lifecycle_stage::STRING,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):category::STRING,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):is_valid_trend::BOOLEAN,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):confidence_score::FLOAT,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):sponsorship_fit_score::FLOAT,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_commercial_score::FLOAT,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):brand_association_count::NUMBER,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):model_agreement_score::FLOAT,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):llm_total_tokens::NUMBER,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):llm_cost_estimate::FLOAT
-        WHERE PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id::STRING IS NOT NULL
+          src.p:trend_id::STRING, CURRENT_DATE(),
+          src.p:source_metrics_snapshot,
+          src.p:source_coverage_breadth::NUMBER,
+          src.p:lifecycle_stage::STRING,
+          src.p:category::STRING,
+          src.p:is_valid_trend::BOOLEAN,
+          src.p:confidence_score::FLOAT,
+          src.p:sponsorship_fit_score::FLOAT,
+          src.p:trend_commercial_score::FLOAT,
+          src.p:brand_association_count::NUMBER,
+          src.p:model_agreement_score::FLOAT,
+          src.p:llm_total_tokens::NUMBER,
+          src.p:llm_cost_estimate::FLOAT
+        FROM (SELECT PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$) AS p) src
+        WHERE src.p:trend_id::STRING IS NOT NULL
           AND NOT EXISTS (
-            SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_HISTORY
-            WHERE TREND_ID = PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id::STRING
-              AND SNAPSHOT_DATE = CURRENT_DATE()
+            SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_HISTORY h
+            WHERE h.TREND_ID = src.p:trend_id::STRING
+              AND h.SNAPSHOT_DATE = CURRENT_DATE()
           )
       query: |-
         INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_HISTORY (
@@ -244,24 +239,25 @@ steps:
           LLM_TOTAL_TOKENS, LLM_COST_ESTIMATE
         )
         SELECT
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id::STRING, CURRENT_DATE(),
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):source_metrics_snapshot,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):source_coverage_breadth::NUMBER,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):lifecycle_stage::STRING,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):category::STRING,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):is_valid_trend::BOOLEAN,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):confidence_score::FLOAT,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):sponsorship_fit_score::FLOAT,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_commercial_score::FLOAT,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):brand_association_count::NUMBER,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):model_agreement_score::FLOAT,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):llm_total_tokens::NUMBER,
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):llm_cost_estimate::FLOAT
-        WHERE PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id::STRING IS NOT NULL
+          src.p:trend_id::STRING, CURRENT_DATE(),
+          src.p:source_metrics_snapshot,
+          src.p:source_coverage_breadth::NUMBER,
+          src.p:lifecycle_stage::STRING,
+          src.p:category::STRING,
+          src.p:is_valid_trend::BOOLEAN,
+          src.p:confidence_score::FLOAT,
+          src.p:sponsorship_fit_score::FLOAT,
+          src.p:trend_commercial_score::FLOAT,
+          src.p:brand_association_count::NUMBER,
+          src.p:model_agreement_score::FLOAT,
+          src.p:llm_total_tokens::NUMBER,
+          src.p:llm_cost_estimate::FLOAT
+        FROM (SELECT PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$) AS p) src
+        WHERE src.p:trend_id::STRING IS NOT NULL
           AND NOT EXISTS (
-            SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_HISTORY
-            WHERE TREND_ID = PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id::STRING
-              AND SNAPSHOT_DATE = CURRENT_DATE()
+            SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_HISTORY h
+            WHERE h.TREND_ID = src.p:trend_id::STRING
+              AND h.SNAPSHOT_DATE = CURRENT_DATE()
           )
       params: []
 - namespace: update_queue
