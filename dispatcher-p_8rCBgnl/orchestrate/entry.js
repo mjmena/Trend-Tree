@@ -17,15 +17,15 @@
 // the message in ERROR_MESSAGE. On success, error_message is empty
 // and the mark_failed step is a no-op (thanks to its WHERE :2 != '').
 //
-// Endpoint URLs are read from project env vars so they don't need to
-// be hard-coded (Pipedream assigns unique *.m.pipedream.net subdomains
-// per HTTP trigger at deploy time). Set these in the Pipedream UI:
-//
-//   SOURCES_URL   — https://<random>.m.pipedream.net  (sources workflow)
-//   WRITE_URL     — https://<random>.m.pipedream.net  (write workflow)
-//   LLM_URL       — defaults to the known llm-enrichment-p_YyC86Zo URL
+// Endpoint URLs are tied to each workflow's HTTP trigger and don't
+// change once the workflow exists (Pipedream assigns the *.m.pipedream.net
+// subdomain at trigger creation time and persists it). Hard-coded here as
+// defaults; project env vars (SOURCES_URL / LLM_URL / WRITE_URL) override
+// them if you ever need to point at a different environment.
 
-const DEFAULT_LLM_URL = "https://eod25mq0qt8tk4q.m.pipedream.net";
+const DEFAULT_SOURCES_URL = "https://eoqw249vy2xnwyv.m.pipedream.net"; // sources-p_7NCy36w
+const DEFAULT_LLM_URL     = "https://eod25mq0qt8tk4q.m.pipedream.net"; // llm-enrichment-p_YyC86Zo
+const DEFAULT_WRITE_URL   = "https://eobhhpl77hkx33c.m.pipedream.net"; // write-p_o7CWa2K
 
 async function postJson(url, body, { timeoutMs = 500_000 } = {}) {
   const controller = new AbortController();
@@ -75,17 +75,9 @@ export default defineComponent({
       return { error_message: "missing trend_id in trigger event", stage: "pre" };
     }
 
-    const sourcesUrl = process.env.SOURCES_URL;
+    const sourcesUrl = process.env.SOURCES_URL || DEFAULT_SOURCES_URL;
     const llmUrl = process.env.LLM_URL || DEFAULT_LLM_URL;
-    const writeUrl = process.env.WRITE_URL;
-
-    if (!sourcesUrl || !writeUrl) {
-      return {
-        error_message:
-          "SOURCES_URL and/or WRITE_URL env vars not set in Pipedream project config",
-        stage: "pre",
-      };
-    }
+    const writeUrl = process.env.WRITE_URL || DEFAULT_WRITE_URL;
 
     const enrichmentType =
       (this.enrichment_type && String(this.enrichment_type).toUpperCase()) || "FULL";
