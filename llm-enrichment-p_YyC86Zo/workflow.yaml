@@ -11,26 +11,36 @@ steps:
   runtime: nodejs20.x
   uses: "./load_llm_context/entry.js"
   props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
     trend_id: "{{steps.trigger.event.body.trend_id}}"
 - namespace: enrich_llm_gemini
   runtime: nodejs20.x
   uses: "./enrich_llm_gemini/entry.js"
   props:
+    google_gemini:
+      authProvisionId: apn_EOhp9DY
     enrich_context: "{{steps.load_llm_context.$return_value}}"
 - namespace: enrich_llm_grok
   runtime: nodejs20.x
   uses: "./enrich_llm_grok/entry.js"
   props:
+    x_ai:
+      authProvisionId: apn_WYhE6e6
     enrich_context: "{{steps.load_llm_context.$return_value}}"
 - namespace: enrich_llm_chatgpt
   runtime: nodejs20.x
   uses: "./enrich_llm_chatgpt/entry.js"
   props:
+    openai:
+      authProvisionId: apn_QPhO4kd
     enrich_context: "{{steps.load_llm_context.$return_value}}"
 - namespace: enrich_llm_claude
   runtime: nodejs20.x
   uses: "./enrich_llm_claude/entry.js"
   props:
+    anthropic:
+      authProvisionId: apn_Oghan1O
     enrich_context: "{{steps.load_llm_context.$return_value}}"
     gemini_output: "{{steps.enrich_llm_gemini.$return_value}}"
     grok_output: "{{steps.enrich_llm_grok.$return_value}}"
@@ -44,3 +54,4 @@ steps:
     grok_output: "{{steps.enrich_llm_grok.$return_value}}"
     chatgpt_output: "{{steps.enrich_llm_chatgpt.$return_value}}"
     claude_output: "{{steps.enrich_llm_claude.$return_value}}"
+
