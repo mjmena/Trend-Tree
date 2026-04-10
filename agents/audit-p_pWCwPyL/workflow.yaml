@@ -2,7 +2,261 @@ schema: workflow/2022.04
 name: audit
 settings:
   error_notification: true
+  lambda_memory: 2048
+  lambda_timeout: 600
+  network: net_5Lnie3
 triggers:
 - id: hi_wWHgdBQ
 - id: ti_WmT1Aen
-
+steps:
+- namespace: normalize_event
+  runtime: nodejs20.x
+  uses: "./normalize_event/entry.js"
+  props:
+    trigger_event: "{{steps.trigger.event}}"
+- namespace: q_health_snapshot
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT
+          COUNT_IF(VELOCITY_DIRECTION != 'SUPERSEDED')                            AS ACTIVE_TRENDS,
+          COUNT_IF(VELOCITY_DIRECTION = 'SUPERSEDED')                             AS SUPERSEDED_TRENDS,
+          COUNT_IF(VELOCITY_DIRECTION IN ('NEW','GROWING'))                       AS GROWING_TRENDS,
+          COUNT_IF(TOTAL_CLUSTER_SIZE >= 20 AND VELOCITY_DIRECTION != 'SUPERSEDED') AS LARGE_TRENDS,
+          MEDIAN(TOTAL_CLUSTER_SIZE)                                              AS MEDIAN_CLUSTER_SIZE,
+          APPROX_PERCENTILE(TOTAL_CLUSTER_SIZE, 0.95)                             AS P95_CLUSTER_SIZE,
+          AVG(TREND_HEAT_INDEX)                                                   AS MEAN_HEAT_INDEX,
+          (SELECT COUNT(*) FROM MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
+             WHERE STATUS = 'PENDING')                                            AS QUEUE_PENDING,
+          (SELECT COUNT(*) FROM MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
+             WHERE STATUS = 'FAILED' AND RETRY_COUNT < 3)                         AS QUEUE_FAILED_RETRYABLE,
+          (SELECT COUNT(*) FROM MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
+             WHERE STATUS = 'IN_PROGRESS'
+               AND STARTED_AT < DATEADD(hour, -2, CURRENT_TIMESTAMP()))           AS QUEUE_STUCK,
+          (SELECT COUNT(*) FROM MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT
+             WHERE CATEGORY = 'other')                                            AS CATEGORY_OTHER_COUNT
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS
+      query: |-
+        SELECT
+          COUNT_IF(VELOCITY_DIRECTION != 'SUPERSEDED')                            AS ACTIVE_TRENDS,
+          COUNT_IF(VELOCITY_DIRECTION = 'SUPERSEDED')                             AS SUPERSEDED_TRENDS,
+          COUNT_IF(VELOCITY_DIRECTION IN ('NEW','GROWING'))                       AS GROWING_TRENDS,
+          COUNT_IF(TOTAL_CLUSTER_SIZE >= 20 AND VELOCITY_DIRECTION != 'SUPERSEDED') AS LARGE_TRENDS,
+          MEDIAN(TOTAL_CLUSTER_SIZE)                                              AS MEDIAN_CLUSTER_SIZE,
+          APPROX_PERCENTILE(TOTAL_CLUSTER_SIZE, 0.95)                             AS P95_CLUSTER_SIZE,
+          AVG(TREND_HEAT_INDEX)                                                   AS MEAN_HEAT_INDEX,
+          (SELECT COUNT(*) FROM MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
+             WHERE STATUS = 'PENDING')                                            AS QUEUE_PENDING,
+          (SELECT COUNT(*) FROM MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
+             WHERE STATUS = 'FAILED' AND RETRY_COUNT < 3)                         AS QUEUE_FAILED_RETRYABLE,
+          (SELECT COUNT(*) FROM MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
+             WHERE STATUS = 'IN_PROGRESS'
+               AND STARTED_AT < DATEADD(hour, -2, CURRENT_TIMESTAMP()))           AS QUEUE_STUCK,
+          (SELECT COUNT(*) FROM MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT
+             WHERE CATEGORY = 'other')                                            AS CATEGORY_OTHER_COUNT
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS
+      params: []
+- namespace: q_split_candidates
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT m.TREND_ID, m.TREND_TOPIC, m.TOTAL_CLUSTER_SIZE,
+               m.DISTINCT_SOURCE_COUNT, m.SIGNAL_CHANGE, m.AVG_SIMILARITY,
+               m.TREND_HEAT_INDEX, m.VELOCITY_DIRECTION,
+               d.CATEGORY, d.SUBCATEGORY
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
+        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d
+          ON m.TREND_ID = d.TREND_ID
+        WHERE m.VELOCITY_DIRECTION != 'SUPERSEDED'
+          AND m.TOTAL_CLUSTER_SIZE >= 6
+          AND (
+                (m.TOTAL_CLUSTER_SIZE >= 20 AND m.DISTINCT_SOURCE_COUNT >= 3)
+             OR (m.TOTAL_CLUSTER_SIZE >= 15 AND m.SIGNAL_CHANGE > 50)
+             OR (m.TOTAL_CLUSTER_SIZE >= 10 AND m.AVG_SIMILARITY < 0.62)
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_AUDIT_LOG a
+              WHERE a.TREND_ID = m.TREND_ID
+                AND a.AUDIT_TYPE = 'SPLIT_CANDIDATE'
+                AND a.AUDITED_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
+          )
+        ORDER BY m.TREND_HEAT_INDEX DESC NULLS LAST
+        LIMIT 20
+      query: |-
+        SELECT m.TREND_ID, m.TREND_TOPIC, m.TOTAL_CLUSTER_SIZE,
+               m.DISTINCT_SOURCE_COUNT, m.SIGNAL_CHANGE, m.AVG_SIMILARITY,
+               m.TREND_HEAT_INDEX, m.VELOCITY_DIRECTION,
+               d.CATEGORY, d.SUBCATEGORY
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
+        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d
+          ON m.TREND_ID = d.TREND_ID
+        WHERE m.VELOCITY_DIRECTION != 'SUPERSEDED'
+          AND m.TOTAL_CLUSTER_SIZE >= 6
+          AND (
+                (m.TOTAL_CLUSTER_SIZE >= 20 AND m.DISTINCT_SOURCE_COUNT >= 3)
+             OR (m.TOTAL_CLUSTER_SIZE >= 15 AND m.SIGNAL_CHANGE > 50)
+             OR (m.TOTAL_CLUSTER_SIZE >= 10 AND m.AVG_SIMILARITY < 0.62)
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_AUDIT_LOG a
+              WHERE a.TREND_ID = m.TREND_ID
+                AND a.AUDIT_TYPE = 'SPLIT_CANDIDATE'
+                AND a.AUDITED_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
+          )
+        ORDER BY m.TREND_HEAT_INDEX DESC NULLS LAST
+        LIMIT 20
+      params: []
+- namespace: q_category_drift
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        WITH latest_history AS (
+          SELECT TREND_ID, CATEGORY AS HIST_CATEGORY, SNAPSHOT_DATE
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_HISTORY
+          QUALIFY ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY SNAPSHOT_DATE DESC) = 1
+        )
+        SELECT m.TREND_ID, m.TREND_TOPIC, m.VELOCITY_DIRECTION, m.TREND_HEAT_INDEX,
+               d.CATEGORY AS CURRENT_CATEGORY, lh.HIST_CATEGORY,
+               DATEDIFF(day, d.ENRICHED_AT, CURRENT_TIMESTAMP()) AS DAYS_SINCE_ENRICHED,
+               CASE
+                 WHEN d.CATEGORY IS NULL OR d.CATEGORY = 'other' THEN 'UNDER_CATEGORIZED'
+                 WHEN lh.HIST_CATEGORY IS NOT NULL AND lh.HIST_CATEGORY != d.CATEGORY THEN 'CATEGORY_FLIP'
+                 WHEN DATEDIFF(day, d.ENRICHED_AT, CURRENT_TIMESTAMP()) > 7 THEN 'STALE_ENRICHMENT'
+                 ELSE 'UNKNOWN'
+               END AS DRIFT_REASON
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
+        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d ON m.TREND_ID = d.TREND_ID
+        LEFT JOIN latest_history lh ON m.TREND_ID = lh.TREND_ID
+        WHERE m.VELOCITY_DIRECTION IN ('NEW','GROWING','STABLE')
+          AND (
+                (d.CATEGORY = 'other')
+             OR (lh.HIST_CATEGORY IS NOT NULL AND lh.HIST_CATEGORY != d.CATEGORY)
+             OR (d.ENRICHED_AT IS NOT NULL AND DATEDIFF(day, d.ENRICHED_AT, CURRENT_TIMESTAMP()) > 7)
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_AUDIT_LOG a
+              WHERE a.TREND_ID = m.TREND_ID
+                AND a.AUDIT_TYPE = 'CATEGORY_DRIFT'
+                AND a.AUDITED_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
+          )
+        ORDER BY m.TREND_HEAT_INDEX DESC NULLS LAST
+        LIMIT 20
+      query: |-
+        WITH latest_history AS (
+          SELECT TREND_ID, CATEGORY AS HIST_CATEGORY, SNAPSHOT_DATE
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_HISTORY
+          QUALIFY ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY SNAPSHOT_DATE DESC) = 1
+        )
+        SELECT m.TREND_ID, m.TREND_TOPIC, m.VELOCITY_DIRECTION, m.TREND_HEAT_INDEX,
+               d.CATEGORY AS CURRENT_CATEGORY, lh.HIST_CATEGORY,
+               DATEDIFF(day, d.ENRICHED_AT, CURRENT_TIMESTAMP()) AS DAYS_SINCE_ENRICHED,
+               CASE
+                 WHEN d.CATEGORY IS NULL OR d.CATEGORY = 'other' THEN 'UNDER_CATEGORIZED'
+                 WHEN lh.HIST_CATEGORY IS NOT NULL AND lh.HIST_CATEGORY != d.CATEGORY THEN 'CATEGORY_FLIP'
+                 WHEN DATEDIFF(day, d.ENRICHED_AT, CURRENT_TIMESTAMP()) > 7 THEN 'STALE_ENRICHMENT'
+                 ELSE 'UNKNOWN'
+               END AS DRIFT_REASON
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
+        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d ON m.TREND_ID = d.TREND_ID
+        LEFT JOIN latest_history lh ON m.TREND_ID = lh.TREND_ID
+        WHERE m.VELOCITY_DIRECTION IN ('NEW','GROWING','STABLE')
+          AND (
+                (d.CATEGORY = 'other')
+             OR (lh.HIST_CATEGORY IS NOT NULL AND lh.HIST_CATEGORY != d.CATEGORY)
+             OR (d.ENRICHED_AT IS NOT NULL AND DATEDIFF(day, d.ENRICHED_AT, CURRENT_TIMESTAMP()) > 7)
+          )
+          AND NOT EXISTS (
+              SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_AUDIT_LOG a
+              WHERE a.TREND_ID = m.TREND_ID
+                AND a.AUDIT_TYPE = 'CATEGORY_DRIFT'
+                AND a.AUDITED_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
+          )
+        ORDER BY m.TREND_HEAT_INDEX DESC NULLS LAST
+        LIMIT 20
+      params: []
+- namespace: q_stalled_queue
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT q.TREND_ID, q.TREND_TOPIC, q.STATUS, q.RETRY_COUNT,
+               q.STARTED_AT, q.QUEUED_AT, q.ERROR_MESSAGE,
+               DATEDIFF(hour, q.STARTED_AT, CURRENT_TIMESTAMP()) AS HOURS_STUCK
+        FROM MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE q
+        WHERE (q.STATUS = 'IN_PROGRESS'
+                 AND q.STARTED_AT < DATEADD(hour, -2, CURRENT_TIMESTAMP()))
+           OR (q.STATUS = 'FAILED' AND COALESCE(q.RETRY_COUNT, 0) < 3)
+        ORDER BY q.QUEUED_AT ASC
+        LIMIT 20
+      query: |-
+        SELECT q.TREND_ID, q.TREND_TOPIC, q.STATUS, q.RETRY_COUNT,
+               q.STARTED_AT, q.QUEUED_AT, q.ERROR_MESSAGE,
+               DATEDIFF(hour, q.STARTED_AT, CURRENT_TIMESTAMP()) AS HOURS_STUCK
+        FROM MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE q
+        WHERE (q.STATUS = 'IN_PROGRESS'
+                 AND q.STARTED_AT < DATEADD(hour, -2, CURRENT_TIMESTAMP()))
+           OR (q.STATUS = 'FAILED' AND COALESCE(q.RETRY_COUNT, 0) < 3)
+        ORDER BY q.QUEUED_AT ASC
+        LIMIT 20
+      params: []
+- namespace: llm_plan
+  runtime: nodejs20.x
+  uses: "./llm_plan/entry.js"
+  props:
+    anthropic:
+      authProvisionId: apn_Oghan1O
+    budget_remaining_usd: "{{steps.normalize_event.$return_value.budget_remaining_usd}}"
+    chain_id: "{{steps.normalize_event.$return_value.chain_id}}"
+    iteration: "{{steps.normalize_event.$return_value.iteration}}"
+    dry_run: "{{steps.normalize_event.$return_value.dry_run}}"
+    health_rows: "{{steps.q_health_snapshot.$return_value}}"
+    split_candidates: "{{steps.q_split_candidates.$return_value}}"
+    category_drift: "{{steps.q_category_drift.$return_value}}"
+    stalled_queue: "{{steps.q_stalled_queue.$return_value}}"
+- namespace: apply_actions_sql
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        CALL MCC_RAW.MARKETING_DEV.PROC_AUDIT_APPLY_ACTIONS(
+          PARSE_JSON($${{steps.llm_plan.$return_value.actions_json}}$$),
+          '{{steps.normalize_event.$return_value.chain_id}}',
+          {{steps.normalize_event.$return_value.iteration}}
+        )
+      query: |-
+        CALL MCC_RAW.MARKETING_DEV.PROC_AUDIT_APPLY_ACTIONS(
+          PARSE_JSON($${{steps.llm_plan.$return_value.actions_json}}$$),
+          '{{steps.normalize_event.$return_value.chain_id}}',
+          {{steps.normalize_event.$return_value.iteration}}
+        )
+      params: []
+- namespace: eval_and_retrigger
+  runtime: nodejs20.x
+  uses: "./eval_and_retrigger/entry.js"
+  props:
+    chain_id: "{{steps.normalize_event.$return_value.chain_id}}"
+    iteration: "{{steps.normalize_event.$return_value.iteration}}"
+    max_iterations: "{{steps.normalize_event.$return_value.max_iterations}}"
+    budget_usd: "{{steps.normalize_event.$return_value.budget_usd}}"
+    budget_remaining_usd: "{{steps.normalize_event.$return_value.budget_remaining_usd}}"
+    dry_run: "{{steps.normalize_event.$return_value.dry_run}}"
+    llm_plan: "{{steps.llm_plan.$return_value}}"
+    apply_result: "{{steps.apply_actions_sql.$return_value}}"
