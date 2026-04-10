@@ -1,9 +1,0 @@
-schema: workflow/2022.04
-name: HTTP Template
-settings:
-  error_notification: true
-  lambda_memory: 1024
-  lambda_timeout: 300
-triggers:
-- id: hi_peHkJYd
-

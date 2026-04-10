@@ -1,0 +1,117 @@
+schema: workflow/2022.04
+name: Sources Enrichment
+settings:
+  error_notification: true
+  lambda_memory: 2048
+  lambda_timeout: 300
+  network: net_5Lnie3
+triggers:
+- id: hi_peHkJYd
+steps:
+- namespace: query_metrics
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      query: SELECT TREND_ID, TREND_TOPIC, TOTAL_CLUSTER_SIZE, VELOCITY_DIRECTION,
+        TREND_HEAT_INDEX FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS WHERE
+        TREND_ID = :1
+      params:
+      - "{{steps.trigger.event.body.trend_id}}"
+- namespace: query_queue
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      query: SELECT ENRICHMENT_TYPE FROM MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
+        WHERE TREND_ID = :1 ORDER BY QUEUED_AT DESC NULLS LAST LIMIT 1
+      params:
+      - "{{steps.trigger.event.body.trend_id}}"
+- namespace: generate_search_terms
+  runtime: nodejs20.x
+  uses: "./generate_search_terms/entry.js"
+  props:
+    anthropic:
+      authProvisionId: apn_Oghan1O
+    trend_id: "{{steps.trigger.event.body.trend_id}}"
+    metrics_rows: "{{steps.query_metrics.$return_value}}"
+- namespace: fetch_external
+  runtime: nodejs20.x
+  uses: "./fetch_external/entry.js"
+  props:
+    metrics_rows: "{{steps.query_metrics.$return_value}}"
+    search_term_output: "{{steps.generate_search_terms.$return_value}}"
+- namespace: query_google_trends
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      query: |-
+        SELECT TREND_ID, TREND_TITLE, APPROX_TRAFFIC, PUB_DATE, NEWS_ITEMS
+        FROM MCC_RAW.MARKETING_DEV.STG_GOOGLE_TRENDS
+        WHERE PUB_DATE >= DATEADD(day, -14, CURRENT_TIMESTAMP())
+          AND LENGTH(TREND_TITLE) >= 5
+          AND EXISTS (
+            SELECT 1 FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:2))) t
+            WHERE CONTAINS(LOWER(TREND_TITLE), LOWER(t.value::STRING))
+          )
+        ORDER BY PUB_DATE DESC
+        LIMIT 20
+      params:
+      - "{{steps.trigger.event.body.trend_id}}"
+      - "{{steps.generate_search_terms.$return_value.terms_json}}"
+- namespace: aggregate
+  runtime: nodejs20.x
+  uses: "./aggregate/entry.js"
+  props:
+    trend_id: "{{steps.trigger.event.body.trend_id}}"
+    metrics_rows: "{{steps.query_metrics.$return_value}}"
+    queue_rows: "{{steps.query_queue.$return_value}}"
+    search_term_output: "{{steps.generate_search_terms.$return_value}}"
+    external_output: "{{steps.fetch_external.$return_value}}"
+    google_trends_rows: "{{steps.query_google_trends.$return_value}}"
+- namespace: merge_fct_metrics
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      query: |-
+        MERGE INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCE_METRICS AS target
+        USING (
+          SELECT
+            r.value:trend_id::STRING         AS TREND_ID,
+            r.value:source_name::STRING      AS SOURCE_NAME,
+            r.value:headline_metric::FLOAT   AS HEADLINE_METRIC,
+            r.value:headline_metric_name::STRING AS HEADLINE_METRIC_NAME,
+            r.value:metrics                  AS METRICS
+          FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) r
+        ) AS source
+        ON target.TREND_ID = source.TREND_ID AND target.SOURCE_NAME = source.SOURCE_NAME
+        WHEN MATCHED THEN UPDATE SET
+          HEADLINE_METRIC      = source.HEADLINE_METRIC,
+          HEADLINE_METRIC_NAME = source.HEADLINE_METRIC_NAME,
+          METRICS              = source.METRICS,
+          ENRICHED_AT          = CURRENT_TIMESTAMP(),
+          ENRICHMENT_VERSION   = COALESCE(target.ENRICHMENT_VERSION, 0) + 1
+        WHEN NOT MATCHED THEN INSERT (
+          TREND_ID, SOURCE_NAME, HEADLINE_METRIC, HEADLINE_METRIC_NAME, METRICS
+        ) VALUES (
+          source.TREND_ID, source.SOURCE_NAME, source.HEADLINE_METRIC,
+          source.HEADLINE_METRIC_NAME, source.METRICS
+        )
+      params:
+      - "{{steps.aggregate.$return_value.records_json}}"
+- namespace: respond
+  runtime: nodejs20.x
+  uses: "./respond/entry.js"
+  props:
+    aggregate_output: "{{steps.aggregate.$return_value}}"
+    merge_result: "{{steps.merge_fct_metrics.$return_value}}"
