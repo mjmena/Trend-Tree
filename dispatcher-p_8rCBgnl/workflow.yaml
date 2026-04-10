@@ -19,14 +19,19 @@ steps:
     snowflake:
       authProvisionId: apn_yghdQYJ
     sql:
+      value: |-
+        UPDATE MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
+                SET STATUS = 'IN_PROGRESS',
+                    STARTED_AT = CURRENT_TIMESTAMP()
+                WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
+                  AND STATUS IN ('PENDING', 'IN_PROGRESS', 'FAILED')
       query: |-
         UPDATE MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
-        SET STATUS = 'IN_PROGRESS',
-            STARTED_AT = CURRENT_TIMESTAMP()
-        WHERE TREND_ID = :1
-          AND STATUS IN ('PENDING', 'IN_PROGRESS', 'FAILED')
-      params:
-      - "{{steps.normalize_event.$return_value.trend_id}}"
+                SET STATUS = 'IN_PROGRESS',
+                    STARTED_AT = CURRENT_TIMESTAMP()
+                WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
+                  AND STATUS IN ('PENDING', 'IN_PROGRESS', 'FAILED')
+      params: []
 - namespace: orchestrate
   runtime: nodejs20.x
   uses: "./orchestrate/entry.js"
@@ -59,3 +64,4 @@ steps:
   uses: "./respond/entry.js"
   props:
     orchestrate_output: "{{steps.orchestrate.$return_value}}"
+
