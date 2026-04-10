@@ -5,4 +5,120 @@ settings:
   network: net_5Lnie3
 triggers:
 - id: ti_EoTEL6N
-
+steps:
+- namespace: query_dashboard
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        WITH new_today AS (
+          SELECT d.TREND_ID
+          FROM MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d
+          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m USING (TREND_ID)
+          WHERE d.ENRICHMENT_VERSION = 1
+            AND CAST(d.ENRICHED_AT AS DATE) = CURRENT_DATE()
+            AND m.VELOCITY_DIRECTION != 'SUPERSEDED'
+        ),
+        top_heat AS (
+          SELECT v.TREND_ID
+          FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v
+          WHERE v.VELOCITY_DIRECTION != 'SUPERSEDED'
+            AND v.SUMMARY_SHORT IS NOT NULL
+            AND v.TREND_ID NOT IN (SELECT TREND_ID FROM new_today)
+          ORDER BY v.HEAT_INDEX DESC
+          LIMIT 10
+        ),
+        selected AS (
+          SELECT TREND_ID, TRUE  AS IS_NEW FROM new_today
+          UNION ALL
+          SELECT TREND_ID, FALSE AS IS_NEW FROM top_heat
+        )
+        SELECT v.TREND_ID, v.TREND_NAME, v.CATEGORY, v.SUBCATEGORY, v.MACROTREND_TAGS,
+               v.SUMMARY_SHORT, v.HEAT_INDEX, v.VELOCITY_DIRECTION,
+               v.TOTAL_CLUSTER_SIZE, v.KEY_DATA_POINTS, v.TOP_SIGNALS,
+               s.IS_NEW
+        FROM selected s
+        JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v USING (TREND_ID)
+        WHERE v.SUMMARY_SHORT IS NOT NULL
+        ORDER BY s.IS_NEW DESC, v.HEAT_INDEX DESC
+      query: |-
+        WITH new_today AS (
+          SELECT d.TREND_ID
+          FROM MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d
+          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m USING (TREND_ID)
+          WHERE d.ENRICHMENT_VERSION = 1
+            AND CAST(d.ENRICHED_AT AS DATE) = CURRENT_DATE()
+            AND m.VELOCITY_DIRECTION != 'SUPERSEDED'
+        ),
+        top_heat AS (
+          SELECT v.TREND_ID
+          FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v
+          WHERE v.VELOCITY_DIRECTION != 'SUPERSEDED'
+            AND v.SUMMARY_SHORT IS NOT NULL
+            AND v.TREND_ID NOT IN (SELECT TREND_ID FROM new_today)
+          ORDER BY v.HEAT_INDEX DESC
+          LIMIT 10
+        ),
+        selected AS (
+          SELECT TREND_ID, TRUE  AS IS_NEW FROM new_today
+          UNION ALL
+          SELECT TREND_ID, FALSE AS IS_NEW FROM top_heat
+        )
+        SELECT v.TREND_ID, v.TREND_NAME, v.CATEGORY, v.SUBCATEGORY, v.MACROTREND_TAGS,
+               v.SUMMARY_SHORT, v.HEAT_INDEX, v.VELOCITY_DIRECTION,
+               v.TOTAL_CLUSTER_SIZE, v.KEY_DATA_POINTS, v.TOP_SIGNALS,
+               s.IS_NEW
+        FROM selected s
+        JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v USING (TREND_ID)
+        WHERE v.SUMMARY_SHORT IS NOT NULL
+        ORDER BY s.IS_NEW DESC, v.HEAT_INDEX DESC
+      params: []
+- namespace: query_stats
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT
+          COUNT_IF(m.VELOCITY_DIRECTION != 'SUPERSEDED'
+                   AND d.ENRICHED_AT IS NOT NULL)                         AS TOTAL_TRENDS,
+          COUNT_IF(d.ENRICHMENT_VERSION = 1
+                   AND CAST(d.ENRICHED_AT AS DATE) = CURRENT_DATE())      AS NEW_TRENDS,
+          COUNT_IF(d.ENRICHMENT_VERSION > 1
+                   AND CAST(d.ENRICHED_AT AS DATE) = CURRENT_DATE())      AS UPDATED_TRENDS
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
+        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d
+          ON m.TREND_ID = d.TREND_ID
+      query: |-
+        SELECT
+          COUNT_IF(m.VELOCITY_DIRECTION != 'SUPERSEDED'
+                   AND d.ENRICHED_AT IS NOT NULL)                         AS TOTAL_TRENDS,
+          COUNT_IF(d.ENRICHMENT_VERSION = 1
+                   AND CAST(d.ENRICHED_AT AS DATE) = CURRENT_DATE())      AS NEW_TRENDS,
+          COUNT_IF(d.ENRICHMENT_VERSION > 1
+                   AND CAST(d.ENRICHED_AT AS DATE) = CURRENT_DATE())      AS UPDATED_TRENDS
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
+        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d
+          ON m.TREND_ID = d.TREND_ID
+      params: []
+- namespace: build_email
+  runtime: nodejs20.x
+  uses: "./build_email/entry.js"
+  props:
+    dashboard_rows: "{{steps.query_dashboard.$return_value}}"
+    stats_rows: "{{steps.query_stats.$return_value}}"
+- namespace: braze_send
+  runtime: nodejs20.x
+  uses: "./braze_send/entry.js"
+  props:
+    subject: "{{steps.build_email.$return_value.subject}}"
+    html_body: "{{steps.build_email.$return_value.html_body}}"
+    external_user_id: "{{process.env.TREND_DIGEST_TEST_EXTERNAL_USER_ID}}"
+    from_email: "{{process.env.TREND_DIGEST_FROM_EMAIL}}"
+    from_name: "{{process.env.TREND_DIGEST_FROM_NAME}}"
+    braze_app_id: "{{process.env.BRAZE_APP_ID}}"
