@@ -1,0 +1,8 @@
+schema: workflow/2022.04
+name: Copy of gdelt
+inactive: true
+settings:
+  error_notification: true
+triggers:
+- id: ti_1RTYWoY
+

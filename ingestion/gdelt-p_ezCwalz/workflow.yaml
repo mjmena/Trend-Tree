@@ -1,0 +1,7 @@
+schema: workflow/2022.04
+name: gdelt
+settings:
+  error_notification: true
+triggers:
+- id: ti_9LTXe7m
+
