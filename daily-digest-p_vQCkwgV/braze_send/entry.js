@@ -1,13 +1,20 @@
 // Pipedream Workflow Step: Braze Send
 //
-// POSTs the rendered HTML digest to Braze /messages/send. Single hardcoded
-// test recipient on day 1 via the TREND_DIGEST_TEST_EXTERNAL_USER_ID env var.
+// POSTs the rendered HTML digest to Braze /messages/send. Day-1 config is
+// hardcoded below: single test recipient, McClatchy content sender, same
+// Braze app id used by CRM-Proof-Pipeline/braze-render-p_vQCkbQW.
 //
 // Auth comes from the Pipedream `braze` app prop; credentials are read from
 // this.braze.$auth (api_key, instance_domain, region) — same pattern used by
 // CRM-Proof-Pipeline/braze-render-p_vQCkbQW/braze_send/entry.js.
 
 import { axios } from "@pipedream/platform";
+
+// Hardcoded day-1 values. Move to env vars when we broaden the audience.
+const EXTERNAL_USER_ID = "88bc3b24acdbce2ea86d17c8e72a1a893d65b7824e43651db59d0a1b2d90c9a1";
+const BRAZE_APP_ID = "3f5340d5-1868-4fc0-b783-b36dd6185ab6";
+const FROM_EMAIL = "test@content.mcclatchymedia.com";
+const FROM_NAME = "Trend Insights Daily";
 
 export default defineComponent({
   props: {
@@ -23,38 +30,15 @@ export default defineComponent({
       type: "string",
       label: "Rendered HTML body",
     },
-    external_user_id: {
-      type: "string",
-      label: "Recipient Braze external_user_id",
-    },
-    from_email: {
-      type: "string",
-      label: "From email address",
-    },
-    from_name: {
-      type: "string",
-      label: "From display name",
-    },
-    braze_app_id: {
-      type: "string",
-      label: "Braze app id (UUID)",
-    },
   },
   async run({ $ }) {
-    if (!this.external_user_id) {
-      throw new Error("TREND_DIGEST_TEST_EXTERNAL_USER_ID env var is not set");
-    }
-    if (!this.braze_app_id) {
-      throw new Error("BRAZE_APP_ID env var is not set");
-    }
-
     const payload = {
-      external_user_ids: [this.external_user_id],
+      external_user_ids: [EXTERNAL_USER_ID],
       messages: {
         email: {
-          app_id: this.braze_app_id,
+          app_id: BRAZE_APP_ID,
           subject: this.subject,
-          from: `${this.from_name} <${this.from_email}>`,
+          from: `${FROM_NAME} <${FROM_EMAIL}>`,
           body: this.html_body,
         },
       },

@@ -116,9 +116,7 @@ steps:
   runtime: nodejs20.x
   uses: "./braze_send/entry.js"
   props:
+    braze:
+      authProvisionId: apn_0WhgpWJ
     subject: "{{steps.build_email.$return_value.subject}}"
     html_body: "{{steps.build_email.$return_value.html_body}}"
-    external_user_id: "{{process.env.TREND_DIGEST_TEST_EXTERNAL_USER_ID}}"
-    from_email: "{{process.env.TREND_DIGEST_FROM_EMAIL}}"
-    from_name: "{{process.env.TREND_DIGEST_FROM_NAME}}"
-    braze_app_id: "{{process.env.BRAZE_APP_ID}}"
