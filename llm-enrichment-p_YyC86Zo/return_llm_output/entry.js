@@ -14,7 +14,6 @@
 const COST_PER_M = {
   "gemini-2.5-flash":  { input: 0.15, output: 0.60 },
   "grok-3-mini-fast":  { input: 0.30, output: 0.50 },
-  "gpt-4o-mini":       { input: 0.15, output: 0.60 },
   "claude-sonnet-4-6": { input: 3.00, output: 15.00 },
 };
 
@@ -38,11 +37,6 @@ export default defineComponent({
       label: "Grok specialist output",
       optional: true,
     },
-    chatgpt_output: {
-      type: "object",
-      label: "ChatGPT specialist output",
-      optional: true,
-    },
     claude_output: {
       type: "object",
       label: "Claude synthesizer output",
@@ -53,13 +47,12 @@ export default defineComponent({
     const ctx = this.enrich_context;
     const gemini = this.gemini_output ?? null;
     const grok = this.grok_output ?? null;
-    const chatgpt = this.chatgpt_output ?? null;
     const claude = this.claude_output ?? null;
 
     // ── Token / cost accounting ───────────────────────────────────────
     const tokenUsage = {};
     let totalInput = 0, totalOutput = 0, totalCost = 0;
-    for (const [name, output] of Object.entries({ gemini, grok, chatgpt, claude })) {
+    for (const [name, output] of Object.entries({ gemini, grok, claude })) {
       const u = output?._token_usage;
       if (u && u.model) {
         tokenUsage[name] = { input: u.input, output: u.output, model: u.model };
@@ -78,7 +71,6 @@ export default defineComponent({
     const modelsUsed = claude?._models_used ?? [
       ...(gemini ? ["gemini-2.5-flash"] : []),
       ...(grok ? ["grok-3-mini-fast"] : []),
-      ...(chatgpt ? ["gpt-4o-mini"] : []),
       ...(claude ? ["claude-sonnet-4-6"] : []),
     ];
 
@@ -89,7 +81,6 @@ export default defineComponent({
       enrich_context: ctx,
       gemini_output: gemini,
       grok_output: grok,
-      chatgpt_output: chatgpt,
       claude_output: claude,
       models_used: modelsUsed,
       llm_token_usage: tokenUsage,
