@@ -15,11 +15,17 @@ steps:
     snowflake:
       authProvisionId: apn_yghdQYJ
     sql:
-      query: SELECT TREND_ID, TREND_TOPIC, TOTAL_CLUSTER_SIZE, DISTINCT_SOURCE_COUNT,
-        VELOCITY_DIRECTION, TREND_HEAT_INDEX, DETECTED_AT, LAST_UPDATE_AT FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS
-        WHERE TREND_ID = :1
-      params:
-      - "{{steps.trigger.event.body.trend_id}}"
+      value: |-
+        SELECT TREND_ID, TREND_TOPIC, TOTAL_CLUSTER_SIZE, DISTINCT_SOURCE_COUNT,
+               VELOCITY_DIRECTION, TREND_HEAT_INDEX, DETECTED_AT, LAST_UPDATE_AT
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS
+        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+      query: |-
+        SELECT TREND_ID, TREND_TOPIC, TOTAL_CLUSTER_SIZE, DISTINCT_SOURCE_COUNT,
+               VELOCITY_DIRECTION, TREND_HEAT_INDEX, DETECTED_AT, LAST_UPDATE_AT
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS
+        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+      params: []
 - namespace: query_queue
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -27,10 +33,15 @@ steps:
     snowflake:
       authProvisionId: apn_yghdQYJ
     sql:
-      query: SELECT ENRICHMENT_TYPE FROM MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
-        WHERE TREND_ID = :1 ORDER BY QUEUED_AT DESC NULLS LAST LIMIT 1
-      params:
-      - "{{steps.trigger.event.body.trend_id}}"
+      value: |-
+        SELECT ENRICHMENT_TYPE FROM MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
+        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+        ORDER BY QUEUED_AT DESC NULLS LAST LIMIT 1
+      query: |-
+        SELECT ENRICHMENT_TYPE FROM MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
+        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+        ORDER BY QUEUED_AT DESC NULLS LAST LIMIT 1
+      params: []
 - namespace: query_signals
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -38,10 +49,17 @@ steps:
     snowflake:
       authProvisionId: apn_yghdQYJ
     sql:
-      query: SELECT TITLE, SIGNAL_NAME, DOMAIN, DETECTED_AT, PAGERANK_SCORE FROM MCC_PRESENTATION.TREND_AGENT.STG_TREND_SIGNALS
-        WHERE TREND_ID = :1 ORDER BY PAGERANK_SCORE DESC LIMIT 10
-      params:
-      - "{{steps.trigger.event.body.trend_id}}"
+      value: |-
+        SELECT TITLE, SIGNAL_NAME, DOMAIN, DETECTED_AT, PAGERANK_SCORE
+        FROM MCC_PRESENTATION.TREND_AGENT.STG_TREND_SIGNALS
+        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+        ORDER BY PAGERANK_SCORE DESC LIMIT 10
+      query: |-
+        SELECT TITLE, SIGNAL_NAME, DOMAIN, DETECTED_AT, PAGERANK_SCORE
+        FROM MCC_PRESENTATION.TREND_AGENT.STG_TREND_SIGNALS
+        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+        ORDER BY PAGERANK_SCORE DESC LIMIT 10
+      params: []
 - namespace: query_sources
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -49,10 +67,15 @@ steps:
     snowflake:
       authProvisionId: apn_yghdQYJ
     sql:
-      query: SELECT SOURCE_NAME, HEADLINE_METRIC, HEADLINE_METRIC_NAME, METRICS FROM
-        MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCE_METRICS WHERE TREND_ID = :1
-      params:
-      - "{{steps.trigger.event.body.trend_id}}"
+      value: |-
+        SELECT SOURCE_NAME, HEADLINE_METRIC, HEADLINE_METRIC_NAME, METRICS
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCE_METRICS
+        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+      query: |-
+        SELECT SOURCE_NAME, HEADLINE_METRIC, HEADLINE_METRIC_NAME, METRICS
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCE_METRICS
+        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+      params: []
 - namespace: build_llm_context
   runtime: nodejs20.x
   uses: "./build_llm_context/entry.js"
@@ -102,4 +125,3 @@ steps:
     grok_output: "{{steps.enrich_llm_grok.$return_value}}"
     chatgpt_output: "{{steps.enrich_llm_chatgpt.$return_value}}"
     claude_output: "{{steps.enrich_llm_claude.$return_value}}"
-
