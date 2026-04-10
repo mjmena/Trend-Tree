@@ -2,15 +2,17 @@
 -- Database: MCC_RAW.MARKETING_DEV
 -- Runs: after TASK_CLUSTER_TRENDS (chained)
 --
--- Detects trends that need enrichment based on:
--- 1. New trends not yet enriched
--- 2. Existing trends with new signals since last enrichment
--- 3. Trends whose source data is stale (>24h since last source refresh)
+-- Policy (2026-04-10):
+--   Every trend in FCT_TREND_METRICS must have DIM enrichment data.
+--   Velocity direction no longer affects the initial enrichment type —
+--   even DECLINING/STAGNANT trends get a full DIM row on first pass.
+--   SOURCES_ONLY is only used as a cheap refresh for trends that already
+--   have a DIM row but whose source metrics are stale (>24h old).
 --
--- Assigns enrichment type based on trend velocity:
--- FULL: trend is active (NEW, GROWING, STABLE) — full multi-LLM pipeline
--- SOURCES_ONLY: trend is dying (DECLINING, STAGNANT) — refresh source data only
--- REFRESH: already enriched but source data is stale
+-- Detects trends that need enrichment based on:
+-- 1. NEW:           no DIM row yet → FULL
+-- 2. UPDATED:       new signals since last enrichment → FULL
+-- 3. STALE_SOURCES: already enriched but source data >24h old → SOURCES_ONLY
 
 CREATE OR REPLACE TASK MCC_RAW.MARKETING_DEV.TASK_QUEUE_ENRICHMENT
     WAREHOUSE = MARKETING_WH
@@ -55,8 +57,11 @@ USING (
         TREND_ID,
         TREND_TOPIC,
         CASE
-            WHEN CHANGE_REASON = 'STALE_SOURCES' THEN 'REFRESH'
-            WHEN VELOCITY_DIRECTION IN ('DECLINING', 'STAGNANT') THEN 'SOURCES_ONLY'
+            -- STALE_SOURCES can only happen when a DIM row already exists
+            -- (the NEW / UPDATED branches above take precedence otherwise),
+            -- so this is the only case where we cheap-out to sources only.
+            WHEN CHANGE_REASON = 'STALE_SOURCES' THEN 'SOURCES_ONLY'
+            -- Everything else (NEW, UPDATED) runs through the full LLM chain.
             ELSE 'FULL'
         END AS ENRICHMENT_TYPE,
         -- Priority: heat index + log(cluster_size) * 10, boosted for never-enriched
