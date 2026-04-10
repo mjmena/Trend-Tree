@@ -115,3 +115,4 @@ steps:
   props:
     aggregate_output: "{{steps.aggregate.$return_value}}"
     merge_result: "{{steps.merge_fct_metrics.$return_value}}"
+

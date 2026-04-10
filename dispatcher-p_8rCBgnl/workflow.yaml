@@ -50,3 +50,4 @@ steps:
       params:
       - "{{steps.trigger.event.TREND_ID}}"
       - "{{steps.orchestrate.$return_value.error_message}}"
+

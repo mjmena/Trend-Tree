@@ -45,3 +45,4 @@ steps:
         )
       params:
       - "{{steps.fetch_source.$return_value.signals_json}}"
+
