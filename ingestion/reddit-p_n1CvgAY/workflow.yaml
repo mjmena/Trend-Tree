@@ -1,12 +1,13 @@
 schema: workflow/2022.04
-name: Ingest GDELT
+name: Ingest Reddit
+inactive: true
 settings:
   error_notification: true
   lambda_memory: 1024
   lambda_timeout: 600
   network: net_5Lnie3
 triggers:
-- id: ti_9LTXe7m
+- id: ti_GGTmkDY
 steps:
 - namespace: fetch_source
   runtime: nodejs20.x
