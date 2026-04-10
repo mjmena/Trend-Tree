@@ -1,0 +1,8 @@
+schema: workflow/2022.04
+name: Daily Digest
+settings:
+  error_notification: true
+  network: net_5Lnie3
+triggers:
+- id: ti_EoTEL6N
+
