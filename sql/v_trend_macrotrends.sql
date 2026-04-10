@@ -1,27 +1,22 @@
--- View: Macro trend tagging — cross-category narrative themes
+-- View: Macrotrends — trend memberships in macro-trend buckets
 -- Database: MCC_PRESENTATION.TREND_AGENT
 --
--- Many-to-many mapping of trends to macro trend narratives. Each trend can
--- appear in 1-3 macro trends. Macro trends span multiple categories and
--- represent broad cultural/commercial themes for editorial and sponsor targeting.
---
--- Usage:
---   SELECT * FROM V_TREND_MACROTRENDS WHERE MACROTREND_NAME = 'Biohacking The Everyday';
---   SELECT MACROTREND_NAME, COUNT(*) FROM V_TREND_MACROTRENDS GROUP BY 1 ORDER BY 2 DESC;
+-- Source-first update (2026-04-10):
+--   * TREND_COMMERCIAL_SCORE removed (column dropped from DIM)
+--   * TREND_NAME coalesces d.TREND_NAME_B2C → d.TREND_NAME_B2B → m.TREND_TOPIC
 
 CREATE OR REPLACE VIEW MCC_PRESENTATION.TREND_AGENT.V_TREND_MACROTRENDS AS
 SELECT
     mt.MACROTREND_NAME,
-    dm.DESCRIPTION              AS MACROTREND_DESCRIPTION,
-    dm.TREND_COUNT              AS MACROTREND_SIZE,
+    dm.DESCRIPTION                                              AS MACROTREND_DESCRIPTION,
+    dm.TREND_COUNT                                              AS MACROTREND_SIZE,
     m.TREND_ID,
-    COALESCE(d.TREND_NAME, m.TREND_TOPIC) AS TREND_NAME,
+    COALESCE(d.TREND_NAME_B2C, d.TREND_NAME_B2B, m.TREND_TOPIC) AS TREND_NAME,
     d.CATEGORY,
     d.SUBCATEGORY,
     mt.RELEVANCE_SCORE,
     m.TREND_HEAT_INDEX,
-    m.VELOCITY_DIRECTION,
-    d.TREND_COMMERCIAL_SCORE
+    m.VELOCITY_DIRECTION
 FROM MCC_PRESENTATION.TREND_AGENT.MAP_TREND_MACROTRENDS mt
 JOIN MCC_PRESENTATION.TREND_AGENT.DIM_MACROTRENDS dm
     ON mt.MACROTREND_NAME = dm.MACROTREND_NAME

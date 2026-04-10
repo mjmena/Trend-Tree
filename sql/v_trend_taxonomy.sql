@@ -1,38 +1,32 @@
--- View: Trend taxonomy — macro trends, parent-child hierarchy, and vector similarity
+-- View: Taxonomy — trend hierarchy, macro-trend grouping, similarity-based relations
 -- Database: MCC_PRESENTATION.TREND_AGENT
 --
--- Shows each trend's place in the taxonomy: its macro trend (CATEGORY), parent-child
--- hierarchy from PROC_SPLIT_TREND, and most similar trends via TREND_VECTOR cosine
--- similarity. Two similarity tiers:
---   RELATED_TRENDS       — top 5 at >= 0.45 (broader thematic connections)
---   CLOSELY_RELATED      — top 3 at >= 0.55 (tight semantic matches)
---
--- Usage:
---   SELECT * FROM V_TREND_TAXONOMY WHERE MACRO_TREND = 'wellness' ORDER BY MACRO_TREND_RANK;
---   SELECT TREND_NAME, CLOSELY_RELATED FROM V_TREND_TAXONOMY WHERE TREND_NAME ILIKE '%skincare%';
+-- Source-first update (2026-04-10):
+--   * TREND_COMMERCIAL_SCORE / MACRO_TREND_AVG_COMMERCIAL removed (column dropped from DIM)
+--   * LIFECYCLE_STAGE now reads FCT_TREND_METRICS.VELOCITY_DIRECTION (not DIM)
+--   * TREND_NAME coalesces d.TREND_NAME_B2C → d.TREND_NAME_B2B → m.TREND_TOPIC
+--   * SUMMARY now reads d.SUMMARY_SHORT (short is the right granularity here)
 
 CREATE OR REPLACE VIEW MCC_PRESENTATION.TREND_AGENT.V_TREND_TAXONOMY AS
 WITH active_trends AS (
     SELECT
         m.TREND_ID,
-        COALESCE(d.TREND_NAME, m.TREND_TOPIC)   AS TREND_NAME,
+        COALESCE(d.TREND_NAME_B2C, d.TREND_NAME_B2B, m.TREND_TOPIC) AS TREND_NAME,
         m.TREND_TOPIC                            AS RAW_TOPIC,
-        d.SUMMARY,
+        d.SUMMARY_SHORT                          AS SUMMARY,
         d.CATEGORY,
         d.SUBCATEGORY,
-        d.LIFECYCLE_STAGE,
+        m.VELOCITY_DIRECTION                     AS LIFECYCLE_STAGE,
         m.TREND_HEAT_INDEX,
         m.VELOCITY_DIRECTION,
         m.TREND_VECTOR,
         m.PARENT_TREND_ID,
-        m.TOTAL_CLUSTER_SIZE,
-        d.TREND_COMMERCIAL_SCORE
+        m.TOTAL_CLUSTER_SIZE
     FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
     LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d
         ON m.TREND_ID = d.TREND_ID
     WHERE m.TREND_VECTOR IS NOT NULL
 ),
--- Pairwise similarity (both directions to avoid correlated subqueries)
 similarity_scored AS (
     SELECT
         a.TREND_ID,
@@ -51,7 +45,6 @@ ranked_similar AS (
         ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY SIMILARITY_SCORE DESC) AS sim_rank
     FROM similarity_scored
 ),
--- Broad tier: top 5 at >= 0.45
 related AS (
     SELECT
         TREND_ID,
@@ -66,7 +59,6 @@ related AS (
     WHERE sim_rank <= 5
     GROUP BY TREND_ID
 ),
--- Tight tier: top 3 at >= 0.55
 closely_related AS (
     SELECT
         TREND_ID,
@@ -80,7 +72,6 @@ closely_related AS (
     WHERE sim_rank <= 3 AND SIMILARITY_SCORE >= 0.55
     GROUP BY TREND_ID
 ),
--- Children per parent
 children AS (
     SELECT
         c.PARENT_TREND_ID                        AS TREND_ID,
@@ -93,19 +84,16 @@ children AS (
     WHERE c.PARENT_TREND_ID IS NOT NULL
     GROUP BY c.PARENT_TREND_ID
 ),
--- Category-level stats (macro trend summary)
 category_stats AS (
     SELECT
         CATEGORY,
         COUNT(*)                                 AS CATEGORY_TREND_COUNT,
-        ROUND(AVG(TREND_HEAT_INDEX), 1)          AS CATEGORY_AVG_HEAT,
-        ROUND(AVG(TREND_COMMERCIAL_SCORE), 1)    AS CATEGORY_AVG_COMMERCIAL
+        ROUND(AVG(TREND_HEAT_INDEX), 1)          AS CATEGORY_AVG_HEAT
     FROM active_trends
     WHERE CATEGORY IS NOT NULL
     GROUP BY CATEGORY
 )
 SELECT
-    -- Identity
     t.TREND_ID,
     t.TREND_NAME,
     t.RAW_TOPIC,
@@ -117,25 +105,22 @@ SELECT
     t.LIFECYCLE_STAGE,
     cs.CATEGORY_TREND_COUNT,
     cs.CATEGORY_AVG_HEAT                         AS MACRO_TREND_AVG_HEAT,
-    cs.CATEGORY_AVG_COMMERCIAL                   AS MACRO_TREND_AVG_COMMERCIAL,
 
     -- Hierarchy
     t.PARENT_TREND_ID,
     p.TREND_NAME                                 AS PARENT_TREND_NAME,
     ch.CHILD_TRENDS,
 
-    -- Similarity: broad + tight
+    -- Similarity
     r.RELATED_TRENDS,
     cr.CLOSELY_RELATED,
     COALESCE(r.RELATED_COUNT, 0)                 AS SIMILAR_TREND_COUNT,
 
-    -- Key metrics for context
+    -- Context
     t.TREND_HEAT_INDEX,
     t.VELOCITY_DIRECTION,
     t.TOTAL_CLUSTER_SIZE,
-    t.TREND_COMMERCIAL_SCORE,
 
-    -- Rank within macro trend
     ROW_NUMBER() OVER (
         PARTITION BY t.CATEGORY
         ORDER BY t.TREND_HEAT_INDEX DESC NULLS LAST
