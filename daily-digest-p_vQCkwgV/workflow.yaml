@@ -34,11 +34,16 @@ steps:
           SELECT TREND_ID FROM filler
           WHERE FILL_RN <= GREATEST(5 - (SELECT COUNT(*) FROM rising), 0)
         )
-        SELECT v.TREND_ID, v.TREND_NAME, v.CATEGORY, v.SUBCATEGORY, v.MACROTREND_TAGS,
+        SELECT v.TREND_ID,
+               v.TREND_NAME,
+               d.TREND_NAME_B2C,
+               d.TREND_NAME_B2B,
+               v.CATEGORY, v.SUBCATEGORY, v.MACROTREND_TAGS,
                v.SUMMARY_SHORT, v.HEAT_INDEX, v.VELOCITY_DIRECTION,
                v.TOTAL_CLUSTER_SIZE, v.TOP_SIGNALS
         FROM selected s
         JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v USING (TREND_ID)
+        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d ON d.TREND_ID = v.TREND_ID
         ORDER BY
           CASE WHEN v.VELOCITY_DIRECTION IN ('NEW','GROWING') THEN 0 ELSE 1 END,
           v.HEAT_INDEX DESC
@@ -64,21 +69,114 @@ steps:
           SELECT TREND_ID FROM filler
           WHERE FILL_RN <= GREATEST(5 - (SELECT COUNT(*) FROM rising), 0)
         )
-        SELECT v.TREND_ID, v.TREND_NAME, v.CATEGORY, v.SUBCATEGORY, v.MACROTREND_TAGS,
+        SELECT v.TREND_ID,
+               v.TREND_NAME,
+               d.TREND_NAME_B2C,
+               d.TREND_NAME_B2B,
+               v.CATEGORY, v.SUBCATEGORY, v.MACROTREND_TAGS,
                v.SUMMARY_SHORT, v.HEAT_INDEX, v.VELOCITY_DIRECTION,
                v.TOTAL_CLUSTER_SIZE, v.TOP_SIGNALS
         FROM selected s
         JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v USING (TREND_ID)
+        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d ON d.TREND_ID = v.TREND_ID
         ORDER BY
           CASE WHEN v.VELOCITY_DIRECTION IN ('NEW','GROWING') THEN 0 ELSE 1 END,
           v.HEAT_INDEX DESC
         LIMIT 20
       params: []
+- namespace: query_signals_bulk
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        WITH rising AS (
+          SELECT v.TREND_ID
+          FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v
+          WHERE v.VELOCITY_DIRECTION IN ('NEW','GROWING')
+            AND v.SUMMARY_SHORT IS NOT NULL
+        ),
+        filler AS (
+          SELECT v.TREND_ID,
+                 ROW_NUMBER() OVER (ORDER BY v.HEAT_INDEX DESC) AS FILL_RN
+          FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v
+          WHERE v.VELOCITY_DIRECTION NOT IN ('NEW','GROWING','SUPERSEDED')
+            AND v.SUMMARY_SHORT IS NOT NULL
+            AND v.TREND_ID NOT IN (SELECT TREND_ID FROM rising)
+        ),
+        candidates AS (
+          SELECT TREND_ID FROM rising
+          UNION ALL
+          SELECT TREND_ID FROM filler WHERE FILL_RN <= 20
+        ),
+        ranked AS (
+          SELECT s.TREND_ID, s.TITLE, s.URL,
+                 s.SIGNAL_NAME AS SOURCE,
+                 s.DOMAIN, s.PAGERANK_SCORE,
+                 ROW_NUMBER() OVER (PARTITION BY s.TREND_ID ORDER BY s.PAGERANK_SCORE DESC) AS RN
+          FROM MCC_PRESENTATION.TREND_AGENT.STG_TREND_SIGNALS s
+          JOIN candidates c USING (TREND_ID)
+          WHERE s.PAGERANK_SCORE IS NOT NULL
+            AND s.URL IS NOT NULL
+        )
+        SELECT TREND_ID, TITLE, URL, SOURCE, DOMAIN, PAGERANK_SCORE
+        FROM ranked
+        WHERE RN <= 10
+        ORDER BY TREND_ID, RN
+      query: |-
+        WITH rising AS (
+          SELECT v.TREND_ID
+          FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v
+          WHERE v.VELOCITY_DIRECTION IN ('NEW','GROWING')
+            AND v.SUMMARY_SHORT IS NOT NULL
+        ),
+        filler AS (
+          SELECT v.TREND_ID,
+                 ROW_NUMBER() OVER (ORDER BY v.HEAT_INDEX DESC) AS FILL_RN
+          FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v
+          WHERE v.VELOCITY_DIRECTION NOT IN ('NEW','GROWING','SUPERSEDED')
+            AND v.SUMMARY_SHORT IS NOT NULL
+            AND v.TREND_ID NOT IN (SELECT TREND_ID FROM rising)
+        ),
+        candidates AS (
+          SELECT TREND_ID FROM rising
+          UNION ALL
+          SELECT TREND_ID FROM filler WHERE FILL_RN <= 20
+        ),
+        ranked AS (
+          SELECT s.TREND_ID, s.TITLE, s.URL,
+                 s.SIGNAL_NAME AS SOURCE,
+                 s.DOMAIN, s.PAGERANK_SCORE,
+                 ROW_NUMBER() OVER (PARTITION BY s.TREND_ID ORDER BY s.PAGERANK_SCORE DESC) AS RN
+          FROM MCC_PRESENTATION.TREND_AGENT.STG_TREND_SIGNALS s
+          JOIN candidates c USING (TREND_ID)
+          WHERE s.PAGERANK_SCORE IS NOT NULL
+            AND s.URL IS NOT NULL
+        )
+        SELECT TREND_ID, TITLE, URL, SOURCE, DOMAIN, PAGERANK_SCORE
+        FROM ranked
+        WHERE RN <= 10
+        ORDER BY TREND_ID, RN
+      params: []
+- namespace: check_links
+  runtime: nodejs20.x
+  uses: "./check_links/entry.js"
+  props:
+    dashboard_rows: "{{steps.query_dashboard.$return_value}}"
+    signal_rows: "{{steps.query_signals_bulk.$return_value}}"
+- namespace: verify_sources_llm
+  runtime: nodejs20.x
+  uses: "./verify_sources_llm/entry.js"
+  props:
+    google_gemini: {}
+    checked: "{{steps.check_links.$return_value}}"
 - namespace: build_email
   runtime: nodejs20.x
   uses: "./build_email/entry.js"
   props:
-    dashboard_rows: "{{steps.query_dashboard.$return_value}}"
+    dashboard_rows: "{{steps.verify_sources_llm.$return_value.rows}}"
 - namespace: braze_send
   runtime: nodejs20.x
   uses: "./braze_send/entry.js"

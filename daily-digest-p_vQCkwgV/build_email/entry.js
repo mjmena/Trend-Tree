@@ -78,14 +78,29 @@ const sourceRow = (sig) => {
 };
 
 const renderCard = (row) => {
-  const name = esc(row.TREND_NAME ?? "(untitled trend)");
+  // B2C becomes the card headline; B2B becomes a muted subtitle directly beneath.
+  // If only one exists, show just that (no subtitle). Fall back to TREND_NAME
+  // (the coalesced view value) if both are missing.
+  const b2c = row.TREND_NAME_B2C || null;
+  const b2b = row.TREND_NAME_B2B || null;
+  const fallback = row.TREND_NAME ?? "(untitled trend)";
+  let headline, subtitle;
+  if (b2c && b2b) { headline = b2c; subtitle = b2b; }
+  else if (b2c)   { headline = b2c; subtitle = null; }
+  else if (b2b)   { headline = b2b; subtitle = null; }
+  else            { headline = fallback; subtitle = null; }
+
   const summary = esc(row.SUMMARY_SHORT ?? "");
   const category = row.CATEGORY ? chip(row.CATEGORY) : "";
   const macroTags = parseVariant(row.MACROTREND_TAGS) || [];
   const firstMacro = Array.isArray(macroTags) && macroTags.length > 0 ? chip(macroTags[0]) : "";
   const velocity = velocityChip(row.VELOCITY_DIRECTION);
 
-  const topSignals = (parseVariant(row.TOP_SIGNALS) || []).slice(0, 3);
+  // Prefer LLM-verified final_sources; fall back to raw TOP_SIGNALS only if the
+  // verify step never ran.
+  const topSignals = Array.isArray(row.final_sources) && row.final_sources.length > 0
+    ? row.final_sources.slice(0, 3)
+    : (parseVariant(row.TOP_SIGNALS) || []).slice(0, 3);
   const sourcesHtml = topSignals.length > 0
     ? `<div style="margin-top:14px;">
          <div style="font-size:10px;font-weight:700;color:#9ca3af;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Sources</div>
@@ -95,11 +110,17 @@ const renderCard = (row) => {
        </div>`
     : "";
 
+  const headlineBlock = `
+      <div style="font-size:18px;font-weight:700;color:#111827;line-height:1.3;letter-spacing:-0.01em;">
+        ${esc(headline)}
+      </div>
+      ${subtitle
+        ? `<div style="font-size:13px;font-weight:500;color:#9ca3af;line-height:1.3;margin-top:3px;margin-bottom:10px;">${esc(subtitle)}</div>`
+        : `<div style="margin-bottom:10px;"></div>`}`;
+
   return `
     <div style="padding:22px 24px;margin-bottom:14px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;">
-      <div style="font-size:18px;font-weight:700;color:#111827;line-height:1.3;margin-bottom:10px;letter-spacing:-0.01em;">
-        ${name}
-      </div>
+      ${headlineBlock}
       <div style="margin-bottom:12px;">
         ${velocity}${category}${firstMacro}
       </div>
