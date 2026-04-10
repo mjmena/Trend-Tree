@@ -1,14 +1,14 @@
 // Pipedream Workflow Step: Claude synthesizer — final enrichment assembly
 //
-// Round 2 synthesizer. Receives outputs from all Round 1 specialists
-// (Gemini, Grok, ChatGPT) plus source evidence, and produces the final
-// enrichment profile with audience profiling, brand strategy, and
-// confidence scoring based on cross-model agreement. The Snowflake write
-// step is NOT in this workflow — that's the orchestrator's step 4.
+// Round 2 synthesizer. Receives outputs from Round 1 specialists
+// (Gemini, Grok) plus source evidence, and produces the final
+// trend profile: B2B/B2C naming, short/long summaries, and
+// categorization. The Snowflake write step is NOT in this workflow —
+// that's the orchestrator's step 4.
 
 export default defineComponent({
   name: "LLM Enrich: Claude Synthesizer",
-  description: "Claude synthesizer — audience profiling, brand strategy, confidence scoring",
+  description: "Claude synthesizer — naming, summaries, categorization",
   version: "0.0.2",
   props: {
     anthropic: {
@@ -32,12 +32,6 @@ export default defineComponent({
       description: "Output from the enrich_llm_grok step",
       optional: true,
     },
-    chatgpt_output: {
-      type: "object",
-      label: "ChatGPT specialist output",
-      description: "Output from the enrich_llm_chatgpt step",
-      optional: true,
-    },
   },
   async run() {
     const ctx = this.enrich_context;
@@ -53,12 +47,10 @@ export default defineComponent({
     // Gather specialist outputs (any may be null if that step failed)
     const gemini = this.gemini_output ?? null;
     const grok = this.grok_output ?? null;
-    const chatgpt = this.chatgpt_output ?? null;
 
     const modelsUsed = [];
     if (gemini) modelsUsed.push("gemini-2.5-flash");
     if (grok) modelsUsed.push("grok-3-mini-fast");
-    if (chatgpt) modelsUsed.push("gpt-4o-mini");
 
     const s = ctx.sources || {};
     const gdelt = s.gdelt || {};
@@ -69,52 +61,9 @@ export default defineComponent({
     const pin = s.pinterest || {};
     const tt = s.tiktok || {};
 
-    // ── Gemini validation gate ─────────────────────────────────────────
-    // Skip expensive Claude synthesis when Gemini confidently says invalid
-    // AND source evidence is weak. Saves ~$0.05+ per invalid trend.
-    // Count the 7 active sources only (Reddit/McClatchy are not in pipeline).
-    let sourceCoverage = 0;
-    if ((gdelt.gdelt_article_count_7d ?? 0) > 0) sourceCoverage++;
-    if ((wiki.wiki_pageviews_7d ?? 0) > 0) sourceCoverage++;
-    if ((bsky.social_post_count_7d ?? 0) > 0) sourceCoverage++;
-    if ((gt.gt_interest_score ?? 0) > 0) sourceCoverage++;
-    if ((amz.amazon_product_count ?? 0) > 0) sourceCoverage++;
-    if ((pin.pinterest_trend_count ?? 0) > 0) sourceCoverage++;
-    if ((tt.tiktok_hashtag_count ?? 0) > 0) sourceCoverage++;
-
-    if (gemini
-        && gemini.is_valid_trend === false
-        && (gemini.confidence ?? 0) >= 0.8
-        && sourceCoverage <= 2) {
-      console.log(`GATE: Gemini confidently invalid (confidence=${gemini.confidence}), source coverage=${sourceCoverage}/7 — skipping Claude API call`);
-      modelsUsed.push("claude-sonnet-4-6-GATED");
-      return {
-        trend_name: ctx.trend_topic,
-        summary: gemini.validation_reasoning || "Trend flagged as invalid by validation model.",
-        category: gemini.category || "unknown",
-        subcategory: gemini.subcategory || "unknown",
-        lifecycle_stage: gemini.lifecycle_stage || "emerging",
-        is_valid_trend: false,
-        confidence_score: gemini.confidence,
-        sponsorship_fit_score: 0,
-        target_demographics: null,
-        target_psychographics: null,
-        audience_personas: null,
-        purchase_intent_signals: null,
-        brand_associations: [],
-        product_categories: [],
-        monetization_angles: [],
-        model_agreement_notes: `Gemini gated: is_valid_trend=false (confidence=${gemini.confidence}). Claude synthesis skipped to save cost. Source coverage: ${sourceCoverage}/7.`,
-        _models_used: modelsUsed,
-        _specialist_outputs: { gemini, grok: grok || null, chatgpt: chatgpt || null },
-        _token_usage: { input: 0, output: 0, model: "claude-sonnet-4-6" },
-        _gated: true,
-      };
-    }
-
     modelsUsed.push("claude-sonnet-4-6");
 
-    const prompt = `You are the final synthesizer in a multi-model trend analysis pipeline. Your job is to take the specialist analyses below, the source evidence, and produce a definitive trend enrichment profile focused on audience targeting and brand partnership opportunities for a news publisher (McClatchy).
+    const prompt = `You are the final synthesizer in a multi-model trend analysis pipeline. Your job is to take the specialist analyses below, the source evidence, and produce a definitive trend profile focused on consumer-facing naming (both a professional B2B register and a quirky B2C register), short and long summaries, and categorization. The trend itself has already been validated by the upstream clustering pipeline — do not re-judge whether it is a real trend. Ground everything in the source evidence — don't invent claims unsupported by the data.
 
 TREND: ${ctx.trend_topic}
 CLUSTER SIZE: ${ctx.cluster_size} | HEAT: ${ctx.heat_index}/100 | VELOCITY: ${ctx.velocity}
@@ -136,63 +85,19 @@ ${gemini ? JSON.stringify(gemini, null, 2) : "UNAVAILABLE — this specialist fa
 GROK ASSESSMENT (cultural context + social pulse):
 ${grok ? JSON.stringify(grok, null, 2) : "UNAVAILABLE — this specialist failed"}
 
-CHATGPT ASSESSMENT (content strategy + STEPPS):
-${chatgpt ? JSON.stringify(chatgpt, null, 2) : "UNAVAILABLE — this specialist failed"}
-
 REAL SOCIAL QUOTES:
 ${(bsky.social_top_posts || []).map((p, i) => `${i + 1}. "${(p.text || "").slice(0, 500)}"`).join("\n") || "(none)"}
 
-Now synthesize all of this into a final enrichment profile. Where specialists agree, be confident. Where they disagree, note the tension and use your judgment. Ground everything in the source evidence — don't invent claims unsupported by the data.
+Now synthesize all of this into a final trend profile. Where specialists agree, be confident. Where they disagree, use your judgment. Ground everything in the source evidence — don't invent claims unsupported by the data.
 
 Respond in valid JSON:
 {
-  "trend_name": string,              // canonical 2-5 word name (improve on the raw topic if needed)
-  "summary": string,                 // one paragraph: what, why, who cares, commercial potential
+  "trend_name_b2b": string,          // 2-5 words, direct, professional register — for B2B dashboard
+  "trend_name_b2c": string,          // 2-5 words, quirky, consumer-facing — for public-facing dashboard
+  "summary_short": string,           // 1-2 sentences for dashboard card view
+  "summary_long": string,            // 1 paragraph for deep-dive view
   "category": string,                // must be one of: wellness, food_beverage, beauty, fitness, fashion, home_living, sustainability, consumer_tech, personal_care, social_lifestyle, entertainment, travel, parenting, other
-  "subcategory": string,             // lowercase snake_case, e.g. "gut_health", "functional_beverages"
-  "lifecycle_stage": string,         // must be one of: emerging, growing, mainstream, saturated
-  "is_valid_trend": boolean,
-  "confidence_score": number,        // 0.0-1.0 based on source evidence strength + model agreement
-
-  "target_demographics": {
-    "age_ranges": [string],          // e.g. ["25-34", "35-44"]
-    "gender_skew": string,           // "female-leaning"|"male-leaning"|"balanced"
-    "income_bracket": string,        // "budget"|"mid-range"|"premium"|"luxury"
-    "education": string
-  },
-  "target_psychographics": {
-    "values": [string],              // what they care about
-    "interests": [string],           // adjacent interests
-    "lifestyle": string,             // one-sentence lifestyle description
-    "media_habits": [string]         // where they consume content
-  },
-  "audience_personas": [             // 2-3 distinct buyer personas
-    {
-      "name": string,                // catchy persona name
-      "description": string,         // 2-3 sentences
-      "pain_points": [string],
-      "media_consumption": [string]
-    }
-  ],
-  "purchase_intent_signals": [string], // what people are actively buying/searching
-
-  "brand_associations": [            // 5-8 brand partnership opportunities
-    {
-      "brand": string,
-      "fit_score": number,           // 0-100
-      "rationale": string,
-      "partnership_type": string     // "sponsored_article"|"product_placement"|"affiliate"|"event"|"co-branded_content"
-    }
-  ],
-  "product_categories": [
-    {"category": string, "relevance": string, "example_products": [string]}
-  ],
-  "sponsorship_fit_score": number,   // 0-100 overall commercial viability
-  "monetization_angles": [
-    {"type": string, "description": string, "estimated_value": string}
-  ],
-
-  "model_agreement_notes": string    // where did specialists agree/disagree? what did you resolve?
+  "subcategory": string              // lowercase snake_case, e.g. "gut_health", "functional_beverages"
 }`;
 
     try {
@@ -220,11 +125,9 @@ Respond in valid JSON:
       if (!jsonMatch) throw new Error("No JSON found in Claude response");
       const result = JSON.parse(jsonMatch[0]);
 
-      console.log(`Claude synthesis: "${result.trend_name}" — ${result.category}/${result.subcategory}`);
-      console.log(`  Valid: ${result.is_valid_trend}, Confidence: ${result.confidence_score}, Sponsorship fit: ${result.sponsorship_fit_score}`);
-      console.log(`  Demographics: ${result.target_demographics?.age_ranges?.join(", ")}, ${result.target_demographics?.gender_skew}`);
-      console.log(`  Brands: ${(result.brand_associations || []).map((b) => `${b.brand} (${b.fit_score})`).join(", ")}`);
-      console.log(`  Agreement notes: ${(result.model_agreement_notes || "").slice(0, 100)}`);
+      console.log(`Claude synthesis: B2B="${result.trend_name_b2b}" / B2C="${result.trend_name_b2c}" — ${result.category}/${result.subcategory}`);
+      console.log(`  Short: ${(result.summary_short || "").slice(0, 120)}`);
+      console.log(`  Long: ${(result.summary_long || "").slice(0, 120)}`);
 
       // Token usage tracking
       const usage = data.usage || {};
@@ -241,7 +144,6 @@ Respond in valid JSON:
       result._specialist_outputs = {
         gemini: gemini || null,
         grok: grok || null,
-        chatgpt: chatgpt || null,
       };
 
       return result;

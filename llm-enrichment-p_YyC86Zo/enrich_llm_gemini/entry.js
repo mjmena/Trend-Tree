@@ -1,15 +1,13 @@
-// Pipedream Workflow Step: Gemini specialist — validation + categorization
+// Pipedream Workflow Step: Gemini specialist — categorization + competitive landscape
 //
 // Round 1 specialist. Receives the enrich_context bundle from load_llm_context
-// and asks Gemini to validate the trend and provide categorization +
-// competitive landscape analysis.
-//
-// Gemini is good at web-grounded factual answers, making it ideal for
-// validation ("is this a real trend?") and competitor identification.
+// and asks Gemini to classify the trend and surface useful context for the
+// downstream Claude synthesizer. Clustering already validated the trend —
+// Gemini does not re-judge validity, confidence, or lifecycle.
 
 export default defineComponent({
   name: "LLM Enrich: Gemini",
-  description: "Gemini specialist — trend validation, categorization, competitive landscape",
+  description: "Gemini specialist — categorization + competitive landscape",
   version: "0.0.1",
   props: {
     google_gemini: {
@@ -42,7 +40,7 @@ export default defineComponent({
     const pin = s.pinterest || {};
     const tt = s.tiktok || {};
 
-    const prompt = `You are a consumer trends analyst. Analyze this detected trend and provide a structured assessment.
+    const prompt = `You are a consumer trends analyst. Classify this trend and surface useful context for the downstream Claude synthesizer. The trend has already been validated by cross-source clustering — your job is categorization and competitive context, not validation.
 
 TREND: ${ctx.trend_topic}
 CLUSTER SIZE: ${ctx.cluster_size} signals from cross-source matching
@@ -68,15 +66,12 @@ IMPORTANT: Base your assessment ONLY on the source evidence above. If data is mi
 
 Respond in valid JSON with these fields:
 {
-  "is_valid_trend": boolean,         // true if this represents a real emerging consumer/lifestyle trend, not noise
-  "validation_reasoning": string,    // 1-2 sentences explaining your assessment
   "category": string,                // one of: wellness, food_beverage, beauty, fitness, fashion, home_living, sustainability, consumer_tech, personal_care, social_lifestyle, entertainment, travel, parenting, other
-  "subcategory": string,             // more specific within the category
-  "lifecycle_stage": string,         // one of: emerging, growing, mainstream, saturated
-  "competitor_landscape": [          // brands/companies active in this space
+  "subcategory": string,             // more specific within the category, lowercase snake_case
+  "competitor_landscape": [          // brands/companies active in this space — context for Claude's naming
     {"brand": string, "position": string, "activity_level": "high"|"medium"|"low"}
   ],
-  "confidence": number               // 0.0-1.0 how confident you are in this assessment
+  "context_notes": string            // 2-3 sentences explaining the classification + any useful context for Claude
 }`;
 
     try {
@@ -109,8 +104,9 @@ Respond in valid JSON with these fields:
         model: "gemini-2.5-flash",
       };
 
-      console.log(`Gemini: valid=${result.is_valid_trend}, category=${result.category}/${result.subcategory}, lifecycle=${result.lifecycle_stage}, confidence=${result.confidence}`);
+      console.log(`Gemini: category=${result.category}/${result.subcategory}`);
       console.log(`  Competitors: ${(result.competitor_landscape || []).map((c) => c.brand).join(", ")}`);
+      console.log(`  Context notes: ${(result.context_notes || "").slice(0, 100)}`);
       console.log(`  Tokens: ${result._token_usage.input} in / ${result._token_usage.output} out`);
 
       return result;
