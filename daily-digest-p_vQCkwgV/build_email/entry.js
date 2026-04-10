@@ -51,21 +51,28 @@ const velocityChip = (velocity) => {
   if (v === "GROWING") {
     return chip("Rising", { bg: "#ecfdf5", fg: "#047857", border: "#a7f3d0" });
   }
-  return chip(velocity.toLowerCase());
+  if (v === "STABLE") return chip("Stable");
+  if (v === "STAGNANT") return chip("Stagnant");
+  if (v === "DECLINING") {
+    return chip("Declining", { bg: "#fef2f2", fg: "#b91c1c", border: "#fecaca" });
+  }
+  return chip(v.toLowerCase());
 };
 
-// A source row: title on top (as link), url domain underneath in muted.
+// A source row: title on top (as link), full URL underneath in muted.
 const sourceRow = (sig) => {
   const url = sig.url ?? sig.URL;
   if (!url) return "";
-  const title = sig.title ?? sig.TITLE ?? sig.source ?? sig.SOURCE ?? url;
-  let host = "";
-  try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { host = ""; }
+  const rawTitle = sig.title ?? sig.TITLE;
+  const source = sig.source ?? sig.SOURCE;
+  const title = rawTitle || source || url;
   return `
     <tr>
-      <td style="padding:8px 0;border-top:1px solid #f3f4f6;">
+      <td style="padding:10px 0;border-top:1px solid #f3f4f6;">
         <a href="${esc(url)}" style="color:#111827;text-decoration:none;font-size:13px;font-weight:600;line-height:1.4;">${esc(title)}</a>
-        ${host ? `<div style="font-size:11px;color:#9ca3af;margin-top:2px;">${esc(host)}</div>` : ""}
+        <div style="font-size:11px;color:#9ca3af;margin-top:3px;word-break:break-all;line-height:1.4;">
+          <a href="${esc(url)}" style="color:#9ca3af;text-decoration:none;">${esc(url)}</a>
+        </div>
       </td>
     </tr>`;
 };
@@ -118,6 +125,18 @@ export default defineComponent({
     const dateStr = fmtDate(new Date());
     const subject = `Trend Insights Daily — ${dateStr}`;
 
+    const risingCount = rows.filter((r) => {
+      const v = String(r.VELOCITY_DIRECTION ?? "").toUpperCase();
+      return v === "NEW" || v === "GROWING";
+    }).length;
+    const fillerCount = rows.length - risingCount;
+
+    const countBlurb = risingCount === 0
+      ? `${rows.length} top ${rows.length === 1 ? "trend" : "trends"} by heat`
+      : fillerCount > 0
+        ? `${risingCount} new and rising, plus ${fillerCount} top by heat`
+        : `${risingCount} new and rising ${risingCount === 1 ? "trend" : "trends"}`;
+
     const header = `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
         <tr>
@@ -135,7 +154,7 @@ export default defineComponent({
         </tr>
         <tr>
           <td colspan="2" style="padding-top:4px;font-size:13px;color:#6b7280;">
-            ${rows.length} new and rising ${rows.length === 1 ? "trend" : "trends"}
+            ${countBlurb}
           </td>
         </tr>
       </table>`;
@@ -156,9 +175,20 @@ export default defineComponent({
       return { subject, html_body: emptyHtml };
     }
 
+    // Rising trends first (bucket 0), filler top-heat trends after (bucket 1);
+    // within each bucket, sort by heat desc.
+    const isRising = (r) => {
+      const v = String(r.VELOCITY_DIRECTION ?? "").toUpperCase();
+      return v === "NEW" || v === "GROWING";
+    };
     const cards = rows
       .slice()
-      .sort((a, b) => (b.HEAT_INDEX ?? 0) - (a.HEAT_INDEX ?? 0))
+      .sort((a, b) => {
+        const ra = isRising(a) ? 0 : 1;
+        const rb = isRising(b) ? 0 : 1;
+        if (ra !== rb) return ra - rb;
+        return (b.HEAT_INDEX ?? 0) - (a.HEAT_INDEX ?? 0);
+      })
       .map(renderCard)
       .join("");
 

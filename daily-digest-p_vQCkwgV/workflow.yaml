@@ -14,23 +14,65 @@ steps:
       authProvisionId: apn_yghdQYJ
     sql:
       value: |-
+        WITH rising AS (
+          SELECT v.TREND_ID
+          FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v
+          WHERE v.VELOCITY_DIRECTION IN ('NEW', 'GROWING')
+            AND v.SUMMARY_SHORT IS NOT NULL
+        ),
+        filler AS (
+          SELECT v.TREND_ID,
+                 ROW_NUMBER() OVER (ORDER BY v.HEAT_INDEX DESC) AS FILL_RN
+          FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v
+          WHERE v.VELOCITY_DIRECTION NOT IN ('NEW', 'GROWING', 'SUPERSEDED')
+            AND v.SUMMARY_SHORT IS NOT NULL
+            AND v.TREND_ID NOT IN (SELECT TREND_ID FROM rising)
+        ),
+        selected AS (
+          SELECT TREND_ID FROM rising
+          UNION ALL
+          SELECT TREND_ID FROM filler
+          WHERE FILL_RN <= GREATEST(5 - (SELECT COUNT(*) FROM rising), 0)
+        )
         SELECT v.TREND_ID, v.TREND_NAME, v.CATEGORY, v.SUBCATEGORY, v.MACROTREND_TAGS,
                v.SUMMARY_SHORT, v.HEAT_INDEX, v.VELOCITY_DIRECTION,
                v.TOTAL_CLUSTER_SIZE, v.TOP_SIGNALS
-        FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v
-        WHERE v.VELOCITY_DIRECTION IN ('NEW', 'GROWING')
-          AND v.SUMMARY_SHORT IS NOT NULL
-        ORDER BY v.HEAT_INDEX DESC
-        LIMIT 15
+        FROM selected s
+        JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v USING (TREND_ID)
+        ORDER BY
+          CASE WHEN v.VELOCITY_DIRECTION IN ('NEW','GROWING') THEN 0 ELSE 1 END,
+          v.HEAT_INDEX DESC
+        LIMIT 20
       query: |-
+        WITH rising AS (
+          SELECT v.TREND_ID
+          FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v
+          WHERE v.VELOCITY_DIRECTION IN ('NEW', 'GROWING')
+            AND v.SUMMARY_SHORT IS NOT NULL
+        ),
+        filler AS (
+          SELECT v.TREND_ID,
+                 ROW_NUMBER() OVER (ORDER BY v.HEAT_INDEX DESC) AS FILL_RN
+          FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v
+          WHERE v.VELOCITY_DIRECTION NOT IN ('NEW', 'GROWING', 'SUPERSEDED')
+            AND v.SUMMARY_SHORT IS NOT NULL
+            AND v.TREND_ID NOT IN (SELECT TREND_ID FROM rising)
+        ),
+        selected AS (
+          SELECT TREND_ID FROM rising
+          UNION ALL
+          SELECT TREND_ID FROM filler
+          WHERE FILL_RN <= GREATEST(5 - (SELECT COUNT(*) FROM rising), 0)
+        )
         SELECT v.TREND_ID, v.TREND_NAME, v.CATEGORY, v.SUBCATEGORY, v.MACROTREND_TAGS,
                v.SUMMARY_SHORT, v.HEAT_INDEX, v.VELOCITY_DIRECTION,
                v.TOTAL_CLUSTER_SIZE, v.TOP_SIGNALS
-        FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v
-        WHERE v.VELOCITY_DIRECTION IN ('NEW', 'GROWING')
-          AND v.SUMMARY_SHORT IS NOT NULL
-        ORDER BY v.HEAT_INDEX DESC
-        LIMIT 15
+        FROM selected s
+        JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_DASHBOARD v USING (TREND_ID)
+        ORDER BY
+          CASE WHEN v.VELOCITY_DIRECTION IN ('NEW','GROWING') THEN 0 ELSE 1 END,
+          v.HEAT_INDEX DESC
+        LIMIT 20
       params: []
 - namespace: build_email
   runtime: nodejs20.x
