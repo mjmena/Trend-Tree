@@ -1,20 +1,17 @@
 // Pipedream Workflow Step: Build Email
 //
-// Reads upstream Snowflake results (query_dashboard + query_stats), renders a
-// dark-themed HTML email matching the approved mockup, and returns
-// { subject, html_body } for the downstream braze_send step. No network calls.
+// Renders a light-themed HTML digest of NEW + GROWING trends from V_TREND_DASHBOARD
+// and returns { subject, html_body } for the downstream braze_send step.
 //
-// Layout:
-//   - Top bar: date string (left) + "Open dashboard" button (right)
-//   - Stats row: TOTAL / NEW / UPDATED counts
-//   - "New today" section (only if any IS_NEW rows)
-//   - "Top trends" section (the rest)
-//   - Each card: name, tag chips, summary, key data points, sources
+// Layout (light):
+//   - Slim header: wordmark + date
+//   - Single list of trend cards, sorted by heat desc
+//   - Each card: name, category + velocity chips, summary, sources list (title → URL)
 
 const DASHBOARD_URL = "#"; // TODO: replace with real public dashboard URL when available
 const TIMEZONE = "America/Los_Angeles";
 
-// ---------- tiny helpers ----------
+// ---------- helpers ----------
 
 const esc = (s) => String(s ?? "")
   .replace(/&/g, "&amp;")
@@ -23,8 +20,7 @@ const esc = (s) => String(s ?? "")
   .replace(/"/g, "&quot;")
   .replace(/'/g, "&#39;");
 
-// Snowflake VARIANT columns may come back as JSON strings depending on session
-// config; normalize to a JS value (array/object) or null.
+// Snowflake VARIANT columns may come back as JSON strings; normalize.
 const parseVariant = (v) => {
   if (v == null) return null;
   if (typeof v === "string") {
@@ -41,50 +37,37 @@ const fmtDate = (d) => new Intl.DateTimeFormat("en-US", {
   timeZone: TIMEZONE,
 }).format(d);
 
-const fmtNumber = (n) => {
-  if (n == null || Number.isNaN(Number(n))) return "—";
-  const num = Number(n);
-  if (Math.abs(num) >= 1_000_000) return (num / 1_000_000).toFixed(1) + "M";
-  if (Math.abs(num) >= 1_000) return (num / 1_000).toFixed(1) + "K";
-  if (Number.isInteger(num)) return String(num);
-  return num.toFixed(1);
-};
-
 // ---------- HTML fragments ----------
 
-const chip = (label, { bg = "#1f2937", fg = "#e5e7eb", border = "#374151" } = {}) =>
-  `<span style="display:inline-block;padding:3px 8px;margin:0 6px 4px 0;border:1px solid ${border};border-radius:999px;background:${bg};color:${fg};font-size:11px;font-weight:600;letter-spacing:.02em;text-transform:uppercase;">${esc(label)}</span>`;
+const chip = (label, { bg = "#f3f4f6", fg = "#374151", border = "#e5e7eb" } = {}) =>
+  `<span style="display:inline-block;padding:2px 9px;margin:0 6px 4px 0;border:1px solid ${border};border-radius:999px;background:${bg};color:${fg};font-size:11px;font-weight:600;letter-spacing:.02em;">${esc(label)}</span>`;
 
 const velocityChip = (velocity) => {
   if (!velocity) return "";
-  const v = String(velocity).toLowerCase();
-  if (v.includes("rising") || v.includes("growing") || v.includes("up")) {
-    return chip("rising", { bg: "#052e1a", fg: "#34d399", border: "#065f46" });
+  const v = String(velocity).toUpperCase();
+  if (v === "NEW") {
+    return chip("New", { bg: "#eff6ff", fg: "#1d4ed8", border: "#bfdbfe" });
   }
-  if (v.includes("fall") || v.includes("declin") || v.includes("down")) {
-    return chip(velocity, { bg: "#2a0e13", fg: "#fca5a5", border: "#7f1d1d" });
+  if (v === "GROWING") {
+    return chip("Rising", { bg: "#ecfdf5", fg: "#047857", border: "#a7f3d0" });
   }
-  return chip(velocity);
+  return chip(velocity.toLowerCase());
 };
 
-const newBadge = () =>
-  `<span style="display:inline-block;padding:3px 8px;margin:0 6px 4px 0;border:1px solid #065f46;border-radius:999px;background:#052e1a;color:#34d399;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;">NEW</span>`;
-
-const dataPointLine = (dp) => {
-  const src = esc(dp.source ?? dp.SOURCE ?? "");
-  const name = esc(dp.metric_name ?? dp.METRIC_NAME ?? "");
-  const val = fmtNumber(dp.metric_value ?? dp.METRIC_VALUE);
-  return `<div style="font-size:12px;color:#9ca3af;line-height:1.5;">
-    <span style="color:#d1d5db;font-weight:600;">${src}</span>
-    &nbsp;·&nbsp; ${val} <span style="color:#6b7280;">${name}</span>
-  </div>`;
-};
-
-const sourceLink = (sig) => {
+// A source row: title on top (as link), url domain underneath in muted.
+const sourceRow = (sig) => {
   const url = sig.url ?? sig.URL;
-  const title = sig.source ?? sig.SOURCE ?? sig.title ?? sig.TITLE ?? "source";
   if (!url) return "";
-  return `<a href="${esc(url)}" style="color:#60a5fa;text-decoration:none;font-size:12px;margin-right:12px;">${esc(title)} ›</a>`;
+  const title = sig.title ?? sig.TITLE ?? sig.source ?? sig.SOURCE ?? url;
+  let host = "";
+  try { host = new URL(url).hostname.replace(/^www\./, ""); } catch { host = ""; }
+  return `
+    <tr>
+      <td style="padding:8px 0;border-top:1px solid #f3f4f6;">
+        <a href="${esc(url)}" style="color:#111827;text-decoration:none;font-size:13px;font-weight:600;line-height:1.4;">${esc(title)}</a>
+        ${host ? `<div style="font-size:11px;color:#9ca3af;margin-top:2px;">${esc(host)}</div>` : ""}
+      </td>
+    </tr>`;
 };
 
 const renderCard = (row) => {
@@ -94,41 +77,31 @@ const renderCard = (row) => {
   const macroTags = parseVariant(row.MACROTREND_TAGS) || [];
   const firstMacro = Array.isArray(macroTags) && macroTags.length > 0 ? chip(macroTags[0]) : "";
   const velocity = velocityChip(row.VELOCITY_DIRECTION);
-  const isNewPill = row.IS_NEW ? newBadge() : "";
 
-  const dataPoints = (parseVariant(row.KEY_DATA_POINTS) || []).slice(0, 3);
-  const dpHtml = dataPoints.length > 0
-    ? `<div style="margin-top:10px;padding:10px 12px;background:#0b1220;border-left:2px solid #374151;border-radius:4px;">
-         ${dataPoints.map(dataPointLine).join("")}
-       </div>`
-    : "";
-
-  const topSignals = (parseVariant(row.TOP_SIGNALS) || []).slice(0, 2);
+  const topSignals = (parseVariant(row.TOP_SIGNALS) || []).slice(0, 3);
   const sourcesHtml = topSignals.length > 0
-    ? `<div style="margin-top:10px;font-size:12px;color:#6b7280;">
-         <span style="color:#4b5563;text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-right:6px;">Sources</span>
-         ${topSignals.map(sourceLink).join("")}
+    ? `<div style="margin-top:14px;">
+         <div style="font-size:10px;font-weight:700;color:#9ca3af;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Sources</div>
+         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+           ${topSignals.map(sourceRow).join("")}
+         </table>
        </div>`
     : "";
 
   return `
-    <div style="padding:18px 20px;margin-bottom:12px;background:#161b22;border:1px solid #1f2937;border-radius:8px;">
-      <div style="font-size:16px;font-weight:700;color:#f9fafb;line-height:1.3;margin-bottom:8px;">
+    <div style="padding:22px 24px;margin-bottom:14px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;">
+      <div style="font-size:18px;font-weight:700;color:#111827;line-height:1.3;margin-bottom:10px;letter-spacing:-0.01em;">
         ${name}
       </div>
-      <div style="margin-bottom:10px;">
-        ${isNewPill}${category}${firstMacro}${velocity}
+      <div style="margin-bottom:12px;">
+        ${velocity}${category}${firstMacro}
       </div>
-      <div style="font-size:14px;color:#d1d5db;line-height:1.5;">
+      <div style="font-size:14px;color:#4b5563;line-height:1.6;">
         ${summary}
       </div>
-      ${dpHtml}
       ${sourcesHtml}
     </div>`;
 };
-
-const renderSectionHeader = (label) =>
-  `<div style="margin:20px 0 10px 0;font-size:12px;font-weight:700;color:#9ca3af;text-transform:uppercase;letter-spacing:.08em;">${esc(label)}</div>`;
 
 // ---------- main component ----------
 
@@ -136,56 +109,58 @@ export default defineComponent({
   props: {
     dashboard_rows: {
       type: "any",
-      label: "V_TREND_DASHBOARD rows (new-today + top 10 by heat)",
-    },
-    stats_rows: {
-      type: "any",
-      label: "Header stats: TOTAL / NEW / UPDATED",
+      label: "V_TREND_DASHBOARD rows (NEW + GROWING)",
     },
   },
   async run({ $ }) {
     const rows = Array.isArray(this.dashboard_rows) ? this.dashboard_rows : [];
-    const stats = (Array.isArray(this.stats_rows) ? this.stats_rows[0] : null) || {};
-
-    const totalTrends = stats.TOTAL_TRENDS ?? 0;
-    const newTrends = stats.NEW_TRENDS ?? 0;
-    const updatedTrends = stats.UPDATED_TRENDS ?? 0;
 
     const dateStr = fmtDate(new Date());
     const subject = `Trend Insights Daily — ${dateStr}`;
 
-    // Split and sort: new-today first (by heat desc within), then the rest (by heat desc).
-    const newRows = rows.filter((r) => r.IS_NEW === true || r.IS_NEW === "true")
-      .sort((a, b) => (b.HEAT_INDEX ?? 0) - (a.HEAT_INDEX ?? 0));
-    const topRows = rows.filter((r) => !(r.IS_NEW === true || r.IS_NEW === "true"))
-      .sort((a, b) => (b.HEAT_INDEX ?? 0) - (a.HEAT_INDEX ?? 0));
+    const header = `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
+        <tr>
+          <td align="left" style="font-size:12px;color:#6b7280;font-weight:600;letter-spacing:.12em;text-transform:uppercase;">
+            Trend Insights Daily
+          </td>
+          <td align="right">
+            <a href="${esc(DASHBOARD_URL)}" style="font-size:12px;color:#2563eb;text-decoration:none;font-weight:600;">Open dashboard ›</a>
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding-top:6px;font-size:24px;font-weight:700;color:#111827;letter-spacing:-0.02em;">
+            ${esc(dateStr)}
+          </td>
+        </tr>
+        <tr>
+          <td colspan="2" style="padding-top:4px;font-size:13px;color:#6b7280;">
+            ${rows.length} new and rising ${rows.length === 1 ? "trend" : "trends"}
+          </td>
+        </tr>
+      </table>`;
 
-    // Empty-state short-circuit: no data at all.
+    // Empty-state short-circuit.
     if (rows.length === 0) {
       const emptyHtml = `<!DOCTYPE html>
-<html><body style="margin:0;padding:40px 20px;background:#0d1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-  <div style="max-width:600px;margin:0 auto;color:#e5e7eb;">
-    <div style="font-size:14px;color:#9ca3af;margin-bottom:8px;">${esc(dateStr)}</div>
-    <div style="font-size:18px;font-weight:600;">No active trends today.</div>
-    <div style="font-size:13px;color:#6b7280;margin-top:8px;">The digest will resume once new enrichment output lands in V_TREND_DASHBOARD.</div>
+<html><body style="margin:0;padding:48px 20px;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;">
+    ${header}
+    <div style="padding:32px 24px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;text-align:center;">
+      <div style="font-size:15px;color:#4b5563;">No new or rising trends right now.</div>
+      <div style="font-size:12px;color:#9ca3af;margin-top:6px;">The digest will resume once fresh enrichment output lands in V_TREND_DASHBOARD.</div>
+    </div>
   </div>
 </body></html>`;
-      $.export("$summary", `${subject} — empty (no rows)`);
+      $.export("$summary", `${subject} — empty`);
       return { subject, html_body: emptyHtml };
     }
 
-    const statCell = (value, label, color) => `
-      <td align="center" width="33%" style="padding:12px 8px;">
-        <div style="font-size:34px;font-weight:700;color:${color};line-height:1;">${fmtNumber(value)}</div>
-        <div style="font-size:10px;font-weight:700;color:#6b7280;letter-spacing:.1em;text-transform:uppercase;margin-top:6px;">${esc(label)}</div>
-      </td>`;
-
-    const newSection = newRows.length > 0
-      ? renderSectionHeader("New today") + newRows.map(renderCard).join("")
-      : "";
-    const topSection = topRows.length > 0
-      ? renderSectionHeader(newRows.length > 0 ? "Top trends" : "Today's top trends") + topRows.map(renderCard).join("")
-      : "";
+    const cards = rows
+      .slice()
+      .sort((a, b) => (b.HEAT_INDEX ?? 0) - (a.HEAT_INDEX ?? 0))
+      .map(renderCard)
+      .join("");
 
     const html_body = `<!DOCTYPE html>
 <html>
@@ -194,53 +169,16 @@ export default defineComponent({
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>${esc(subject)}</title>
 </head>
-<body style="margin:0;padding:0;background:#0d1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0d1117;">
+<body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#111827;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fafafa;">
     <tr>
-      <td align="center" style="padding:32px 16px;">
+      <td align="center" style="padding:40px 16px;">
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
-          <!-- Top bar -->
+          <tr><td>${header}</td></tr>
+          <tr><td>${cards}</td></tr>
           <tr>
-            <td style="padding:0 4px 20px 4px;">
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td align="left" style="font-size:13px;color:#9ca3af;font-weight:500;letter-spacing:.02em;">
-                    TREND INSIGHTS DAILY
-                  </td>
-                  <td align="right">
-                    <a href="${esc(DASHBOARD_URL)}" style="display:inline-block;padding:8px 14px;background:#2563eb;color:#ffffff;text-decoration:none;font-size:12px;font-weight:600;border-radius:6px;">Open dashboard</a>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- Hero (date + stats) -->
-          <tr>
-            <td style="padding:28px 24px 20px 24px;background:#0b0f1a;border:1px solid #1f2937;border-radius:10px;">
-              <div style="font-size:22px;font-weight:700;color:#f9fafb;margin-bottom:20px;">${esc(dateStr)}</div>
-              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  ${statCell(totalTrends, "Total trends", "#f9fafb")}
-                  ${statCell(newTrends, "New today", "#34d399")}
-                  ${statCell(updatedTrends, "Updated", "#fbbf24")}
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- Cards -->
-          <tr>
-            <td style="padding:8px 0 0 0;">
-              ${newSection}
-              ${topSection}
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="padding:24px 4px 8px 4px;text-align:center;font-size:11px;color:#4b5563;">
-              Generated by Trend Tree — ${esc(dateStr)}
+            <td style="padding:24px 4px 8px 4px;text-align:center;font-size:11px;color:#9ca3af;">
+              Generated by Trend Tree · ${esc(dateStr)}
             </td>
           </tr>
         </table>
@@ -250,7 +188,7 @@ export default defineComponent({
 </body>
 </html>`;
 
-    $.export("$summary", `${subject} — ${rows.length} cards (${newRows.length} new, ${topRows.length} top-heat)`);
+    $.export("$summary", `${subject} — ${rows.length} cards`);
     return { subject, html_body };
   },
 });
