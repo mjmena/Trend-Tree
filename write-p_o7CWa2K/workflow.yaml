@@ -15,12 +15,15 @@ steps:
     snowflake:
       authProvisionId: apn_yghdQYJ
     sql:
+      value: |-
+        SELECT SOURCE_NAME, HEADLINE_METRIC, HEADLINE_METRIC_NAME
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCE_METRICS
+        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}' AND HEADLINE_METRIC > 0
       query: |-
         SELECT SOURCE_NAME, HEADLINE_METRIC, HEADLINE_METRIC_NAME
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCE_METRICS
-        WHERE TREND_ID = :1 AND HEADLINE_METRIC > 0
-      params:
-      - "{{steps.trigger.event.body.trend_id}}"
+        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}' AND HEADLINE_METRIC > 0
+      params: []
 - namespace: compute_scores
   runtime: nodejs20.x
   uses: "./compute_scores/entry.js"
@@ -36,11 +39,11 @@ steps:
     snowflake:
       authProvisionId: apn_yghdQYJ
     sql:
-      query: |-
+      value: |-
         MERGE INTO MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT AS tgt
         USING (
-          SELECT PARSE_JSON(:1) AS p
-          WHERE PARSE_JSON(:1):trend_id IS NOT NULL
+          SELECT PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$) AS p
+          WHERE PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id IS NOT NULL
         ) AS src
         ON tgt.TREND_ID = src.p:trend_id::STRING
         WHEN MATCHED THEN UPDATE SET
@@ -114,8 +117,85 @@ steps:
           src.p:model_agreement_score::FLOAT, src.p:model_agreement_notes::STRING,
           src.p:llm_token_usage, src.p:llm_total_tokens::NUMBER, src.p:llm_cost_estimate::FLOAT
         )
-      params:
-      - "{{steps.compute_scores.$return_value.payload_json}}"
+      query: |-
+        MERGE INTO MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT AS tgt
+        USING (
+          SELECT PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$) AS p
+          WHERE PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id IS NOT NULL
+        ) AS src
+        ON tgt.TREND_ID = src.p:trend_id::STRING
+        WHEN MATCHED THEN UPDATE SET
+          TREND_NAME              = src.p:trend_name::STRING,
+          SUMMARY                 = src.p:summary::STRING,
+          CATEGORY                = src.p:category::STRING,
+          SUBCATEGORY             = src.p:subcategory::STRING,
+          LIFECYCLE_STAGE         = src.p:lifecycle_stage::STRING,
+          IS_VALID_TREND          = src.p:is_valid_trend::BOOLEAN,
+          CONFIDENCE_SCORE        = src.p:confidence_score::FLOAT,
+          TREND_COMMERCIAL_SCORE  = src.p:trend_commercial_score::FLOAT,
+          SOURCE_COVERAGE_BREADTH = src.p:source_coverage_breadth::NUMBER,
+          TARGET_DEMOGRAPHICS     = src.p:target_demographics,
+          TARGET_PSYCHOGRAPHICS   = src.p:target_psychographics,
+          AUDIENCE_PERSONAS       = src.p:audience_personas,
+          PURCHASE_INTENT_SIGNALS = src.p:purchase_intent_signals,
+          BRAND_ASSOCIATIONS      = src.p:brand_associations,
+          PRODUCT_CATEGORIES      = src.p:product_categories,
+          COMPETITOR_LANDSCAPE    = src.p:competitor_landscape,
+          SPONSORSHIP_FIT_SCORE   = src.p:sponsorship_fit_score::FLOAT,
+          MONETIZATION_ANGLES     = src.p:monetization_angles,
+          CONTENT_ANGLES          = src.p:content_angles,
+          SOCIAL_HOOKS            = src.p:social_hooks,
+          SPONSORED_CONTENT_IDEAS = src.p:sponsored_content_ideas,
+          STEPPS_ANALYSIS         = src.p:stepps_analysis,
+          HASHTAG_STRATEGY        = src.p:hashtag_strategy,
+          VOICE_OF_CUSTOMER       = src.p:voice_of_customer,
+          VIBE_SHIFT              = src.p:vibe_shift::STRING,
+          SOCIAL_NARRATIVE        = src.p:social_narrative::STRING,
+          CULTURAL_DRIVERS        = src.p:cultural_drivers,
+          SEASONAL_RELEVANCE      = src.p:seasonal_relevance,
+          GEOGRAPHIC_HOTSPOTS     = src.p:geographic_hotspots,
+          LLM_RESPONSES           = src.p:llm_responses,
+          MODELS_USED             = src.p:models_used,
+          MODEL_AGREEMENT_SCORE   = src.p:model_agreement_score::FLOAT,
+          MODEL_AGREEMENT_NOTES   = src.p:model_agreement_notes::STRING,
+          LLM_TOKEN_USAGE         = src.p:llm_token_usage,
+          LLM_TOTAL_TOKENS        = src.p:llm_total_tokens::NUMBER,
+          LLM_COST_ESTIMATE       = src.p:llm_cost_estimate::FLOAT,
+          ENRICHED_AT             = CURRENT_TIMESTAMP(),
+          ENRICHMENT_VERSION      = COALESCE(tgt.ENRICHMENT_VERSION, 0) + 1
+        WHEN NOT MATCHED THEN INSERT (
+          TREND_ID, TREND_NAME, SUMMARY, CATEGORY, SUBCATEGORY, LIFECYCLE_STAGE,
+          IS_VALID_TREND, CONFIDENCE_SCORE, TREND_COMMERCIAL_SCORE, SOURCE_COVERAGE_BREADTH,
+          TARGET_DEMOGRAPHICS, TARGET_PSYCHOGRAPHICS, AUDIENCE_PERSONAS, PURCHASE_INTENT_SIGNALS,
+          BRAND_ASSOCIATIONS, PRODUCT_CATEGORIES, COMPETITOR_LANDSCAPE,
+          SPONSORSHIP_FIT_SCORE, MONETIZATION_ANGLES,
+          CONTENT_ANGLES, SOCIAL_HOOKS, SPONSORED_CONTENT_IDEAS, STEPPS_ANALYSIS, HASHTAG_STRATEGY,
+          VOICE_OF_CUSTOMER, VIBE_SHIFT, SOCIAL_NARRATIVE, CULTURAL_DRIVERS,
+          SEASONAL_RELEVANCE, GEOGRAPHIC_HOTSPOTS,
+          LLM_RESPONSES, MODELS_USED, MODEL_AGREEMENT_SCORE, MODEL_AGREEMENT_NOTES,
+          LLM_TOKEN_USAGE, LLM_TOTAL_TOKENS, LLM_COST_ESTIMATE
+        ) VALUES (
+          src.p:trend_id::STRING,
+          src.p:trend_name::STRING, src.p:summary::STRING,
+          src.p:category::STRING, src.p:subcategory::STRING, src.p:lifecycle_stage::STRING,
+          src.p:is_valid_trend::BOOLEAN, src.p:confidence_score::FLOAT,
+          src.p:trend_commercial_score::FLOAT, src.p:source_coverage_breadth::NUMBER,
+          src.p:target_demographics, src.p:target_psychographics,
+          src.p:audience_personas, src.p:purchase_intent_signals,
+          src.p:brand_associations, src.p:product_categories,
+          src.p:competitor_landscape,
+          src.p:sponsorship_fit_score::FLOAT, src.p:monetization_angles,
+          src.p:content_angles, src.p:social_hooks,
+          src.p:sponsored_content_ideas, src.p:stepps_analysis,
+          src.p:hashtag_strategy,
+          src.p:voice_of_customer, src.p:vibe_shift::STRING,
+          src.p:social_narrative::STRING, src.p:cultural_drivers,
+          src.p:seasonal_relevance, src.p:geographic_hotspots,
+          src.p:llm_responses, src.p:models_used,
+          src.p:model_agreement_score::FLOAT, src.p:model_agreement_notes::STRING,
+          src.p:llm_token_usage, src.p:llm_total_tokens::NUMBER, src.p:llm_cost_estimate::FLOAT
+        )
+      params: []
 - namespace: insert_history
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -123,6 +203,36 @@ steps:
     snowflake:
       authProvisionId: apn_yghdQYJ
     sql:
+      value: |-
+        INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_HISTORY (
+          TREND_ID, SNAPSHOT_DATE,
+          SOURCE_METRICS_SNAPSHOT, SOURCE_COVERAGE_BREADTH,
+          LIFECYCLE_STAGE, CATEGORY, IS_VALID_TREND,
+          CONFIDENCE_SCORE, SPONSORSHIP_FIT_SCORE,
+          TREND_COMMERCIAL_SCORE, BRAND_ASSOCIATION_COUNT,
+          MODEL_AGREEMENT_SCORE,
+          LLM_TOTAL_TOKENS, LLM_COST_ESTIMATE
+        )
+        SELECT
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id::STRING, CURRENT_DATE(),
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):source_metrics_snapshot,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):source_coverage_breadth::NUMBER,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):lifecycle_stage::STRING,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):category::STRING,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):is_valid_trend::BOOLEAN,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):confidence_score::FLOAT,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):sponsorship_fit_score::FLOAT,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_commercial_score::FLOAT,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):brand_association_count::NUMBER,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):model_agreement_score::FLOAT,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):llm_total_tokens::NUMBER,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):llm_cost_estimate::FLOAT
+        WHERE PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id::STRING IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_HISTORY
+            WHERE TREND_ID = PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id::STRING
+              AND SNAPSHOT_DATE = CURRENT_DATE()
+          )
       query: |-
         INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_HISTORY (
           TREND_ID, SNAPSHOT_DATE,
@@ -134,27 +244,26 @@ steps:
           LLM_TOTAL_TOKENS, LLM_COST_ESTIMATE
         )
         SELECT
-          PARSE_JSON(:1):trend_id::STRING, CURRENT_DATE(),
-          PARSE_JSON(:1):source_metrics_snapshot,
-          PARSE_JSON(:1):source_coverage_breadth::NUMBER,
-          PARSE_JSON(:1):lifecycle_stage::STRING,
-          PARSE_JSON(:1):category::STRING,
-          PARSE_JSON(:1):is_valid_trend::BOOLEAN,
-          PARSE_JSON(:1):confidence_score::FLOAT,
-          PARSE_JSON(:1):sponsorship_fit_score::FLOAT,
-          PARSE_JSON(:1):trend_commercial_score::FLOAT,
-          PARSE_JSON(:1):brand_association_count::NUMBER,
-          PARSE_JSON(:1):model_agreement_score::FLOAT,
-          PARSE_JSON(:1):llm_total_tokens::NUMBER,
-          PARSE_JSON(:1):llm_cost_estimate::FLOAT
-        WHERE PARSE_JSON(:1):trend_id::STRING IS NOT NULL
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id::STRING, CURRENT_DATE(),
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):source_metrics_snapshot,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):source_coverage_breadth::NUMBER,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):lifecycle_stage::STRING,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):category::STRING,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):is_valid_trend::BOOLEAN,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):confidence_score::FLOAT,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):sponsorship_fit_score::FLOAT,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_commercial_score::FLOAT,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):brand_association_count::NUMBER,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):model_agreement_score::FLOAT,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):llm_total_tokens::NUMBER,
+          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):llm_cost_estimate::FLOAT
+        WHERE PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id::STRING IS NOT NULL
           AND NOT EXISTS (
             SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_HISTORY
-            WHERE TREND_ID = PARSE_JSON(:1):trend_id::STRING
+            WHERE TREND_ID = PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$):trend_id::STRING
               AND SNAPSHOT_DATE = CURRENT_DATE()
           )
-      params:
-      - "{{steps.compute_scores.$return_value.payload_json}}"
+      params: []
 - namespace: update_queue
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -162,20 +271,25 @@ steps:
     snowflake:
       authProvisionId: apn_yghdQYJ
     sql:
+      value: |-
+        UPDATE MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
+        SET STATUS = 'COMPLETED',
+            COMPLETED_AT = CURRENT_TIMESTAMP(),
+            ENRICHMENT_TIER = '{{steps.compute_scores.$return_value.tier}}',
+            LLM_TOTAL_TOKENS = {{steps.compute_scores.$return_value.llm_total_tokens}},
+            LLM_COST_ESTIMATE = {{steps.compute_scores.$return_value.llm_cost_estimate}},
+            DURATION_SECONDS = DATEDIFF('second', COALESCE(STARTED_AT, QUEUED_AT), CURRENT_TIMESTAMP())
+        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}' AND STATUS IN ('PENDING', 'IN_PROGRESS')
       query: |-
         UPDATE MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
         SET STATUS = 'COMPLETED',
             COMPLETED_AT = CURRENT_TIMESTAMP(),
-            ENRICHMENT_TIER = :2,
-            LLM_TOTAL_TOKENS = :3,
-            LLM_COST_ESTIMATE = :4,
+            ENRICHMENT_TIER = '{{steps.compute_scores.$return_value.tier}}',
+            LLM_TOTAL_TOKENS = {{steps.compute_scores.$return_value.llm_total_tokens}},
+            LLM_COST_ESTIMATE = {{steps.compute_scores.$return_value.llm_cost_estimate}},
             DURATION_SECONDS = DATEDIFF('second', COALESCE(STARTED_AT, QUEUED_AT), CURRENT_TIMESTAMP())
-        WHERE TREND_ID = :1 AND STATUS IN ('PENDING', 'IN_PROGRESS')
-      params:
-      - "{{steps.trigger.event.body.trend_id}}"
-      - "{{steps.compute_scores.$return_value.tier}}"
-      - "{{steps.compute_scores.$return_value.llm_total_tokens}}"
-      - "{{steps.compute_scores.$return_value.llm_cost_estimate}}"
+        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}' AND STATUS IN ('PENDING', 'IN_PROGRESS')
+      params: []
 - namespace: respond
   runtime: nodejs20.x
   uses: "./respond/entry.js"
@@ -184,4 +298,3 @@ steps:
     merge_dim_result: "{{steps.merge_dim.$return_value}}"
     insert_history_result: "{{steps.insert_history.$return_value}}"
     update_queue_result: "{{steps.update_queue.$return_value}}"
-
