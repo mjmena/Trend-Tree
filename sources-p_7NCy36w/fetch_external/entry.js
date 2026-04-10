@@ -40,6 +40,57 @@ async function gdeltFetch(query, mode, { maxRecords = 250 } = {}) {
   return JSON.parse(text);
 }
 
+// Build a GDELT-compatible OR query from the trend topic + search terms.
+// GDELT rejects queries longer than ~250 chars with the error:
+//   "Your query was too short or too long."
+// Empirically:
+//   - 2 quoted terms / 59 chars works
+//   - 8 quoted terms / 235 chars fails
+// We pick the most informative terms (specific multi-word phrases first,
+// no single words, no substrings of already-picked terms) and stop when
+// the resulting query string exceeds the 200-char budget.
+function buildGdeltQuery(trendTopic, searchTerms) {
+  const QUERY_BUDGET = 200;
+  const quote = (t) => (t.includes(" ") ? `"${t}"` : t);
+
+  // Normalize candidates: strip leading #, dedup case-insensitively,
+  // drop single-word terms (too generic for OR queries), and require ≥5 chars.
+  const seen = new Set();
+  const candidates = [trendTopic, ...(searchTerms || []).map((t) => String(t).replace(/^#/, ""))]
+    .map((t) => t.trim())
+    .filter((t) => {
+      if (t.length < 5) return false;
+      const k = t.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      // Always allow the trend topic; drop other single-word terms.
+      if (t === trendTopic) return true;
+      return t.split(/\s+/).length >= 2;
+    });
+
+  // Pick longest-first, but always start with trend_topic. Filter out any
+  // term that's a case-insensitive substring of a term already picked
+  // (substring redundancy doesn't help GDELT but does eat the budget).
+  const ordered = [
+    trendTopic,
+    ...candidates.filter((t) => t !== trendTopic).sort((a, b) => b.length - a.length),
+  ];
+
+  const picked = [];
+  for (const t of ordered) {
+    const lower = t.toLowerCase();
+    if (picked.some((p) => p.toLowerCase().includes(lower))) continue;
+    const next = [...picked, t].map(quote).join(" OR ");
+    const wrapped = picked.length === 0 ? next : `(${next})`;
+    if (wrapped.length > QUERY_BUDGET) break;
+    picked.push(t);
+  }
+
+  if (picked.length === 0) return `"${trendTopic}"`;
+  if (picked.length === 1) return quote(picked[0]);
+  return `(${picked.map(quote).join(" OR ")})`;
+}
+
 async function fetchGdelt(trendTopic, searchTerms) {
   const result = {
     gdelt_article_count_7d: 0,
@@ -48,13 +99,8 @@ async function fetchGdelt(trendTopic, searchTerms) {
     gdelt_tone_avg: null,
   };
 
-  // Build a combined OR query across the trend topic and all search terms.
-  // GDELT multi-term OR queries must be wrapped in parentheses.
-  const candidates = [trendTopic, ...searchTerms.map((t) => t.replace(/^#/, ""))]
-    .filter((t) => t.replace(/^#/, "").length >= 5);
-  const quoted = candidates.map((t) => (t.includes(" ") ? `"${t}"` : t));
-  const gdeltQuery =
-    quoted.length > 1 ? `(${quoted.join(" OR ")})` : (quoted[0] || `"${trendTopic}"`);
+  const gdeltQuery = buildGdeltQuery(trendTopic, searchTerms);
+  console.log(`GDELT query (${gdeltQuery.length} chars): ${gdeltQuery}`);
 
   try {
     const data = await gdeltFetch(gdeltQuery, "ArtList");
