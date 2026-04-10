@@ -54,3 +54,8 @@ steps:
       params:
       - "{{steps.normalize_event.$return_value.trend_id}}"
       - "{{steps.orchestrate.$return_value.error_message}}"
+- namespace: respond
+  runtime: nodejs20.x
+  uses: "./respond/entry.js"
+  props:
+    orchestrate_output: "{{steps.orchestrate.$return_value}}"
