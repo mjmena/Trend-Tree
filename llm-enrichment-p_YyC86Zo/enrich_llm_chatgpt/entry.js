@@ -4,7 +4,7 @@
 // consumer-facing content ideation. Handles STEPPS framework analysis,
 // content angles, social hooks, and hashtag strategy.
 
-export default {
+export default defineComponent({
   name: "LLM Enrich: ChatGPT",
   description: "ChatGPT specialist — content angles, STEPPS, social hooks",
   version: "0.0.1",
@@ -138,4 +138,4 @@ Respond in valid JSON:
       return null;
     }
   },
-};
+});

@@ -18,7 +18,7 @@ const COST_PER_M = {
   "claude-sonnet-4-6": { input: 3.00, output: 15.00 },
 };
 
-export default {
+export default defineComponent({
   name: "Return LLM Output",
   description: "Aggregates all LLM step outputs and returns them as the HTTP response body",
   version: "0.0.1",
@@ -112,4 +112,4 @@ export default {
 
     return body;
   },
-};
+});

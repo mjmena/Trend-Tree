@@ -4,7 +4,7 @@
 // for understanding the cultural "why" behind a trend — what vibe shift is
 // happening, what's driving adoption, and what the social conversation feels like.
 
-export default {
+export default defineComponent({
   name: "LLM Enrich: Grok",
   description: "Grok specialist — cultural context, vibe shift, social pulse",
   version: "0.0.1",
@@ -117,4 +117,4 @@ Respond in valid JSON:
       return null;
     }
   },
-};
+});

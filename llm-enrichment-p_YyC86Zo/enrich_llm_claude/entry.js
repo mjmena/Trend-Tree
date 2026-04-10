@@ -6,7 +6,7 @@
 // confidence scoring based on cross-model agreement. The Snowflake write
 // step is NOT in this workflow — that's the orchestrator's step 4.
 
-export default {
+export default defineComponent({
   name: "LLM Enrich: Claude Synthesizer",
   description: "Claude synthesizer — audience profiling, brand strategy, confidence scoring",
   version: "0.0.2",
@@ -250,4 +250,4 @@ Respond in valid JSON:
       return null;
     }
   },
-};
+});

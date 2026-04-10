@@ -7,7 +7,7 @@
 // Gemini is good at web-grounded factual answers, making it ideal for
 // validation ("is this a real trend?") and competitor identification.
 
-export default {
+export default defineComponent({
   name: "LLM Enrich: Gemini",
   description: "Gemini specialist — trend validation, categorization, competitive landscape",
   version: "0.0.1",
@@ -119,4 +119,4 @@ Respond in valid JSON with these fields:
       return null;
     }
   },
-};
+});
