@@ -1,0 +1,15 @@
+schema: workflow/2022.04
+name: Copy of Ingest Gemini Food & Drink
+inactive: true
+settings:
+  error_notification: true
+triggers:
+- id: hi_35HVyD1
+steps:
+- namespace: fetch_source
+  runtime: nodejs20.x
+  uses: "./fetch_source/entry.js"
+  props:
+    google_gemini:
+      authProvisionId: apn_EOhp9DY
+
