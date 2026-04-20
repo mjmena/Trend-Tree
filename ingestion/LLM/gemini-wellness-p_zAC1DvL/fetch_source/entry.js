@@ -19,13 +19,29 @@ Return ONLY a JSON array matching this exact format — no other text:
 Every object MUST have all 4 fields. Do not omit source_url.`;
 }
 
-async function resolveUrl(url) {
-  if (!url || !url.includes("grounding-api-redirect")) return url;
+// Resolve grounding redirects and verify the URL is live (2xx or 3xx).
+// Returns { url, ok } — ok=false means the URL is dead (404/5xx/timeout).
+async function resolveAndVerify(url) {
   try {
-    const resp = await fetch(url, { method: "HEAD", redirect: "follow" });
-    return resp.url || url;
+    const resp = await fetch(url, {
+      method: "HEAD",
+      redirect: "follow",
+      signal: AbortSignal.timeout(8000),
+    });
+    return { url: resp.url || url, ok: resp.ok };
   } catch {
-    return url;
+    // Network error or timeout — try GET as fallback (some servers reject HEAD)
+    try {
+      const resp = await fetch(url, {
+        method: "GET",
+        redirect: "follow",
+        signal: AbortSignal.timeout(8000),
+      });
+      await resp.text();
+      return { url: resp.url || url, ok: resp.ok };
+    } catch {
+      return { url, ok: false };
+    }
   }
 }
 
@@ -94,14 +110,13 @@ export default defineComponent({
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
     const ts = `${dateStr} ${now.toISOString().slice(11, 19)}`;
-    const seenUrls = new Set();
-    const signals = [];
 
+    const candidates = [];
     for (let i = 0; i < trends.length; i++) {
       const trend = trends[i];
       const title = (trend.title || "").trim();
       const description = (trend.description || "").trim();
-      let url = (trend.source_url || "").trim();
+      const url = (trend.source_url || "").trim();
       const sourceName = (trend.source_name || "").trim();
 
       if (!title || !description || !url || !sourceName) {
@@ -112,28 +127,46 @@ export default defineComponent({
         errors.push(`Trend "${title}": invalid URL "${url}", skipped`);
         continue;
       }
+      candidates.push({ title, description, url, sourceName, index: i });
+    }
 
-      url = await resolveUrl(url);
+    const verified = await Promise.all(
+      candidates.map(async (c) => {
+        const result = await resolveAndVerify(c.url);
+        return { ...c, resolvedUrl: result.url, urlOk: result.ok };
+      }),
+    );
 
-      if (seenUrls.has(url)) continue;
-      seenUrls.add(url);
+    const seenUrls = new Set();
+    const signals = [];
+    let droppedCount = 0;
+
+    for (const v of verified) {
+      if (!v.urlOk) {
+        errors.push(`Trend "${v.title}": URL returned non-200, dropped (${v.resolvedUrl})`);
+        droppedCount++;
+        continue;
+      }
+
+      if (seenUrls.has(v.resolvedUrl)) continue;
+      seenUrls.add(v.resolvedUrl);
 
       signals.push({
-        SIGNAL_ID: url,
+        SIGNAL_ID: v.resolvedUrl,
         SOURCE_NAME,
         SIGNAL_TIMESTAMP: ts,
-        SIGNAL_TITLE: (trend.title || "").slice(0, 500),
-        SIGNAL_TEXT: (trend.description || trend.title || "").slice(0, 2000),
+        SIGNAL_TITLE: v.title.slice(0, 500),
+        SIGNAL_TEXT: v.description.slice(0, 2000),
         METADATA: JSON.stringify({
           category: CATEGORY,
           model: MODEL,
-          source_name: trend.source_name || null,
+          source_name: v.sourceName,
           search_queries: searchQueries,
           grounding_sources: groundingChunks,
           prompt_tokens: usage.promptTokenCount || 0,
           completion_tokens: usage.candidatesTokenCount || 0,
           run_date: dateStr,
-          signal_index: i,
+          signal_index: v.index,
           total_signals: trends.length,
         }),
       });
@@ -144,7 +177,7 @@ export default defineComponent({
       errors.forEach((e) => console.log(`  ${e}`));
     }
 
-    console.log(`Total: ${signals.length} ${SOURCE_NAME} signals`);
+    console.log(`Total: ${signals.length} ${SOURCE_NAME} signals (${droppedCount} dropped for bad URLs)`);
     console.log(`Tokens: ${usage.promptTokenCount || 0} in / ${usage.candidatesTokenCount || 0} out`);
     console.log(`Grounding sources: ${groundingChunks.length}, search queries: ${searchQueries.length}`);
     $.export("$summary", `${signals.length} ${SOURCE_NAME} signals`);
