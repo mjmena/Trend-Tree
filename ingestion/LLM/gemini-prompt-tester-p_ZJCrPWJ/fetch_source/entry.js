@@ -1,8 +1,8 @@
 // Gemini Prompt Tester — fetch_source
 //
 // Accepts a prompt via HTTP POST body, calls Gemini 3 with Google Search
-// grounding + responseSchema for structured JSON output, and returns
-// the full result via $.respond().
+// grounding (no JSON mode — it breaks grounding), parses JSON from text,
+// resolves grounding redirect URLs, and returns result via $.respond().
 //
 // POST body:
 // {
@@ -12,20 +12,6 @@
 // }
 
 const DEFAULT_MODEL = "gemini-3-flash-preview";
-
-const TREND_SCHEMA = {
-  type: "ARRAY",
-  items: {
-    type: "OBJECT",
-    properties: {
-      title: { type: "STRING", description: "Short trend name (3-8 words)" },
-      description: { type: "STRING", description: "1-2 sentence summary of what is trending" },
-      source_url: { type: "STRING", description: "REQUIRED: the exact URL from search results where this trend was found" },
-      source_name: { type: "STRING", description: "Name of the publication or website" },
-    },
-    required: ["title", "description", "source_url", "source_name"],
-  },
-};
 
 async function resolveUrl(url) {
   if (!url || !url.includes("grounding-api-redirect")) return url;
@@ -69,11 +55,7 @@ export default defineComponent({
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             tools: [{ google_search: {} }],
-            generationConfig: {
-              responseMimeType: "application/json",
-              responseSchema: TREND_SCHEMA,
-              temperature,
-            },
+            generationConfig: { temperature },
           }),
         },
       );
@@ -106,7 +88,7 @@ export default defineComponent({
     const searchQueries = groundingMeta.webSearchQueries || [];
     const usage = data.usageMetadata || {};
 
-    // Resolve grounding redirect URLs
+    // Resolve grounding redirect URLs in parallel
     const groundingChunks = await Promise.all(
       rawChunks.map(async (c) => {
         const rawUrl = c.web?.uri || "";
@@ -117,16 +99,21 @@ export default defineComponent({
       }),
     );
 
-    // Parse JSON — with responseSchema, the text should be valid JSON directly
+    // Parse JSON array from text response
     let parsed = null;
     let parseError = null;
     try {
-      parsed = JSON.parse(textContent);
+      const jsonMatch = textContent.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      } else {
+        parseError = "No JSON array found in response";
+      }
     } catch (e) {
       parseError = e.message;
     }
 
-    // Resolve any grounding redirect URLs in the parsed trends
+    // Resolve grounding redirect URLs in parsed trends
     if (Array.isArray(parsed)) {
       parsed = await Promise.all(
         parsed.map(async (t) => ({
