@@ -70,3 +70,4 @@ steps:
           source.SIGNAL_TITLE, source.SIGNAL_TEXT, source.METADATA
         )
       params: []
+

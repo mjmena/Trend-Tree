@@ -13,7 +13,8 @@ steps:
   runtime: nodejs20.x
   uses: "./fetch_source/entry.js"
   props:
-    google_gemini: {}
+    google_gemini:
+      authProvisionId: apn_EOhp9DY
 - namespace: upsert_signals
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -70,3 +71,4 @@ steps:
           source.SIGNAL_TITLE, source.SIGNAL_TEXT, source.METADATA
         )
       params: []
+
