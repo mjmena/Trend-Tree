@@ -13,13 +13,10 @@ function buildPrompt() {
   const today = new Date().toISOString().slice(0, 10);
   return `Today is ${today}. Search the web for 10-15 emerging wellness, health, fitness, and personal care consumer trends in the United States reported THIS WEEK.
 
-For EACH trend you MUST provide:
-1. title: Short name (3-8 words)
-2. description: 1-2 sentences about what is trending and why it matters
-3. source_url: The EXACT full URL of the article you found this in
-4. source_name: Publication name
+Return ONLY a JSON array matching this exact format — no other text:
+[{"title": "Short Trend Name", "description": "1-2 sentence summary.", "source_url": "https://example.com/article", "source_name": "Publication Name"}]
 
-Return ONLY a JSON array. Every object must have all 4 fields. Do not omit source_url.`;
+Every object MUST have all 4 fields. Do not omit source_url.`;
 }
 
 async function resolveUrl(url) {
@@ -102,10 +99,17 @@ export default defineComponent({
 
     for (let i = 0; i < trends.length; i++) {
       const trend = trends[i];
+      const title = (trend.title || "").trim();
+      const description = (trend.description || "").trim();
       let url = (trend.source_url || "").trim();
+      const sourceName = (trend.source_name || "").trim();
 
-      if (!url || !url.startsWith("http")) {
-        errors.push(`Trend "${trend.title}": missing or invalid URL, skipped`);
+      if (!title || !description || !url || !sourceName) {
+        errors.push(`Trend #${i + 1}: missing required field (title=${!!title}, desc=${!!description}, url=${!!url}, src=${!!sourceName}), skipped`);
+        continue;
+      }
+      if (!url.startsWith("http")) {
+        errors.push(`Trend "${title}": invalid URL "${url}", skipped`);
         continue;
       }
 
