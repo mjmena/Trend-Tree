@@ -1,0 +1,13 @@
+# direnv
+.direnv/
+
+# devenv
+.devenv/
+.devenv.flake.nix
+devenv.lock
+
+# Node
+node_modules/
+
+# Environment secrets
+.envrc.local
