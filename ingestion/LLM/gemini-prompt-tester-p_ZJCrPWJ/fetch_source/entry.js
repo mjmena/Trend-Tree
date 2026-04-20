@@ -1,7 +1,8 @@
 // Gemini Prompt Tester — fetch_source
 //
 // Accepts a prompt + config via HTTP POST body, calls Gemini with
-// Google Search grounding, and returns the full result via $.respond().
+// Google Search grounding, resolves grounding redirect URLs, and
+// returns the full result via $.respond().
 //
 // POST body:
 // {
@@ -11,6 +12,15 @@
 // }
 
 const DEFAULT_MODEL = "gemini-3-flash-preview";
+
+async function resolveRedirect(url) {
+  try {
+    const resp = await fetch(url, { method: "HEAD", redirect: "follow" });
+    return resp.url || url;
+  } catch {
+    return url;
+  }
+}
 
 export default defineComponent({
   props: {
@@ -75,23 +85,32 @@ export default defineComponent({
     const candidate = data.candidates?.[0];
     const textContent = candidate?.content?.parts?.[0]?.text || "";
     const groundingMeta = candidate?.groundingMetadata || {};
-    const groundingChunks = (groundingMeta.groundingChunks || []).map((c) => ({
-      url: c.web?.uri,
-      title: c.web?.title,
-    }));
+    const rawChunks = groundingMeta.groundingChunks || [];
     const searchQueries = groundingMeta.webSearchQueries || [];
     const usage = data.usageMetadata || {};
+
+    // Resolve grounding redirect URLs in parallel
+    const groundingChunks = await Promise.all(
+      rawChunks.map(async (c) => {
+        const rawUrl = c.web?.uri || "";
+        const resolved = rawUrl.includes("grounding-api-redirect")
+          ? await resolveRedirect(rawUrl)
+          : rawUrl;
+        return { raw_url: rawUrl, resolved_url: resolved, title: c.web?.title };
+      }),
+    );
 
     // Try to parse JSON from the response
     let parsed = null;
     let parseError = null;
     try {
-      const cleaned = textContent
-        .replace(/^```json\s*/, "")
-        .replace(/^```\s*/, "")
-        .replace(/\s*```$/, "")
-        .trim();
-      parsed = JSON.parse(cleaned);
+      // Find JSON array in the text — may be wrapped in markdown fences
+      const jsonMatch = textContent.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        parsed = JSON.parse(jsonMatch[0]);
+      } else {
+        parseError = "No JSON array found in response";
+      }
     } catch (e) {
       parseError = e.message;
     }
