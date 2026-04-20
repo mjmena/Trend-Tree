@@ -45,7 +45,6 @@ export default defineComponent({
             contents: [{ parts: [{ text: prompt }] }],
             tools: [{ google_search: {} }],
             generationConfig: {
-              responseMimeType: "application/json",
               temperature,
             },
           }),
