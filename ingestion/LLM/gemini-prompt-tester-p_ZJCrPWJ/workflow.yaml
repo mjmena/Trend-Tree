@@ -1,8 +1,9 @@
 schema: workflow/2022.04
-name: Copy of Ingest Gemini Food & Drink
-inactive: true
+name: Gemini Prompt Tester
 settings:
   error_notification: true
+  lambda_memory: 1024
+  lambda_timeout: 600
 triggers:
 - id: hi_35HVyD1
 steps:
@@ -12,4 +13,3 @@ steps:
   props:
     google_gemini:
       authProvisionId: apn_EOhp9DY
-
