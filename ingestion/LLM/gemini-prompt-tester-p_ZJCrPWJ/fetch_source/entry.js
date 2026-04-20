@@ -1,19 +1,34 @@
 // Gemini Prompt Tester — fetch_source
 //
-// Accepts a prompt + config via HTTP POST body, calls Gemini with
-// Google Search grounding, resolves grounding redirect URLs, and
-// returns the full result via $.respond().
+// Accepts a prompt via HTTP POST body, calls Gemini 3 with Google Search
+// grounding + responseSchema for structured JSON output, and returns
+// the full result via $.respond().
 //
 // POST body:
 // {
 //   "prompt": "Your prompt text here...",
 //   "model": "gemini-3-flash-preview",   // optional
-//   "temperature": 0.4                    // optional
+//   "temperature": 0.3                    // optional
 // }
 
 const DEFAULT_MODEL = "gemini-3-flash-preview";
 
-async function resolveRedirect(url) {
+const TREND_SCHEMA = {
+  type: "ARRAY",
+  items: {
+    type: "OBJECT",
+    properties: {
+      title: { type: "STRING", description: "Short trend name (3-8 words)" },
+      description: { type: "STRING", description: "1-2 sentence summary of what is trending" },
+      source_url: { type: "STRING", description: "REQUIRED: the exact URL from search results where this trend was found" },
+      source_name: { type: "STRING", description: "Name of the publication or website" },
+    },
+    required: ["title", "description", "source_url", "source_name"],
+  },
+};
+
+async function resolveUrl(url) {
+  if (!url || !url.includes("grounding-api-redirect")) return url;
   try {
     const resp = await fetch(url, { method: "HEAD", redirect: "follow" });
     return resp.url || url;
@@ -33,7 +48,7 @@ export default defineComponent({
     const body = steps.trigger.event.body || {};
     const prompt = body.prompt;
     const model = body.model || DEFAULT_MODEL;
-    const temperature = body.temperature ?? 0.4;
+    const temperature = body.temperature ?? 0.3;
 
     if (!prompt) {
       await $.respond({
@@ -55,6 +70,8 @@ export default defineComponent({
             contents: [{ parts: [{ text: prompt }] }],
             tools: [{ google_search: {} }],
             generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: TREND_SCHEMA,
               temperature,
             },
           }),
@@ -89,30 +106,34 @@ export default defineComponent({
     const searchQueries = groundingMeta.webSearchQueries || [];
     const usage = data.usageMetadata || {};
 
-    // Resolve grounding redirect URLs in parallel
+    // Resolve grounding redirect URLs
     const groundingChunks = await Promise.all(
       rawChunks.map(async (c) => {
         const rawUrl = c.web?.uri || "";
         const resolved = rawUrl.includes("grounding-api-redirect")
-          ? await resolveRedirect(rawUrl)
+          ? await resolveUrl(rawUrl)
           : rawUrl;
         return { raw_url: rawUrl, resolved_url: resolved, title: c.web?.title };
       }),
     );
 
-    // Try to parse JSON from the response
+    // Parse JSON — with responseSchema, the text should be valid JSON directly
     let parsed = null;
     let parseError = null;
     try {
-      // Find JSON array in the text — may be wrapped in markdown fences
-      const jsonMatch = textContent.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        parsed = JSON.parse(jsonMatch[0]);
-      } else {
-        parseError = "No JSON array found in response";
-      }
+      parsed = JSON.parse(textContent);
     } catch (e) {
       parseError = e.message;
+    }
+
+    // Resolve any grounding redirect URLs in the parsed trends
+    if (Array.isArray(parsed)) {
+      parsed = await Promise.all(
+        parsed.map(async (t) => ({
+          ...t,
+          source_url: await resolveUrl(t.source_url || ""),
+        })),
+      );
     }
 
     const result = {
