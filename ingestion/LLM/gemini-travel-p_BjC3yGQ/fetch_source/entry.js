@@ -11,35 +11,25 @@ const MODEL = "gemini-3-flash-preview";
 
 function buildPrompt() {
   const today = new Date().toISOString().slice(0, 10);
-  return `You are a consumer trends analyst specializing in travel and tourism.
+  return `Today is ${today}. Search the web for 10-15 emerging travel and tourism consumer trends in the United States reported THIS WEEK.
 
-Today is ${today}. Search the web for the most noteworthy EMERGING travel trends in the United States right now. Focus on trends that have gained traction THIS WEEK or are currently surging in consumer interest.
+For EACH trend you MUST provide:
+1. title: Short name (3-8 words)
+2. description: 1-2 sentences about what is trending and why it matters
+3. source_url: The EXACT full URL of the article you found this in
+4. source_name: Publication name
 
-Look for:
-- New travel destinations gaining sudden popularity
-- Emerging travel styles or experiences (adventure, wellness retreats, workcations, etc.)
-- Airline, hotel, or booking platform developments affecting consumers
-- Viral travel content or destinations trending on social media
-- Shifts in consumer travel preferences or spending patterns
-- Travel technology, apps, or services breaking out
-- Seasonal travel trends with a new angle or development this week
+Return ONLY a JSON array. Every object must have all 4 fields. Do not omit source_url.`;
+}
 
-IMPORTANT RULES:
-- Only include trends with RECENT activity (published or updated within the last 7 days)
-- Every trend MUST have a real, working source URL where readers can learn more
-- Do NOT include evergreen topics (e.g. "people like vacations") unless there is a specific new development
-- Do NOT invent or fabricate URLs — only include URLs you found via search
-- Aim for 10-15 distinct trends
-
-Respond with a JSON array of objects, each with these fields:
-[
-  {
-    "title": "Short trend name (3-8 words)",
-    "description": "1-2 sentence summary of what is trending and why it matters to consumers right now",
-    "source_url": "The URL where this trend was reported or discussed",
-    "source_name": "The publication or website name"
+async function resolveUrl(url) {
+  if (!url || !url.includes("grounding-api-redirect")) return url;
+  try {
+    const resp = await fetch(url, { method: "HEAD", redirect: "follow" });
+    return resp.url || url;
+  } catch {
+    return url;
   }
-]`;
 }
 
 export default defineComponent({
@@ -63,10 +53,7 @@ export default defineComponent({
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             tools: [{ google_search: {} }],
-            generationConfig: {
-              responseMimeType: "application/json",
-              temperature: 0.4,
-            },
+            generationConfig: { temperature: 0.3 },
           }),
         },
       );
@@ -95,15 +82,10 @@ export default defineComponent({
 
     let trends;
     try {
-      const cleaned = textContent
-        .replace(/^```json\s*/, "")
-        .replace(/^```\s*/, "")
-        .replace(/\s*```$/, "")
-        .trim();
-      trends = JSON.parse(cleaned);
-      if (!Array.isArray(trends)) {
-        throw new Error("Response is not a JSON array");
-      }
+      const jsonMatch = textContent.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) throw new Error("No JSON array found in response");
+      trends = JSON.parse(jsonMatch[0]);
+      if (!Array.isArray(trends)) throw new Error("Parsed value is not an array");
     } catch (e) {
       errors.push(`JSON parse failed: ${e.message}`);
       console.log(`ERROR parsing Gemini response: ${e.message}`);
@@ -120,12 +102,15 @@ export default defineComponent({
 
     for (let i = 0; i < trends.length; i++) {
       const trend = trends[i];
-      const url = (trend.source_url || "").trim();
+      let url = (trend.source_url || "").trim();
 
       if (!url || !url.startsWith("http")) {
         errors.push(`Trend "${trend.title}": missing or invalid URL, skipped`);
         continue;
       }
+
+      url = await resolveUrl(url);
+
       if (seenUrls.has(url)) continue;
       seenUrls.add(url);
 
