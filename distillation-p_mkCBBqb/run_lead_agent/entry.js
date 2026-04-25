@@ -14,8 +14,8 @@
 // STG_TREND_CANDIDATES_AGENT (Phase 1 shadow table — does NOT replace the
 // live STG_TREND_CANDIDATES yet).
 
-import { runAgentLoop } from "../lib/anthropic_loop.js";
-import { LEAD_TOOL_NAMES } from "../lib/tool_catalog.js";
+import { runAgentLoop } from "./lib/anthropic_loop.js";
+import { LEAD_TOOL_NAMES } from "./lib/tool_catalog.js";
 
 const SYSTEM_PROMPT = `You are the lead orchestrator of a consumer-trends distillation pipeline. Every 1-2 hours you wake up to the firehose: thousands of fresh signals from headlines, Bluesky, GDELT, Google Trends, and more. Your job is to distill SPECIFIC, ACTIONABLE consumer trends from this firehose. You have a SQL Louvain clustering's output as one input among many — you can override it.
 
