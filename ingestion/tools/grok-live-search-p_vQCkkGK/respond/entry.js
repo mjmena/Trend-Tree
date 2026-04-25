@@ -9,12 +9,7 @@ export default defineComponent({
 
     const body = {
       tool: "ingest_grok_live_search",
-      query: fr.query || null,
-      summary: fr.summary || "",
-      citations: fr.citations || [],
-      tokens: fr.tokens || null,
-      model: fr.model || null,
-      error: fr.error || null,
+      ...fr,
     };
 
     await $.respond({
