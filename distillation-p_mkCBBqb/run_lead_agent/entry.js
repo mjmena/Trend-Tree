@@ -842,6 +842,13 @@ Subagent endpoint: ${context.endpoints.distillation_subagent ? "configured" : "N
 
 Begin your scan. Be opinionated about specificity.`;
 
+    // Load + validate the system prompt before the dry_run gate. This way
+    // a dry_run smoke test still surfaces registry misconfiguration
+    // (missing PROMPT_KEY, IS_ACTIVE=FALSE, etc.) without burning LLM cost.
+    const loaded = loadPrompts(this.prompts_rows);
+    const prompt = mustGet(loaded, PROMPT_KEY);
+    console.log(`Lead system prompt: ${PROMPT_KEY} v${prompt.version}`);
+
     if (dryRun) {
       console.log("dry_run=true: skipping LLM");
       // Pass max_signal_ts: null so update_cursor's COALESCE preserves
@@ -849,10 +856,6 @@ Begin your scan. Be opinionated about specificity.`;
       // otherwise repeated test calls walk through the window.
       return emptyResult({ chain_id: evt.chain_id, max_signal_ts: null, started, signals_seen: signal_pool.length, skipped: "dry_run" });
     }
-
-    const loaded = loadPrompts(this.prompts_rows);
-    const prompt = mustGet(loaded, PROMPT_KEY);
-    console.log(`Lead system prompt: ${PROMPT_KEY} v${prompt.version}`);
 
     let result;
     try {
