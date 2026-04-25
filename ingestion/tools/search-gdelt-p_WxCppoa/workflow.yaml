@@ -84,3 +84,4 @@ steps:
   props:
     fetch_result: "{{steps.fetch_search.$return_value}}"
     upsert_result: "{{steps.upsert_signals.$return_value}}"
+

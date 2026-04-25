@@ -18,6 +18,7 @@ steps:
   uses: "./fetch_search/entry.js"
   props:
     bluesky:
+      authProvisionId: apn_oOhKEwk
     query: "{{steps.handle_request.$return_value.query}}"
     limit: "{{steps.handle_request.$return_value.limit}}"
     sort: "{{steps.handle_request.$return_value.sort}}"
