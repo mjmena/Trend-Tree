@@ -860,7 +860,10 @@ Begin your scan. Be opinionated about specificity.`;
 
     if (dryRun) {
       console.log("dry_run=true: skipping LLM");
-      return emptyResult({ chain_id: evt.chain_id, max_signal_ts, started, signals_seen: signal_pool.length, skipped: "dry_run" });
+      // Pass max_signal_ts: null so update_cursor's COALESCE preserves
+      // the existing LAST_SIGNAL_TS — dry runs must not advance state,
+      // otherwise repeated test calls walk through the window.
+      return emptyResult({ chain_id: evt.chain_id, max_signal_ts: null, started, signals_seen: signal_pool.length, skipped: "dry_run" });
     }
 
     let result;
