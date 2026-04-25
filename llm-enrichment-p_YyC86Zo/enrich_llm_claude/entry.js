@@ -5,20 +5,61 @@
 // trend profile: B2B/B2C naming, short/long summaries, and
 // categorization. The Snowflake write step is NOT in this workflow —
 // that's the orchestrator's step 4.
+//
+// =====================================================================
+// Helper code below is INLINED. Pipedream packages each step as a single
+// self-contained file — cross-file imports (./lib/*, sibling .js, sibling
+// .mjs) all fail at deploy time. Canonical source lives at
+// /home/marty/dev/Trend-Tree/agents/lib/prompt_loader.mjs — keep edits in sync.
+// =====================================================================
+
+function loadPrompts(rows) {
+  const out = {};
+  for (const r of (rows || [])) {
+    const key = r.PROMPT_KEY;
+    if (!key) continue;
+    let params = r.MODEL_PARAMS;
+    if (typeof params === "string") {
+      try { params = JSON.parse(params); } catch { params = {}; }
+    }
+    if (!params || typeof params !== "object") params = {};
+    out[key] = { template: r.TEMPLATE || "", model: r.MODEL || "", params, version: r.VERSION };
+  }
+  return out;
+}
+
+function render(template, vars) {
+  if (!template) return "";
+  return String(template).replace(/\{\{(\w+)\}\}/g, (_, key) => {
+    const v = vars?.[key];
+    if (v == null) return "";
+    if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
+    return JSON.stringify(v, null, 2);
+  });
+}
+
+function mustGet(loaded, key) {
+  const p = loaded?.[key];
+  if (!p || !p.template) {
+    throw new Error(
+      `Prompt '${key}' not loaded. Confirm DIM_LLM_PROMPT has IS_ACTIVE=TRUE for this key and the query_prompts step's IN clause includes it.`,
+    );
+  }
+  return p;
+}
+
+const PROMPT_KEY = "enrichment.claude.synthesize";
 
 export default defineComponent({
   name: "LLM Enrich: Claude Synthesizer",
   description: "Claude synthesizer — naming, summaries, categorization",
-  version: "0.0.2",
+  version: "0.0.3",
   props: {
-    anthropic: {
-      type: "app",
-      app: "anthropic",
-    },
+    anthropic: { type: "app", app: "anthropic" },
     enrich_context: {
       type: "object",
       label: "Trend enrichment context",
-      description: "Output from the load_llm_context step",
+      description: "Output from the build_llm_context step",
     },
     gemini_output: {
       type: "object",
@@ -32,6 +73,11 @@ export default defineComponent({
       description: "Output from the enrich_llm_grok step",
       optional: true,
     },
+    prompts_rows: {
+      type: "any",
+      label: "DIM_LLM_PROMPT rows",
+      description: "Output of the query_prompts step",
+    },
   },
   async run() {
     const ctx = this.enrich_context;
@@ -44,13 +90,16 @@ export default defineComponent({
       return null;
     }
 
-    // Gather specialist outputs (any may be null if that step failed)
+    const loaded = loadPrompts(this.prompts_rows);
+    const prompt = mustGet(loaded, PROMPT_KEY);
+
     const gemini = this.gemini_output ?? null;
     const grok = this.grok_output ?? null;
 
     const modelsUsed = [];
-    if (gemini) modelsUsed.push("gemini-2.5-flash");
-    if (grok) modelsUsed.push("grok-3-mini-fast");
+    if (gemini) modelsUsed.push(gemini._token_usage?.model || "gemini-2.5-flash");
+    if (grok) modelsUsed.push(grok._token_usage?.model || "grok-3-mini-fast");
+    modelsUsed.push(prompt.model);
 
     const s = ctx.sources || {};
     const gdelt = s.gdelt || {};
@@ -61,44 +110,47 @@ export default defineComponent({
     const pin = s.pinterest || {};
     const tt = s.tiktok || {};
 
-    modelsUsed.push("claude-sonnet-4-6");
+    const hashtags_formatted = (ctx.hashtags || []).length > 0 ? ctx.hashtags.join(", ") : "(none)";
 
-    const prompt = `You are the final synthesizer in a multi-model trend analysis pipeline. Your job is to take the specialist analyses below, the source evidence, and produce a definitive trend profile focused on consumer-facing naming (both a professional B2B register and a quirky B2C register), short and long summaries, and categorization. The trend itself has already been validated by the upstream clustering pipeline — do not re-judge whether it is a real trend. Ground everything in the source evidence — don't invent claims unsupported by the data.
+    const source_evidence = [
+      `- GDELT: ${gdelt.gdelt_article_count_7d ?? 0} articles across ${gdelt.gdelt_domain_count_7d ?? 0} domains, tone=${gdelt.gdelt_tone_avg ?? "N/A"}`,
+      `- Wikipedia: "${wiki.wiki_article_title ?? "none"}" — ${wiki.wiki_pageviews_7d ?? 0} views/wk, ${wiki.wiki_pageview_growth_pct ?? "N/A"}% growth`,
+      `- Bluesky: ${bsky.social_post_count_7d ?? 0} posts, ${bsky.social_avg_engagement ?? 0} avg engagement`,
+      `- Sentiment: +${bsky.social_sentiment?.positive ?? 0}/-${bsky.social_sentiment?.negative ?? 0}`,
+      `- Google Trends: search interest ${gt.gt_interest_score ?? "N/A"}/100, ${(gt.gt_related_queries || []).length} related queries`,
+      `- Amazon Movers & Shakers: ${amz.amazon_product_count ?? 0} matching products${amz.amazon_avg_price ? `, avg price $${amz.amazon_avg_price}` : ""}${(amz.amazon_top_departments || []).length > 0 ? `, depts: ${amz.amazon_top_departments.map((d) => d.department).join(", ")}` : ""}`,
+      `- Pinterest: ${pin.pinterest_trend_count ?? 0} trending articles${(pin.pinterest_categories || []).length > 0 ? ` (${pin.pinterest_categories.map((c) => c.category).join(", ")})` : ""}`,
+      `- TikTok: ${tt.tiktok_hashtag_count ?? 0} trending hashtags${tt.tiktok_best_rank ? `, best rank #${tt.tiktok_best_rank}` : ""}${tt.tiktok_total_views ? `, ${tt.tiktok_total_views.toLocaleString()} views` : ""}`,
+    ].join("\n");
 
-TREND: ${ctx.trend_topic}
-CLUSTER SIZE: ${ctx.cluster_size} | HEAT: ${ctx.heat_index}/100 | VELOCITY: ${ctx.velocity}
-RELATED HASHTAGS: ${(ctx.hashtags || []).length > 0 ? ctx.hashtags.join(", ") : "(none)"}
+    const social_quotes_formatted = (bsky.social_top_posts || [])
+      .map((p, i) => `${i + 1}. "${(p.text || "").slice(0, 500)}"`)
+      .join("\n") || "(none)";
 
-SOURCE EVIDENCE:
-- GDELT: ${gdelt.gdelt_article_count_7d ?? 0} articles across ${gdelt.gdelt_domain_count_7d ?? 0} domains, tone=${gdelt.gdelt_tone_avg ?? "N/A"}
-- Wikipedia: "${wiki.wiki_article_title ?? "none"}" — ${wiki.wiki_pageviews_7d ?? 0} views/wk, ${wiki.wiki_pageview_growth_pct ?? "N/A"}% growth
-- Bluesky: ${bsky.social_post_count_7d ?? 0} posts, ${bsky.social_avg_engagement ?? 0} avg engagement
-- Sentiment: +${bsky.social_sentiment?.positive ?? 0}/-${bsky.social_sentiment?.negative ?? 0}
-- Google Trends: search interest ${gt.gt_interest_score ?? "N/A"}/100, ${(gt.gt_related_queries || []).length} related queries
-- Amazon Movers & Shakers: ${amz.amazon_product_count ?? 0} matching products${amz.amazon_avg_price ? `, avg price $${amz.amazon_avg_price}` : ""}${(amz.amazon_top_departments || []).length > 0 ? `, depts: ${amz.amazon_top_departments.map((d) => d.department).join(", ")}` : ""}
-- Pinterest: ${pin.pinterest_trend_count ?? 0} trending articles${(pin.pinterest_categories || []).length > 0 ? ` (${pin.pinterest_categories.map((c) => c.category).join(", ")})` : ""}
-- TikTok: ${tt.tiktok_hashtag_count ?? 0} trending hashtags${tt.tiktok_best_rank ? `, best rank #${tt.tiktok_best_rank}` : ""}${tt.tiktok_total_views ? `, ${tt.tiktok_total_views.toLocaleString()} views` : ""}
+    // Strip only the NEW audit field (_prompt) so input matches pre-migration
+    // bytes — old code stringified the full specialist output including
+    // _token_usage. This keeps prompt-version visible in the workflow response
+    // (return_llm_output) without changing what Claude actually sees.
+    const stripNew = (o) => {
+      if (!o) return o;
+      const { _prompt, ...rest } = o;
+      return rest;
+    };
 
-GEMINI ASSESSMENT (validation + categorization):
-${gemini ? JSON.stringify(gemini, null, 2) : "UNAVAILABLE — this specialist failed"}
+    const gemini_output_json = gemini ? JSON.stringify(stripNew(gemini), null, 2) : "UNAVAILABLE — this specialist failed";
+    const grok_output_json = grok ? JSON.stringify(stripNew(grok), null, 2) : "UNAVAILABLE — this specialist failed";
 
-GROK ASSESSMENT (cultural context + social pulse):
-${grok ? JSON.stringify(grok, null, 2) : "UNAVAILABLE — this specialist failed"}
-
-REAL SOCIAL QUOTES:
-${(bsky.social_top_posts || []).map((p, i) => `${i + 1}. "${(p.text || "").slice(0, 500)}"`).join("\n") || "(none)"}
-
-Now synthesize all of this into a final trend profile. Where specialists agree, be confident. Where they disagree, use your judgment. Ground everything in the source evidence — don't invent claims unsupported by the data.
-
-Respond in valid JSON:
-{
-  "trend_name_b2b": string,          // 2-5 words, direct, professional register — for B2B dashboard
-  "trend_name_b2c": string,          // 2-5 words, quirky, consumer-facing — for public-facing dashboard
-  "summary_short": string,           // 1-2 sentences for dashboard card view
-  "summary_long": string,            // 1 paragraph for deep-dive view
-  "category": string,                // must be one of: wellness, food_beverage, beauty, fitness, fashion, home_living, sustainability, consumer_tech, personal_care, social_lifestyle, entertainment, travel, parenting, other
-  "subcategory": string              // lowercase snake_case, e.g. "gut_health", "functional_beverages"
-}`;
+    const rendered = render(prompt.template, {
+      trend_topic: ctx.trend_topic,
+      cluster_size: ctx.cluster_size,
+      heat_index: ctx.heat_index,
+      velocity: ctx.velocity,
+      hashtags_formatted,
+      source_evidence,
+      gemini_output_json,
+      grok_output_json,
+      social_quotes_formatted,
+    });
 
     try {
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -109,10 +161,10 @@ Respond in valid JSON:
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 4096,
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.3,
+          model: prompt.model,
+          max_tokens: prompt.params.max_tokens ?? 4096,
+          messages: [{ role: "user", content: rendered }],
+          temperature: prompt.params.temperature ?? 0.3,
         }),
       });
 
@@ -120,7 +172,6 @@ Respond in valid JSON:
       const data = await resp.json();
       const text = data?.content?.[0]?.text || "";
 
-      // Extract JSON from response (Claude may wrap in markdown code blocks)
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error("No JSON found in Claude response");
       const result = JSON.parse(jsonMatch[0]);
@@ -129,22 +180,17 @@ Respond in valid JSON:
       console.log(`  Short: ${(result.summary_short || "").slice(0, 120)}`);
       console.log(`  Long: ${(result.summary_long || "").slice(0, 120)}`);
 
-      // Token usage tracking
       const usage = data.usage || {};
       result._token_usage = {
         input: usage.input_tokens || 0,
         output: usage.output_tokens || 0,
-        model: "claude-sonnet-4-6",
+        model: prompt.model,
       };
+      result._prompt = { key: PROMPT_KEY, version: prompt.version };
+      result._models_used = modelsUsed;
 
       console.log(`  Tokens: ${result._token_usage.input} in / ${result._token_usage.output} out`);
-
-      // Attach metadata
-      result._models_used = modelsUsed;
-      result._specialist_outputs = {
-        gemini: gemini || null,
-        grok: grok || null,
-      };
+      console.log(`  Prompt: ${PROMPT_KEY} v${prompt.version}`);
 
       return result;
     } catch (e) {
