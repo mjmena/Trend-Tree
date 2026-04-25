@@ -1,0 +1,7 @@
+schema: workflow/2022.04
+name: Search Bluesky
+settings:
+  error_notification: true
+triggers:
+- id: hi_eqHned4
+

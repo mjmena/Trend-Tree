@@ -1,0 +1,9 @@
+schema: workflow/2022.04
+name: Distillation Subagent
+settings:
+  error_notification: true
+  lambda_timeout: 600
+triggers:
+- id: hi_2VH6DQX
+- id: hi_ERH5D7G
+
