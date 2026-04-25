@@ -1,16 +1,63 @@
 // Grok Live Search (agent tool) — fetch_search
 //
-// Calls Grok 3 with native live web/X search via xAI's `search_parameters`
-// shape. Returns a digested response + citation list. Auth is the existing
-// x_ai Pipedream app prop (apn_WYhE6e6 — same one llm-enrichment uses).
+// Calls Grok 4 via xAI's Agent Tools API (the new /v1/responses endpoint
+// with native web_search + x_search tools). Replaces the deprecated
+// search_parameters shape that returned HTTP 410 as of 2026-04-25.
+// See: https://docs.x.ai/docs/guides/tools/overview
+//
+// Auth is the existing x_ai Pipedream app prop (apn_WYhE6e6 — same one
+// llm-enrichment uses).
 
-const MODEL = "grok-3-latest";
-const REQUEST_TIMEOUT_MS = 45_000;
+const MODEL = "grok-4-latest";
+const REQUEST_TIMEOUT_MS = 60_000;
 
-function buildSources(mode) {
-  if (mode === "web") return [{ type: "web" }];
-  if (mode === "x") return [{ type: "x" }];
-  return [{ type: "web" }, { type: "x" }];
+function buildTools(mode) {
+  if (mode === "web") return [{ type: "web_search" }];
+  if (mode === "x") return [{ type: "x_search" }];
+  return [{ type: "web_search" }, { type: "x_search" }];
+}
+
+// Walk an arbitrary nested response shape looking for the assistant's
+// summary text. xAI's /v1/responses returns an `output` array; each item
+// has `content` blocks with `type: "output_text"` (or similar) and a
+// `text` field. Be defensive — the shape may evolve.
+function extractSummary(data) {
+  if (typeof data?.output_text === "string") return data.output_text;
+  const out = Array.isArray(data?.output) ? data.output : [];
+  for (const item of out) {
+    const content = Array.isArray(item?.content) ? item.content : [];
+    for (const block of content) {
+      if (typeof block?.text === "string" && block.text.length > 0) return block.text;
+      if (typeof block?.output_text === "string") return block.output_text;
+    }
+    if (typeof item?.text === "string") return item.text;
+  }
+  // Fallbacks for OpenAI-compat shapes
+  return data?.choices?.[0]?.message?.content || "";
+}
+
+function extractCitations(data) {
+  // Prefer top-level citations
+  if (Array.isArray(data?.citations)) return data.citations;
+  // Some response variants surface citations per output item
+  const out = Array.isArray(data?.output) ? data.output : [];
+  const collected = [];
+  for (const item of out) {
+    if (Array.isArray(item?.citations)) collected.push(...item.citations);
+    const content = Array.isArray(item?.content) ? item.content : [];
+    for (const block of content) {
+      if (Array.isArray(block?.citations)) collected.push(...block.citations);
+      if (Array.isArray(block?.annotations)) {
+        // OpenAI-style annotations with URL citations
+        for (const a of block.annotations) {
+          if (a?.url || a?.url_citation?.url) {
+            collected.push({ url: a.url || a.url_citation.url, title: a.title || a.url_citation?.title });
+          }
+        }
+      }
+    }
+  }
+  return collected;
 }
 
 export default defineComponent({
@@ -27,7 +74,7 @@ export default defineComponent({
 
     const body = {
       model: MODEL,
-      messages: [
+      input: [
         {
           role: "system",
           content:
@@ -35,21 +82,14 @@ export default defineComponent({
         },
         { role: "user", content: this.query },
       ],
-      search_parameters: {
-        mode: "on",
-        return_citations: true,
-        max_search_results: 10,
-        sources: buildSources(this.mode || "both"),
-      },
-      temperature: 0.2,
-      max_tokens: 1500,
+      tools: buildTools(this.mode || "both"),
     };
 
     let resp;
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
-      resp = await fetch("https://api.x.ai/v1/chat/completions", {
+      resp = await fetch("https://api.x.ai/v1/responses", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -69,20 +109,25 @@ export default defineComponent({
     }
 
     const data = await resp.json();
-    const summary = data?.choices?.[0]?.message?.content || "";
-    const citations = data?.citations || data?.choices?.[0]?.message?.citations || [];
+    const summary = extractSummary(data);
+    const rawCitations = extractCitations(data);
     const usage = data?.usage || {};
 
-    console.log(`grok-live-search: ${summary.length}-char summary, ${citations.length} citations, ${usage.completion_tokens || 0}out tok`);
+    const citations = rawCitations
+      .map((c) => (typeof c === "string" ? { url: c } : c))
+      .filter((c) => c && (c.url || c.title));
+
+    console.log(`grok-live-search: ${summary.length}-char summary, ${citations.length} citations, ${usage.output_tokens || usage.completion_tokens || 0}out tok`);
     $.export("$summary", `${citations.length} citations for "${this.query.slice(0, 60)}"`);
 
     return {
       query: this.query,
       summary,
-      citations: Array.isArray(citations)
-        ? citations.map((c) => (typeof c === "string" ? { url: c } : c))
-        : [],
-      tokens: { input: usage.prompt_tokens || 0, output: usage.completion_tokens || 0 },
+      citations,
+      tokens: {
+        input: usage.input_tokens || usage.prompt_tokens || 0,
+        output: usage.output_tokens || usage.completion_tokens || 0,
+      },
       model: MODEL,
     };
   },
