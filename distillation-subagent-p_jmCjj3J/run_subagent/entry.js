@@ -645,10 +645,10 @@ export default defineComponent({
       chain_id: req.chain_id || "",
       iteration: 1,
       endpoints: {
-        ingest_search_bluesky: process.env.INGEST_SEARCH_BLUESKY_URL || "",
-        ingest_search_gdelt: process.env.INGEST_SEARCH_GDELT_URL || "",
-        ingest_search_google_trends: process.env.INGEST_SEARCH_GOOGLE_TRENDS_URL || "",
-        ingest_grok_live_search: process.env.INGEST_GROK_LIVE_SEARCH_URL || "",
+        ingest_search_bluesky: process.env.INGEST_SEARCH_BLUESKY_URL || "https://eoydyalz1dslfre.m.pipedream.net",
+        ingest_search_gdelt: process.env.INGEST_SEARCH_GDELT_URL || "https://eoovhehfk229jrg.m.pipedream.net",
+        ingest_search_google_trends: process.env.INGEST_SEARCH_GOOGLE_TRENDS_URL || "https://eov9u8rngcgi2z6.m.pipedream.net",
+        ingest_grok_live_search: process.env.INGEST_GROK_LIVE_SEARCH_URL || "https://eovzc5ljf76h3h6.m.pipedream.net",
       },
     };
 
