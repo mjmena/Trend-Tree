@@ -181,7 +181,7 @@ fi
 
 # Cross-check: how many signals were tagged with this session?
 say "Snowflake check: signals tagged $SESSION_ID"
-COUNT=$(snowsql -o quiet=true -o friendly=false -o output_format=plain \
+COUNT=$(snowsql -o friendly=false -o output_format=plain -o header=false -o timing=false \
   -q "SELECT COUNT(*) FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS WHERE AGENT_SESSION_ID='$SESSION_ID';" 2>/dev/null \
   | tail -1 | tr -d ' ' || echo "?")
 if [[ "$COUNT" =~ ^[0-9]+$ && "$COUNT" -gt 0 ]]; then
@@ -196,7 +196,7 @@ fi
 if [[ "$AFTER_THROUGH" == false ]]; then
   say "5/8  subagent dry_run"
   # Pick a real signal_id from the firehose to satisfy validation; signal must exist.
-  SIG=$(snowsql -o quiet=true -o friendly=false -o output_format=plain \
+  SIG=$(snowsql -o friendly=false -o output_format=plain -o header=false -o timing=false \
     -q "SELECT SIGNAL_ID FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS WHERE SOURCE_NAME='bluesky' ORDER BY SIGNAL_TIMESTAMP DESC LIMIT 1;" 2>/dev/null \
     | tail -1 | tr -d ' ')
   if [[ -z "$SIG" ]]; then
@@ -216,7 +216,7 @@ fi
 # ─────────────────────────────────────────────────────────────────────
 if [[ "$AFTER_THROUGH" == false ]]; then
   say "6/8  subagent real (~30-90s — agent loop with ingest)"
-  SIG=$(snowsql -o quiet=true -o friendly=false -o output_format=plain \
+  SIG=$(snowsql -o friendly=false -o output_format=plain -o header=false -o timing=false \
     -q "SELECT SIGNAL_ID FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS WHERE SOURCE_NAME='bluesky' ORDER BY SIGNAL_TIMESTAMP DESC LIMIT 1;" 2>/dev/null \
     | tail -1 | tr -d ' ')
   post "$SUBAGENT_URL" 240 \
