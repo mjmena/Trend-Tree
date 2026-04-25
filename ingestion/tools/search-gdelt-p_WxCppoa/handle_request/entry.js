@@ -17,7 +17,9 @@ export default defineComponent({
     if (!topic) throw new Error("missing 'topic' in request body");
     if (topic.length > TOPIC_MAX) throw new Error(`topic too long (max ${TOPIC_MAX})`);
 
-    const window_days = Math.min(Math.max(1, Number(body.window_days) || 7), WINDOW_MAX);
+    // GDELT is flaky on wider windows; default to 1d (matches the legacy
+    // batch ingester) — agent can override up to WINDOW_MAX when needed.
+    const window_days = Math.min(Math.max(1, Number(body.window_days) || 1), WINDOW_MAX);
     const mode = ALLOWED_MODES.has(body.mode) ? body.mode : "ArtList";
     const agent_session_id = sanitizeSessionId(body.agent_session_id);
 

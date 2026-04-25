@@ -22,7 +22,7 @@ async function fetchArticles(topic, windowDays, mode) {
     query: fullQuery,
     mode,
     format: "json",
-    maxrecords: "150",
+    maxrecords: "75", // matches legacy batch ingester; >150 reliably 429s
     timespan: `${windowDays}d`,
   });
   const resp = await fetch(`${GDELT_DOC_URL}?${params}`);
@@ -44,20 +44,19 @@ export default defineComponent({
     const windowDays = Number(this.window_days) || 7;
     const mode = this.mode || "ArtList";
 
+    // GDELT routinely returns rate-limit text, HTTP 429, OR drops the TCP
+    // connection ("fetch failed" from undici). Retry once on ANY error
+    // after a 10s back-off; only throw if the retry also fails.
     let data;
     try {
       data = await fetchArticles(this.topic, windowDays, mode);
     } catch (e) {
-      if (e.message.includes("rate limit") || e.message.includes("429")) {
-        console.log(`rate limited, waiting 10s and retrying once`);
-        await sleep(10000);
-        try {
-          data = await fetchArticles(this.topic, windowDays, mode);
-        } catch (e2) {
-          throw new Error(`GDELT failed after rate-limit retry: ${e2.message}`);
-        }
-      } else {
-        throw new Error(`GDELT fetch failed: ${e.message}`);
+      console.log(`GDELT first attempt failed (${e.message}); waiting 10s and retrying once`);
+      await sleep(10000);
+      try {
+        data = await fetchArticles(this.topic, windowDays, mode);
+      } catch (e2) {
+        throw new Error(`GDELT failed twice (last: ${e2.message}; first: ${e.message})`);
       }
     }
 
