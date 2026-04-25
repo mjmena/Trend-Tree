@@ -85,8 +85,7 @@ export default defineComponent({
     try {
       related = await fetchRelatedQueries(cookieJar, this.keyword, this.geo, this.timeframe);
     } catch (e) {
-      console.log(`fetch_search error: ${e.message}`);
-      return { signals: [], signals_json: "[]", related_queries: [], count: 0, error: e.message };
+      throw new Error(`Google Trends fetch failed: ${e.message}`);
     }
 
     const nowDate = new Date();

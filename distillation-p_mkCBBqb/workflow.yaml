@@ -138,6 +138,11 @@ steps:
     signal_rows: "{{steps.q_signals_window.$return_value}}"
     louvain_rows: "{{steps.q_louvain_candidates.$return_value}}"
     neighbor_rows: "{{steps.q_neighbors.$return_value}}"
+    subagent_url: "https://eo5h5le4j2qu3tm.m.pipedream.net"
+    bluesky_url: "https://eoydyalz1dslfre.m.pipedream.net"
+    gdelt_url: "https://eoovhehfk229jrg.m.pipedream.net"
+    gtrends_url: "https://eov9u8rngcgi2z6.m.pipedream.net"
+    grok_url: "https://eovzc5ljf76h3h6.m.pipedream.net"
 - namespace: commit_candidates
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3

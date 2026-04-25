@@ -22,7 +22,7 @@ export default defineComponent({
   async run({ $ }) {
     const apiKey = this.x_ai?.$auth?.api_key;
     if (!apiKey) {
-      return { error: "x_ai auth missing (connect the x_ai app in this workflow)" };
+      throw new Error("x_ai app prop missing $auth.api_key — connect xAI in this workflow's UI");
     }
 
     const body = {
@@ -60,14 +60,12 @@ export default defineComponent({
       });
       clearTimeout(timer);
     } catch (e) {
-      console.log(`grok-live-search fetch error: ${e.message}`);
-      return { error: e.message };
+      throw new Error(`grok-live-search fetch failed: ${e.message}`);
     }
 
     if (!resp.ok) {
       const text = await resp.text();
-      console.log(`grok-live-search HTTP ${resp.status}: ${text.slice(0, 240)}`);
-      return { error: `HTTP ${resp.status}: ${text.slice(0, 240)}` };
+      throw new Error(`grok-live-search HTTP ${resp.status}: ${text.slice(0, 240)}`);
     }
 
     const data = await resp.json();

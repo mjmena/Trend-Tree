@@ -54,12 +54,10 @@ export default defineComponent({
         try {
           data = await fetchArticles(this.topic, windowDays, mode);
         } catch (e2) {
-          console.log(`fetch_search error: ${e2.message}`);
-          return { signals: [], signals_json: "[]", articles: [], count: 0, error: e2.message };
+          throw new Error(`GDELT failed after rate-limit retry: ${e2.message}`);
         }
       } else {
-        console.log(`fetch_search error: ${e.message}`);
-        return { signals: [], signals_json: "[]", articles: [], count: 0, error: e.message };
+        throw new Error(`GDELT fetch failed: ${e.message}`);
       }
     }
 

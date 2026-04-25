@@ -621,16 +621,15 @@ async function runAgentLoop({
       });
       clearTimeout(timer);
     } catch (e) {
-      stop_reason = "fetch_error";
-      reasoning_trace.push({ turn, kind: "error", error: e.message });
-      break;
+      // Operator-fixable: network/timeout to Anthropic. Throw so it lands on
+      // Pipedream's $errors/event_summaries endpoint rather than getting
+      // buried as a "successful" run with stop_reason: fetch_error.
+      throw new Error(`Anthropic fetch failed (turn ${turn}): ${e.message}`);
     }
 
     if (!resp.ok) {
       const errText = await resp.text();
-      stop_reason = `http_${resp.status}`;
-      reasoning_trace.push({ turn, kind: "error", error: errText.slice(0, 1000) });
-      break;
+      throw new Error(`Anthropic HTTP ${resp.status} (turn ${turn}): ${errText.slice(0, 600)}`);
     }
 
     const data = await resp.json();
@@ -786,6 +785,13 @@ export default defineComponent({
     signal_rows: { type: "any", optional: true },
     louvain_rows: { type: "any", optional: true },
     neighbor_rows: { type: "any", optional: true },
+    // Endpoint URLs — wired in workflow.yaml so the targets are visible there
+    // instead of buried in code. Required: throws if missing or PLACEHOLDER.
+    subagent_url: { type: "string", label: "Distillation subagent endpoint" },
+    bluesky_url: { type: "string", label: "Search Bluesky tool endpoint" },
+    gdelt_url: { type: "string", label: "Search GDELT tool endpoint" },
+    gtrends_url: { type: "string", label: "Search Google Trends tool endpoint" },
+    grok_url: { type: "string", label: "Grok Live Search tool endpoint" },
   },
   async run({ $ }) {
     const evt = this.event || {};
@@ -834,12 +840,11 @@ export default defineComponent({
       chain_id: evt.chain_id,
       iteration: evt.iteration,
       endpoints: {
-        // Defaults are the live trigger endpoints; env vars win for staging/canary.
-        distillation_subagent: process.env.DISTILLATION_SUBAGENT_URL || "https://eo5h5le4j2qu3tm.m.pipedream.net",
-        ingest_search_bluesky: process.env.INGEST_SEARCH_BLUESKY_URL || "https://eoydyalz1dslfre.m.pipedream.net",
-        ingest_search_gdelt: process.env.INGEST_SEARCH_GDELT_URL || "https://eoovhehfk229jrg.m.pipedream.net",
-        ingest_search_google_trends: process.env.INGEST_SEARCH_GOOGLE_TRENDS_URL || "https://eov9u8rngcgi2z6.m.pipedream.net",
-        ingest_grok_live_search: process.env.INGEST_GROK_LIVE_SEARCH_URL || "https://eovzc5ljf76h3h6.m.pipedream.net",
+        distillation_subagent: this.subagent_url,
+        ingest_search_bluesky: this.bluesky_url,
+        ingest_search_gdelt: this.gdelt_url,
+        ingest_search_google_trends: this.gtrends_url,
+        ingest_grok_live_search: this.grok_url,
       },
     };
 

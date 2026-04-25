@@ -119,16 +119,15 @@ export async function runAgentLoop({
       });
       clearTimeout(timer);
     } catch (e) {
-      stop_reason = "fetch_error";
-      reasoning_trace.push({ turn, kind: "error", error: e.message });
-      break;
+      // Operator-fixable: network/timeout to Anthropic. Throw so it lands on
+      // Pipedream's $errors/event_summaries endpoint rather than getting
+      // buried as a "successful" run with stop_reason: fetch_error.
+      throw new Error(`Anthropic fetch failed (turn ${turn}): ${e.message}`);
     }
 
     if (!resp.ok) {
       const errText = await resp.text();
-      stop_reason = `http_${resp.status}`;
-      reasoning_trace.push({ turn, kind: "error", error: errText.slice(0, 1000) });
-      break;
+      throw new Error(`Anthropic HTTP ${resp.status} (turn ${turn}): ${errText.slice(0, 600)}`);
     }
 
     const data = await resp.json();
