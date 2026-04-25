@@ -148,7 +148,7 @@ steps:
   uses: snowflake-execute-sql-query@0.2.3
   props:
     snowflake:
-      authProvisionId: apn_wGhamn3
+      authProvisionId: apn_yghdQYJ
     sql:
       value: |-
         INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES_AGENT (
@@ -207,7 +207,7 @@ steps:
   uses: snowflake-execute-sql-query@0.2.3
   props:
     snowflake:
-      authProvisionId: apn_wGhamn3
+      authProvisionId: apn_yghdQYJ
     sql:
       value: |-
         MERGE INTO MCC_RAW.MARKETING_DEV.STG_DISTILLATION_CURSOR target
