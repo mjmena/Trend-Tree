@@ -1,14 +1,11 @@
 // Search Bluesky (agent tool) — fetch_search
 //
 // Authenticated single-query call to ATProto searchPosts, using the same
-// auth + post-shaping logic as the batch ingester at
+// post-shaping logic as the batch ingester at
 // ingestion/bluesky-p_V9CgV17/fetch_source/entry.js. Differences:
 //   - Single query instead of fixed seed-term loop.
+//   - Auth via Pipedream's `bluesky` app prop (not env vars).
 //   - Returns signals_json string for the upsert MERGE step.
-//
-// Auth env vars (set in Pipedream UI project env):
-//   BLUESKY_HANDLE        — e.g. user.bsky.social
-//   BLUESKY_APP_PASSWORD  — generated under Settings → App Passwords
 
 import crypto from "crypto";
 
@@ -20,15 +17,19 @@ function sleep(ms) {
 
 export default defineComponent({
   props: {
+    bluesky: { type: "app", app: "bluesky" },
     query: { type: "string" },
     limit: { type: "string" },
     sort:  { type: "string" },
   },
   async run({ $ }) {
-    const handle = process.env.BLUESKY_HANDLE;
-    const appPassword = process.env.BLUESKY_APP_PASSWORD;
+    const auth = this.bluesky?.$auth || {};
+    const handle = auth.identifier || auth.handle || auth.username;
+    const appPassword = auth.app_password || auth.password || auth.api_key;
     if (!handle || !appPassword) {
-      throw new Error("BLUESKY_HANDLE and BLUESKY_APP_PASSWORD env vars required");
+      throw new Error(
+        "bluesky app missing handle/app_password — connect the Bluesky account in this workflow's UI",
+      );
     }
 
     // Authenticate
