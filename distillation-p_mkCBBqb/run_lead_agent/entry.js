@@ -834,7 +834,8 @@ export default defineComponent({
       chain_id: evt.chain_id,
       iteration: evt.iteration,
       endpoints: {
-        distillation_subagent: process.env.DISTILLATION_SUBAGENT_URL || "",
+        // Defaults are the live trigger endpoints; env vars win for staging/canary.
+        distillation_subagent: process.env.DISTILLATION_SUBAGENT_URL || "https://eo5h5le4j2qu3tm.m.pipedream.net",
         ingest_search_bluesky: process.env.INGEST_SEARCH_BLUESKY_URL || "",
         ingest_search_gdelt: process.env.INGEST_SEARCH_GDELT_URL || "",
         ingest_search_google_trends: process.env.INGEST_SEARCH_GOOGLE_TRENDS_URL || "",

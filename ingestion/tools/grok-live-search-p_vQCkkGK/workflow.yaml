@@ -1,0 +1,26 @@
+schema: workflow/2022.04
+name: Grok Live Search (agent tool)
+settings:
+  error_notification: true
+  lambda_memory: 1024
+  lambda_timeout: 60
+triggers:
+- id: hi_WBHR6av
+steps:
+- namespace: handle_request
+  runtime: nodejs20.x
+  uses: "./handle_request/entry.js"
+  props:
+    trigger_event: "{{steps.trigger.event}}"
+- namespace: fetch_search
+  runtime: nodejs20.x
+  uses: "./fetch_search/entry.js"
+  props:
+    x_ai:
+    query: "{{steps.handle_request.$return_value.query}}"
+    mode: "{{steps.handle_request.$return_value.mode}}"
+- namespace: respond
+  runtime: nodejs20.x
+  uses: "./respond/entry.js"
+  props:
+    fetch_result: "{{steps.fetch_search.$return_value}}"
