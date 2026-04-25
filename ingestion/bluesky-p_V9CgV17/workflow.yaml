@@ -22,12 +22,14 @@ steps:
         CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(
           $${{steps.fetch_source.$return_value.signals_json}}$$,
           '',
-          500
+          500,
+          'STG_EXTERNAL_SIGNALS_TEST'
         )
       query: |-
         CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(
           $${{steps.fetch_source.$return_value.signals_json}}$$,
           '',
-          500
+          500,
+          'STG_EXTERNAL_SIGNALS_TEST'
         )
     params: []

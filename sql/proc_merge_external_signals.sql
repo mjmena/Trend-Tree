@@ -1,31 +1,30 @@
--- Batched MERGE into STG_EXTERNAL_SIGNALS.
+-- Batched MERGE into a configurable target table (defaults to
+-- STG_EXTERNAL_SIGNALS). Lets us route the just-migrated batch
+-- ingesters to STG_EXTERNAL_SIGNALS_TEST while leaving the agent
+-- tool wrappers writing to production until we're confident.
 --
--- Replaces the inline MERGE block that was duplicated across every
--- ingestion / tool-wrapper workflow.yaml. Now each upsert step is just:
+-- Usage from a workflow.yaml step:
 --
---   CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(:1, :2, 500)
---
--- where :1 = signals_json (JSON array string), :2 = agent_session_id
--- (NULL or '' for batch ingesters), :3 = batch size.
+--   CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(
+--     $${{steps.fetch_source.$return_value.signals_json}}$$,  -- json array
+--     '',                                                     -- agent_session_id
+--     500,                                                    -- batch size
+--     'STG_EXTERNAL_SIGNALS_TEST'                             -- target table
+--   )
 --
 -- Behavior:
---  * Chunks the signal array into BATCH_SIZE-row groups, each its own
---    MERGE (matches the 500-row chunking pattern in the legacy
---    Python-based upsert step).
---  * INSERT on no-match (matches legacy — does NOT overwrite content
---    on existing SIGNAL_IDs, so engagement metrics in METADATA stay
---    pinned to their first-seen values).
---  * For agent-fetched signals (session_id non-empty): if the row
---    already existed with NULL AGENT_SESSION_ID, we UPDATE it to the
---    fetching session so the audit trail captures who fetched what.
---    Doesn't overwrite an existing non-NULL session_id.
---  * Returns {batches, signals, batch_size, session_id} so the caller
---    can verify counts.
+--  * Chunks signals into BATCH_SIZE-row groups, each its own MERGE.
+--  * INSERT on no-match (matches legacy — preserves first-seen METADATA).
+--  * Tags AGENT_SESSION_ID on existing rows that don't have one yet,
+--    never overwrites a non-NULL session_id.
+--  * Validates TARGET_TABLE_NAME against [A-Z0-9_]+ to prevent injection.
+--  * Returns { batches, signals, batch_size, session_id, target_table }.
 
 CREATE OR REPLACE PROCEDURE MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(
   SIGNALS_JSON VARCHAR,
   AGENT_SESSION_ID VARCHAR DEFAULT NULL,
-  BATCH_SIZE FLOAT DEFAULT 500
+  BATCH_SIZE FLOAT DEFAULT 500,
+  TARGET_TABLE_NAME VARCHAR DEFAULT 'STG_EXTERNAL_SIGNALS'
 )
 RETURNS VARIANT
 LANGUAGE JAVASCRIPT
@@ -42,13 +41,15 @@ $$
   } catch (e) {
     return { error: 'invalid JSON: ' + e.message, signals: 0, batches: 0 };
   }
-
   if (!Array.isArray(signals)) {
     return { error: 'expected array, got ' + typeof signals, signals: 0, batches: 0 };
   }
 
-  // Coerce empty string → null so the WHEN MATCHED clause skips the
-  // session-tag update on batch-ingester calls.
+  const targetTable = (TARGET_TABLE_NAME || 'STG_EXTERNAL_SIGNALS').toUpperCase();
+  if (!/^[A-Z0-9_]+$/.test(targetTable)) {
+    return { error: 'invalid target table name: ' + targetTable, signals: 0, batches: 0 };
+  }
+
   const sessionId = (AGENT_SESSION_ID && AGENT_SESSION_ID.length > 0)
     ? AGENT_SESSION_ID
     : null;
@@ -57,7 +58,7 @@ $$
   let batchCount = 0;
 
   const mergeSql = `
-    MERGE INTO MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS AS target
+    MERGE INTO MCC_RAW.MARKETING_DEV.${targetTable} AS target
     USING (
       SELECT
         s.value:SIGNAL_ID::STRING                               AS SIGNAL_ID,
@@ -100,5 +101,6 @@ $$
     signals: totalProcessed,
     batch_size: batchSize,
     session_id: sessionId,
+    target_table: targetTable,
   };
 $$;
