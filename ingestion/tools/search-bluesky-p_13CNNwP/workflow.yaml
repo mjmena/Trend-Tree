@@ -29,11 +29,10 @@ steps:
     snowflake:
       authProvisionId: apn_yghdQYJ
     sql:
-      value: CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(:1, :2, 500)
-      query: CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(:1, :2, 500)
+      value: CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(:1, '{{steps.handle_request.$return_value.agent_session_id}}', 500)
+      query: CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(:1, '{{steps.handle_request.$return_value.agent_session_id}}', 500)
     params:
     - "{{steps.fetch_search.$return_value.signals_json}}"
-    - "{{steps.handle_request.$return_value.agent_session_id}}"
 - namespace: respond
   runtime: nodejs20.x
   uses: "./respond/entry.js"
