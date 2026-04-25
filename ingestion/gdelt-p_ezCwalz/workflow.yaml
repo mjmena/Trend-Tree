@@ -18,7 +18,16 @@ steps:
     snowflake:
       authProvisionId: apn_yghdQYJ
     sql:
-      value: CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(:1, '', 500)
-      query: CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(:1, '', 500)
-    params:
-    - "{{steps.fetch_source.$return_value.signals_json}}"
+      value: |-
+        CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(
+          $${{steps.fetch_source.$return_value.signals_json}}$$,
+          '',
+          500
+        )
+      query: |-
+        CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(
+          $${{steps.fetch_source.$return_value.signals_json}}$$,
+          '',
+          500
+        )
+    params: []
