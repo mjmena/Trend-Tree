@@ -1,0 +1,9 @@
+schema: workflow/2022.04
+name: Distillation
+settings:
+  error_notification: true
+  lambda_memory: 1028
+  lambda_timeout: 600
+triggers:
+- id: hi_wWH723X
+
