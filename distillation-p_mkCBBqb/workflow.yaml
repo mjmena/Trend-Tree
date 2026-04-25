@@ -127,6 +127,24 @@ steps:
         ORDER BY m.TREND_HEAT_INDEX DESC NULLS LAST
         LIMIT 200
       params: []
+- namespace: q_load_prompts
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS
+        FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
+        WHERE IS_ACTIVE = TRUE
+          AND PROMPT_KEY = 'distillation.lead.system'
+      query: |-
+        SELECT PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS
+        FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
+        WHERE IS_ACTIVE = TRUE
+          AND PROMPT_KEY = 'distillation.lead.system'
+      params: []
 - namespace: run_lead_agent
   runtime: nodejs20.x
   uses: "./run_lead_agent/entry.js"
@@ -138,6 +156,7 @@ steps:
     signal_rows: "{{steps.q_signals_window.$return_value}}"
     louvain_rows: "{{steps.q_louvain_candidates.$return_value}}"
     neighbor_rows: "{{steps.q_neighbors.$return_value}}"
+    prompts_rows: "{{steps.q_load_prompts.$return_value}}"
     subagent_url: "https://eo5h5le4j2qu3tm.m.pipedream.net"
     bluesky_url: "https://eoydyalz1dslfre.m.pipedream.net"
     gdelt_url: "https://eoovhehfk229jrg.m.pipedream.net"

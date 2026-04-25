@@ -17,6 +17,46 @@
 // =====================================================================
 
 // ─────────────────────────────────────────────────────────────────────
+// prompt_loader — registry-driven prompt fetch + render
+// (canonical source: agents/lib/prompt_loader.mjs)
+// ─────────────────────────────────────────────────────────────────────
+
+function loadPrompts(rows) {
+  const out = {};
+  for (const r of (rows || [])) {
+    const key = r.PROMPT_KEY;
+    if (!key) continue;
+    let params = r.MODEL_PARAMS;
+    if (typeof params === "string") {
+      try { params = JSON.parse(params); } catch { params = {}; }
+    }
+    if (!params || typeof params !== "object") params = {};
+    out[key] = { template: r.TEMPLATE || "", model: r.MODEL || "", params, version: r.VERSION };
+  }
+  return out;
+}
+
+function render(template, vars) {
+  if (!template) return "";
+  return String(template).replace(/\{\{(\w+)\}\}/g, (_, key) => {
+    const v = vars?.[key];
+    if (v == null) return "";
+    if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
+    return JSON.stringify(v, null, 2);
+  });
+}
+
+function mustGet(loaded, key) {
+  const p = loaded?.[key];
+  if (!p || !p.template) {
+    throw new Error(
+      `Prompt '${key}' not loaded. Confirm DIM_LLM_PROMPT has IS_ACTIVE=TRUE for this key and the q_load_prompts step's WHERE clause includes it.`,
+    );
+  }
+  return p;
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Tool catalog — schemas + dispatchers (subagent subset of lead's)
 // ─────────────────────────────────────────────────────────────────────
 
@@ -534,75 +574,16 @@ function previewOutput(out) {
 // ─────────────────────────────────────────────────────────────────────
 // Step entrypoint
 // ─────────────────────────────────────────────────────────────────────
+//
+// SYSTEM_PROMPT_TEMPLATE, BUCKET_INSTRUCTIONS, and INGEST_GUIDANCE_BY_BUCKET
+// used to live here as const strings — now fetched from
+// MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT via the q_load_prompts step. Bucket
+// pieces are stored as separate keys (one per OVERLAP/AGENT_ONLY/LOUVAIN_ONLY)
+// so they can be tuned independently.
 
-const SYSTEM_PROMPT_TEMPLATE = `You are a distillation subagent for a consumer-trends pipeline. The lead orchestrator gave you ONE hypothesis to investigate. Your job: decide if it's a real, specific, actionable consumer trend.
-
-═══════════════════════════════════════════════════════════════════════
-SPECIFICITY RUBRIC — the single most important rule
-═══════════════════════════════════════════════════════════════════════
-A trend is a SPECIFIC consumer behavior, product use case, aesthetic, or
-cultural pattern that brands could meaningfully act on within 30-180 days.
-A trend has a noun phrase you can put on a slide and a verb a consumer
-is doing.
-
-GOOD examples — the bar:
-  • "Cottage cheese as high-protein snack replacement (women 25-45)"
-  • "Mouth taping for sleep optimization"
-  • "Mob wife aesthetic — fur, gold, dramatic lip (winter 2026 revival)"
-  • "Pickleball-specific apparel emerging beyond core-player niche"
-  • "Fiber-maxxing — adding psyllium/chia to everything"
-  • "Sleepy girl mocktail (tart cherry + magnesium)"
-
-BAD examples — REJECT these:
-  • "Wellness" / "Health & wellness" — category, not behavior
-  • "AI productivity tools" — category
-  • "Beauty trends" — category
-  • "Sustainable fashion" — category
-  • "Mental health awareness" — discourse, not behavior
-  • "Politics" / "Elections" / "[Celebrity] news cycle" — news, not durable
-
-Heuristic: if you can't describe (a) what the consumer does, (b) what they
-buy or use, and (c) why it's distinct from a sibling pattern, in 2 sentences
-with a concrete example — it's not specific enough. Either drill in (split
-the cluster into 2-5 sub-behaviors) or drop it.
-
-═══════════════════════════════════════════════════════════════════════
-YOUR BUCKET: {{BUCKET}}
-═══════════════════════════════════════════════════════════════════════
-{{BUCKET_INSTRUCTIONS}}
-
-═══════════════════════════════════════════════════════════════════════
-HOW TO RESPOND
-═══════════════════════════════════════════════════════════════════════
-1. Use query_signals_window to inspect the supporting signals.
-2. Use query_trend_neighbors to check whether this overlaps an existing trend.
-3. {{INGEST_GUIDANCE}}
-4. For each accepted candidate, call propose_trend_candidate ONCE with:
-     verdict: "REAL_TREND" (new) or "DUPLICATE_OF" (with dedup_of_trend_id)
-     topic: the noun-verb description, ≤80 chars
-     supporting_signal_ids: union of original + any you fetched
-     confidence: 0.0-1.0
-     specificity_score: 0.0-1.0 (1.0 = noun-verb-product, 0.0 = category)
-     bucket, reasoning, source_breakdown, evidence_added
-5. If you reject (NOISE or CATEGORY_TOO_BROAD), do NOT call propose_trend_candidate
-   — just end with a brief text explanation. Your final text block is captured.
-
-You may call multiple propose_trend_candidate if a broad cluster splits
-into 2-5 sibling behaviors.
-
-Be opinionated. The lead is counting on you to filter.`;
-
-const BUCKET_INSTRUCTIONS = {
-  OVERLAP: `Both your raw-signal scan and the SQL Louvain clustering surfaced this hypothesis — high confidence overlap. Validate specificity. If the hypothesis is a category-level grouping ("wellness", "fitness"), either drill into 2-5 sub-behaviors and call propose_trend_candidate for each, or reject as CATEGORY_TOO_BROAD. If it's already specific, validate that supporting signals back the noun-verb framing and accept.`,
-  AGENT_ONLY: `Your raw-signal scan picked this up but Louvain did not — usually because volume is too low for community detection. This is the high-value bucket: real emergent trends often start here. CRITICAL: you MUST call at least one ingest_* tool (try ingest_grok_live_search FIRST — it's fastest at ~3-5s) to corroborate. Demand at least one independent fetched signal pointing to the same noun-verb behavior. If no independent corroboration emerges → NOISE (don't propose).`,
-  LOUVAIN_ONLY: `Louvain clustered this signal group but you did NOT propose it from your raw scan — usually a sign of category-level grouping that the math conflated. Inspect signal diversity: if all signals point to one specific consumer behavior, accept (your scan missed it); if they span multiple loosely-related stories under a vague label, reject as CATEGORY_TOO_BROAD.`,
-};
-
-const INGEST_GUIDANCE_BY_BUCKET = {
-  OVERLAP: "Call discover_external_tools then an ingest_* tool only if the raw signals are thin or borderline.",
-  AGENT_ONLY: "REQUIRED: call discover_external_tools({need: 'web'}) and then ingest_grok_live_search to corroborate. If borderline, also try ingest_search_bluesky for cultural traction or ingest_search_gdelt for hard-news evidence.",
-  LOUVAIN_ONLY: "Only call ingest tools if the signal evidence is ambiguous about specificity vs. breadth.",
-};
+const PROMPT_KEY_SYSTEM = "distillation.subagent.system";
+const PROMPT_KEY_BUCKET_INSTRUCTIONS = "distillation.subagent.bucket_instructions";
+const PROMPT_KEY_INGEST_GUIDANCE = "distillation.subagent.ingest_guidance";
 
 export default defineComponent({
   props: {
@@ -610,6 +591,11 @@ export default defineComponent({
     request: { type: "any" },
     signal_rows: { type: "any", optional: true },
     neighbor_rows: { type: "any", optional: true },
+    prompts_rows: {
+      type: "any",
+      label: "DIM_LLM_PROMPT rows",
+      description: "Output of the q_load_prompts step",
+    },
     // Endpoint URLs — wired in workflow.yaml so the targets are visible there
     // instead of buried in code. Required: throws if missing or PLACEHOLDER.
     bluesky_url: { type: "string", label: "Search Bluesky tool endpoint" },
@@ -657,10 +643,22 @@ export default defineComponent({
       },
     };
 
-    const system = SYSTEM_PROMPT_TEMPLATE
-      .replaceAll("{{BUCKET}}", bucket)
-      .replaceAll("{{BUCKET_INSTRUCTIONS}}", BUCKET_INSTRUCTIONS[bucket] || "")
-      .replaceAll("{{INGEST_GUIDANCE}}", INGEST_GUIDANCE_BY_BUCKET[bucket] || "");
+    const loaded = loadPrompts(this.prompts_rows);
+    const sysPrompt = mustGet(loaded, PROMPT_KEY_SYSTEM);
+    // Bucket pieces live as separate keys with the bucket name lowercased as suffix.
+    // Soft-fall to empty string for unknown buckets (matches pre-migration behavior).
+    const bucketLower = (bucket || "").toLowerCase();
+    const bucketInstrPrompt = loaded[`${PROMPT_KEY_BUCKET_INSTRUCTIONS}.${bucketLower}`];
+    const ingestGuidePrompt = loaded[`${PROMPT_KEY_INGEST_GUIDANCE}.${bucketLower}`];
+    const system = render(sysPrompt.template, {
+      bucket: bucket || "",
+      bucket_instructions: bucketInstrPrompt?.template || "",
+      ingest_guidance: ingestGuidePrompt?.template || "",
+    });
+    console.log(
+      `Subagent prompts: ${PROMPT_KEY_SYSTEM} v${sysPrompt.version}, bucket=${bucket || "(none)"} ` +
+      `(instr v${bucketInstrPrompt?.version ?? "-"}, guide v${ingestGuidePrompt?.version ?? "-"})`,
+    );
 
     const userMsg = `HYPOTHESIS: ${req.hypothesis}
 
@@ -686,8 +684,10 @@ Your verdict and any candidates are emitted via propose_trend_candidate. Be opin
         anthropic: this.anthropic,
         tool_names: SUBAGENT_TOOL_NAMES,
         system, user_message: userMsg, context,
-        max_iterations: 12, budget_usd: 1.0,
-        per_call_max_tokens: 6000, thinking_budget_tokens: 3000,
+        max_iterations: sysPrompt.params.max_iterations ?? 12,
+        budget_usd: sysPrompt.params.budget_usd ?? 1.0,
+        per_call_max_tokens: sysPrompt.params.per_call_max_tokens ?? 6000,
+        thinking_budget_tokens: sysPrompt.params.thinking_budget_tokens ?? 3000,
       });
     } catch (e) {
       console.log(`subagent loop error: ${e.message}`);

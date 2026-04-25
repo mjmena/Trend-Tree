@@ -22,6 +22,46 @@
 // =====================================================================
 
 // ─────────────────────────────────────────────────────────────────────
+// prompt_loader — registry-driven prompt fetch + render
+// (canonical source: agents/lib/prompt_loader.mjs)
+// ─────────────────────────────────────────────────────────────────────
+
+function loadPrompts(rows) {
+  const out = {};
+  for (const r of (rows || [])) {
+    const key = r.PROMPT_KEY;
+    if (!key) continue;
+    let params = r.MODEL_PARAMS;
+    if (typeof params === "string") {
+      try { params = JSON.parse(params); } catch { params = {}; }
+    }
+    if (!params || typeof params !== "object") params = {};
+    out[key] = { template: r.TEMPLATE || "", model: r.MODEL || "", params, version: r.VERSION };
+  }
+  return out;
+}
+
+function render(template, vars) {
+  if (!template) return "";
+  return String(template).replace(/\{\{(\w+)\}\}/g, (_, key) => {
+    const v = vars?.[key];
+    if (v == null) return "";
+    if (typeof v === "string" || typeof v === "number" || typeof v === "boolean") return String(v);
+    return JSON.stringify(v, null, 2);
+  });
+}
+
+function mustGet(loaded, key) {
+  const p = loaded?.[key];
+  if (!p || !p.template) {
+    throw new Error(
+      `Prompt '${key}' not loaded. Confirm DIM_LLM_PROMPT has IS_ACTIVE=TRUE for this key and the q_load_prompts step's WHERE clause includes it.`,
+    );
+  }
+  return p;
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // fanoutSubagents — Promise.all helper for parallel subagent HTTP calls
 // ─────────────────────────────────────────────────────────────────────
 
@@ -708,74 +748,13 @@ function previewOutput(out) {
 // ─────────────────────────────────────────────────────────────────────
 // Step entrypoint
 // ─────────────────────────────────────────────────────────────────────
+//
+// SYSTEM_PROMPT used to live here as a const string — now fetched from
+// MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT via the q_load_prompts step.
+// MODEL_PARAMS overrides (max_iterations, budget_usd, etc.) come from
+// the same row; event payload still wins over registry defaults.
 
-const SYSTEM_PROMPT = `You are the lead orchestrator of a consumer-trends distillation pipeline. Every 1-2 hours you wake up to the firehose: thousands of fresh signals from headlines, Bluesky, GDELT, Google Trends, and more. Your job is to distill SPECIFIC, ACTIONABLE consumer trends from this firehose. You have a SQL Louvain clustering's output as one input among many — you can override it.
-
-═══════════════════════════════════════════════════════════════════════
-SPECIFICITY RUBRIC — the single most important rule
-═══════════════════════════════════════════════════════════════════════
-A trend is a SPECIFIC consumer behavior, product use case, aesthetic, or
-cultural pattern that brands could meaningfully act on within 30-180 days.
-A trend has a noun phrase you can put on a slide and a verb a consumer is doing.
-
-GOOD examples — the bar:
-  • "Cottage cheese as high-protein snack replacement (women 25-45)"
-  • "Mouth taping for sleep optimization"
-  • "Mob wife aesthetic — fur, gold, dramatic lip (winter 2026 revival)"
-  • "Pickleball-specific apparel emerging beyond core-player niche"
-  • "Fiber-maxxing — adding psyllium/chia to everything"
-  • "Sleepy girl mocktail (tart cherry + magnesium)"
-
-BAD examples — REJECT these:
-  • "Wellness" / "Health & wellness" — category, not behavior
-  • "AI productivity tools" — category
-  • "Beauty trends" — category
-  • "Sustainable fashion" — category
-  • "Mental health awareness" — discourse, not behavior
-  • "Politics" / "Elections" / "[Celebrity] news cycle" — news, not durable
-
-═══════════════════════════════════════════════════════════════════════
-YOUR PROCESS
-═══════════════════════════════════════════════════════════════════════
-1. CALL query_signals_window with no filter (or a broad sample) to inspect the
-   recent signals. Look for noun-verb consumer behaviors that recur or that 3+
-   independent signals point to. Form 20-80 candidate hypotheses.
-
-2. CALL query_louvain_candidates to see what the SQL clustering thinks. Each
-   cluster has a centroid_topic + signal_ids + signal_count + top_domains.
-
-3. RECONCILE into three buckets:
-   - OVERLAP: Your hypothesis maps onto a Louvain cluster. Mark for validation.
-   - AGENT_ONLY: Your hypothesis has no Louvain match. These are the
-     emergent-signal candidates Louvain missed (your scan caught a pattern
-     with too little volume for community detection).
-   - LOUVAIN_ONLY: A Louvain cluster you didn't independently propose.
-     Usually these are category-level conflations the math made.
-
-4. DISPATCH SUBAGENTS in parallel via dispatch_subagent. One dispatch per
-   hypothesis, with the bucket label and supporting signal_ids. Subagents
-   gather extra evidence (ingest tools), validate specificity, and return
-   verdicts + refined candidates. Concurrency cap is 10 in flight.
-
-5. CONSOLIDATE results. Subagents have already proposed candidates into the
-   shared accumulator via propose_trend_candidate. You can also propose
-   directly if you want to add or override (e.g. when subagents return
-   conflicting verdicts you want to settle).
-
-6. END your turn with a brief text block summarizing: signals seen, hypotheses
-   formed, dispatches sent, accepted candidates by bucket.
-
-═══════════════════════════════════════════════════════════════════════
-GUARDRAILS
-═══════════════════════════════════════════════════════════════════════
-- Don't propose categories. The dashboard already has tags for that.
-- Don't propose duplicates of existing trends — call query_trend_neighbors first.
-- Be opinionated about specificity. Reject more than you accept.
-- Phase 1 EXPLICITLY values recall on weak emergent signals — when an
-  AGENT_ONLY hypothesis has 3-5 independent specific signals, dispatch a
-  subagent to corroborate rather than dismiss it.
-- Budget: keep total LLM spend under $5/run. Subagents cost ~$0.20 each;
-  prefer 30-60 dispatches max.`;
+const PROMPT_KEY = "distillation.lead.system";
 
 export default defineComponent({
   props: {
@@ -785,6 +764,11 @@ export default defineComponent({
     signal_rows: { type: "any", optional: true },
     louvain_rows: { type: "any", optional: true },
     neighbor_rows: { type: "any", optional: true },
+    prompts_rows: {
+      type: "any",
+      label: "DIM_LLM_PROMPT rows",
+      description: "Output of the q_load_prompts step",
+    },
     // Endpoint URLs — wired in workflow.yaml so the targets are visible there
     // instead of buried in code. Required: throws if missing or PLACEHOLDER.
     subagent_url: { type: "string", label: "Distillation subagent endpoint" },
@@ -866,18 +850,22 @@ Begin your scan. Be opinionated about specificity.`;
       return emptyResult({ chain_id: evt.chain_id, max_signal_ts: null, started, signals_seen: signal_pool.length, skipped: "dry_run" });
     }
 
+    const loaded = loadPrompts(this.prompts_rows);
+    const prompt = mustGet(loaded, PROMPT_KEY);
+    console.log(`Lead system prompt: ${PROMPT_KEY} v${prompt.version}`);
+
     let result;
     try {
       result = await runAgentLoop({
         anthropic: this.anthropic,
         tool_names: LEAD_TOOL_NAMES,
-        system: SYSTEM_PROMPT,
+        system: prompt.template,
         user_message: userMsg,
         context,
-        max_iterations: 15,
-        budget_usd: evt.budget_remaining_usd ?? evt.budget_usd ?? 5.0,
-        per_call_max_tokens: evt.per_call_max_tokens || 8192,
-        thinking_budget_tokens: evt.thinking_budget_tokens || 5000,
+        max_iterations: prompt.params.max_iterations ?? 15,
+        budget_usd: evt.budget_remaining_usd ?? evt.budget_usd ?? prompt.params.budget_usd ?? 5.0,
+        per_call_max_tokens: evt.per_call_max_tokens || prompt.params.per_call_max_tokens || 8192,
+        thinking_budget_tokens: evt.thinking_budget_tokens || prompt.params.thinking_budget_tokens || 5000,
       });
     } catch (e) {
       console.log(`lead loop error: ${e.message}`);

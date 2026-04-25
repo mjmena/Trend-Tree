@@ -63,6 +63,40 @@ steps:
         ORDER BY m.TREND_HEAT_INDEX DESC NULLS LAST
         LIMIT 100
       params: []
+- namespace: q_load_prompts
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS
+        FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
+        WHERE IS_ACTIVE = TRUE
+          AND PROMPT_KEY IN (
+            'distillation.subagent.system',
+            'distillation.subagent.bucket_instructions.overlap',
+            'distillation.subagent.bucket_instructions.agent_only',
+            'distillation.subagent.bucket_instructions.louvain_only',
+            'distillation.subagent.ingest_guidance.overlap',
+            'distillation.subagent.ingest_guidance.agent_only',
+            'distillation.subagent.ingest_guidance.louvain_only'
+          )
+      query: |-
+        SELECT PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS
+        FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
+        WHERE IS_ACTIVE = TRUE
+          AND PROMPT_KEY IN (
+            'distillation.subagent.system',
+            'distillation.subagent.bucket_instructions.overlap',
+            'distillation.subagent.bucket_instructions.agent_only',
+            'distillation.subagent.bucket_instructions.louvain_only',
+            'distillation.subagent.ingest_guidance.overlap',
+            'distillation.subagent.ingest_guidance.agent_only',
+            'distillation.subagent.ingest_guidance.louvain_only'
+          )
+      params: []
 - namespace: run_subagent
   runtime: nodejs20.x
   uses: "./run_subagent/entry.js"
@@ -72,6 +106,7 @@ steps:
     request: "{{steps.handle_request.$return_value}}"
     signal_rows: "{{steps.q_fetch_signals.$return_value}}"
     neighbor_rows: "{{steps.q_fetch_neighbors.$return_value}}"
+    prompts_rows: "{{steps.q_load_prompts.$return_value}}"
     bluesky_url: "https://eoydyalz1dslfre.m.pipedream.net"
     gdelt_url: "https://eoovhehfk229jrg.m.pipedream.net"
     gtrends_url: "https://eov9u8rngcgi2z6.m.pipedream.net"
