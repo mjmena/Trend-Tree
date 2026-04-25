@@ -2,8 +2,74 @@ schema: workflow/2022.04
 name: Distillation Subagent
 settings:
   error_notification: true
+  lambda_memory: 4096
   lambda_timeout: 600
+  network: net_5Lnie3
 triggers:
 - id: hi_2VH6DQX
 - id: hi_ERH5D7G
-
+steps:
+- namespace: handle_request
+  runtime: nodejs20.x
+  uses: "./handle_request/entry.js"
+  props:
+    trigger_event: "{{steps.trigger.event}}"
+- namespace: q_fetch_signals
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    sql:
+      value: |-
+        SELECT SIGNAL_ID, SOURCE_NAME, SIGNAL_TIMESTAMP,
+               SIGNAL_TITLE, LEFT(SIGNAL_TEXT, 1500) AS SIGNAL_TEXT,
+               METADATA, AGENT_SESSION_ID
+        FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
+        WHERE SIGNAL_ID IN ({{steps.handle_request.$return_value.signal_ids_sql_in}})
+        ORDER BY SIGNAL_TIMESTAMP DESC NULLS LAST
+        LIMIT 200
+      query: |-
+        SELECT SIGNAL_ID, SOURCE_NAME, SIGNAL_TIMESTAMP,
+               SIGNAL_TITLE, LEFT(SIGNAL_TEXT, 1500) AS SIGNAL_TEXT,
+               METADATA, AGENT_SESSION_ID
+        FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
+        WHERE SIGNAL_ID IN ({{steps.handle_request.$return_value.signal_ids_sql_in}})
+        ORDER BY SIGNAL_TIMESTAMP DESC NULLS LAST
+        LIMIT 200
+      params: []
+- namespace: q_fetch_neighbors
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    sql:
+      value: |-
+        SELECT m.TREND_ID, m.TREND_TOPIC, m.TOTAL_CLUSTER_SIZE,
+               m.DISTINCT_SOURCE_COUNT, m.VELOCITY_DIRECTION,
+               m.TREND_HEAT_INDEX, m.LAST_UPDATE_AT
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
+        WHERE m.VELOCITY_DIRECTION != 'SUPERSEDED'
+          AND m.LAST_UPDATE_AT > DATEADD(day, -30, CURRENT_TIMESTAMP())
+        ORDER BY m.TREND_HEAT_INDEX DESC NULLS LAST
+        LIMIT 100
+      query: |-
+        SELECT m.TREND_ID, m.TREND_TOPIC, m.TOTAL_CLUSTER_SIZE,
+               m.DISTINCT_SOURCE_COUNT, m.VELOCITY_DIRECTION,
+               m.TREND_HEAT_INDEX, m.LAST_UPDATE_AT
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
+        WHERE m.VELOCITY_DIRECTION != 'SUPERSEDED'
+          AND m.LAST_UPDATE_AT > DATEADD(day, -30, CURRENT_TIMESTAMP())
+        ORDER BY m.TREND_HEAT_INDEX DESC NULLS LAST
+        LIMIT 100
+      params: []
+- namespace: run_subagent
+  runtime: nodejs20.x
+  uses: "./run_subagent/entry.js"
+  props:
+    request: "{{steps.handle_request.$return_value}}"
+    signal_rows: "{{steps.q_fetch_signals.$return_value}}"
+    neighbor_rows: "{{steps.q_fetch_neighbors.$return_value}}"
+- namespace: respond
+  runtime: nodejs20.x
+  uses: "./respond/entry.js"
+  props:
+    request: "{{steps.handle_request.$return_value}}"
+    agent_result: "{{steps.run_subagent.$return_value}}"
