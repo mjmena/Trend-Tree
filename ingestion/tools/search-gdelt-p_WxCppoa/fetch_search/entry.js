@@ -25,7 +25,24 @@ async function fetchArticles(topic, windowDays, mode) {
     maxrecords: "75", // matches legacy batch ingester; >150 reliably 429s
     timespan: `${windowDays}d`,
   });
-  const resp = await fetch(`${GDELT_DOC_URL}?${params}`);
+  // GDELT silently drops requests with no User-Agent (or undici's default
+  // node-fetch UA). Set a real-looking UA + Accept header. Also use an
+  // explicit timeout so transient hangs surface as catchable errors
+  // instead of pegging the lambda at the 90s timeout.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 25_000);
+  let resp;
+  try {
+    resp = await fetch(`${GDELT_DOC_URL}?${params}`, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; TrendTreeBot/1.0; +https://mcclatchy.com)",
+        Accept: "application/json",
+      },
+      signal: ctrl.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   const text = await resp.text();
   if (!text.startsWith("{") && !text.startsWith("[")) {
