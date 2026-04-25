@@ -129,19 +129,6 @@ export default defineComponent({
         output: usage.output_tokens || usage.completion_tokens || 0,
       },
       model: MODEL,
-      // TEMP DEBUG — remove once response shape is confirmed
-      _debug_keys: Object.keys(data || {}),
-      _debug_output_shape: Array.isArray(data?.output)
-        ? data.output.map((o) => ({
-            type: o?.type,
-            keys: Object.keys(o || {}),
-            content_blocks: Array.isArray(o?.content)
-              ? o.content.map((b) => ({ type: b?.type, keys: Object.keys(b || {}) }))
-              : null,
-          }))
-        : null,
-      _debug_first_annotation: data?.output?.[0]?.content?.[0]?.annotations?.[0] || null,
-      _debug_root_citations: data?.citations,
     };
   },
 });
