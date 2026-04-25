@@ -3,7 +3,7 @@ name: Distillation
 settings:
   error_notification: true
   lambda_memory: 8192
-  lambda_timeout: 900
+  lambda_timeout: 750
   network: net_5Lnie3
 triggers:
 - id: hi_wWH723X
