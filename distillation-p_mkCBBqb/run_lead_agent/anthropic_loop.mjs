@@ -21,7 +21,7 @@
 // Tool dispatch is delegated to ./tool_catalog.js — this file knows how to
 // drive the loop, not what the tools mean.
 
-import { dispatchTool, getToolSchemas } from "./tool_catalog.js";
+import { dispatchTool, getToolSchemas } from "./tool_catalog.mjs";
 
 const MODEL = "claude-sonnet-4-6";
 const RATES_PER_M = { input: 3.0, output: 15.0 }; // Sonnet 4.6 pricing

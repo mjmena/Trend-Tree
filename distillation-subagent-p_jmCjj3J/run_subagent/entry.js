@@ -13,8 +13,8 @@
 // tool (accumulated in ctx.proposed_candidates). The respond step picks
 // them up and returns them to the lead alongside the reasoning trace.
 
-import { runAgentLoop } from "./anthropic_loop.js";
-import { SUBAGENT_TOOL_NAMES } from "./tool_catalog.js";
+import { runAgentLoop } from "./anthropic_loop.mjs";
+import { SUBAGENT_TOOL_NAMES } from "./tool_catalog.mjs";
 
 const SYSTEM_PROMPT_TEMPLATE = `You are a distillation subagent for a consumer-trends pipeline. The lead orchestrator gave you ONE hypothesis to investigate. Your job: decide if it's a real, specific, actionable consumer trend.
 

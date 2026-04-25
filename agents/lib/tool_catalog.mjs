@@ -36,7 +36,7 @@
 //   The discover_external_tools meta-tool is itself eager and returns the
 //   schemas of whichever deferred tools match the `need` argument.
 
-import { fanoutSubagents } from "./subagent_client.js";
+import { fanoutSubagents } from "./subagent_client.mjs";
 
 // ────────────────────────────────────────────────────────────────────────
 // Tool schemas (Anthropic tool-use format)
