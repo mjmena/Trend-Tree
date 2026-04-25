@@ -24,6 +24,8 @@ steps:
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
   props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
     sql:
       value: |-
         MERGE INTO MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS AS target

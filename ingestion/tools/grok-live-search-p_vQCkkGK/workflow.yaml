@@ -17,6 +17,7 @@ steps:
   uses: "./fetch_search/entry.js"
   props:
     x_ai:
+      authProvisionId: apn_WYhE6e6
     query: "{{steps.handle_request.$return_value.query}}"
     mode: "{{steps.handle_request.$return_value.mode}}"
 - namespace: respond
