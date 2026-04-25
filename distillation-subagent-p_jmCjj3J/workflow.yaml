@@ -7,7 +7,6 @@ settings:
   network: net_5Lnie3
 triggers:
 - id: hi_2VH6DQX
-- id: hi_ERH5D7G
 steps:
 - namespace: handle_request
   runtime: nodejs20.x
@@ -18,6 +17,8 @@ steps:
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
   props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
     sql:
       value: |-
         SELECT SIGNAL_ID, SOURCE_NAME, SIGNAL_TIMESTAMP,
@@ -40,6 +41,8 @@ steps:
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
   props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
     sql:
       value: |-
         SELECT m.TREND_ID, m.TREND_TOPIC, m.TOTAL_CLUSTER_SIZE,
@@ -64,6 +67,8 @@ steps:
   runtime: nodejs20.x
   uses: "./run_subagent/entry.js"
   props:
+    anthropic:
+      authProvisionId: apn_Oghan1O
     request: "{{steps.handle_request.$return_value}}"
     signal_rows: "{{steps.q_fetch_signals.$return_value}}"
     neighbor_rows: "{{steps.q_fetch_neighbors.$return_value}}"
