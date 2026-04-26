@@ -87,10 +87,14 @@ export default defineComponent({
       valuable_examples: ctx.valuable_examples_formatted || "(none)",
     });
 
+    // OpenAI /v1/responses with built-in web_search tool. Input shape is
+    // the message-array form (matching the Grok pattern + existing /v1/chat
+    // patterns). Tool name is `web_search` (not `web_search_preview` which
+    // was the GA-preview name during the API's first months).
     const body = {
       model: prompt.model,
-      input: rendered,
-      tools: prompt.params.tools ?? [{ type: "web_search_preview" }],
+      input: [{ role: "user", content: rendered }],
+      tools: [{ type: "web_search" }],
       temperature: prompt.params.temperature ?? 0.5,
     };
 

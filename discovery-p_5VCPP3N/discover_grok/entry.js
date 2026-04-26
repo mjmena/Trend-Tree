@@ -87,12 +87,15 @@ export default defineComponent({
       valuable_examples: ctx.valuable_examples_formatted || "(none)",
     });
 
-    // xAI /v1/responses shape with live search tools.
+    // xAI /v1/responses shape — must use tools[] (not deprecated
+    // search_parameters which returns HTTP 410 as of 2026-04-25).
+    // Mirrors the working pattern in
+    // ingestion/tools/grok-live-search-p_vQCkkGK/fetch_search/entry.js.
     const body = {
       model: prompt.model,
-      input: rendered,
+      input: [{ role: "user", content: rendered }],
+      tools: [{ type: "web_search" }, { type: "x_search" }],
       temperature: prompt.params.temperature ?? 0.6,
-      search_parameters: prompt.params.search_parameters ?? { mode: "auto" },
     };
 
     try {
