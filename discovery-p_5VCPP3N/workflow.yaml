@@ -2,6 +2,145 @@ schema: workflow/2022.04
 name: Discovery
 settings:
   error_notification: true
+  lambda_memory: 4096
+  lambda_timeout: 600
+  network: net_5Lnie3
 triggers:
 - id: hi_nlHd21j
-
+steps:
+- namespace: q_load_prompts
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS
+        FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
+        WHERE IS_ACTIVE = TRUE
+          AND PROMPT_KEY IN (
+            'discovery.gemini.search',
+            'discovery.grok.search',
+            'discovery.chatgpt.search',
+            'discovery.claude.rerank'
+          )
+      query: |-
+        SELECT PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS
+        FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
+        WHERE IS_ACTIVE = TRUE
+          AND PROMPT_KEY IN (
+            'discovery.gemini.search',
+            'discovery.grok.search',
+            'discovery.chatgpt.search',
+            'discovery.claude.rerank'
+          )
+      params: []
+- namespace: q_load_active_trends
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT TREND_TOPIC
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS
+        WHERE VELOCITY_DIRECTION != 'SUPERSEDED'
+          AND LAST_UPDATE_AT > DATEADD(day, -30, CURRENT_TIMESTAMP())
+        ORDER BY TREND_HEAT_INDEX DESC NULLS LAST
+        LIMIT 100
+      query: |-
+        SELECT TREND_TOPIC
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS
+        WHERE VELOCITY_DIRECTION != 'SUPERSEDED'
+          AND LAST_UPDATE_AT > DATEADD(day, -30, CURRENT_TIMESTAMP())
+        ORDER BY TREND_HEAT_INDEX DESC NULLS LAST
+        LIMIT 100
+      params: []
+- namespace: q_load_examples
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT TREND_NAME_B2B, TREND_NAME_B2C, CATEGORY, SUBCATEGORY, SUMMARY_SHORT, TREND_HEAT_INDEX
+        FROM MCC_PRESENTATION.TREND_AGENT.V_VALUABLE_TREND_EXAMPLES
+      query: |-
+        SELECT TREND_NAME_B2B, TREND_NAME_B2C, CATEGORY, SUBCATEGORY, SUMMARY_SHORT, TREND_HEAT_INDEX
+        FROM MCC_PRESENTATION.TREND_AGENT.V_VALUABLE_TREND_EXAMPLES
+      params: []
+- namespace: build_discovery_context
+  runtime: nodejs20.x
+  uses: "./build_discovery_context/entry.js"
+  props:
+    active_trends_rows: "{{steps.q_load_active_trends.$return_value}}"
+    examples_rows: "{{steps.q_load_examples.$return_value}}"
+- namespace: discover_gemini
+  runtime: nodejs20.x
+  uses: "./discover_gemini/entry.js"
+  props:
+    google_gemini:
+      authProvisionId: apn_EOhp9DY
+    prompts_rows: "{{steps.q_load_prompts.$return_value}}"
+    discovery_context: "{{steps.build_discovery_context.$return_value}}"
+- namespace: discover_grok
+  runtime: nodejs20.x
+  uses: "./discover_grok/entry.js"
+  props:
+    x_ai:
+      authProvisionId: apn_WYhE6e6
+    prompts_rows: "{{steps.q_load_prompts.$return_value}}"
+    discovery_context: "{{steps.build_discovery_context.$return_value}}"
+- namespace: discover_chatgpt
+  runtime: nodejs20.x
+  uses: "./discover_chatgpt/entry.js"
+  props:
+    openai: {}
+    prompts_rows: "{{steps.q_load_prompts.$return_value}}"
+    discovery_context: "{{steps.build_discovery_context.$return_value}}"
+- namespace: rerank_claude
+  runtime: nodejs20.x
+  uses: "./rerank_claude/entry.js"
+  props:
+    anthropic:
+      authProvisionId: apn_Oghan1O
+    prompts_rows: "{{steps.q_load_prompts.$return_value}}"
+    discovery_context: "{{steps.build_discovery_context.$return_value}}"
+    gemini_proposals: "{{steps.discover_gemini.$return_value}}"
+    grok_proposals: "{{steps.discover_grok.$return_value}}"
+    chatgpt_proposals: "{{steps.discover_chatgpt.$return_value}}"
+- namespace: canonicalize_and_validate
+  runtime: nodejs20.x
+  uses: "./canonicalize_and_validate/entry.js"
+  props:
+    proposals: "{{steps.rerank_claude.$return_value}}"
+- namespace: write_discovered_signals
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(
+          $${{steps.canonicalize_and_validate.$return_value.signals_json}}$$,
+          '',
+          500
+        )
+      query: |-
+        CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(
+          $${{steps.canonicalize_and_validate.$return_value.signals_json}}$$,
+          '',
+          500
+        )
+      params: []
+- namespace: respond
+  runtime: nodejs20.x
+  uses: "./respond/entry.js"
+  props:
+    rerank_result: "{{steps.rerank_claude.$return_value}}"
+    canon_result: "{{steps.canonicalize_and_validate.$return_value}}"
+    write_result: "{{steps.write_discovered_signals.$return_value}}"
