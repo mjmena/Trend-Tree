@@ -43,7 +43,7 @@ steps:
                SIGNAL_TITLE, LEFT(SIGNAL_TEXT, 800) AS SIGNAL_TEXT,
                METADATA
         FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
-        WHERE SIGNAL_TIMESTAMP > '{{steps.q_load_cursor.$return_value.[0].WINDOW_START_TS}}'
+        WHERE SIGNAL_TIMESTAMP > DATEADD(hour, -24, CURRENT_TIMESTAMP())
           AND COALESCE(AGENT_SESSION_ID, '') = ''
         ORDER BY SIGNAL_TIMESTAMP DESC NULLS LAST
         LIMIT 600
@@ -52,7 +52,7 @@ steps:
                SIGNAL_TITLE, LEFT(SIGNAL_TEXT, 800) AS SIGNAL_TEXT,
                METADATA
         FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
-        WHERE SIGNAL_TIMESTAMP > '{{steps.q_load_cursor.$return_value.[0].WINDOW_START_TS}}'
+        WHERE SIGNAL_TIMESTAMP > DATEADD(hour, -24, CURRENT_TIMESTAMP())
           AND COALESCE(AGENT_SESSION_ID, '') = ''
         ORDER BY SIGNAL_TIMESTAMP DESC NULLS LAST
         LIMIT 600
@@ -112,19 +112,19 @@ steps:
         SELECT m.TREND_ID, m.TREND_TOPIC, m.TOTAL_CLUSTER_SIZE,
                m.DISTINCT_SOURCE_COUNT, m.VELOCITY_DIRECTION,
                m.TREND_HEAT_INDEX, m.LAST_UPDATE_AT
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
-        WHERE m.VELOCITY_DIRECTION != 'SUPERSEDED'
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS m
+        WHERE COALESCE(m.VELOCITY_DIRECTION, '') != 'SUPERSEDED'
           AND m.LAST_UPDATE_AT > DATEADD(day, -30, CURRENT_TIMESTAMP())
-        ORDER BY m.TREND_HEAT_INDEX DESC NULLS LAST
+        ORDER BY m.LAST_UPDATE_AT DESC NULLS LAST
         LIMIT 200
       query: |-
         SELECT m.TREND_ID, m.TREND_TOPIC, m.TOTAL_CLUSTER_SIZE,
                m.DISTINCT_SOURCE_COUNT, m.VELOCITY_DIRECTION,
                m.TREND_HEAT_INDEX, m.LAST_UPDATE_AT
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
-        WHERE m.VELOCITY_DIRECTION != 'SUPERSEDED'
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS m
+        WHERE COALESCE(m.VELOCITY_DIRECTION, '') != 'SUPERSEDED'
           AND m.LAST_UPDATE_AT > DATEADD(day, -30, CURRENT_TIMESTAMP())
-        ORDER BY m.TREND_HEAT_INDEX DESC NULLS LAST
+        ORDER BY m.LAST_UPDATE_AT DESC NULLS LAST
         LIMIT 200
       params: []
 - namespace: q_load_prompts
@@ -185,7 +185,7 @@ steps:
       authProvisionId: apn_yghdQYJ
     sql:
       value: |-
-        INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES_AGENT (
+        INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES (
           CANDIDATE_ID, AGENT_SESSION_ID, CHAIN_ID, ITERATION,
           TOPIC, SUPPORTING_SIGNAL_IDS, CONFIDENCE, SPECIFICITY_SCORE,
           SOURCE_BREAKDOWN, BUCKET, VERDICT, EVIDENCE_ADDED,
@@ -210,7 +210,7 @@ steps:
         FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) c
         WHERE :1 != '[]'
       query: |-
-        INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES_AGENT (
+        INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES (
           CANDIDATE_ID, AGENT_SESSION_ID, CHAIN_ID, ITERATION,
           TOPIC, SUPPORTING_SIGNAL_IDS, CONFIDENCE, SPECIFICITY_SCORE,
           SOURCE_BREAKDOWN, BUCKET, VERDICT, EVIDENCE_ADDED,
@@ -236,6 +236,150 @@ steps:
         WHERE :1 != '[]'
       params:
       - "{{steps.run_lead_agent.$return_value.candidates_json}}"
+- namespace: commit_promoted_trends
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS (
+          TREND_ID, CANDIDATE_ID, TREND_TOPIC, AGENT_SESSION_ID, CHAIN_ID,
+          DETECTED_AT, LAST_UPDATE_AT, PROMOTED_AT,
+          TOTAL_CLUSTER_SIZE, DISTINCT_SOURCE_COUNT,
+          CONFIDENCE, SPECIFICITY_SCORE, VELOCITY_DIRECTION
+        )
+        SELECT
+          UUID_STRING(), c.CANDIDATE_ID, c.TOPIC, c.AGENT_SESSION_ID, c.CHAIN_ID,
+          c.CREATED_AT, c.CREATED_AT, CURRENT_TIMESTAMP(),
+          ARRAY_SIZE(c.SUPPORTING_SIGNAL_IDS),
+          ARRAY_SIZE(OBJECT_KEYS(c.SOURCE_BREAKDOWN)),
+          c.CONFIDENCE, c.SPECIFICITY_SCORE, 'NEW'
+        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+        WHERE c.AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+          AND c.VERDICT = 'REAL_TREND'
+          AND c.PROMOTED_AT IS NULL
+      query: |-
+        INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS (
+          TREND_ID, CANDIDATE_ID, TREND_TOPIC, AGENT_SESSION_ID, CHAIN_ID,
+          DETECTED_AT, LAST_UPDATE_AT, PROMOTED_AT,
+          TOTAL_CLUSTER_SIZE, DISTINCT_SOURCE_COUNT,
+          CONFIDENCE, SPECIFICITY_SCORE, VELOCITY_DIRECTION
+        )
+        SELECT
+          UUID_STRING(), c.CANDIDATE_ID, c.TOPIC, c.AGENT_SESSION_ID, c.CHAIN_ID,
+          c.CREATED_AT, c.CREATED_AT, CURRENT_TIMESTAMP(),
+          ARRAY_SIZE(c.SUPPORTING_SIGNAL_IDS),
+          ARRAY_SIZE(OBJECT_KEYS(c.SOURCE_BREAKDOWN)),
+          c.CONFIDENCE, c.SPECIFICITY_SCORE, 'NEW'
+        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+        WHERE c.AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+          AND c.VERDICT = 'REAL_TREND'
+          AND c.PROMOTED_AT IS NULL
+      params: []
+- namespace: commit_duplicate_updates
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        UPDATE MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS f
+        SET LAST_UPDATE_AT = CURRENT_TIMESTAMP()
+        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+        WHERE c.AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+          AND c.VERDICT LIKE 'DUPLICATE_OF_%'
+          AND c.DEDUP_OF_TREND_ID IS NOT NULL
+          AND c.DEDUP_OF_TREND_ID = f.TREND_ID
+          AND c.PROMOTED_AT IS NULL
+      query: |-
+        UPDATE MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS f
+        SET LAST_UPDATE_AT = CURRENT_TIMESTAMP()
+        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+        WHERE c.AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+          AND c.VERDICT LIKE 'DUPLICATE_OF_%'
+          AND c.DEDUP_OF_TREND_ID IS NOT NULL
+          AND c.DEDUP_OF_TREND_ID = f.TREND_ID
+          AND c.PROMOTED_AT IS NULL
+      params: []
+- namespace: update_real_trend_promotions
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+        SET PROMOTED_AT = CURRENT_TIMESTAMP(), PROMOTED_TO = f.TREND_ID
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS f
+        WHERE c.CANDIDATE_ID = f.CANDIDATE_ID
+          AND c.AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+          AND c.VERDICT = 'REAL_TREND'
+          AND c.PROMOTED_AT IS NULL
+      query: |-
+        UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+        SET PROMOTED_AT = CURRENT_TIMESTAMP(), PROMOTED_TO = f.TREND_ID
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS f
+        WHERE c.CANDIDATE_ID = f.CANDIDATE_ID
+          AND c.AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+          AND c.VERDICT = 'REAL_TREND'
+          AND c.PROMOTED_AT IS NULL
+      params: []
+- namespace: update_duplicate_promotions
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+        SET PROMOTED_AT = CURRENT_TIMESTAMP(), PROMOTED_TO = c.DEDUP_OF_TREND_ID
+        WHERE c.AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+          AND c.VERDICT LIKE 'DUPLICATE_OF_%'
+          AND c.DEDUP_OF_TREND_ID IS NOT NULL
+          AND c.PROMOTED_AT IS NULL
+      query: |-
+        UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+        SET PROMOTED_AT = CURRENT_TIMESTAMP(), PROMOTED_TO = c.DEDUP_OF_TREND_ID
+        WHERE c.AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+          AND c.VERDICT LIKE 'DUPLICATE_OF_%'
+          AND c.DEDUP_OF_TREND_ID IS NOT NULL
+          AND c.PROMOTED_AT IS NULL
+      params: []
+- namespace: claim_supporting_signals
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        UPDATE MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
+        SET AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+        WHERE s.AGENT_SESSION_ID IS NULL
+          AND s.SIGNAL_ID IN (
+            SELECT DISTINCT sig.value::STRING
+            FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
+                 LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) sig
+            WHERE c.AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+              AND c.PROMOTED_AT IS NOT NULL
+          )
+      query: |-
+        UPDATE MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
+        SET AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+        WHERE s.AGENT_SESSION_ID IS NULL
+          AND s.SIGNAL_ID IN (
+            SELECT DISTINCT sig.value::STRING
+            FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
+                 LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) sig
+            WHERE c.AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+              AND c.PROMOTED_AT IS NOT NULL
+          )
+      params: []
 - namespace: update_cursor
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -303,4 +447,9 @@ steps:
     event: "{{steps.normalize_event.$return_value}}"
     agent_result: "{{steps.run_lead_agent.$return_value}}"
     commit_result: "{{steps.commit_candidates.$return_value}}"
+    promoted_trends_result: "{{steps.commit_promoted_trends.$return_value}}"
+    duplicate_updates_result: "{{steps.commit_duplicate_updates.$return_value}}"
+    real_trend_promotion_result: "{{steps.update_real_trend_promotions.$return_value}}"
+    duplicate_promotion_result: "{{steps.update_duplicate_promotions.$return_value}}"
+    claim_signals_result: "{{steps.claim_supporting_signals.$return_value}}"
 

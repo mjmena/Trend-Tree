@@ -1,8 +1,6 @@
--- Shadow output table for the distillation agent during Phase 1. Lives
--- alongside (does NOT replace) STG_TREND_CANDIDATES. Phase 1.5 promotion
--- decides which agent candidates flow into the live pipeline.
+-- Output table for the distillation agent. Each row is one candidate trend
+-- the agent (lead or subagent) emitted in a single run.
 --
--- Each row is one candidate trend the agent (lead or subagent) emitted.
 -- BUCKET captures whether the candidate originated from the agent's raw-signal
 -- scan, the Louvain-only side, or both (overlap). VERDICT is the subagent's
 -- final judgment after corroboration. SUPPORTING_SIGNAL_IDS is the union of
@@ -12,11 +10,14 @@
 -- 10-30 KB per row). Keep the column VARIANT so we can store interleaved
 -- thinking blocks as native JSON.
 --
--- PROMOTED_AT / PROMOTED_TO are filled in once a candidate is accepted into
--- STG_TREND_CANDIDATES (or merged onto an existing trend) by the Phase 1.5
--- promotion job. Until then they stay NULL.
+-- PROMOTED_AT / PROMOTED_TO are filled in inline by the lead workflow when
+-- promotion fires (commit_promoted_trends + commit_duplicate_updates +
+-- update_candidate_promotion). For VERDICT='REAL_TREND', PROMOTED_TO is the
+-- new FCT_TRENDS row's TREND_ID. For VERDICT LIKE 'DUPLICATE_OF_%', it's the
+-- existing trend's TREND_ID (which gets its LAST_UPDATE_AT bumped instead of
+-- a new row inserted).
 
-CREATE TABLE IF NOT EXISTS MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES_AGENT (
+CREATE TABLE IF NOT EXISTS MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES (
   CANDIDATE_ID            VARCHAR(64)   NOT NULL PRIMARY KEY,
   AGENT_SESSION_ID        VARCHAR(64),
   CHAIN_ID                VARCHAR(64),
@@ -33,6 +34,6 @@ CREATE TABLE IF NOT EXISTS MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES_AGENT (
   REASONING               VARCHAR(2000) COMMENT 'one-paragraph rationale (subagent free-text)',
   REASONING_TRACE         VARIANT       COMMENT 'full Anthropic tool-call log + thinking blocks',
   DEDUP_OF_TREND_ID       VARCHAR(64)   COMMENT 'set when VERDICT starts with DUPLICATE_OF_',
-  PROMOTED_AT             TIMESTAMP_NTZ COMMENT 'NULL until Phase 1.5 promotion picks it up',
-  PROMOTED_TO             VARCHAR(64)   COMMENT 'TREND_ID it became (or merged onto) post-promotion'
+  PROMOTED_AT             TIMESTAMP_NTZ COMMENT 'set by the lead workflow once promotion fires',
+  PROMOTED_TO             VARCHAR(64)   COMMENT 'TREND_ID this candidate became (REAL_TREND) or merged onto (DUPLICATE_OF)'
 );

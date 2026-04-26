@@ -8,16 +8,44 @@
 // Requires the trigger's "Return a custom response" toggle to be ON
 // (custom_response: true). See CLAUDE.md gotcha #6.
 
+// Snowflake INSERT/UPDATE actions return an array shaped like
+// [{ 'number of rows inserted': N }] or [{ 'number of rows updated': N }]
+// (Snowflake reports affected rows under varying key names). This helper
+// extracts whichever count is present.
+function affectedRows(result) {
+  if (!Array.isArray(result) || result.length === 0) return 0;
+  const row = result[0];
+  if (!row || typeof row !== "object") return 0;
+  for (const key of Object.keys(row)) {
+    if (key.startsWith("number of rows")) {
+      const n = Number(row[key]);
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  return 0;
+}
+
 export default defineComponent({
   props: {
     event: { type: "any" },
     agent_result: { type: "any" },
     commit_result: { type: "any" },
+    promoted_trends_result: { type: "any" },
+    duplicate_updates_result: { type: "any" },
+    real_trend_promotion_result: { type: "any" },
+    duplicate_promotion_result: { type: "any" },
+    claim_signals_result: { type: "any" },
   },
   async run({ $ }) {
     const evt = this.event || {};
     const ar = this.agent_result || {};
     const commitOk = Array.isArray(this.commit_result) || (this.commit_result && !this.commit_result.error);
+
+    const promoted_count = affectedRows(this.promoted_trends_result);
+    const duplicate_count = affectedRows(this.duplicate_updates_result);
+    const candidate_promotion_count =
+      affectedRows(this.real_trend_promotion_result) + affectedRows(this.duplicate_promotion_result);
+    const claimed_signal_count = affectedRows(this.claim_signals_result);
 
     const body = {
       tool: "distillation_lead",
@@ -28,6 +56,10 @@ export default defineComponent({
       louvain_seen: ar.louvain_seen || 0,
       candidates_count: ar.candidates_count || 0,
       candidates_persisted: !!commitOk,
+      promoted_count,
+      duplicate_count,
+      candidate_promotion_count,
+      claimed_signal_count,
       cost_usd: ar.cost_usd || 0,
       tokens: ar.tokens || { input: 0, output: 0, total: 0 },
       turns: ar.turns || 0,
