@@ -97,6 +97,20 @@ steps:
             'distillation.subagent.ingest_guidance.louvain_only'
           )
       params: []
+- namespace: q_load_examples
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT TREND_NAME_B2B, TREND_NAME_B2C, CATEGORY, SUBCATEGORY, SUMMARY_SHORT, TREND_HEAT_INDEX
+        FROM MCC_PRESENTATION.TREND_AGENT.V_VALUABLE_TREND_EXAMPLES
+      query: |-
+        SELECT TREND_NAME_B2B, TREND_NAME_B2C, CATEGORY, SUBCATEGORY, SUMMARY_SHORT, TREND_HEAT_INDEX
+        FROM MCC_PRESENTATION.TREND_AGENT.V_VALUABLE_TREND_EXAMPLES
+      params: []
 - namespace: run_subagent
   runtime: nodejs20.x
   uses: "./run_subagent/entry.js"
@@ -107,6 +121,7 @@ steps:
     signal_rows: "{{steps.q_fetch_signals.$return_value}}"
     neighbor_rows: "{{steps.q_fetch_neighbors.$return_value}}"
     prompts_rows: "{{steps.q_load_prompts.$return_value}}"
+    examples_rows: "{{steps.q_load_examples.$return_value}}"
     bluesky_url: "https://eoydyalz1dslfre.m.pipedream.net"
     gdelt_url: "https://eoovhehfk229jrg.m.pipedream.net"
     gtrends_url: "https://eov9u8rngcgi2z6.m.pipedream.net"

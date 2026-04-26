@@ -596,6 +596,12 @@ export default defineComponent({
       label: "DIM_LLM_PROMPT rows",
       description: "Output of the q_load_prompts step",
     },
+    examples_rows: {
+      type: "any",
+      label: "V_VALUABLE_TREND_EXAMPLES rows",
+      description: "Output of the q_load_examples step — few-shot grounding for the specificity rubric",
+      optional: true,
+    },
     // Endpoint URLs — wired in workflow.yaml so the targets are visible there
     // instead of buried in code. Required: throws if missing or PLACEHOLDER.
     bluesky_url: { type: "string", label: "Search Bluesky tool endpoint" },
@@ -650,14 +656,30 @@ export default defineComponent({
     const bucketLower = (bucket || "").toLowerCase();
     const bucketInstrPrompt = loaded[`${PROMPT_KEY_BUCKET_INSTRUCTIONS}.${bucketLower}`];
     const ingestGuidePrompt = loaded[`${PROMPT_KEY_INGEST_GUIDANCE}.${bucketLower}`];
+
+    // Few-shot block from V_VALUABLE_TREND_EXAMPLES — pre-flatten to a
+    // numbered list so the prompt template's {{valuable_examples}} placeholder
+    // gets a single multi-line string.
+    const valuable_examples = (Array.isArray(this.examples_rows) ? this.examples_rows : [])
+      .map((r, i) => {
+        const b2b = r.TREND_NAME_B2B || "";
+        const b2c = r.TREND_NAME_B2C || "";
+        const cat = `${r.CATEGORY || "?"}/${r.SUBCATEGORY || "?"}`;
+        const summary = (r.SUMMARY_SHORT || "").replace(/\s+/g, " ").trim().slice(0, 240);
+        return `${i + 1}. "${b2b}" / "${b2c}" — ${cat}: ${summary}`;
+      })
+      .join("\n") || "(no examples available)";
+
     const system = render(sysPrompt.template, {
       bucket: bucket || "",
       bucket_instructions: bucketInstrPrompt?.template || "",
       ingest_guidance: ingestGuidePrompt?.template || "",
+      valuable_examples,
     });
     console.log(
       `Subagent prompts: ${PROMPT_KEY_SYSTEM} v${sysPrompt.version}, bucket=${bucket || "(none)"} ` +
-      `(instr v${bucketInstrPrompt?.version ?? "-"}, guide v${ingestGuidePrompt?.version ?? "-"})`,
+      `(instr v${bucketInstrPrompt?.version ?? "-"}, guide v${ingestGuidePrompt?.version ?? "-"}, ` +
+      `${this.examples_rows?.length ?? 0} few-shot examples)`,
     );
 
     const userMsg = `HYPOTHESIS: ${req.hypothesis}

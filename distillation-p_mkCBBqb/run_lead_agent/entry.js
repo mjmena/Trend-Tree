@@ -769,6 +769,12 @@ export default defineComponent({
       label: "DIM_LLM_PROMPT rows",
       description: "Output of the q_load_prompts step",
     },
+    examples_rows: {
+      type: "any",
+      label: "V_VALUABLE_TREND_EXAMPLES rows",
+      description: "Output of the q_load_examples step — few-shot grounding for the specificity rubric",
+      optional: true,
+    },
     // Endpoint URLs — wired in workflow.yaml so the targets are visible there
     // instead of buried in code. Required: throws if missing or PLACEHOLDER.
     subagent_url: { type: "string", label: "Distillation subagent endpoint" },
@@ -847,7 +853,22 @@ Begin your scan. Be opinionated about specificity.`;
     // (missing PROMPT_KEY, IS_ACTIVE=FALSE, etc.) without burning LLM cost.
     const loaded = loadPrompts(this.prompts_rows);
     const prompt = mustGet(loaded, PROMPT_KEY);
-    console.log(`Lead system prompt: ${PROMPT_KEY} v${prompt.version}`);
+
+    // Build the few-shot block from V_VALUABLE_TREND_EXAMPLES rows.
+    // Pre-flatten to a numbered list so the prompt template's
+    // {{valuable_examples}} placeholder gets a single multi-line string.
+    const valuable_examples = (Array.isArray(this.examples_rows) ? this.examples_rows : [])
+      .map((r, i) => {
+        const b2b = r.TREND_NAME_B2B || "";
+        const b2c = r.TREND_NAME_B2C || "";
+        const cat = `${r.CATEGORY || "?"}/${r.SUBCATEGORY || "?"}`;
+        const summary = (r.SUMMARY_SHORT || "").replace(/\s+/g, " ").trim().slice(0, 240);
+        return `${i + 1}. "${b2b}" / "${b2c}" — ${cat}: ${summary}`;
+      })
+      .join("\n") || "(no examples available)";
+
+    const renderedSystem = render(prompt.template, { valuable_examples });
+    console.log(`Lead system prompt: ${PROMPT_KEY} v${prompt.version} (${this.examples_rows?.length ?? 0} few-shot examples)`);
 
     if (dryRun) {
       console.log("dry_run=true: skipping LLM");
@@ -862,7 +883,7 @@ Begin your scan. Be opinionated about specificity.`;
       result = await runAgentLoop({
         anthropic: this.anthropic,
         tool_names: LEAD_TOOL_NAMES,
-        system: prompt.template,
+        system: renderedSystem,
         user_message: userMsg,
         context,
         max_iterations: prompt.params.max_iterations ?? 15,

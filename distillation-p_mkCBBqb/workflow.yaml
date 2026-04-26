@@ -145,6 +145,20 @@ steps:
         WHERE IS_ACTIVE = TRUE
           AND PROMPT_KEY = 'distillation.lead.system'
       params: []
+- namespace: q_load_examples
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT TREND_NAME_B2B, TREND_NAME_B2C, CATEGORY, SUBCATEGORY, SUMMARY_SHORT, TREND_HEAT_INDEX
+        FROM MCC_PRESENTATION.TREND_AGENT.V_VALUABLE_TREND_EXAMPLES
+      query: |-
+        SELECT TREND_NAME_B2B, TREND_NAME_B2C, CATEGORY, SUBCATEGORY, SUMMARY_SHORT, TREND_HEAT_INDEX
+        FROM MCC_PRESENTATION.TREND_AGENT.V_VALUABLE_TREND_EXAMPLES
+      params: []
 - namespace: run_lead_agent
   runtime: nodejs20.x
   uses: "./run_lead_agent/entry.js"
@@ -157,6 +171,7 @@ steps:
     louvain_rows: "{{steps.q_louvain_candidates.$return_value}}"
     neighbor_rows: "{{steps.q_neighbors.$return_value}}"
     prompts_rows: "{{steps.q_load_prompts.$return_value}}"
+    examples_rows: "{{steps.q_load_examples.$return_value}}"
     subagent_url: "https://eo5h5le4j2qu3tm.m.pipedream.net"
     bluesky_url: "https://eoydyalz1dslfre.m.pipedream.net"
     gdelt_url: "https://eoovhehfk229jrg.m.pipedream.net"
