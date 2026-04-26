@@ -7,6 +7,7 @@ settings:
   network: net_5Lnie3
 triggers:
 - id: hi_nlHd21j
+- id: dc_Dvug1PJ  # noop_discovery_cron — experiment 2026-04-25: does sync attach?
 steps:
 - namespace: q_load_prompts
   runtime: nodejs20.x
