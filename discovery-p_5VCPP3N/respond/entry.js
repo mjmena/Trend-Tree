@@ -13,7 +13,21 @@ export default defineComponent({
   async run({ $ }) {
     const rerank = this.rerank_result || {};
     const canon = this.canon_result || {};
-    const write = this.write_result || {};
+    const write = this.write_result;
+
+    // MERGE_EXTERNAL_SIGNALS returns VARIANT { batches, signals, ... }.
+    // Pipedream's snowflake-execute-sql-query wraps a CALL result as an
+    // array of rows where the proc's return lives under a column named
+    // after the proc. Be tolerant of either shape (raw dict vs row-array).
+    const writeRow = Array.isArray(write) ? write[0] : write;
+    const writeData = writeRow?.MERGE_EXTERNAL_SIGNALS
+      ?? writeRow?.["MERGE_EXTERNAL_SIGNALS"]
+      ?? writeRow
+      ?? {};
+    const signalsPersisted = writeData?.signals
+      ?? writeData?.SIGNALS
+      ?? canon.signal_count   // fallback: canon already counted what we sent
+      ?? null;
 
     const body = {
       tool: "discovery",
@@ -23,7 +37,7 @@ export default defineComponent({
       dropped_4xx: canon.dropped_404 ?? 0,
       dropped_dupe: canon.dropped_dupe ?? 0,
       dropped_invalid: canon.dropped_invalid ?? 0,
-      signals_persisted: write?.signals ?? write?.[0]?.signals ?? null,
+      signals_persisted: signalsPersisted,
       rerank_cost_tokens: rerank._token_usage || null,
       rerank_error: rerank.error || null,
     };
