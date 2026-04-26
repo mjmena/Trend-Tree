@@ -1,0 +1,5 @@
+schema: workflow/2022.04
+name: empty workflow
+settings:
+  error_notification: true
+
