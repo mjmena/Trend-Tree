@@ -7,6 +7,7 @@ settings:
   network: net_5Lnie3
 triggers:
 - id: hi_wWH723X
+- id: dc_QyuK1JR
 steps:
 - namespace: normalize_event
   runtime: nodejs20.x
