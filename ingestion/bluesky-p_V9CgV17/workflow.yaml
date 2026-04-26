@@ -33,3 +33,4 @@ steps:
           'STG_EXTERNAL_SIGNALS_TEST'
         )
     params: []
+
