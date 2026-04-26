@@ -98,7 +98,8 @@ steps:
   runtime: nodejs20.x
   uses: "./discover_chatgpt/entry.js"
   props:
-    openai: {}
+    openai:
+      authProvisionId: apn_QPhO4kd
     prompts_rows: "{{steps.q_load_prompts.$return_value}}"
     discovery_context: "{{steps.build_discovery_context.$return_value}}"
 - namespace: rerank_claude
@@ -144,3 +145,4 @@ steps:
     rerank_result: "{{steps.rerank_claude.$return_value}}"
     canon_result: "{{steps.canonicalize_and_validate.$return_value}}"
     write_result: "{{steps.write_discovered_signals.$return_value}}"
+
