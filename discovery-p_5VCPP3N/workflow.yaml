@@ -6,8 +6,8 @@ settings:
   lambda_timeout: 600
   network: net_5Lnie3
 triggers:
-- id: hi_nlHd21j
-- id: dc_Dvug1PJ  # noop_discovery_cron — experiment 2026-04-25: does sync attach?
+- id: hi_nlHd21j      # HTTP endpoint for ad-hoc fires
+- id: dc_Dvug1PJ      # noop_discovery_cron — every 4h (configured via pd deploy + PUT /v1/sources)
 steps:
 - namespace: q_load_prompts
   runtime: nodejs20.x
