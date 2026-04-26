@@ -549,7 +549,7 @@ async function dispatchSubagent(input, ctx) {
       budget_tokens: d.budget_tokens ?? 30000,
       agent_session_id: ctx.agent_session_id, chain_id: ctx.chain_id,
     })),
-    concurrency: 10, perCallTimeoutMs: 240_000,
+    concurrency: 10, perCallTimeoutMs: 120_000,
   });
 }
 
