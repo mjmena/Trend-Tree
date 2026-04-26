@@ -111,8 +111,14 @@ export default defineComponent({
           signalText = parts.join("\n\n");
         }
 
+        // Convert at:// uri (at://did:plc:xxx/app.bsky.feed.post/yyy)
+        // to public web URL — slice-4 cross-source dedup key.
+        const uriParts = (uri || "").replace(/^at:\/\//, "").split("/");
+        const bskyWebUrl = uriParts.length >= 3 && uriParts[1] === "app.bsky.feed.post"
+          ? `https://bsky.app/profile/${uriParts[0]}/post/${uriParts[2]}`
+          : `bsky_${uriHash}`; // fallback for malformed uris (~1% of rows)
         allSignals.push({
-          SIGNAL_ID: `bsky_${uriHash}`,
+          SIGNAL_ID: bskyWebUrl,
           SOURCE_NAME: "bluesky",
           SIGNAL_TIMESTAMP: ts,
           SIGNAL_TITLE: signalTitle,

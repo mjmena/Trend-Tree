@@ -74,8 +74,11 @@ async function fetchRssTrends(cookieJar) {
       }
     } catch {}
 
+    // SIGNAL_ID is the trends.google.com explore URL for the trending query —
+    // slice-4 cross-source dedup key. Same shape as the related-queries path.
+    const rssExploreUrl = `https://trends.google.com/trends/explore?q=${title.replace(/\s+/g, "+")}&geo=${GEO}`;
     signals.push({
-      SIGNAL_ID: `gt_rss_${GEO}_${dateKey}_${title.toLowerCase().replace(/ /g, "_").slice(0, 50)}`,
+      SIGNAL_ID: rssExploreUrl,
       SOURCE_NAME: "google_trends_rss",
       SIGNAL_TIMESTAMP: ts,
       SIGNAL_TITLE: title,
@@ -155,8 +158,11 @@ async function fetchRelatedQueries(cookieJar, keyword, categoryName) {
       const value = kw.formattedValue || "";
       const isRising = value.includes("%") || value === "Breakout";
 
+      // SIGNAL_ID is the trends.google.com explore URL for the query —
+      // slice-4 cross-source dedup key. Matches SQL backfill construction.
+      const rqExploreUrl = `https://trends.google.com/trends/explore?q=${query.replace(/\s+/g, "+")}&geo=${GEO}`;
       signals.push({
-        SIGNAL_ID: `gt_rq_${GEO}_${todayKey}_${query.toLowerCase().replace(/ /g, "_").slice(0, 50)}`,
+        SIGNAL_ID: rqExploreUrl,
         SOURCE_NAME: "google_trends_explore",
         SIGNAL_TIMESTAMP: now,
         SIGNAL_TITLE: query,

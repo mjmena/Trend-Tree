@@ -71,7 +71,9 @@ export default defineComponent({
       const signalText = (extract || displayTitle).slice(0, 2000);
 
       allSignals.push({
-        SIGNAL_ID: `wiki_${dateKey}_${title}`,
+        // SIGNAL_ID is the canonical Wikipedia article URL — same shape for
+        // all sources post slice-4 swap (cross-source dedup key).
+        SIGNAL_ID: `https://en.wikipedia.org/wiki/${title}`,
         SOURCE_NAME: "wikimedia",
         SIGNAL_TIMESTAMP: `${dateStr} 00:00:00`,
         SIGNAL_TITLE: displayTitle,

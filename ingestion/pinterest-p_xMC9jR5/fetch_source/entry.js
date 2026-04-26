@@ -72,8 +72,12 @@ function parseCategoryTrends(html, category, path) {
         const entityId = article.entityId || "";
         const hash = crypto.createHash("md5").update(`${entityId}_${category}`).digest("hex").slice(0, 16);
 
+        // SIGNAL_ID is the trends.pinterest.com category URL with the entityId
+        // as a query param so each trend in a category has a distinct, navigable
+        // SIGNAL_ID — slice-4 cross-source dedup key.
+        const pinterestUrl = `https://trends.pinterest.com/${category}/?id=${encodeURIComponent(entityId || hash)}`;
         signals.push({
-          SIGNAL_ID: `pinterest_${hash}`,
+          SIGNAL_ID: pinterestUrl,
           SOURCE_NAME: "pinterest",
           SIGNAL_TIMESTAMP: now,
           SIGNAL_TITLE: title,

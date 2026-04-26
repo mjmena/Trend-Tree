@@ -92,8 +92,14 @@ export default defineComponent({
         const created = new Date((post.created_utc || 0) * 1000);
         const ts = created.toISOString().replace("T", " ").slice(0, 19);
 
+        // SIGNAL_ID is the canonical Reddit post URL — slice-4 cross-source
+        // dedup key. Falls back to the post.url (which Reddit may set to the
+        // linked-content URL for link posts) if permalink is missing.
+        const redditUrl = post.permalink
+          ? `https://www.reddit.com${post.permalink}`
+          : (post.url || `https://www.reddit.com/comments/${postId}/`);
         allSignals.push({
-          SIGNAL_ID: `reddit_${postId}`,
+          SIGNAL_ID: redditUrl,
           SOURCE_NAME: "reddit",
           SIGNAL_TIMESTAMP: ts,
           SIGNAL_TITLE: post.title || "",

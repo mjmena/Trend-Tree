@@ -103,7 +103,10 @@ export default defineComponent({
         const urlHash = crypto.createHash("md5").update(url).digest("hex");
 
         allSignals.push({
-          SIGNAL_ID: `gdelt_${urlHash.slice(0, 32)}`,
+          // SIGNAL_ID is the article URL itself — slice-4 cross-source dedup
+          // key. Tracking-param canonicalization happens at query time via
+          // url_canon.mjs; raw URL preserved here as the row identity.
+          SIGNAL_ID: url,
           SOURCE_NAME: "gdelt",
           SIGNAL_TIMESTAMP: ts,
           SIGNAL_TITLE: title,
