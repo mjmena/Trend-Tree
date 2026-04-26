@@ -10,7 +10,7 @@
 
 const SIGNAL_ID_OK = /^[^\s\x00-\x1F\x7F]{1,300}$/;
 const SHORT_ID_OK = /^[A-Za-z0-9_\-]{1,64}$/;
-const HYPOTHESIS_MAX = 400;
+const HYPOTHESIS_MAX = 2000;
 const ALLOWED_BUCKETS = new Set(["OVERLAP", "AGENT_ONLY", "LOUVAIN_ONLY"]);
 
 function sanitizeId(s, regex) {
