@@ -228,7 +228,7 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                         DETECTED_AT, LAST_UPDATE_AT, PROMOTED_AT,
                         TOTAL_CLUSTER_SIZE, DISTINCT_SOURCE_COUNT,
                         CONFIDENCE, SPECIFICITY_SCORE, VELOCITY_DIRECTION,
-                        TREND_VECTOR
+                        TREND_HEAT_INDEX, TREND_VECTOR
                     )
                     SELECT
                         UUID_STRING(),
@@ -240,7 +240,27 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                         ARRAY_SIZE(c.SUPPORTING_SIGNAL_IDS),
                         ARRAY_SIZE(OBJECT_KEYS(c.SOURCE_BREAKDOWN)),
                         c.CONFIDENCE, c.SPECIFICITY_SCORE, 'NEW',
-                        {sql_vector_literal(vector)}
+                        -- Heat formula (placeholder until a daily-snapshot
+                        -- recomputation task lands): cluster_size × 5 +
+                        -- source_count × 3 + confidence × 20, baselined at 50,
+                        -- capped at 100. New trends typically land 75-100.
+                        LEAST(
+                            50
+                            + COALESCE(ARRAY_SIZE(c.SUPPORTING_SIGNAL_IDS), 0) * 5
+                            + COALESCE(ARRAY_SIZE(OBJECT_KEYS(c.SOURCE_BREAKDOWN)), 0) * 3
+                            + COALESCE(c.CONFIDENCE, 0.5) * 20,
+                            100
+                        ),
+                        -- Vector: prefer agent-supplied (trend_vector in the
+                        -- decision payload) but fall back to a Cortex embedding
+                        -- of the topic so this column is never null.
+                        COALESCE(
+                            {sql_vector_literal(vector)},
+                            SNOWFLAKE.CORTEX.EMBED_TEXT_1024(
+                                'snowflake-arctic-embed-l-v2.0',
+                                COALESCE({sql_str(topic)}, c.TOPIC)
+                            )
+                        )
                     FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
                     WHERE c.CANDIDATE_ID = {sql_str(cid)}
                 """).collect()
