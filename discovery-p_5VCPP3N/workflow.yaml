@@ -7,8 +7,13 @@ settings:
   network: net_5Lnie3
 triggers:
 - id: hi_nlHd21j
-- id: dc_Dvug1PJ
+- id: dc_a6uL3DO
+- id: dc_GQugzp1
+- id: dc_dAuL8ZJ
 steps:
+- namespace: route_by_trigger
+  runtime: nodejs20.x
+  uses: "./route_by_trigger/entry.js"
 - namespace: q_load_prompts
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -91,6 +96,7 @@ steps:
       authProvisionId: apn_EOhp9DY
     prompts_rows: "{{steps.q_load_prompts.$return_value}}"
     discovery_context: "{{steps.build_discovery_context.$return_value}}"
+    models_to_run: "{{steps.route_by_trigger.$return_value.models_to_run}}"
 - namespace: discover_grok
   runtime: nodejs20.x
   uses: "./discover_grok/entry.js"
@@ -99,6 +105,7 @@ steps:
       authProvisionId: apn_WYhE6e6
     prompts_rows: "{{steps.q_load_prompts.$return_value}}"
     discovery_context: "{{steps.build_discovery_context.$return_value}}"
+    models_to_run: "{{steps.route_by_trigger.$return_value.models_to_run}}"
 - namespace: discover_chatgpt
   runtime: nodejs20.x
   uses: "./discover_chatgpt/entry.js"
@@ -107,6 +114,7 @@ steps:
       authProvisionId: apn_QPhO4kd
     prompts_rows: "{{steps.q_load_prompts.$return_value}}"
     discovery_context: "{{steps.build_discovery_context.$return_value}}"
+    models_to_run: "{{steps.route_by_trigger.$return_value.models_to_run}}"
 - namespace: rerank_claude
   runtime: nodejs20.x
   uses: "./rerank_claude/entry.js"

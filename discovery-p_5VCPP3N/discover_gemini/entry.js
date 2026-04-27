@@ -78,11 +78,19 @@ export default defineComponent({
     google_gemini: { type: "app", app: "google_gemini" },
     prompts_rows: { type: "any", label: "DIM_LLM_PROMPT rows" },
     discovery_context: { type: "object", label: "build_discovery_context output" },
+    models_to_run: { type: "string[]", label: "Models the route_by_trigger step selected for this run" },
   },
   async run() {
     const ctx = this.discovery_context || {};
     const loaded = loadPrompts(this.prompts_rows);
     const prompt = mustGet(loaded, PROMPT_KEY);
+    if (!this.models_to_run.includes("gemini")) {
+      return {
+        proposals: [], model: prompt.model, prompt_key: PROMPT_KEY, prompt_version: prompt.version,
+        shards_attempted: 0, shards_succeeded: 0, per_vertical_counts: {},
+        _token_usage: { input: 0, output: 0, model: prompt.model }, error: null, skipped: true,
+      };
+    }
     const verticals = Array.isArray(ctx.verticals) && ctx.verticals.length ? ctx.verticals : ["consumer"];
     const apiKey = this.google_gemini.$auth.api_key;
 
