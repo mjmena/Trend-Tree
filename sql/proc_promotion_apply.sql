@@ -323,15 +323,12 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                 results.append({'candidate_id': cid, 'decision': 'REJECT', 'status': 'ok'})
 
             elif decision == 'DEFER':
-                if not def_until:
-                    # Default 48 hours from now
-                    def_until_sql = "DATEADD(hour, 48, CURRENT_TIMESTAMP())"
-                else:
-                    def_until_sql = f"TO_TIMESTAMP_NTZ({sql_str(def_until)})"
-
+                # Always compute defer time in SQL — LLMs are unreliable at
+                # picking absolute future dates ("now + 48h" frequently lands
+                # in the past). Hard-coded 48h hold.
                 session.sql(f"""
                     UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
-                    SET DEFERRED_UNTIL = {def_until_sql},
+                    SET DEFERRED_UNTIL = DATEADD(hour, 48, CURRENT_TIMESTAMP()),
                         DEFER_REASON = {sql_str((def_reason or 'UNSPECIFIED')[:200])},
                         PROMOTION_DECIDED_BY = {sql_str(chain_id)}
                     WHERE CANDIDATE_ID = {sql_str(cid)}
