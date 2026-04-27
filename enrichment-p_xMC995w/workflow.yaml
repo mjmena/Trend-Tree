@@ -1,0 +1,7 @@
+schema: workflow/2022.04
+name: Enrichment
+settings:
+  error_notification: true
+triggers:
+- id: hi_4EHDY9m
+
