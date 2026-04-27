@@ -92,12 +92,14 @@ export default defineComponent({
       });
       // OpenAI /v1/responses + web_search tool. Tool name is `web_search`
       // (not the older `web_search_preview` GA-preview name).
+      // gpt-5-mini-2025-08-07 rejects `temperature` — omit unless the
+      // prompt's MODEL_PARAMS explicitly sets it.
       const body = {
         model: prompt.model,
         input: [{ role: "user", content: rendered }],
         tools: [{ type: "web_search" }],
-        temperature: prompt.params.temperature ?? 0.5,
       };
+      if (prompt.params.temperature !== undefined) body.temperature = prompt.params.temperature;
       const resp = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
