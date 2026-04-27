@@ -33,8 +33,14 @@ export default defineComponent({
     min_engagement: {
       type: "integer",
       label: "Minimum engagement (like_count + repost_count)",
-      description: "Posts with combined likes + reposts below this are dropped before write. 0 = keep everything, 1 = at least one signal of audience reaction. Tune up if you're seeing too many 0-engagement bot/newswire posts.",
-      default: 1,
+      description: "Post-fetch safety net. Bluesky's sort=top ranker already filters by engagement, so this is mostly belt-and-suspenders. 0 = trust the ranker, 1+ = drop everything below that floor.",
+      default: 0,
+    },
+    since_hours: {
+      type: "integer",
+      label: "Search window in hours",
+      description: "Only consider posts created within this many hours. Bluesky's sort=top can otherwise return posts from weeks ago if those have the most engagement on the query term.",
+      default: 24,
     },
   },
   async run({ $ }) {
@@ -46,7 +52,9 @@ export default defineComponent({
         "Bluesky app must be connected with identifier (handle) + password (app password)",
       );
     }
-    const minEngagement = this.min_engagement ?? 1;
+    const minEngagement = this.min_engagement ?? 0;
+    const sinceHours = this.since_hours ?? 24;
+    const sinceIso = new Date(Date.now() - sinceHours * 3600 * 1000).toISOString();
 
     // Authenticate via ATProto createSession
     let accessJwt;
@@ -69,7 +77,12 @@ export default defineComponent({
     const errors = [];
 
     for (const term of SEARCH_TERMS) {
-      const url = `${PDS_HOST}/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(term)}&limit=25&sort=latest`;
+      // sort=top — Bluesky's server ranks by engagement for the query term.
+      // since=<isoTs> — restrict to recent posts so we don't surface
+      // months-old top posts. Together these give "top stories on this
+      // topic in the last N hours" semantics, which is closer to what
+      // we actually want from a trend-signal source.
+      const url = `${PDS_HOST}/xrpc/app.bsky.feed.searchPosts?q=${encodeURIComponent(term)}&limit=25&sort=top&since=${encodeURIComponent(sinceIso)}`;
       let data;
       try {
         let resp = await fetch(url, { headers: { Authorization: `Bearer ${accessJwt}` } });
