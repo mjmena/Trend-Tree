@@ -17,6 +17,5 @@ steps:
   props:
     snowflake:
       authProvisionId: apn_yghdQYJ
-    signals_json: "{{steps.fetch_source.$return_value.signals_json}}"
     target_table: STG_EXTERNAL_SIGNALS_TEST
 

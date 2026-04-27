@@ -10,21 +10,30 @@
 # URL column write-through, and target-table validation. We just hand it
 # the raw signals_json and let it do the work.
 #
+# Reads `signals` directly from steps.fetch_source.$return_value rather
+# than threading through a prop. Mustache prop-wiring has its own size
+# limit (~512KB serialized) and silently truncates large arrays — when
+# bluesky pulls 119 signals (~240KB raw), the prop arrived empty.
+#
 # Wired props (workflow.yaml):
 #   snowflake     — connected Snowflake app (key-pair auth)
-#   signals_json  — "{{steps.fetch_source.$return_value.signals_json}}"
 #   target_table  — STG_EXTERNAL_SIGNALS or STG_EXTERNAL_SIGNALS_TEST
 
 import json
 
 
 def handler(pd: "pipedream"):
-    signals_json = pd.inputs.get("signals_json") or "[]"
+    fetch = pd.steps.get("fetch_source", {}) or {}
+    rv = fetch.get("$return_value") or fetch.get("return_value") or {}
+    signals = rv.get("signals") or []
     target_table = pd.inputs.get("target_table") or "STG_EXTERNAL_SIGNALS_TEST"
 
-    if not signals_json or signals_json == "[]":
+    if not signals:
         print("No signals to upsert; skipping")
         return {"signals": 0, "batches": 0, "skipped": True}
+
+    signals_json = json.dumps(signals)
+    print(f"Upserting {len(signals)} signals ({len(signals_json)} bytes) to {target_table}")
 
     auth = pd.inputs["snowflake"]["$auth"]
     account = auth["account"]
