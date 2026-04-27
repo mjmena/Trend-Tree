@@ -89,17 +89,24 @@ steps:
       authProvisionId: apn_yghdQYJ
     sql:
       value: |-
-        WITH candidate_signal_titles AS (
+        WITH ranked_signals AS (
           SELECT
             c.CANDIDATE_ID,
-            LISTAGG(s.SIGNAL_TITLE, ', ') WITHIN GROUP (ORDER BY s.INGESTED_AT DESC) AS TOP_SIGNAL_TITLES
+            s.SIGNAL_TITLE,
+            s.INGESTED_AT
           FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
                LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
           JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s ON s.SIGNAL_ID = f.value::STRING
           WHERE c.CANDIDATE_ID IN (SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))))
             AND s.SIGNAL_TITLE IS NOT NULL
           QUALIFY ROW_NUMBER() OVER (PARTITION BY c.CANDIDATE_ID ORDER BY s.INGESTED_AT DESC) <= 3
-          GROUP BY c.CANDIDATE_ID
+        ),
+        candidate_signal_titles AS (
+          SELECT
+            CANDIDATE_ID,
+            LISTAGG(SIGNAL_TITLE, ', ') WITHIN GROUP (ORDER BY INGESTED_AT DESC) AS TOP_SIGNAL_TITLES
+          FROM ranked_signals
+          GROUP BY CANDIDATE_ID
         ),
         candidate_text AS (
           SELECT
@@ -117,17 +124,24 @@ steps:
           SNOWFLAKE.CORTEX.EMBED_TEXT_1024('snowflake-arctic-embed-l-v2.0', EMBEDDING_TEXT) AS CANDIDATE_VECTOR
         FROM candidate_text
       query: |-
-        WITH candidate_signal_titles AS (
+        WITH ranked_signals AS (
           SELECT
             c.CANDIDATE_ID,
-            LISTAGG(s.SIGNAL_TITLE, ', ') WITHIN GROUP (ORDER BY s.INGESTED_AT DESC) AS TOP_SIGNAL_TITLES
+            s.SIGNAL_TITLE,
+            s.INGESTED_AT
           FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
                LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
           JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s ON s.SIGNAL_ID = f.value::STRING
           WHERE c.CANDIDATE_ID IN (SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))))
             AND s.SIGNAL_TITLE IS NOT NULL
           QUALIFY ROW_NUMBER() OVER (PARTITION BY c.CANDIDATE_ID ORDER BY s.INGESTED_AT DESC) <= 3
-          GROUP BY c.CANDIDATE_ID
+        ),
+        candidate_signal_titles AS (
+          SELECT
+            CANDIDATE_ID,
+            LISTAGG(SIGNAL_TITLE, ', ') WITHIN GROUP (ORDER BY INGESTED_AT DESC) AS TOP_SIGNAL_TITLES
+          FROM ranked_signals
+          GROUP BY CANDIDATE_ID
         ),
         candidate_text AS (
           SELECT
