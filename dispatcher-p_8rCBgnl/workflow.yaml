@@ -6,32 +6,11 @@ settings:
   lambda_timeout: 600
   network: net_5Lnie3
 triggers:
-- id: dc_MDunJAD
 - id: hi_KNH6klV
 steps:
 - namespace: normalize_event
   runtime: nodejs20.x
   uses: "./normalize_event/entry.js"
-- namespace: claim_lock
-  runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
-  props:
-    snowflake:
-      authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        UPDATE MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
-                SET STATUS = 'IN_PROGRESS',
-                    STARTED_AT = CURRENT_TIMESTAMP()
-                WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
-                  AND STATUS IN ('PENDING', 'IN_PROGRESS', 'FAILED')
-      query: |-
-        UPDATE MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
-                SET STATUS = 'IN_PROGRESS',
-                    STARTED_AT = CURRENT_TIMESTAMP()
-                WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
-                  AND STATUS IN ('PENDING', 'IN_PROGRESS', 'FAILED')
-      params: []
 - namespace: orchestrate
   runtime: nodejs20.x
   uses: "./orchestrate/entry.js"
@@ -39,35 +18,8 @@ steps:
     trend_id: "{{steps.normalize_event.$return_value.trend_id}}"
     enrichment_type: "{{steps.normalize_event.$return_value.enrichment_type}}"
     trend_event: "{{steps.trigger.event}}"
-- namespace: mark_failed
-  runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
-  props:
-    snowflake:
-      authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        UPDATE MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
-        SET STATUS = 'FAILED',
-            COMPLETED_AT = CURRENT_TIMESTAMP(),
-            ERROR_MESSAGE = LEFT('{{steps.orchestrate.$return_value.error_message}}', 500),
-            RETRY_COUNT = COALESCE(RETRY_COUNT, 0) + 1
-        WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
-          AND '{{steps.orchestrate.$return_value.error_message}}' != ''
-          AND STATUS = 'IN_PROGRESS'
-      query: |-
-        UPDATE MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
-        SET STATUS = 'FAILED',
-            COMPLETED_AT = CURRENT_TIMESTAMP(),
-            ERROR_MESSAGE = LEFT('{{steps.orchestrate.$return_value.error_message}}', 500),
-            RETRY_COUNT = COALESCE(RETRY_COUNT, 0) + 1
-        WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
-          AND '{{steps.orchestrate.$return_value.error_message}}' != ''
-          AND STATUS = 'IN_PROGRESS'
-      params: []
 - namespace: respond
   runtime: nodejs20.x
   uses: "./respond/entry.js"
   props:
     orchestrate_output: "{{steps.orchestrate.$return_value}}"
-

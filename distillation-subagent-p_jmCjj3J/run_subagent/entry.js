@@ -1,13 +1,10 @@
 // Distillation Subagent — run_subagent
 //
 // Drives the Sonnet 4.6 tool-use loop for ONE hypothesis sent by the lead.
-// Bucket-aware system prompt (OVERLAP / AGENT_ONLY / LOUVAIN_ONLY) sets
-// the corroboration burden:
-//   - OVERLAP: validate specificity; split if too broad.
-//   - AGENT_ONLY: must call ≥1 ingest tool to corroborate; if no
-//     independent corroboration, return NOISE.
-//   - LOUVAIN_ONLY: probable broad cluster; either accept (signals all
-//     point to one specific behavior) or reject as CATEGORY_TOO_BROAD.
+// Validates specificity, calls ≥1 ingest tool to corroborate, and emits
+// either a refined candidate (REAL_TREND / DUPLICATE_OF) or NOISE/
+// CATEGORY_TOO_BROAD verdict. (SQL Louvain bucketing retired 2026-04-27;
+// every hypothesis now follows the same single-path procedure.)
 //
 // =====================================================================
 // Helper code below is INLINED. Pipedream packages each step as a single
@@ -174,14 +171,13 @@ const PROPOSE_SCHEMA = {
         supporting_signal_ids: { type: "array", items: { type: "string" } },
         confidence: { type: "number" },
         specificity_score: { type: "number" },
-        bucket: { type: "string", enum: ["OVERLAP", "AGENT_ONLY", "LOUVAIN_ONLY"] },
         verdict: { type: "string", enum: ["REAL_TREND", "DUPLICATE_OF"] },
         dedup_of_trend_id: { type: "string" },
         source_breakdown: { type: "object" },
         evidence_added: { type: "array" },
         reasoning: { type: "string", description: "≤500 char rationale." },
       },
-      required: ["topic", "supporting_signal_ids", "confidence", "specificity_score", "bucket", "verdict", "reasoning"],
+      required: ["topic", "supporting_signal_ids", "confidence", "specificity_score", "verdict", "reasoning"],
     },
   },
 };
@@ -207,8 +203,7 @@ const SUBAGENT_TOOL_NAMES = [
   "discover_external_tools",
   "propose_trend_candidate",
   // Ingest tools — typically loaded via discover_external_tools but we expose
-  // them eagerly here so AGENT_ONLY-bucket subagents can call them directly
-  // without the meta-tool round-trip.
+  // them eagerly so the subagent can call them directly without a meta-tool round-trip.
   "ingest_search_bluesky",
   "ingest_search_gdelt",
   "ingest_search_google_trends",
@@ -575,15 +570,12 @@ function previewOutput(out) {
 // Step entrypoint
 // ─────────────────────────────────────────────────────────────────────
 //
-// SYSTEM_PROMPT_TEMPLATE, BUCKET_INSTRUCTIONS, and INGEST_GUIDANCE_BY_BUCKET
-// used to live here as const strings — now fetched from
-// MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT via the q_load_prompts step. Bucket
-// pieces are stored as separate keys (one per OVERLAP/AGENT_ONLY/LOUVAIN_ONLY)
-// so they can be tuned independently.
+// SYSTEM_PROMPT_TEMPLATE used to live here as a const string — now fetched
+// from MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT via the q_load_prompts step.
+// (Pre-2026-04-27 the prompt was fragmented into per-bucket pieces; that
+// scheme retired with SQL Louvain.)
 
 const PROMPT_KEY_SYSTEM = "distillation.subagent.system";
-const PROMPT_KEY_BUCKET_INSTRUCTIONS = "distillation.subagent.bucket_instructions";
-const PROMPT_KEY_INGEST_GUIDANCE = "distillation.subagent.ingest_guidance";
 
 export default defineComponent({
   props: {
@@ -612,7 +604,6 @@ export default defineComponent({
   async run({ $ }) {
     const req = this.request || {};
     const dryRun = req.dry_run === true;
-    const bucket = req.bucket;
 
     const signal_pool = (Array.isArray(this.signal_rows) ? this.signal_rows : []).map((r) => ({
       signal_id: r.SIGNAL_ID,
@@ -636,7 +627,6 @@ export default defineComponent({
 
     const context = {
       signal_pool, trend_neighbor_pool,
-      louvain_pool: [],
       proposed_candidates: [],
       agent_session_id: req.agent_session_id || "",
       chain_id: req.chain_id || "",
@@ -651,11 +641,6 @@ export default defineComponent({
 
     const loaded = loadPrompts(this.prompts_rows);
     const sysPrompt = mustGet(loaded, PROMPT_KEY_SYSTEM);
-    // Bucket pieces live as separate keys with the bucket name lowercased as suffix.
-    // Soft-fall to empty string for unknown buckets (matches pre-migration behavior).
-    const bucketLower = (bucket || "").toLowerCase();
-    const bucketInstrPrompt = loaded[`${PROMPT_KEY_BUCKET_INSTRUCTIONS}.${bucketLower}`];
-    const ingestGuidePrompt = loaded[`${PROMPT_KEY_INGEST_GUIDANCE}.${bucketLower}`];
 
     // Few-shot block from V_VALUABLE_TREND_EXAMPLES — pre-flatten to a
     // numbered list so the prompt template's {{valuable_examples}} placeholder
@@ -670,16 +655,10 @@ export default defineComponent({
       })
       .join("\n") || "(no examples available)";
 
-    const system = render(sysPrompt.template, {
-      bucket: bucket || "",
-      bucket_instructions: bucketInstrPrompt?.template || "",
-      ingest_guidance: ingestGuidePrompt?.template || "",
-      valuable_examples,
-    });
+    const system = render(sysPrompt.template, { valuable_examples });
     console.log(
-      `Subagent prompts: ${PROMPT_KEY_SYSTEM} v${sysPrompt.version}, bucket=${bucket || "(none)"} ` +
-      `(instr v${bucketInstrPrompt?.version ?? "-"}, guide v${ingestGuidePrompt?.version ?? "-"}, ` +
-      `${this.examples_rows?.length ?? 0} few-shot examples)`,
+      `Subagent prompts: ${PROMPT_KEY_SYSTEM} v${sysPrompt.version} ` +
+      `(${this.examples_rows?.length ?? 0} few-shot examples)`,
     );
 
     const userMsg = `HYPOTHESIS: ${req.hypothesis}
@@ -722,14 +701,14 @@ Your verdict and any candidates are emitted via propose_trend_candidate. Be opin
     }
 
     const proposed = context.proposed_candidates || [];
-    const verdict = derivedVerdict(proposed, result.final_text, bucket);
+    const verdict = derivedVerdict(proposed, result.final_text);
 
     console.log(
       `subagent done: verdict=${verdict} candidates=${proposed.length} turns=${result.turns} cost=$${result.cost_usd.toFixed(4)} stop=${result.stop_reason}`,
     );
     $.export(
       "$summary",
-      `${bucket} → ${verdict} (${proposed.length} candidate${proposed.length === 1 ? "" : "s"}, ${result.turns} turns, $${result.cost_usd.toFixed(2)})`,
+      `${verdict} (${proposed.length} candidate${proposed.length === 1 ? "" : "s"}, ${result.turns} turns, $${result.cost_usd.toFixed(2)})`,
     );
 
     return {
@@ -747,14 +726,14 @@ Your verdict and any candidates are emitted via propose_trend_candidate. Be opin
   },
 });
 
-function derivedVerdict(proposed, finalText, bucket) {
+function derivedVerdict(proposed, finalText) {
   if (proposed.length === 0) {
     const t = (finalText || "").toLowerCase();
     if (t.includes("noise")) return "NOISE";
     if (t.includes("too broad") || t.includes("category_too_broad") || t.includes("category-too-broad")) {
       return "CATEGORY_TOO_BROAD";
     }
-    return bucket === "AGENT_ONLY" ? "NOISE" : "CATEGORY_TOO_BROAD";
+    return "NOISE";
   }
   if (proposed.length > 1) return "REAL_TREND_SPLIT";
   return proposed[0].verdict || "REAL_TREND";

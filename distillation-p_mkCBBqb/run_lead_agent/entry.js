@@ -2,13 +2,13 @@
 //
 // Orchestrator agent. Sees:
 //   - The raw signal window since the cursor (q_signals_window)
-//   - The SQL clustering's view of the same window (q_louvain_candidates)
 //   - Top active trends for dedup (q_neighbors)
 //
-// Produces a 3-way bucketing (OVERLAP / AGENT_ONLY / LOUVAIN_ONLY),
-// dispatches subagents in parallel via the dispatch_subagent tool (HTTP
-// fanout to distillation-subagent-p_jmCjj3J), consolidates verdicts,
-// and emits accepted candidates via propose_trend_candidate.
+// Scans signals, forms hypotheses, dispatches subagents in parallel via
+// the dispatch_subagent tool (HTTP fanout to distillation-subagent-
+// p_jmCjj3J), consolidates verdicts, and emits accepted candidates via
+// propose_trend_candidate. (SQL Louvain clustering retired 2026-04-27;
+// the agent works from raw signals + neighbors only — no clustering hint.)
 //
 // The downstream commit_candidates step bulk-inserts candidates_json into
 // STG_TREND_CANDIDATES_AGENT (Phase 1 shadow table — does NOT replace the
@@ -165,18 +165,6 @@ const QUERY_SCHEMAS = {
       },
     },
   },
-  query_louvain_candidates: {
-    name: "query_louvain_candidates",
-    description:
-      "Return the SQL clustering's view of the same signal window, as a list of candidate clusters. Each cluster comes with cluster_id, centroid_topic, signal_ids, signal_count, distinct_source_count, and top_domains. Use this to (a) cross-reference your raw-signal hypotheses against the embedding math, (b) discover Louvain-only clusters you missed in your scan, and (c) inspect Louvain clusters that look too broad for splitting.",
-    input_schema: {
-      type: "object",
-      properties: {
-        min_signal_count: { type: "integer", description: "Filter to clusters with at least this many signals (default 3)." },
-        contains_signal_id: { type: "string", description: "Optional: return only the cluster containing this signal id." },
-      },
-    },
-  },
   query_trend_neighbors: {
     name: "query_trend_neighbors",
     description:
@@ -280,7 +268,7 @@ const LEAD_ONLY_SCHEMAS = {
   dispatch_subagent: {
     name: "dispatch_subagent",
     description:
-      "Send one or more hypotheses to the distillation subagent for deep investigation. Each dispatch is a candidate trend with bucket label (OVERLAP | AGENT_ONLY | LOUVAIN_ONLY). Subagents run in parallel (concurrency 10) and each returns a verdict + refined candidates.",
+      "Send one or more hypotheses to the distillation subagent for deep investigation. Each dispatch is a candidate trend with hypothesis text + supporting signal_ids. Subagents run in parallel (concurrency 10) and each returns a verdict + refined candidates.",
     input_schema: {
       type: "object",
       properties: {
@@ -291,10 +279,9 @@ const LEAD_ONLY_SCHEMAS = {
             properties: {
               hypothesis: { type: "string" },
               signal_ids: { type: "array", items: { type: "string" } },
-              bucket: { type: "string", enum: ["OVERLAP", "AGENT_ONLY", "LOUVAIN_ONLY"] },
               budget_tokens: { type: "integer" },
             },
-            required: ["hypothesis", "signal_ids", "bucket"],
+            required: ["hypothesis", "signal_ids"],
           },
         },
       },
@@ -312,14 +299,13 @@ const LEAD_ONLY_SCHEMAS = {
         supporting_signal_ids: { type: "array", items: { type: "string" } },
         confidence: { type: "number" },
         specificity_score: { type: "number" },
-        bucket: { type: "string", enum: ["OVERLAP", "AGENT_ONLY", "LOUVAIN_ONLY"] },
         verdict: { type: "string", enum: ["REAL_TREND", "DUPLICATE_OF"] },
         dedup_of_trend_id: { type: "string" },
         source_breakdown: { type: "object" },
         evidence_added: { type: "array" },
         reasoning: { type: "string", description: "≤500 char rationale." },
       },
-      required: ["topic", "supporting_signal_ids", "confidence", "specificity_score", "bucket", "verdict", "reasoning"],
+      required: ["topic", "supporting_signal_ids", "confidence", "specificity_score", "verdict", "reasoning"],
     },
   },
 };
@@ -341,7 +327,6 @@ const META_SCHEMAS = {
 
 const EAGER_TOOL_NAMES = [
   "query_signals_window",
-  "query_louvain_candidates",
   "query_trend_neighbors",
   "query_trend_metrics",
   "validate_dedupe_pair",
@@ -412,22 +397,6 @@ function lookupSignals(input, ctx) {
     });
   }
   return { signals: out, total_in_pool: pool.length, returned: out.length };
-}
-
-function lookupLouvain(input, ctx) {
-  const pool = ctx.louvain_pool || [];
-  const { min_signal_count = 3, contains_signal_id } = input || {};
-  const out = [];
-  for (const c of pool) {
-    if ((c.signal_count || (c.signal_ids || []).length) < min_signal_count) continue;
-    if (contains_signal_id && !(c.signal_ids || []).includes(contains_signal_id)) continue;
-    out.push({
-      cluster_id: c.cluster_id, centroid_topic: c.centroid_topic, signal_ids: c.signal_ids,
-      signal_count: c.signal_count || (c.signal_ids || []).length,
-      distinct_source_count: c.distinct_source_count, top_domains: c.top_domains,
-    });
-  }
-  return { clusters: out, total_in_pool: pool.length };
 }
 
 function lookupTrendNeighbors(input, ctx) {
@@ -567,7 +536,6 @@ function proposeTrendCandidate(input, ctx) {
 
 const DISPATCHERS = {
   query_signals_window: (input, ctx) => lookupSignals(input, ctx),
-  query_louvain_candidates: (input, ctx) => lookupLouvain(input, ctx),
   query_trend_neighbors: (input, ctx) => lookupTrendNeighbors(input, ctx),
   query_trend_metrics: (input, ctx) => lookupTrendMetrics(input, ctx),
   validate_dedupe_pair: (input, ctx) => validateDedupePair(input, ctx),
@@ -762,7 +730,6 @@ export default defineComponent({
     event: { type: "any" },
     cursor_rows: { type: "any", optional: true },
     signal_rows: { type: "any", optional: true },
-    louvain_rows: { type: "any", optional: true },
     neighbor_rows: { type: "any", optional: true },
     prompts_rows: {
       type: "any",
@@ -797,17 +764,6 @@ export default defineComponent({
       domain: tryParseMetadataDomain(r.METADATA),
       url: tryParseMetadataUrl(r.METADATA),
     }));
-    const louvain_pool = (Array.isArray(this.louvain_rows) ? this.louvain_rows : []).map((r) => ({
-      cluster_id: r.CLUSTER_ID,
-      centroid_topic: r.CENTROID_TOPIC,
-      signal_count: r.SIGNAL_COUNT,
-      distinct_source_count: r.DISTINCT_SOURCE_COUNT,
-      velocity_direction: r.VELOCITY_DIRECTION,
-      heat_index: r.TREND_HEAT_INDEX,
-      detected_at: r.DETECTED_AT,
-      signal_ids: r.SIGNAL_IDS || [],
-      top_domains: r.TOP_DOMAINS || [],
-    }));
     const trend_neighbor_pool = (Array.isArray(this.neighbor_rows) ? this.neighbor_rows : []).map((r) => ({
       trend_id: r.TREND_ID,
       trend_topic: r.TREND_TOPIC,
@@ -824,7 +780,7 @@ export default defineComponent({
     }, null);
 
     const context = {
-      signal_pool, louvain_pool, trend_neighbor_pool,
+      signal_pool, trend_neighbor_pool,
       proposed_candidates: [],
       agent_session_id: evt.agent_session_id,
       chain_id: evt.chain_id,
@@ -841,7 +797,6 @@ export default defineComponent({
     const userMsg = `Window starts at ${this.cursor_rows?.[0]?.WINDOW_START_TS || "(none)"}.
 Pre-fetched pools available to your tools:
   - signal_pool: ${signal_pool.length} raw signals from STG_EXTERNAL_SIGNALS (agent-fetched evidence excluded)
-  - louvain_pool: ${louvain_pool.length} clusters from FCT_TREND_METRICS in this window
   - trend_neighbor_pool: ${trend_neighbor_pool.length} active trends (last 30d) for dedup
 
 Subagent endpoint: ${context.endpoints.distillation_subagent ? "configured" : "NOT CONFIGURED — dispatch_subagent will return errors"}
@@ -920,7 +875,6 @@ Begin your scan. Be opinionated about specificity.`;
       candidates, candidates_json,
       candidates_count: candidates.length,
       signals_seen: signal_pool.length,
-      louvain_seen: louvain_pool.length,
       max_signal_ts, run_duration_ms: duration_ms,
       cost_usd: result.cost_usd, tokens: result.tokens,
       turns: result.turns, stop_reason: result.stop_reason,
@@ -935,7 +889,7 @@ function emptyResult({ chain_id, max_signal_ts, started, signals_seen, skipped, 
   return {
     chain_id,
     candidates: [], candidates_json: "[]", candidates_count: 0,
-    signals_seen: signals_seen || 0, louvain_seen: 0,
+    signals_seen: signals_seen || 0,
     max_signal_ts, run_duration_ms: Date.now() - started,
     cost_usd: 0, tokens: { input: 0, output: 0, total: 0 },
     turns: 0, stop_reason: skipped, error: error || null,

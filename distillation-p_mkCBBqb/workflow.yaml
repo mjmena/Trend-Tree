@@ -60,50 +60,6 @@ steps:
         ORDER BY SIGNAL_TIMESTAMP DESC NULLS LAST
         LIMIT 600
       params: []
-- namespace: q_louvain_candidates
-  runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
-  props:
-    snowflake:
-      authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        SELECT
-          m.TREND_ID                                           AS CLUSTER_ID,
-          m.TREND_TOPIC                                        AS CENTROID_TOPIC,
-          m.TOTAL_CLUSTER_SIZE                                 AS SIGNAL_COUNT,
-          m.DISTINCT_SOURCE_COUNT,
-          m.VELOCITY_DIRECTION,
-          m.TREND_HEAT_INDEX,
-          m.DETECTED_AT,
-          ARRAY_AGG(s.INGESTION_ID) WITHIN GROUP (ORDER BY s.PAGERANK_SCORE DESC NULLS LAST) AS SIGNAL_IDS,
-          ARRAY_AGG(DISTINCT s.DOMAIN)                         AS TOP_DOMAINS
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.STG_TREND_SIGNALS s ON s.TREND_ID = m.TREND_ID
-        WHERE m.DETECTED_AT > '{{steps.q_load_cursor.$return_value.[0].WINDOW_START_TS}}'
-          AND m.VELOCITY_DIRECTION != 'SUPERSEDED'
-        GROUP BY 1, 2, 3, 4, 5, 6, 7
-        ORDER BY m.DETECTED_AT DESC NULLS LAST
-        LIMIT 200
-      query: |-
-        SELECT
-          m.TREND_ID                                           AS CLUSTER_ID,
-          m.TREND_TOPIC                                        AS CENTROID_TOPIC,
-          m.TOTAL_CLUSTER_SIZE                                 AS SIGNAL_COUNT,
-          m.DISTINCT_SOURCE_COUNT,
-          m.VELOCITY_DIRECTION,
-          m.TREND_HEAT_INDEX,
-          m.DETECTED_AT,
-          ARRAY_AGG(s.INGESTION_ID) WITHIN GROUP (ORDER BY s.PAGERANK_SCORE DESC NULLS LAST) AS SIGNAL_IDS,
-          ARRAY_AGG(DISTINCT s.DOMAIN)                         AS TOP_DOMAINS
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.STG_TREND_SIGNALS s ON s.TREND_ID = m.TREND_ID
-        WHERE m.DETECTED_AT > '{{steps.q_load_cursor.$return_value.[0].WINDOW_START_TS}}'
-          AND m.VELOCITY_DIRECTION != 'SUPERSEDED'
-        GROUP BY 1, 2, 3, 4, 5, 6, 7
-        ORDER BY m.DETECTED_AT DESC NULLS LAST
-        LIMIT 200
-      params: []
 - namespace: q_neighbors
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -171,7 +127,6 @@ steps:
     event: "{{steps.normalize_event.$return_value}}"
     cursor_rows: "{{steps.q_load_cursor.$return_value}}"
     signal_rows: "{{steps.q_signals_window.$return_value}}"
-    louvain_rows: "{{steps.q_louvain_candidates.$return_value}}"
     neighbor_rows: "{{steps.q_neighbors.$return_value}}"
     prompts_rows: "{{steps.q_load_prompts.$return_value}}"
     examples_rows: "{{steps.q_load_examples.$return_value}}"

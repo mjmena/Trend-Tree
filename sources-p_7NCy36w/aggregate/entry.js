@@ -17,12 +17,7 @@ export default defineComponent({
     },
     metrics_rows: {
       type: "any",
-      label: "FCT_TREND_METRICS rows",
-    },
-    queue_rows: {
-      type: "any",
-      label: "STG_ENRICHMENT_QUEUE rows",
-      optional: true,
+      label: "FCT_TRENDS rows",
     },
     search_term_output: {
       type: "any",
@@ -41,15 +36,16 @@ export default defineComponent({
   async run({ $ }) {
     const trendId = this.trend_id;
     const metrics = (this.metrics_rows || [])[0];
-    if (!metrics) throw new Error(`FCT_TREND_METRICS row missing for ${trendId}`);
+    if (!metrics) throw new Error(`FCT_TRENDS row missing for ${trendId}`);
     const trendTopic = metrics.TREND_TOPIC;
     const heatIndex = metrics.TREND_HEAT_INDEX || 0;
     const clusterSize = metrics.TOTAL_CLUSTER_SIZE || 0;
     const velocity = metrics.VELOCITY_DIRECTION;
 
-    const enrichmentType =
-      (this.queue_rows || [])[0]?.ENRICHMENT_TYPE ||
-      (heatIndex >= 30 || clusterSize >= 5 ? "FULL" : "SOURCES_ONLY");
+    // ENRICHMENT_TYPE was a queue-derived field; queue is retired so every
+    // sources run is effectively FULL. Field kept in the return shape for
+    // downstream compat (write workflow's compute_scores reads it).
+    const enrichmentType = "FULL";
 
     // ── GDELT / Wikimedia (already fetched in parallel) ────────────
     const gdelt = this.external_output?.gdelt ?? {};

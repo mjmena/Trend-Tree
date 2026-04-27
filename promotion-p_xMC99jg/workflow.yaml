@@ -277,6 +277,12 @@ steps:
           {{steps.normalize_event.$return_value.iteration}}
         )
       params: []
+- namespace: fire_enrichment_chain
+  runtime: nodejs20.x
+  uses: "./fire_enrichment_chain/entry.js"
+  props:
+    apply_result: "{{steps.apply_promotion.$return_value}}"
+    dispatcher_url: https://eoqf5zok2vcvael.m.pipedream.net
 - namespace: eval_and_retrigger
   runtime: nodejs20.x
   uses: "./eval_and_retrigger/entry.js"
