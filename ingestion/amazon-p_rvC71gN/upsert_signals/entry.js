@@ -35,7 +35,7 @@ function destroy(conn) {
 export default defineComponent({
   props: {
     snowflake: { type: "app", app: "snowflake" },
-    target_table: { type: "string", default: "STG_EXTERNAL_SIGNALS_TEST" },
+    target_table: { type: "string", default: "STG_EXTERNAL_SIGNALS" },
   },
   async run({ steps, $ }) {
     const signals = steps.fetch_source?.$return_value?.signals || [];
