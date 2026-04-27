@@ -5,7 +5,8 @@ settings:
   lambda_memory: 4096
   lambda_timeout: 600
   network: net_5Lnie3
-triggers: []
+triggers:
+- id: dc_L3uRO71
 steps:
 - namespace: handle_request
   runtime: nodejs20.x

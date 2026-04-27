@@ -7,6 +7,7 @@ settings:
   network: net_5Lnie3
 triggers:
 - id: dc_RWu7L4x
+- id: dc_nvuXjy0
 steps:
 - namespace: normalize_event
   runtime: nodejs20.x
@@ -85,7 +86,7 @@ steps:
   props:
     event: "{{steps.normalize_event.$return_value}}"
     cluster_rows: "{{steps.q_cluster_signals.$return_value}}"
-    subagent_url: https://REVISIT_SUBAGENT_URL_PLACEHOLDER.m.pipedream.net
+    subagent_url: https://40f1843b3006b0f5d1556eff5101ae0d.m.pipedream.net
 - namespace: commit_candidates
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
