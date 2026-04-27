@@ -26,6 +26,64 @@ Each layer can be redesigned independently. Layer 2 (Distillation) was the first
 
 ---
 
+## Workflow inventory
+
+20 Pipedream workflows, grouped by role:
+
+### Orchestration & persistence
+
+| Workflow | Role |
+|---|---|
+| [`dispatcher-p_8rCBgnl`](dispatcher-p_8rCBgnl/) | Pops a trend from `STG_ENRICHMENT_QUEUE`, claims a lock, fans out to enrichment with callback wiring. |
+| [`sources-p_7NCy36w`](sources-p_7NCy36w/) | For one trend, generates search terms and fetches per-source metrics → `FCT_TREND_SOURCE_METRICS`. |
+| [`llm-enrichment-p_YyC86Zo`](llm-enrichment-p_YyC86Zo/) | Synchronous Gemini + Grok + Claude chain producing the trend's full enrichment payload (categories, vibe, commercial fit, B2B/B2C names). |
+| [`write-p_o7CWa2K`](write-p_o7CWa2K/) | Persists the enrichment result to `DIM_TREND_ENRICHMENT` + `FCT_TREND_ENRICHMENT_HISTORY`, marks the queue row complete. |
+| [`daily-digest-p_vQCkwgV`](daily-digest-p_vQCkwgV/) | Scheduled link-checker + LLM source-verifier → Braze email of the day's trend dashboard. |
+| [`empty-workflow-p_NMCYY6a`](empty-workflow-p_NMCYY6a/) | Placeholder, no steps — safe to delete. |
+
+### Discovery (LLM trend hypothesis generation)
+
+| Workflow | Role |
+|---|---|
+| [`discovery-p_5VCPP3N`](discovery-p_5VCPP3N/) | Three LLMs (Gemini/Grok/ChatGPT) sharded across 6 verticals propose trend topics, Claude reranks + dedupes, URL HEAD-validate, write `agent_*_discovery` rows to `STG_EXTERNAL_SIGNALS`. Per-model crons run independently. |
+
+### Distillation (signal → candidate)
+
+| Workflow | Role |
+|---|---|
+| [`distillation-p_mkCBBqb`](distillation-p_mkCBBqb/) | Sonnet 4.6 lead agent pulls 24h of unclaimed signals, runs Louvain + agent-only clustering, fans hypotheses to subagents. |
+| [`distillation-subagent-p_jmCjj3J`](distillation-subagent-p_jmCjj3J/) | Single-hypothesis investigator: tool-calls signal-lookup / dedup / search-ingest, returns a verdict. |
+
+### Promotion (candidate → trend)
+
+| Workflow | Role |
+|---|---|
+| [`promotion-p_xMC99jg`](promotion-p_xMC99jg/) | Pulls pending REAL_TREND candidates, applies HARD_GATE (cluster_size, source_families), dispatches each to the agent, applies the result via `PROC_PROMOTION_APPLY`. |
+| [`promotion-agent-p_yKCmm9r`](promotion-agent-p_yKCmm9r/) | Per-candidate verifier; compares against neighboring active trends, returns PROMOTE_NEW / MERGE_INTO / DEFER / REJECT. |
+
+### Ingestion (raw signal feeds → `STG_EXTERNAL_SIGNALS`)
+
+All five write URL-shaped `SIGNAL_ID`s via JS + `snowflake-sdk` direct connector (the registry SQL proxy 413's at ~256KB).
+
+| Workflow | Role |
+|---|---|
+| [`ingestion/amazon-p_rvC71gN`](ingestion/amazon-p_rvC71gN/) | Scrapes Amazon Movers & Shakers across 6 departments; `SIGNAL_ID = https://www.amazon.com/dp/<ASIN>`. |
+| [`ingestion/bluesky-p_V9CgV17`](ingestion/bluesky-p_V9CgV17/) | `searchPosts` against a fixed seed-term list (`sort=top`, 24h window, engagement-filtered). |
+| [`ingestion/google-trends-p_3nC3xkk`](ingestion/google-trends-p_3nC3xkk/) | Google Trends RSS + related-queries pull. |
+| [`ingestion/tiktok-p_yKCm9Am`](ingestion/tiktok-p_yKCm9Am/) | Playwright scrape of TikTok trending hashtags. |
+| [`ingestion/pinterest-p_xMC9jR5`](ingestion/pinterest-p_xMC9jR5/) | Pinterest trending categories scrape. **`inactive: true`** — raw output didn't fit specificity rubric, deferred. |
+
+### Ingestion tools (HTTP-callable, used by distillation subagent)
+
+| Workflow | Role |
+|---|---|
+| [`ingestion/tools/search-bluesky-p_13CNNwP`](ingestion/tools/search-bluesky-p_13CNNwP/) | Ad-hoc Bluesky search for hypothesis corroboration. |
+| [`ingestion/tools/search-gdelt-p_WxCppoa`](ingestion/tools/search-gdelt-p_WxCppoa/) | Ad-hoc GDELT news search. |
+| [`ingestion/tools/search-google-trends-p_YyC88x8`](ingestion/tools/search-google-trends-p_YyC88x8/) | Ad-hoc Google Trends lookup. |
+| [`ingestion/tools/grok-live-search-p_vQCkkGK`](ingestion/tools/grok-live-search-p_vQCkkGK/) | Grok live web search via xAI. |
+
+---
+
 ## ✅ Phase 1 — Distillation agent (shipped 2026-04-25)
 
 **Goal:** replace the static SQL clustering's "what counts as a trend?" decision with a Sonnet 4.6 agent loop that's opinionated about specificity (rejects "wellness" / "AI" categories, demands noun-verb consumer behaviors).
