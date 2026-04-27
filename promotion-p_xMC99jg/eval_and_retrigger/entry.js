@@ -10,11 +10,10 @@
 //   - apply_result.applied_count === 0       (nothing to do → converged)
 //   - dry_run === true                       (never loops)
 //
-// Self-POST URL must be the public endpoint of this workflow's HTTP trigger.
-// Set the PROMOTION_SELF_URL env var in the Pipedream UI (no redeploy needed)
-// or update SELF_ENDPOINT below and re-push.
+// Self-POST URL is wired in workflow.yaml as the `self_url` prop so the
+// endpoint is visible alongside the rest of the step config (instead of
+// hidden in an env var).
 
-const SELF_ENDPOINT = "https://PLACEHOLDER-promotion.m.pipedream.net";
 const MIN_BUDGET_USD = 0.10;
 
 export default defineComponent({
@@ -29,6 +28,7 @@ export default defineComponent({
     budget_remaining_usd: { type: "string" },
     dry_run: { type: "string" },
     max_candidates: { type: "string", optional: true },
+    self_url: { type: "string", label: "This workflow's HTTP endpoint URL (for self-retrigger)" },
     lead_result: { type: "any", optional: true },
     apply_result: { type: "any", optional: true },
   },
@@ -110,10 +110,10 @@ export default defineComponent({
       };
     }
 
-    const selfUrl = process.env.PROMOTION_SELF_URL || SELF_ENDPOINT;
-    if (selfUrl.includes("PLACEHOLDER")) {
+    const selfUrl = this.self_url;
+    if (!selfUrl || selfUrl.includes("PLACEHOLDER")) {
       console.log(
-        `self-retrigger: SELF_ENDPOINT placeholder and PROMOTION_SELF_URL env var not set — aborting loop`,
+        `self-retrigger: self_url prop is not configured (got '${selfUrl}') — aborting loop`,
       );
       return {
         looped: false,
