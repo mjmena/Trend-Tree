@@ -7,7 +7,7 @@
 
 export default defineComponent({
   props: {
-    slack: { type: "app", app: "slack", optional: false },
+    slack: { type: "app", app: "slack" },
     error: { type: "object" },
     channel: { type: "string", default: "ops-alerts" },
   },

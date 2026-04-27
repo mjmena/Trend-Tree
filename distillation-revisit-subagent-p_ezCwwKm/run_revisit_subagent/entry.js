@@ -257,7 +257,7 @@ async function runAgentLoop({ anthropic, system, user_message, context, max_iter
 
 export default defineComponent({
   props: {
-    anthropic: { type: "app", app: "anthropic", optional: false },
+    anthropic: { type: "app", app: "anthropic" },
     request: { type: "object" },
     signal_rows: { type: "any", optional: true },
     neighbor_rows: { type: "any", optional: true },
