@@ -81,7 +81,7 @@ steps:
   props:
     pending_rows: "{{steps.q_load_pending_candidates.$return_value}}"
     max_candidates: "{{steps.normalize_event.$return_value.max_candidates}}"
-- namespace: q_compute_candidate_vectors
+- namespace: q_compute_vectors_and_neighbors
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
   props:
@@ -102,9 +102,7 @@ steps:
           QUALIFY ROW_NUMBER() OVER (PARTITION BY c.CANDIDATE_ID ORDER BY s.INGESTED_AT DESC) <= 3
         ),
         candidate_signal_titles AS (
-          SELECT
-            CANDIDATE_ID,
-            LISTAGG(SIGNAL_TITLE, ', ') WITHIN GROUP (ORDER BY INGESTED_AT DESC) AS TOP_SIGNAL_TITLES
+          SELECT CANDIDATE_ID, LISTAGG(SIGNAL_TITLE, ', ') WITHIN GROUP (ORDER BY INGESTED_AT DESC) AS TOP_SIGNAL_TITLES
           FROM ranked_signals
           GROUP BY CANDIDATE_ID
         ),
@@ -117,12 +115,41 @@ steps:
           FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
           LEFT JOIN candidate_signal_titles t ON c.CANDIDATE_ID = t.CANDIDATE_ID
           WHERE c.CANDIDATE_ID IN (SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))))
+        ),
+        candidate_vectors AS (
+          SELECT
+            CANDIDATE_ID,
+            EMBEDDING_TEXT,
+            SNOWFLAKE.CORTEX.EMBED_TEXT_1024('snowflake-arctic-embed-l-v2.0', EMBEDDING_TEXT) AS CANDIDATE_VECTOR
+          FROM candidate_text
+        ),
+        neighbors AS (
+          SELECT
+            c.CANDIDATE_ID,
+            c.CANDIDATE_VECTOR,
+            t.TREND_ID                 AS NEIGHBOR_TREND_ID,
+            t.TREND_TOPIC              AS NEIGHBOR_TOPIC,
+            t.LAST_UPDATE_AT           AS NEIGHBOR_LAST_UPDATE,
+            t.TOTAL_CLUSTER_SIZE       AS NEIGHBOR_CLUSTER_SIZE,
+            t.DETECTED_AT              AS NEIGHBOR_DETECTED_AT,
+            t.TREND_HEAT_INDEX         AS NEIGHBOR_HEAT,
+            DATEDIFF(day, t.DETECTED_AT, CURRENT_TIMESTAMP()) AS NEIGHBOR_AGE_DAYS,
+            e.SUMMARY_SHORT            AS NEIGHBOR_SUMMARY,
+            e.CATEGORY                 AS NEIGHBOR_CATEGORY,
+            CASE WHEN t.TREND_VECTOR IS NULL THEN NULL
+                 ELSE ROUND(VECTOR_COSINE_SIMILARITY(c.CANDIDATE_VECTOR, t.TREND_VECTOR), 4)
+            END AS SIMILARITY
+          FROM candidate_vectors c
+          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+            ON t.TREND_VECTOR IS NOT NULL
+            AND VECTOR_COSINE_SIMILARITY(c.CANDIDATE_VECTOR, t.TREND_VECTOR) >= 0.50
+          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT e ON t.TREND_ID = e.TREND_ID
         )
-        SELECT
-          CANDIDATE_ID,
-          EMBEDDING_TEXT,
-          SNOWFLAKE.CORTEX.EMBED_TEXT_1024('snowflake-arctic-embed-l-v2.0', EMBEDDING_TEXT) AS CANDIDATE_VECTOR
-        FROM candidate_text
+        SELECT *
+        FROM neighbors
+        QUALIFY NEIGHBOR_TREND_ID IS NULL
+             OR ROW_NUMBER() OVER (PARTITION BY CANDIDATE_ID ORDER BY SIMILARITY DESC) <= 8
+        ORDER BY CANDIDATE_ID, SIMILARITY DESC NULLS LAST
       query: |-
         WITH ranked_signals AS (
           SELECT
@@ -137,9 +164,7 @@ steps:
           QUALIFY ROW_NUMBER() OVER (PARTITION BY c.CANDIDATE_ID ORDER BY s.INGESTED_AT DESC) <= 3
         ),
         candidate_signal_titles AS (
-          SELECT
-            CANDIDATE_ID,
-            LISTAGG(SIGNAL_TITLE, ', ') WITHIN GROUP (ORDER BY INGESTED_AT DESC) AS TOP_SIGNAL_TITLES
+          SELECT CANDIDATE_ID, LISTAGG(SIGNAL_TITLE, ', ') WITHIN GROUP (ORDER BY INGESTED_AT DESC) AS TOP_SIGNAL_TITLES
           FROM ranked_signals
           GROUP BY CANDIDATE_ID
         ),
@@ -152,93 +177,48 @@ steps:
           FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
           LEFT JOIN candidate_signal_titles t ON c.CANDIDATE_ID = t.CANDIDATE_ID
           WHERE c.CANDIDATE_ID IN (SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))))
+        ),
+        candidate_vectors AS (
+          SELECT
+            CANDIDATE_ID,
+            EMBEDDING_TEXT,
+            SNOWFLAKE.CORTEX.EMBED_TEXT_1024('snowflake-arctic-embed-l-v2.0', EMBEDDING_TEXT) AS CANDIDATE_VECTOR
+          FROM candidate_text
+        ),
+        neighbors AS (
+          SELECT
+            c.CANDIDATE_ID,
+            c.CANDIDATE_VECTOR,
+            t.TREND_ID                 AS NEIGHBOR_TREND_ID,
+            t.TREND_TOPIC              AS NEIGHBOR_TOPIC,
+            t.LAST_UPDATE_AT           AS NEIGHBOR_LAST_UPDATE,
+            t.TOTAL_CLUSTER_SIZE       AS NEIGHBOR_CLUSTER_SIZE,
+            t.DETECTED_AT              AS NEIGHBOR_DETECTED_AT,
+            t.TREND_HEAT_INDEX         AS NEIGHBOR_HEAT,
+            DATEDIFF(day, t.DETECTED_AT, CURRENT_TIMESTAMP()) AS NEIGHBOR_AGE_DAYS,
+            e.SUMMARY_SHORT            AS NEIGHBOR_SUMMARY,
+            e.CATEGORY                 AS NEIGHBOR_CATEGORY,
+            CASE WHEN t.TREND_VECTOR IS NULL THEN NULL
+                 ELSE ROUND(VECTOR_COSINE_SIMILARITY(c.CANDIDATE_VECTOR, t.TREND_VECTOR), 4)
+            END AS SIMILARITY
+          FROM candidate_vectors c
+          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+            ON t.TREND_VECTOR IS NOT NULL
+            AND VECTOR_COSINE_SIMILARITY(c.CANDIDATE_VECTOR, t.TREND_VECTOR) >= 0.50
+          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT e ON t.TREND_ID = e.TREND_ID
         )
-        SELECT
-          CANDIDATE_ID,
-          EMBEDDING_TEXT,
-          SNOWFLAKE.CORTEX.EMBED_TEXT_1024('snowflake-arctic-embed-l-v2.0', EMBEDDING_TEXT) AS CANDIDATE_VECTOR
-        FROM candidate_text
+        SELECT *
+        FROM neighbors
+        QUALIFY NEIGHBOR_TREND_ID IS NULL
+             OR ROW_NUMBER() OVER (PARTITION BY CANDIDATE_ID ORDER BY SIMILARITY DESC) <= 8
+        ORDER BY CANDIDATE_ID, SIMILARITY DESC NULLS LAST
       params:
       - "{{steps.extract_candidate_ids.$return_value.selected_ids_json}}"
-- namespace: serialize_for_neighbor_query
-  runtime: nodejs20.x
-  uses: "./serialize_for_neighbor_query/entry.js"
-  props:
-    candidate_vectors: "{{steps.q_compute_candidate_vectors.$return_value}}"
-- namespace: q_load_neighbor_pool
-  runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
-  props:
-    snowflake:
-      authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        WITH candidate_vectors AS (
-          SELECT
-            f.value:CANDIDATE_ID::STRING AS CANDIDATE_ID,
-            f.value:CANDIDATE_VECTOR::VECTOR(FLOAT, 1024) AS CANDIDATE_VECTOR
-          FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) f
-        ),
-        scored AS (
-          SELECT
-            c.CANDIDATE_ID,
-            t.TREND_ID                 AS NEIGHBOR_TREND_ID,
-            t.TREND_TOPIC              AS NEIGHBOR_TOPIC,
-            t.LAST_UPDATE_AT           AS NEIGHBOR_LAST_UPDATE,
-            t.TOTAL_CLUSTER_SIZE       AS NEIGHBOR_CLUSTER_SIZE,
-            t.DETECTED_AT              AS NEIGHBOR_DETECTED_AT,
-            t.TREND_HEAT_INDEX         AS NEIGHBOR_HEAT,
-            DATEDIFF(day, t.DETECTED_AT, CURRENT_TIMESTAMP()) AS NEIGHBOR_AGE_DAYS,
-            e.SUMMARY_SHORT            AS NEIGHBOR_SUMMARY,
-            e.CATEGORY                 AS NEIGHBOR_CATEGORY,
-            ROUND(VECTOR_COSINE_SIMILARITY(c.CANDIDATE_VECTOR, t.TREND_VECTOR), 4) AS SIMILARITY
-          FROM candidate_vectors c
-          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-            ON t.TREND_VECTOR IS NOT NULL
-          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT e ON t.TREND_ID = e.TREND_ID
-          WHERE VECTOR_COSINE_SIMILARITY(c.CANDIDATE_VECTOR, t.TREND_VECTOR) >= 0.50
-        )
-        SELECT *
-        FROM scored
-        QUALIFY ROW_NUMBER() OVER (PARTITION BY CANDIDATE_ID ORDER BY SIMILARITY DESC) <= 8
-        ORDER BY CANDIDATE_ID, SIMILARITY DESC
-      query: |-
-        WITH candidate_vectors AS (
-          SELECT
-            f.value:CANDIDATE_ID::STRING AS CANDIDATE_ID,
-            f.value:CANDIDATE_VECTOR::VECTOR(FLOAT, 1024) AS CANDIDATE_VECTOR
-          FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) f
-        ),
-        scored AS (
-          SELECT
-            c.CANDIDATE_ID,
-            t.TREND_ID                 AS NEIGHBOR_TREND_ID,
-            t.TREND_TOPIC              AS NEIGHBOR_TOPIC,
-            t.LAST_UPDATE_AT           AS NEIGHBOR_LAST_UPDATE,
-            t.TOTAL_CLUSTER_SIZE       AS NEIGHBOR_CLUSTER_SIZE,
-            t.DETECTED_AT              AS NEIGHBOR_DETECTED_AT,
-            t.TREND_HEAT_INDEX         AS NEIGHBOR_HEAT,
-            DATEDIFF(day, t.DETECTED_AT, CURRENT_TIMESTAMP()) AS NEIGHBOR_AGE_DAYS,
-            e.SUMMARY_SHORT            AS NEIGHBOR_SUMMARY,
-            e.CATEGORY                 AS NEIGHBOR_CATEGORY,
-            ROUND(VECTOR_COSINE_SIMILARITY(c.CANDIDATE_VECTOR, t.TREND_VECTOR), 4) AS SIMILARITY
-          FROM candidate_vectors c
-          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-            ON t.TREND_VECTOR IS NOT NULL
-          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT e ON t.TREND_ID = e.TREND_ID
-          WHERE VECTOR_COSINE_SIMILARITY(c.CANDIDATE_VECTOR, t.TREND_VECTOR) >= 0.50
-        )
-        SELECT *
-        FROM scored
-        QUALIFY ROW_NUMBER() OVER (PARTITION BY CANDIDATE_ID ORDER BY SIMILARITY DESC) <= 8
-        ORDER BY CANDIDATE_ID, SIMILARITY DESC
-      params:
-      - "{{steps.serialize_for_neighbor_query.$return_value.candidate_vectors_json}}"
 - namespace: serialize_neighbor_pool
   runtime: nodejs20.x
   uses: "./serialize_neighbor_pool/entry.js"
   props:
-    neighbor_rows: "{{steps.q_load_neighbor_pool.$return_value}}"
+    neighbor_rows: "{{steps.q_compute_vectors_and_neighbors.$return_value}}"
 - namespace: q_load_neighbor_signal_samples
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -274,8 +254,7 @@ steps:
   props:
     event: "{{steps.normalize_event.$return_value}}"
     selected_candidates: "{{steps.extract_candidate_ids.$return_value.selected}}"
-    candidate_vectors: "{{steps.q_compute_candidate_vectors.$return_value}}"
-    neighbor_rows: "{{steps.q_load_neighbor_pool.$return_value}}"
+    vectors_and_neighbors: "{{steps.q_compute_vectors_and_neighbors.$return_value}}"
     neighbor_signal_samples: "{{steps.q_load_neighbor_signal_samples.$return_value}}"
     subagent_url: https://eompw435droaqbo.m.pipedream.net
 - namespace: apply_promotion

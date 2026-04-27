@@ -125,10 +125,13 @@ function failQualityGate(c) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Group neighbor + signal-sample rows by candidate_id, then by neighbor
+// Parse the combined q_compute_vectors_and_neighbors output:
+//   each row has CANDIDATE_VECTOR + (optional) NEIGHBOR_* columns.
+//   Candidates with no neighbors above threshold appear with NEIGHBOR_TREND_ID NULL.
+// Returns { vectorsByCandidate: Map, neighborsByCandidate: Map }
 // ─────────────────────────────────────────────────────────────────────
 
-function indexNeighbors(neighborRows, signalSampleRows) {
+function indexCombinedRows(combinedRows, signalSampleRows) {
   // signalSampleRows: { TREND_ID, SIGNAL_TITLE, SIGNAL_TIMESTAMP, ... }
   const samplesByTrend = new Map();
   for (const r of (signalSampleRows || [])) {
@@ -143,11 +146,21 @@ function indexNeighbors(neighborRows, signalSampleRows) {
     samplesByTrend.set(tid, arr);
   }
 
-  const byCandidate = new Map();
-  for (const r of (neighborRows || [])) {
+  const vectorsByCandidate = new Map();
+  const neighborsByCandidate = new Map();
+
+  for (const r of (combinedRows || [])) {
     const cid = r.CANDIDATE_ID;
-    const list = byCandidate.get(cid) || [];
+    if (!cid) continue;
+
+    if (!vectorsByCandidate.has(cid)) {
+      vectorsByCandidate.set(cid, r.CANDIDATE_VECTOR);
+    }
+
     const tid = r.NEIGHBOR_TREND_ID;
+    if (!tid) continue;                                      // sentinel row for candidate with 0 neighbors
+
+    const list = neighborsByCandidate.get(cid) || [];
     list.push({
       trend_id: tid,
       topic: r.NEIGHBOR_TOPIC,
@@ -160,9 +173,10 @@ function indexNeighbors(neighborRows, signalSampleRows) {
       category: r.NEIGHBOR_CATEGORY,
       sample_signals: (samplesByTrend.get(tid) || []).slice(0, 3),
     });
-    byCandidate.set(cid, list);
+    neighborsByCandidate.set(cid, list);
   }
-  return byCandidate;
+
+  return { vectorsByCandidate, neighborsByCandidate };
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -201,8 +215,7 @@ export default defineComponent({
   props: {
     event: { type: "any" },
     selected_candidates: { type: "any", optional: true },
-    candidate_vectors: { type: "any", optional: true },
-    neighbor_rows: { type: "any", optional: true },
+    vectors_and_neighbors: { type: "any", optional: true },
     neighbor_signal_samples: { type: "any", optional: true },
     subagent_url: { type: "string", label: "Promotion subagent endpoint" },
   },
@@ -217,14 +230,10 @@ export default defineComponent({
       return emptyResult({ chain_id: evt.chain_id, started, skipped: "no_candidates" });
     }
 
-    // Index candidate vectors by candidate_id (from q_compute_candidate_vectors)
-    const vecByCid = new Map();
-    for (const r of (Array.isArray(this.candidate_vectors) ? this.candidate_vectors : [])) {
-      vecByCid.set(r.CANDIDATE_ID, r.CANDIDATE_VECTOR);
-    }
-
-    // Index neighbors + sample signals
-    const neighborsByCandidate = indexNeighbors(this.neighbor_rows, this.neighbor_signal_samples);
+    // Parse the combined vectors+neighbors output (one query, candidate_vector
+    // appears once per row but the same value across rows for a given candidate)
+    const { vectorsByCandidate: vecByCid, neighborsByCandidate } =
+      indexCombinedRows(this.vectors_and_neighbors, this.neighbor_signal_samples);
 
     // Quality-gate pre-check: short-circuit obvious LOW_QUALITY rejects so we don't
     // burn LLM tokens on them. They land in the bundle as REJECT directly.
