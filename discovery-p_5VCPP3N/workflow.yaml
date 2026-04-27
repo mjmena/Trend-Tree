@@ -133,24 +133,11 @@ steps:
     proposals: "{{steps.rerank_claude.$return_value}}"
 - namespace: write_discovered_signals
   runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
+  uses: "./write_discovered_signals/entry.js"
   props:
     snowflake:
       authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(
-          $${{steps.canonicalize_and_validate.$return_value.signals_json}}$$,
-          '',
-          500
-        )
-      query: |-
-        CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(
-          $${{steps.canonicalize_and_validate.$return_value.signals_json}}$$,
-          '',
-          500
-        )
-      params: []
+    target_table: STG_EXTERNAL_SIGNALS
 - namespace: respond
   runtime: nodejs20.x
   uses: "./respond/entry.js"
