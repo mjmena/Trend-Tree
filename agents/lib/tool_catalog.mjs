@@ -248,6 +248,138 @@ const INGEST_SCHEMAS = {
   },
 };
 
+const ENRICHMENT_SCHEMAS = {
+  query_trend_source_metrics: {
+    name: "query_trend_source_metrics",
+    description:
+      "Look up FCT_TREND_SOURCE_METRICS rows for the trend currently being enriched. Returns one entry per source (gdelt, wikimedia, bluesky, google_trends, amazon, pinterest, tiktok) with headline_metric, headline_metric_name, and the full metrics VARIANT. Reads from a context-provided pool — pre-fetched, not live SQL.",
+    input_schema: {
+      type: "object",
+      properties: {
+        source: {
+          type: "string",
+          description: "Optional source filter (e.g. 'gdelt'). Omit to return all sources.",
+        },
+        min_headline_metric: {
+          type: "number",
+          description: "Optional: only return sources with headline_metric >= this value.",
+        },
+      },
+    },
+  },
+
+  propose_enrichment: {
+    name: "propose_enrichment",
+    description:
+      "Emit the final enrichment record for this trend. Call this exactly ONCE near the end of the loop after you've gathered evidence, drafted candidate names with self-critique, validated cited URLs, and finalized the trend profile. The tool's input schema is the canonical DIM_TREND_ENRICHMENT shape — populate every field that applies. Calling this is what causes the workflow to persist anything; if you don't call it, nothing is written.",
+    input_schema: {
+      type: "object",
+      properties: {
+        trend_name_b2b: { type: "string", description: "2-5 words, professional/industry register, evocative not generic. AVOID 'ritual', 'daily', 'moment', 'movement', 'era', 'vibe', 'wave', 'trend' unless paired with something specific and unexpected." },
+        trend_name_b2c: { type: "string", description: "2-5 words, consumer-facing, distinctive, has texture (sonic / metaphoric / cultural). Same anti-cliché rule applies." },
+        summary_short: { type: "string", description: "1-2 sentences, action-oriented (what consumers are doing or buying, not just observing)." },
+        summary_long: { type: "string", description: "1 paragraph (≤500 chars), action-oriented, expanded context for deep-dive view." },
+        category: { type: "string", enum: ["wellness", "food_beverage", "beauty", "fitness", "fashion", "home_living", "sustainability", "consumer_tech", "personal_care", "social_lifestyle", "entertainment", "travel", "parenting", "other"] },
+        subcategory: { type: "string", description: "Lowercase snake_case subcategory specific to this trend." },
+        category_confidence: { type: "number", description: "0.0-1.0; your conviction in the category assignment. Set <0.6 if you genuinely couldn't fit it." },
+        voice_of_customer: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              quote: { type: "string" },
+              source_url: { type: "string", description: "Direct URL to the post/comment/review. Required." },
+              platform: { type: "string", description: "e.g. 'bluesky', 'reddit', 'tiktok'." },
+            },
+            required: ["quote", "source_url"],
+          },
+          description: "3-8 quotes that capture how real people are talking about this. Each MUST have a source_url.",
+        },
+        vibe_shift: { type: "string", description: "1 sentence on what the cultural mood/movement around this is." },
+        social_narrative: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              point: { type: "string", description: "A specific narrative point, ≤200 chars." },
+              evidence_url: { type: "string", description: "URL backing this point (article, post, search query). Optional but strongly preferred." },
+            },
+            required: ["point"],
+          },
+          description: "3-5 narrative points that explain why this is happening now.",
+        },
+        cultural_drivers: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              driver: { type: "string" },
+              influence_level: { type: "string", enum: ["high", "medium", "low"] },
+            },
+            required: ["driver", "influence_level"],
+          },
+        },
+        seasonal_relevance: {
+          type: "object",
+          properties: {
+            is_seasonal: { type: "boolean" },
+            peak_months: { type: "array", items: { type: "string" }, description: "e.g. ['november','december']." },
+          },
+          required: ["is_seasonal"],
+        },
+        geographic_hotspots: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              region: { type: "string" },
+              intensity: { type: "string", enum: ["high", "medium", "low"] },
+            },
+            required: ["region", "intensity"],
+          },
+        },
+        social_proof: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              claim: { type: "string", description: "What this proof point asserts." },
+              source_url: { type: "string", description: "Click-through URL — required." },
+              source_type: { type: "string", enum: ["news", "social", "search_volume", "commerce", "other"] },
+              source_name: { type: "string", description: "Display name (e.g. 'BBC News', 'Bluesky')." },
+              captured_at: { type: "string", description: "ISO timestamp of when the source was captured." },
+            },
+            required: ["claim", "source_url", "source_type"],
+          },
+          description: "≥2 structured proof points the dashboard surfaces with click-throughs. Use cited URLs from your ingest_* tool calls.",
+        },
+        name_candidates_considered: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              audience: { type: "string", enum: ["b2b", "b2c"] },
+              name: { type: "string" },
+              scores: {
+                type: "object",
+                properties: {
+                  distinctiveness: { type: "number" },
+                  whimsy: { type: "number" },
+                  specificity: { type: "number" },
+                },
+              },
+            },
+            required: ["audience", "name", "scores"],
+          },
+          description: "All 10 candidates you considered (5 b2b + 5 b2c) with per-axis 0-10 scores. Required for naming-quality audit.",
+        },
+        reasoning: { type: "string", description: "≤500 chars on why these names + categorization fit." },
+      },
+      required: ["trend_name_b2b", "trend_name_b2c", "summary_short", "summary_long", "category", "subcategory", "category_confidence", "social_proof", "name_candidates_considered", "reasoning"],
+    },
+  },
+};
+
 const LEAD_ONLY_SCHEMAS = {
   dispatch_subagent: {
     name: "dispatch_subagent",
@@ -343,6 +475,18 @@ export const SUBAGENT_TOOL_NAMES = [
   "propose_trend_candidate",
 ];
 
+// Phase 3 enrichment agent: EAGER set minus distillation-specific lookups
+// (no Louvain, no signal pool — enrichment focuses on one trend, not the
+// whole signal firehose), plus enrichment-specific tools.
+export const ENRICHMENT_TOOL_NAMES = [
+  "query_trend_neighbors",
+  "query_trend_metrics",
+  "query_trend_source_metrics",
+  "validate_url_canonical",
+  "discover_external_tools",
+  "propose_enrichment",
+];
+
 const DEFERRED_BY_NEED = {
   social: ["ingest_search_bluesky"],
   web: ["ingest_grok_live_search", "ingest_search_google_trends"],
@@ -360,6 +504,7 @@ const DEFERRED_BY_NEED = {
 const ALL_SCHEMAS = {
   ...QUERY_SCHEMAS,
   ...INGEST_SCHEMAS,
+  ...ENRICHMENT_SCHEMAS,
   ...LEAD_ONLY_SCHEMAS,
   ...META_SCHEMAS,
 };
@@ -584,6 +729,33 @@ async function dispatchSubagent(input, ctx) {
   });
 }
 
+function lookupTrendSourceMetrics(input, ctx) {
+  const pool = ctx.source_metrics_pool || [];
+  const { source, min_headline_metric } = input || {};
+  const out = [];
+  for (const r of pool) {
+    if (source && r.source_name !== source) continue;
+    if (typeof min_headline_metric === "number" && Number(r.headline_metric || 0) < min_headline_metric) continue;
+    out.push({
+      source_name: r.source_name,
+      headline_metric: r.headline_metric,
+      headline_metric_name: r.headline_metric_name,
+      metrics: r.metrics,
+    });
+  }
+  return { source_metrics: out, total_in_pool: pool.length };
+}
+
+function proposeEnrichment(input, ctx) {
+  // Single-shot accumulator: one enrichment per run. If the agent calls
+  // this twice, we keep only the latest (the agent's "final answer").
+  ctx.proposed_enrichment = { ...input, emitted_at: new Date().toISOString() };
+  return {
+    accepted: true,
+    note: "Enrichment record captured. The workflow's terminal step will write it to DIM_TREND_ENRICHMENT after the optional name-reviewer pass.",
+  };
+}
+
 function proposeTrendCandidate(input, ctx) {
   // Pure side-effect on the context's accumulator; the workflow's terminal
   // step bulk-inserts these to STG_TREND_CANDIDATES_AGENT.
@@ -620,6 +792,8 @@ const DISPATCHERS = {
   ingest_grok_live_search: (input, ctx) => ingestGrokLive(input, ctx),
   dispatch_subagent: (input, ctx) => dispatchSubagent(input, ctx),
   propose_trend_candidate: (input, ctx) => proposeTrendCandidate(input, ctx),
+  query_trend_source_metrics: (input, ctx) => lookupTrendSourceMetrics(input, ctx),
+  propose_enrichment: (input, ctx) => proposeEnrichment(input, ctx),
 };
 
 export async function dispatchTool(name, input, ctx) {

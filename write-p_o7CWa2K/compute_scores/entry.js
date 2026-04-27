@@ -129,55 +129,114 @@ export default defineComponent({
     }
 
     // ── Extract LLM outputs ──────────────────────────────────────────
+    // Phase 3: agent loop emits `enrichment_output` (canonical shape).
+    // Legacy: 3-LLM cascade emits `claude_output` + `gemini_output` + `grok_output`.
+    // Shape detection picks the right path; both tolerated during cutover.
+    const enrichmentRaw = llmOutput.enrichment_output ?? null;
     const claudeRaw = llmOutput.claude_output ?? null;
-    if (!claudeRaw) {
-      throw new Error(`compute_scores: no Claude synthesizer output for trend ${trendId} — expected a FULL run`);
+
+    if (!enrichmentRaw && !claudeRaw) {
+      throw new Error(`compute_scores: no enrichment_output or claude_output for trend ${trendId} — expected a FULL run`);
     }
-
-    const claude = { ...claudeRaw };
-    claude.category = normalizeCategory(claude.category);
-    claude.subcategory = normalizeSubcategory(claude.subcategory);
-
-    const gemini = llmOutput.gemini_output
-      ? { ...llmOutput.gemini_output, category: normalizeCategory(llmOutput.gemini_output.category) }
-      : null;
-    const grok = llmOutput.grok_output ?? null;
 
     const tier = "FULL";
 
-    // ── LLM responses (strip internal _fields) ───────────────────────
-    const llmResponses = {
-      claude: stripMeta(claude),
-      gemini: stripMeta(gemini),
-      grok: stripMeta(grok),
-    };
+    let payload;
+    if (enrichmentRaw) {
+      // Phase 3 path: single agent output, fully self-contained.
+      const e = { ...enrichmentRaw };
+      const category = normalizeCategory(e.category);
+      const subcategory = normalizeSubcategory(e.subcategory);
+      const lowConfidenceFlag =
+        typeof e.low_confidence_flag === "boolean"
+          ? e.low_confidence_flag
+          : (typeof e.category_confidence === "number" ? e.category_confidence < 0.6 : null);
 
-    // ── Assemble the single payload object consumed by SQL PARSE_JSON ─
-    const payload = {
-      trend_id: trendId,
-      trend_name_b2b: claude.trend_name_b2b ?? null,
-      trend_name_b2c: claude.trend_name_b2c ?? null,
-      summary_short: claude.summary_short ?? null,
-      summary_long: claude.summary_long ?? null,
-      category: claude.category,
-      subcategory: claude.subcategory,
-      voice_of_customer: grok?.voice_of_customer ?? null,
-      vibe_shift: grok?.vibe_shift ?? null,
-      social_narrative: grok?.social_narrative ?? null,
-      cultural_drivers: grok?.cultural_drivers ?? null,
-      seasonal_relevance: grok?.seasonal_relevance ?? null,
-      geographic_hotspots: grok?.geographic_hotspots ?? null,
-      llm_responses: llmResponses,
-      models_used: llmOutput.models_used ?? claudeRaw._models_used ?? null,
-      llm_token_usage: llmOutput.llm_token_usage ?? null,
-      llm_total_tokens: llmOutput.llm_total_tokens ?? 0,
-      llm_cost_estimate: llmOutput.llm_cost_estimate ?? 0,
-      // For history insert
-      source_metrics_snapshot: sourceSnapshot,
-    };
+      payload = {
+        trend_id: trendId,
+        trend_name_b2b: e.trend_name_b2b ?? null,
+        trend_name_b2c: e.trend_name_b2c ?? null,
+        summary_short: e.summary_short ?? null,
+        summary_long: e.summary_long ?? null,
+        category,
+        subcategory,
+        category_confidence: e.category_confidence ?? null,
+        low_confidence_flag: lowConfidenceFlag,
+        voice_of_customer: e.voice_of_customer ?? null,
+        vibe_shift: e.vibe_shift ?? null,
+        // Phase 3 social_narrative is a structured array — write to V2 column.
+        // Legacy SOCIAL_NARRATIVE STRING column gets a JSON-stringified preview
+        // so dashboards still rendering the old field continue to show something.
+        social_narrative_v2: e.social_narrative ?? null,
+        social_narrative: Array.isArray(e.social_narrative)
+          ? e.social_narrative.map((n) => n.point).filter(Boolean).join(" • ").slice(0, 4000) || null
+          : (typeof e.social_narrative === "string" ? e.social_narrative : null),
+        cultural_drivers: e.cultural_drivers ?? null,
+        seasonal_relevance: e.seasonal_relevance ?? null,
+        geographic_hotspots: e.geographic_hotspots ?? null,
+        social_proof: e.social_proof ?? null,
+        originally_surfaced_at: e.originally_surfaced_at ?? null,
+        name_candidates_considered: e.name_candidates_considered ?? null,
+        name_reviewer: e.name_reviewer ?? null,
+        agent_telemetry: llmOutput.agent_telemetry ?? null,
+        llm_responses: { agent: stripMeta(e) },
+        models_used: llmOutput.models_used ?? ["claude-sonnet-4-6"],
+        llm_token_usage: llmOutput.llm_token_usage ?? null,
+        llm_total_tokens: llmOutput.llm_total_tokens ?? 0,
+        llm_cost_estimate: llmOutput.llm_cost_estimate ?? 0,
+        source_metrics_snapshot: sourceSnapshot,
+      };
+    } else {
+      // Legacy path (3-LLM cascade) — preserved for compat during cutover.
+      const claude = { ...claudeRaw };
+      claude.category = normalizeCategory(claude.category);
+      claude.subcategory = normalizeSubcategory(claude.subcategory);
+
+      const gemini = llmOutput.gemini_output
+        ? { ...llmOutput.gemini_output, category: normalizeCategory(llmOutput.gemini_output.category) }
+        : null;
+      const grok = llmOutput.grok_output ?? null;
+
+      payload = {
+        trend_id: trendId,
+        trend_name_b2b: claude.trend_name_b2b ?? null,
+        trend_name_b2c: claude.trend_name_b2c ?? null,
+        summary_short: claude.summary_short ?? null,
+        summary_long: claude.summary_long ?? null,
+        category: claude.category,
+        subcategory: claude.subcategory,
+        category_confidence: null,
+        low_confidence_flag: null,
+        voice_of_customer: grok?.voice_of_customer ?? null,
+        vibe_shift: grok?.vibe_shift ?? null,
+        social_narrative_v2: null,
+        social_narrative: grok?.social_narrative ?? null,
+        cultural_drivers: grok?.cultural_drivers ?? null,
+        seasonal_relevance: grok?.seasonal_relevance ?? null,
+        geographic_hotspots: grok?.geographic_hotspots ?? null,
+        social_proof: null,
+        originally_surfaced_at: null,
+        name_candidates_considered: null,
+        name_reviewer: null,
+        agent_telemetry: null,
+        llm_responses: {
+          claude: stripMeta(claude),
+          gemini: stripMeta(gemini),
+          grok: stripMeta(grok),
+        },
+        models_used: llmOutput.models_used ?? claudeRaw._models_used ?? null,
+        llm_token_usage: llmOutput.llm_token_usage ?? null,
+        llm_total_tokens: llmOutput.llm_total_tokens ?? 0,
+        llm_cost_estimate: llmOutput.llm_cost_estimate ?? 0,
+        source_metrics_snapshot: sourceSnapshot,
+      };
+    }
 
     console.log(`Tokens: ${payload.llm_total_tokens}, cost: $${payload.llm_cost_estimate}`);
-    console.log(`Tier: ${tier}, Trend: B2B="${payload.trend_name_b2b}" / B2C="${payload.trend_name_b2c}" (${payload.category}/${payload.subcategory})`);
+    console.log(`Tier: ${tier}, Trend: B2B="${payload.trend_name_b2b}" / B2C="${payload.trend_name_b2c}" (${payload.category}/${payload.subcategory})${payload.low_confidence_flag ? " [LOW CONF]" : ""}`);
+    if (payload.name_reviewer) {
+      console.log(`Reviewer: b2b=${payload.name_reviewer.score_b2b} b2c=${payload.name_reviewer.score_b2c}${payload.name_reviewer.alternate_b2c ? ` alt='${payload.name_reviewer.alternate_b2c}'` : ""}`);
+    }
 
     $.export("$summary", `${tier}: ${payload.trend_name_b2c} (${payload.category})`);
 

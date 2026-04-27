@@ -46,6 +46,7 @@ steps:
         FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
         WHERE SIGNAL_TIMESTAMP > DATEADD(hour, -24, CURRENT_TIMESTAMP())
           AND COALESCE(AGENT_SESSION_ID, '') = ''
+          AND COALESCE(METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
         ORDER BY SIGNAL_TIMESTAMP DESC NULLS LAST
         LIMIT 600
       query: |-
@@ -55,6 +56,7 @@ steps:
         FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
         WHERE SIGNAL_TIMESTAMP > DATEADD(hour, -24, CURRENT_TIMESTAMP())
           AND COALESCE(AGENT_SESSION_ID, '') = ''
+          AND COALESCE(METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
         ORDER BY SIGNAL_TIMESTAMP DESC NULLS LAST
         LIMIT 600
       params: []
