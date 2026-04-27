@@ -24,7 +24,7 @@
 // them if you ever need to point at a different environment.
 
 const DEFAULT_SOURCES_URL = "https://eoqw249vy2xnwyv.m.pipedream.net"; // sources-p_7NCy36w
-const DEFAULT_LLM_URL     = "https://eod25mq0qt8tk4q.m.pipedream.net"; // llm-enrichment-p_YyC86Zo
+const DEFAULT_LLM_URL     = "https://eoxadsat1xxgqa4.m.pipedream.net"; // enrichment-p_xMC995w (Phase 3 single-agent loop). Legacy llm-enrichment-p_YyC86Zo at https://eod25mq0qt8tk4q.m.pipedream.net is kept deactivated for instant rollback.
 const DEFAULT_WRITE_URL   = "https://eobhhpl77hkx33c.m.pipedream.net"; // write-p_o7CWa2K
 
 // mark_failed inlines this string directly into a Snowflake UPDATE via
