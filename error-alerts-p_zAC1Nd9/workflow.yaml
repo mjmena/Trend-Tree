@@ -12,10 +12,8 @@ steps:
     trigger_event: "{{steps.trigger.event}}"
 - namespace: post_to_slack
   runtime: nodejs20.x
-  uses: "./post_to_slack/entry.js"
+  uses: slack_v2-send-message-to-channel@0.1.3
   props:
     slack:
       authProvisionId: apn_OghQ5eO
-    error: "{{steps.normalize_error.$return_value}}"
-    channel: ops-alerts
-
+    text: "{{steps.normalize_error.$return_value.slack_text}}"

@@ -29,6 +29,17 @@ export default defineComponent({
 
     console.log(`error-alerts: ${workflow_name} cell=${cell_id} code=${code}`);
 
+    // Pre-format the Slack message text. The registry Slack action
+    // (slack_v2-send-message-to-channel) only takes a single `text` field;
+    // markdown formatting works in Slack, but Block Kit needs the legacy
+    // chat.postMessage path. This is plain markdown.
+    const stackBlock = stack_head ? "\n```" + stack_head + "```" : "";
+    const slack_text =
+      `🚨 *${workflow_name}* failed\n` +
+      `*Error:* \`${code}\` — ${msg}\n` +
+      `*Cell:* \`${cell_id}\`  ·  *Time:* ${ts}` +
+      stackBlock;
+
     return {
       workflow_id,
       workflow_name,
@@ -37,6 +48,7 @@ export default defineComponent({
       msg,
       ts,
       stack_head,
+      slack_text,
     };
   },
 });
