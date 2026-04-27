@@ -29,7 +29,6 @@ A GitHub-synced Pipedream project. Each top-level directory is one Pipedream wor
 
 **Deactivated** (kept in repo for rollback / reference):
 - `llm-enrichment-p_YyC86Zo` — legacy 3-LLM cascade. Replaced by `enrichment-p_xMC995w` on 2026-04-27.
-- `agents/audit-p_pWCwPyL` — legacy SIGNAL_CHANGE/AVG_SIMILARITY anomaly detector. Retired 2026-04-27 with the SQL clustering pipeline.
 
 ## Trend pipeline flow
 

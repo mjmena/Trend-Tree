@@ -32,6 +32,21 @@ steps:
         FROM MCC_RAW.MARKETING_DEV.STG_DISTILLATION_CURSOR
         WHERE CURSOR_NAME = '{{steps.normalize_event.$return_value.cursor_name}}'
       params: []
+- namespace: q_release_stale_claims
+  # Releases AGENT_SESSION_ID stamps from prior timed-out runs so the
+  # unclaimed pool below reflects only truly available signals. See
+  # sql/proc_release_stale_signal_claims.sql for the rule.
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        CALL MCC_RAW.MARKETING_DEV.PROC_RELEASE_STALE_SIGNAL_CLAIMS()
+      query: |-
+        CALL MCC_RAW.MARKETING_DEV.PROC_RELEASE_STALE_SIGNAL_CLAIMS()
+      params: []
 - namespace: q_signals_window
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -48,7 +63,7 @@ steps:
           AND COALESCE(AGENT_SESSION_ID, '') = ''
           AND COALESCE(METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
         ORDER BY SIGNAL_TIMESTAMP DESC NULLS LAST
-        LIMIT 600
+        LIMIT 450
       query: |-
         SELECT SIGNAL_ID, SOURCE_NAME, SIGNAL_TIMESTAMP,
                SIGNAL_TITLE, LEFT(SIGNAL_TEXT, 800) AS SIGNAL_TEXT,
@@ -58,7 +73,7 @@ steps:
           AND COALESCE(AGENT_SESSION_ID, '') = ''
           AND COALESCE(METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
         ORDER BY SIGNAL_TIMESTAMP DESC NULLS LAST
-        LIMIT 600
+        LIMIT 450
       params: []
 - namespace: q_neighbors
   runtime: nodejs20.x

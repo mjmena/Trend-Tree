@@ -2,4 +2,61 @@ schema: workflow/2022.04
 name: Distillation Watchdog
 settings:
   error_notification: true
-
+  lambda_memory: 512
+  lambda_timeout: 60
+  network: net_5Lnie3
+triggers:
+- id: dc_J4ugkNA
+steps:
+- namespace: q_pool_status
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT
+          (SELECT COUNT(*)
+             FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
+             WHERE SIGNAL_TIMESTAMP > DATEADD(hour, -24, CURRENT_TIMESTAMP())
+               AND COALESCE(AGENT_SESSION_ID, '') = ''
+               AND COALESCE(METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
+          ) AS UNCLAIMED_COUNT,
+          (SELECT LAST_RUN_AT
+             FROM MCC_RAW.MARKETING_DEV.STG_DISTILLATION_CURSOR
+             WHERE CURSOR_NAME = 'distillation_main'
+          ) AS LAST_RUN_AT,
+          DATEDIFF(minute,
+            (SELECT LAST_RUN_AT
+               FROM MCC_RAW.MARKETING_DEV.STG_DISTILLATION_CURSOR
+               WHERE CURSOR_NAME = 'distillation_main'),
+            CURRENT_TIMESTAMP()
+          ) AS MINUTES_SINCE_LAST_RUN
+      query: |-
+        SELECT
+          (SELECT COUNT(*)
+             FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
+             WHERE SIGNAL_TIMESTAMP > DATEADD(hour, -24, CURRENT_TIMESTAMP())
+               AND COALESCE(AGENT_SESSION_ID, '') = ''
+               AND COALESCE(METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
+          ) AS UNCLAIMED_COUNT,
+          (SELECT LAST_RUN_AT
+             FROM MCC_RAW.MARKETING_DEV.STG_DISTILLATION_CURSOR
+             WHERE CURSOR_NAME = 'distillation_main'
+          ) AS LAST_RUN_AT,
+          DATEDIFF(minute,
+            (SELECT LAST_RUN_AT
+               FROM MCC_RAW.MARKETING_DEV.STG_DISTILLATION_CURSOR
+               WHERE CURSOR_NAME = 'distillation_main'),
+            CURRENT_TIMESTAMP()
+          ) AS MINUTES_SINCE_LAST_RUN
+      params: []
+- namespace: decide_and_fire
+  runtime: nodejs20.x
+  uses: "./decide_and_fire/entry.js"
+  props:
+    pool_status_rows: "{{steps.q_pool_status.$return_value}}"
+    distillation_url: https://eo8lg4tmkchk2qc.m.pipedream.net
+    pool_threshold: 450
+    lockout_minutes: 30

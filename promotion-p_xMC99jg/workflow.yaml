@@ -82,6 +82,11 @@ steps:
     pending_rows: "{{steps.q_load_pending_candidates.$return_value}}"
     max_candidates: "{{steps.normalize_event.$return_value.max_candidates}}"
 - namespace: q_compute_vectors_and_neighbors
+  # Inline batch neighbor query for the promotion lead. Logic mirrors the
+  # standalone tool sql/proc_trend_neighbors.sql (PROC_TREND_NEIGHBORS) —
+  # if you tune the embedding recipe or similarity threshold, update both.
+  # Kept inline here (vs CALL the proc) because the procedure returns
+  # VARIANT and we need flat row output across N candidates in one step.
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
   props:

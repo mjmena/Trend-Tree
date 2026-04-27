@@ -110,7 +110,6 @@ All four now persist results to `STG_EXTERNAL_SIGNALS` with `signal_kind` taggin
 | Workflow | State |
 |---|---|
 | [`llm-enrichment-p_YyC86Zo`](llm-enrichment-p_YyC86Zo/) | Legacy 3-LLM cascade enrichment. Replaced by `enrichment-p_xMC995w` 2026-04-27. |
-| [`agents/audit-p_pWCwPyL`](agents/audit-p_pWCwPyL/) | Legacy SIGNAL_CHANGE/AVG_SIMILARITY anomaly detector. Retired with the SQL clustering pipeline 2026-04-27. |
 
 ---
 

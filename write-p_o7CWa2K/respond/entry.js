@@ -18,10 +18,6 @@ export default defineComponent({
       type: "any",
       optional: true,
     },
-    update_queue_result: {
-      type: "any",
-      optional: true,
-    },
   },
   async run({ $ }) {
     const cs = this.compute_scores_output || {};
@@ -39,12 +35,10 @@ export default defineComponent({
       llm_cost_estimate: cs.llm_cost_estimate ?? 0,
       merge_dim_rows: rowCount(this.merge_dim_result),
       insert_history_rows: rowCount(this.insert_history_result),
-      update_queue_rows: rowCount(this.update_queue_result),
     };
 
     console.log(`\n=== Write complete: ${body.trend_id} [${body.tier}] ===`);
     console.log(`  Trend: "${body.trend_name_b2c}" (${body.category})`);
-    console.log(`  Queue rows updated: ${body.update_queue_rows}`);
 
     await $.respond({
       status: 200,

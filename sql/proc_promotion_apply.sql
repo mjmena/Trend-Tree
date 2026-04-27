@@ -297,12 +297,7 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                 if not check or int(check[0][0]) == 0:
                     raise ValueError(f'target_trend_id {target} not found in FCT_TRENDS')
 
-                session.sql(f"""
-                    UPDATE MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS
-                    SET LAST_UPDATE_AT = CURRENT_TIMESTAMP()
-                    WHERE TREND_ID = {sql_str(target)}
-                """).collect()
-
+                # Link candidate to target FIRST so the aggregate below sees it.
                 session.sql(f"""
                     UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
                     SET PROMOTED_AT = CURRENT_TIMESTAMP(),
@@ -310,6 +305,46 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                         DEDUP_OF_TREND_ID = {sql_str(target)},
                         PROMOTION_DECIDED_BY = {sql_str(chain_id)}
                     WHERE CANDIDATE_ID = {sql_str(cid)}
+                """).collect()
+
+                # Recompute cluster fields across the original promoting
+                # candidate plus every candidate merged INTO this trend.
+                # Re-embed vector using topic + concatenated reasoning so it
+                # reflects the broader evidence. Heat index NOT touched here:
+                # placeholder formula belongs to the future lifecycle agent.
+                session.sql(f"""
+                    UPDATE MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+                    SET
+                        TOTAL_CLUSTER_SIZE = (
+                            SELECT COUNT(DISTINCT f.value::STRING)
+                            FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
+                                 LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+                            WHERE c.CANDIDATE_ID = t.CANDIDATE_ID
+                               OR c.DEDUP_OF_TREND_ID = t.TREND_ID
+                        ),
+                        DISTINCT_SOURCE_COUNT = (
+                            SELECT COUNT(DISTINCT f.value::STRING)
+                            FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
+                                 LATERAL FLATTEN(INPUT => OBJECT_KEYS(c.SOURCE_BREAKDOWN)) f
+                            WHERE c.CANDIDATE_ID = t.CANDIDATE_ID
+                               OR c.DEDUP_OF_TREND_ID = t.TREND_ID
+                        ),
+                        TREND_VECTOR = SNOWFLAKE.CORTEX.EMBED_TEXT_1024(
+                            'snowflake-arctic-embed-l-v2.0',
+                            LEFT(
+                                COALESCE(t.TREND_TOPIC, '') || ' | ' ||
+                                COALESCE((
+                                    SELECT LISTAGG(LEFT(c.REASONING, 400), ' || ')
+                                             WITHIN GROUP (ORDER BY c.CREATED_AT)
+                                    FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+                                    WHERE c.CANDIDATE_ID = t.CANDIDATE_ID
+                                       OR c.DEDUP_OF_TREND_ID = t.TREND_ID
+                                ), ''),
+                                4000
+                            )
+                        ),
+                        LAST_UPDATE_AT = CURRENT_TIMESTAMP()
+                    WHERE t.TREND_ID = {sql_str(target)}
                 """).collect()
 
                 audit_row['target_trend_id'] = target

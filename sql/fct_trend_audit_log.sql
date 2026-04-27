@@ -1,13 +1,10 @@
 -- Fact: Autonomous audit agent decision log
 -- Database: MCC_PRESENTATION.TREND_AGENT
 --
--- Every pass of the audit agent (agents/audit-p_pWCwPyL) writes one row per
--- candidate it considered, including what the rule layer surfaced, what the
--- LLM proposed, what actually ran after the allow-list guardrail, and the
--- result of that action. Serves two purposes:
---   1. Audit trail — "why did the agent split this trend?"
---   2. Idempotency — q_split_candidates / q_category_drift exclude TREND_IDs
---      present here in the last 24h to prevent loops.
+-- ORPHAN as of 2026-04-27: the audit agent that wrote here was retired alongside
+-- the SQL clustering pipeline. No live writer remains. Historical rows are kept
+-- for archaeology; future lifecycle agent may decide whether to repurpose this
+-- table or drop it.
 --
 -- Chain semantics: one "chain" = one cron-fired run and any self-retriggered
 -- iterations that follow it. CHAIN_ID groups them, ITERATION orders them.

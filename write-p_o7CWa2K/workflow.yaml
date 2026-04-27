@@ -200,32 +200,6 @@ steps:
               AND h.SNAPSHOT_DATE = CURRENT_DATE()
           )
       params: []
-- namespace: update_queue
-  runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
-  props:
-    snowflake:
-      authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        UPDATE MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
-        SET STATUS = 'COMPLETED',
-            COMPLETED_AT = CURRENT_TIMESTAMP(),
-            ENRICHMENT_TIER = '{{steps.compute_scores.$return_value.tier}}',
-            LLM_TOTAL_TOKENS = {{steps.compute_scores.$return_value.llm_total_tokens}},
-            LLM_COST_ESTIMATE = {{steps.compute_scores.$return_value.llm_cost_estimate}},
-            DURATION_SECONDS = DATEDIFF('second', COALESCE(STARTED_AT, QUEUED_AT), CURRENT_TIMESTAMP())
-        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}' AND STATUS IN ('PENDING', 'IN_PROGRESS')
-      query: |-
-        UPDATE MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
-        SET STATUS = 'COMPLETED',
-            COMPLETED_AT = CURRENT_TIMESTAMP(),
-            ENRICHMENT_TIER = '{{steps.compute_scores.$return_value.tier}}',
-            LLM_TOTAL_TOKENS = {{steps.compute_scores.$return_value.llm_total_tokens}},
-            LLM_COST_ESTIMATE = {{steps.compute_scores.$return_value.llm_cost_estimate}},
-            DURATION_SECONDS = DATEDIFF('second', COALESCE(STARTED_AT, QUEUED_AT), CURRENT_TIMESTAMP())
-        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}' AND STATUS IN ('PENDING', 'IN_PROGRESS')
-      params: []
 - namespace: respond
   runtime: nodejs20.x
   uses: "./respond/entry.js"
@@ -233,4 +207,3 @@ steps:
     compute_scores_output: "{{steps.compute_scores.$return_value}}"
     merge_dim_result: "{{steps.merge_dim.$return_value}}"
     insert_history_result: "{{steps.insert_history.$return_value}}"
-    update_queue_result: "{{steps.update_queue.$return_value}}"

@@ -5,18 +5,13 @@
 // the distillation lead orchestrator and the distillation subagent. Future
 // Phase 2/3 agents (enrichment, lifecycle) can reuse this runtime as-is.
 //
-// Pattern follows the existing audit-p_pWCwPyL/llm_plan/entry.js shape:
-//   - Direct fetch() to api.anthropic.com (no SDK dependency).
-//   - Bearer key from Pipedream's anthropic app prop ($auth.api_key).
-//   - JSON-only request/response.
-//
-// Differences from the audit pattern:
-//   - Multi-turn loop with `tools` array + `tool_use` / `tool_result` blocks.
-//   - `anthropic-beta: interleaved-thinking-2025-05-14` header so Sonnet 4.6
-//     can emit `thinking` blocks between tool calls. We capture and persist
-//     them in the reasoning trace.
-//   - Hard caps on iterations + dollar budget (`max_iterations`, `budget_usd`).
-//   - Returns aggregated cost/token usage per run.
+// Direct fetch() to api.anthropic.com (no SDK dependency). Bearer key from
+// Pipedream's anthropic app prop ($auth.api_key). JSON-only request/response.
+// Multi-turn loop with `tools` array + `tool_use` / `tool_result` blocks.
+// `anthropic-beta: interleaved-thinking-2025-05-14` header so Sonnet 4.6
+// can emit `thinking` blocks between tool calls. We capture and persist
+// them in the reasoning trace. Hard caps on iterations + dollar budget
+// (`max_iterations`, `budget_usd`). Returns aggregated cost/token usage per run.
 //
 // Tool dispatch is delegated to ./tool_catalog.js — this file knows how to
 // drive the loop, not what the tools mean.
