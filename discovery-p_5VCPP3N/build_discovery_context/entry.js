@@ -47,9 +47,10 @@ export default defineComponent({
       active_count: activeRows.length,
       example_count: exampleRows.length,
       verticals: VERTICALS,
+      current_date: new Date().toISOString().slice(0, 10),  // YYYY-MM-DD
     };
 
-    console.log(`Context built: ${out.active_count} active trends, ${out.example_count} examples, ${VERTICALS.length} verticals`);
+    console.log(`Context built: ${out.active_count} active trends, ${out.example_count} examples, ${VERTICALS.length} verticals, today=${out.current_date}`);
     $.export("$summary", `${out.active_count} active / ${out.example_count} examples / ${VERTICALS.length} verticals`);
     return out;
   },

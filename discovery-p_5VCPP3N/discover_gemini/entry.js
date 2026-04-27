@@ -99,6 +99,7 @@ export default defineComponent({
         active_trends: ctx.active_trends_formatted || "(none)",
         valuable_examples: ctx.valuable_examples_formatted || "(none)",
         vertical,
+        current_date: ctx.current_date || new Date().toISOString().slice(0, 10),
       });
       const body = {
         contents: [{ parts: [{ text: rendered }] }],
