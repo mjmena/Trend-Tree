@@ -163,12 +163,13 @@ DEFER (decision_category: AMBIGUOUS_TOPIC_JUDGMENT)
 ═══ Quality flags (you weigh these — not auto-reject) ═══
 
 The candidate may arrive with quality_flags listing concerns:
-low_cluster_size, single_source_family, low_confidence, low_specificity.
-These are warnings, not disqualifications. When flags are present,
-default to DEFER over confident PROMOTE_NEW unless the topic is
-unambiguously real (clear concrete behavior, named brand/product,
-plausible cultural moment). The hard gate only auto-rejects
-cluster_size < 2 (orphan signals) — anything else reaches you.$$,
+low_confidence, low_specificity. These are warnings, not
+disqualifications. When flags are present, default to DEFER over
+confident PROMOTE_NEW unless the topic is unambiguously real (clear
+concrete behavior, named brand/product, plausible cultural moment).
+The hard gate auto-rejects cluster_size < 2 (orphan signals) OR
+source_families < 2 (single-platform signals lack cross-source
+corroboration) — anything else reaches you.$$,
     NULL,
     TRUE,
     SHA2(CONCAT_WS(':', 'promotion.subagent.decision_rubric', 'v1'), 256),

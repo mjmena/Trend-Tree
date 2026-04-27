@@ -103,24 +103,23 @@ async function fanoutSubagents({
 // ─────────────────────────────────────────────────────────────────────
 // Quality gate
 //
-// HARD reject (no LLM dispatch, $0 cost): cluster_size < 2 — truly orphan
-// signals can't be a trend.
+// HARD reject (no LLM dispatch, $0 cost): minimal evidence of a real trend.
+//   - cluster_size < 2 (orphan signals)
+//   - source_families < 2 (no cross-platform corroboration — single-platform
+//     bursts are product velocity, not trends)
 //
-// SOFT pass to LLM with quality_flags: anything that has at least 2 signals
-// goes to the LLM. Concerns (single-source-family, low confidence, etc.)
-// are surfaced as flags in the dispatch payload so the subagent can apply
-// extra skepticism — defaulting to DEFER over confident PROMOTE_NEW when
-// evidence is thin. The LLM is the precision filter; SQL/JS only stops
-// the most obvious garbage.
+// SOFT pass to LLM with quality_flags: candidate is multi-source and has
+// enough signals to consider, but distillation flagged low confidence or
+// low specificity. LLM applies extra skepticism — defaulting to DEFER over
+// confident PROMOTE_NEW when flags are present.
 // ─────────────────────────────────────────────────────────────────────
 
 const HARD_GATE = {
   min_cluster_size: 2,
+  min_source_families: 2,
 };
 
 const SOFT_THRESHOLDS = {
-  min_cluster_size: 3,
-  min_source_families: 2,
   min_confidence: 0.5,
   min_specificity: 0.5,
 };
@@ -148,20 +147,18 @@ function distinctSourceFamilies(sourceBreakdown) {
 
 function failHardGate(c) {
   const size = c.CLUSTER_SIZE ?? 0;
+  const families = distinctSourceFamilies(c.SOURCE_BREAKDOWN);
   if (size < HARD_GATE.min_cluster_size)
     return `cluster_size=${size}<${HARD_GATE.min_cluster_size}`;
+  if (families.size < HARD_GATE.min_source_families)
+    return `source_families=${families.size}<${HARD_GATE.min_source_families} (got [${[...families].join(",")}])`;
   return null;
 }
 
 function qualityFlags(c) {
   const flags = [];
-  const size = c.CLUSTER_SIZE ?? 0;
   const conf = c.CONFIDENCE ?? 0;
   const spec = c.SPECIFICITY_SCORE ?? 0;
-  const families = distinctSourceFamilies(c.SOURCE_BREAKDOWN);
-  if (size < SOFT_THRESHOLDS.min_cluster_size) flags.push(`low_cluster_size:${size}`);
-  if (families.size < SOFT_THRESHOLDS.min_source_families)
-    flags.push(`single_source_family:${[...families].join(",")}`);
   if (conf < SOFT_THRESHOLDS.min_confidence) flags.push(`low_confidence:${conf}`);
   if (spec < SOFT_THRESHOLDS.min_specificity) flags.push(`low_specificity:${spec}`);
   return flags;
