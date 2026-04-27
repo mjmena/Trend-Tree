@@ -680,7 +680,6 @@ export default defineComponent({
     anthropic: { type: "app", app: "anthropic" },
     event: { type: "any" },
     metrics_rows: { type: "any" },
-    queue_rows: { type: "any", optional: true },
     signal_rows: { type: "any", optional: true },
     source_metrics_rows: { type: "any", optional: true },
     neighbor_rows: { type: "any", optional: true },
@@ -701,12 +700,10 @@ export default defineComponent({
       throw new Error(`enrichment: no FCT_TREND_METRICS row for trend_id ${trend_id}`);
     }
 
-    const queueRow = (this.queue_rows || [])[0] || null;
-    // ENRICHMENT_TYPE is captured for telemetry/audit but no longer gates
-    // the run. The promotion agent only queues trends that need enrichment,
-    // so every invocation should run the full agent loop. Legacy values
-    // (SOURCES_ONLY, REFRESH) still flow through but are ignored.
-    const enrichment_type = (queueRow?.ENRICHMENT_TYPE || evt.enrichment_type || "FULL").toUpperCase();
+    // ENRICHMENT_TYPE is no longer gating logic — promotion fires
+    // enrichment for every newly-promoted trend. STG_ENRICHMENT_QUEUE
+    // dropped 2026-04-27 along with the cron-poll architecture.
+    const enrichment_type = (evt.enrichment_type || "FULL").toUpperCase();
 
     // Normalize prefetched pools.
     const source_metrics_pool = (this.source_metrics_rows || []).map((r) => ({
