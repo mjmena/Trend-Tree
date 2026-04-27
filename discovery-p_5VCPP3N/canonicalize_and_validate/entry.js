@@ -6,15 +6,24 @@
 // MERGE_EXTERNAL_SIGNALS.
 //
 // Drops a proposal if any of these hold:
-//   - URL doesn't resolve / 4xx
+//   - URL is hard-bad (404, 410, malformed)
 //   - Article publish date is older than max_age_days (default 30)
 //   - drop_if_no_date=true AND no date could be extracted
 //   - drop_if_title_irrelevant=true AND article title shares zero
 //     ≥4-char nonstop words with the proposed topic
 //
+// Soft-keeps (URL passes through unverified):
+//   - 401/403/406/451 (paywall, bot block, geofence)
+//   - 429 (rate limit)
+//   - 5xx (server temporarily down)
+//   - Fetch timeouts/network errors
+// These get an `unverified: true` flag in METADATA. Lots of news sites
+// block scraping; assuming the LLM's citation is real is the lesser
+// evil compared to silently dropping every Bloomberg/NYT/WSJ URL.
+//
 // Each surviving proposal becomes one row:
 //   SIGNAL_ID  = canonical URL
-//   METADATA   = adds article_title, published_date, days_since_published
+//   METADATA   = adds article_title, published_date, days_since_published, unverified
 //
 // =====================================================================
 // Inlined helpers (canonical: agents/lib/url_canon.mjs)
@@ -133,6 +142,22 @@ function titleOverlapsTopic(topic, title) {
   return false;
 }
 
+// HTTP status taxonomy for our purposes:
+//   "ok"     — 2xx/3xx, body fetched, metadata extractable
+//   "denied" — site blocked us (paywall/bot/geo), URL probably real
+//   "dead"   — URL definitively gone (404/410)
+//   "transient" — server hiccup (5xx), URL probably real
+const HARD_DEAD_CODES = new Set([400, 404, 408, 410, 414]);
+const ACCESS_DENIED_CODES = new Set([401, 403, 405, 406, 429, 451]);
+
+function classifyStatus(code) {
+  if (code >= 200 && code < 400) return "ok";
+  if (HARD_DEAD_CODES.has(code)) return "dead";
+  if (ACCESS_DENIED_CODES.has(code)) return "denied";
+  if (code >= 500) return "transient";
+  return "dead"; // unknown 4xx — err on side of dropping
+}
+
 async function fetchArticleMeta(rawUrl, opts = {}) {
   const timeoutMs = opts.timeoutMs ?? 8000;
   const maxBytes = opts.maxBytes ?? 65536;
@@ -150,8 +175,10 @@ async function fetchArticleMeta(rawUrl, opts = {}) {
     });
     const finalUrl = resp.url || rawUrl;
     const canonical = stripAndNormalize(finalUrl);
+    const status_class = classifyStatus(resp.status);
     if (!resp.ok) {
-      return { canonical, http_status: resp.status };
+      // Body likely unavailable on non-2xx — return what we know, classify upstream.
+      return { canonical, http_status: resp.status, status_class };
     }
 
     // Read up to maxBytes of body (head usually fits)
@@ -180,11 +207,19 @@ async function fetchArticleMeta(rawUrl, opts = {}) {
     return {
       canonical,
       http_status: resp.status,
+      status_class,
       article_title,
       published_date: published_date ? published_date.toISOString() : null,
     };
   } catch (e) {
-    return { canonical: null, http_status: 0, error: e.message };
+    // Network errors (DNS, timeout, conn reset) — treat as transient, soft-keep
+    // with the original URL stripped/normalized so dedup still works.
+    return {
+      canonical: stripAndNormalize(rawUrl),
+      http_status: 0,
+      status_class: "transient",
+      error: e.message,
+    };
   } finally {
     clearTimeout(timer);
   }
@@ -233,16 +268,22 @@ export default defineComponent({
       if (!p.evidence_url) return { ...p, _drop_reason: "missing_url" };
       const r = await fetchArticleMeta(p.evidence_url, { timeoutMs: 8000 });
       if (!r.canonical) {
-        return { ...p, _drop_reason: r.error ? `error:${r.error}` : "no_canonical" };
+        return { ...p, _drop_reason: "no_canonical" };
       }
-      if (r.http_status >= 400) {
-        return { ...p, _canonical: r.canonical, _http_status: r.http_status, _drop_reason: `http_${r.http_status}` };
+
+      // Hard-dead URLs are dropped. Access-denied / transient / 5xx
+      // soft-keep — the URL is probably real, we just couldn't peek.
+      if (r.status_class === "dead") {
+        return { ...p, _canonical: r.canonical, _http_status: r.http_status, _drop_reason: `dead_${r.http_status || "x"}` };
       }
+      const unverified = r.status_class !== "ok";
 
       const enriched = {
         ...p,
         _canonical: r.canonical,
         _http_status: r.http_status,
+        _status_class: r.status_class,
+        _unverified: unverified,
         _article_title: r.article_title || null,
         _published_date: r.published_date || null,
         _days_since_published: r.published_date
@@ -250,35 +291,40 @@ export default defineComponent({
           : null,
       };
 
-      // Freshness filter
-      if (enriched._days_since_published != null && enriched._days_since_published > maxAgeDays) {
-        return { ...enriched, _drop_reason: `stale_${enriched._days_since_published}d` };
-      }
-      if (!enriched._published_date && dropIfNoDate) {
-        return { ...enriched, _drop_reason: "no_date" };
-      }
+      // Freshness filter — only applies when we actually got the article.
+      // Unverified URLs skip date checks (we have nothing to check).
+      if (!unverified) {
+        if (enriched._days_since_published != null && enriched._days_since_published > maxAgeDays) {
+          return { ...enriched, _drop_reason: `stale_${enriched._days_since_published}d` };
+        }
+        if (!enriched._published_date && dropIfNoDate) {
+          return { ...enriched, _drop_reason: "no_date" };
+        }
 
-      // Title-relevance filter
-      if (dropIfTitleIrrelevant && enriched._article_title
-          && !titleOverlapsTopic(p.topic, enriched._article_title)) {
-        return { ...enriched, _drop_reason: "title_irrelevant" };
+        // Title-relevance filter — same: only when we have a title.
+        if (dropIfTitleIrrelevant && enriched._article_title
+            && !titleOverlapsTopic(p.topic, enriched._article_title)) {
+          return { ...enriched, _drop_reason: "title_irrelevant" };
+        }
       }
 
       return { ...enriched, _drop_reason: null };
     }));
 
     // Aggregate drop reasons
-    const drops = { http_4xx: 0, stale: 0, no_date: 0, title_irrelevant: 0, dupe: 0, invalid: 0 };
+    const drops = { dead: 0, stale: 0, no_date: 0, title_irrelevant: 0, dupe: 0, invalid: 0 };
+    let kept_unverified = 0;
     const byUrl = new Map();
     for (const r of resolved) {
       if (r._drop_reason) {
-        if (r._drop_reason.startsWith("http_4")) drops.http_4xx++;
+        if (r._drop_reason.startsWith("dead_")) drops.dead++;
         else if (r._drop_reason.startsWith("stale_")) drops.stale++;
         else if (r._drop_reason === "no_date") drops.no_date++;
         else if (r._drop_reason === "title_irrelevant") drops.title_irrelevant++;
         else drops.invalid++;
         continue;
       }
+      if (r._unverified) kept_unverified++;
       const existing = byUrl.get(r._canonical);
       if (!existing || (r.score ?? 0) > (existing.score ?? 0)) {
         if (existing) drops.dupe++;
@@ -310,6 +356,8 @@ export default defineComponent({
           original_url: r.evidence_url,
           canonical_url: r._canonical,
           http_status: r._http_status,
+          status_class: r._status_class,
+          unverified: r._unverified || false,
           article_title: r._article_title,
           article_published_date: r._published_date,
           days_since_published: r._days_since_published,
@@ -318,17 +366,19 @@ export default defineComponent({
     }
 
     const dropSummary = Object.entries(drops).filter(([, v]) => v > 0).map(([k, v]) => `${v}${k}`).join(" ");
+    const verifiedSummary = kept_unverified ? ` (${kept_unverified} unverified)` : "";
     console.log(
-      `Canonicalize: ${kept.length} kept → ${signals.length} signals (${dropSummary || "no drops"})`,
+      `Canonicalize: ${kept.length} kept → ${signals.length} signals${verifiedSummary} (${dropSummary || "no drops"})`,
     );
-    $.export("$summary", `${signals.length} signals (${kept.length}→ ${dropSummary || "no drops"})`);
+    $.export("$summary", `${signals.length} signals${verifiedSummary} (${kept.length}→ ${dropSummary || "no drops"})`);
 
     return {
       signals_json: JSON.stringify(signals),
       signal_count: signals.length,
+      kept_unverified,
       drops,
       // Legacy keys for backward compatibility with respond step
-      dropped_404: drops.http_4xx,
+      dropped_404: drops.dead,
       dropped_dupe: drops.dupe,
       dropped_invalid: drops.invalid + drops.stale + drops.no_date + drops.title_irrelevant,
     };
