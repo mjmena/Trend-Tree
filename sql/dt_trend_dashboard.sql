@@ -30,6 +30,16 @@ WITH top_signals AS (
     WHERE rn <= 5
     GROUP BY TREND_ID
 ),
+macro_tags AS (
+    SELECT TREND_ID,
+           ARRAY_AGG(MACROTREND_NAME) WITHIN GROUP (ORDER BY RELEVANCE_SCORE DESC) AS MACROTREND_TAGS
+    FROM MCC_PRESENTATION.TREND_AGENT.MAP_TREND_MACROTRENDS
+    GROUP BY TREND_ID
+),
+related AS (
+    SELECT TREND_ID, RELATED_TRENDS
+    FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_TAXONOMY
+),
 unioned_trends AS (
     -- Agent-promoted trends (canonical going forward)
     SELECT
@@ -103,9 +113,17 @@ SELECT
     -- Top 5 signals by PageRank
     ts.TOP_SIGNALS,
 
+    -- Macro trend tags + related trends (legacy fields, kept for upstream
+    -- compatibility — Macro Trend layer marked for retirement in newer
+    -- dashboard feedback but consumers still read these columns).
+    mt.MACROTREND_TAGS,
+    r.RELATED_TRENDS,
+
     -- Enrichment freshness
     d.ENRICHED_AT
 
 FROM unioned_trends u
 LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d ON u.TREND_ID = d.TREND_ID
-LEFT JOIN top_signals ts  ON u.TREND_ID = ts.TREND_ID;
+LEFT JOIN top_signals ts  ON u.TREND_ID = ts.TREND_ID
+LEFT JOIN macro_tags mt   ON u.TREND_ID = mt.TREND_ID
+LEFT JOIN related r       ON u.TREND_ID = r.TREND_ID;
