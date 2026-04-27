@@ -1,5 +1,22 @@
 schema: workflow/2022.04
 name: Error Alerts
 settings:
-  error_notification: true
-
+  error_notification: false
+  lambda_memory: 512
+  lambda_timeout: 30
+triggers:
+- id: dc_zqug7mj
+steps:
+- namespace: normalize_error
+  runtime: nodejs20.x
+  uses: "./normalize_error/entry.js"
+  props:
+    trigger_event: "{{steps.trigger.event}}"
+- namespace: post_to_slack
+  runtime: nodejs20.x
+  uses: "./post_to_slack/entry.js"
+  props:
+    slack:
+      authProvisionId: apn_3JhV9gb
+    error: "{{steps.normalize_error.$return_value}}"
+    channel: ops-alerts
