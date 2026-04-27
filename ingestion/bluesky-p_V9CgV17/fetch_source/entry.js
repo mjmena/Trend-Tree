@@ -30,6 +30,12 @@ function sleep(ms) {
 export default defineComponent({
   props: {
     bluesky: { type: "app", app: "bluesky" },
+    min_engagement: {
+      type: "integer",
+      label: "Minimum engagement (like_count + repost_count)",
+      description: "Posts with combined likes + reposts below this are dropped before write. 0 = keep everything, 1 = at least one signal of audience reaction. Tune up if you're seeing too many 0-engagement bot/newswire posts.",
+      default: 1,
+    },
   },
   async run({ $ }) {
     const auth = this.bluesky?.$auth || {};
@@ -40,6 +46,7 @@ export default defineComponent({
         "Bluesky app must be connected with identifier (handle) + password (app password)",
       );
     }
+    const minEngagement = this.min_engagement ?? 1;
 
     // Authenticate via ATProto createSession
     let accessJwt;
@@ -90,6 +97,11 @@ export default defineComponent({
 
         // Filter out short posts and pure replies
         if (text.length < 30 || text.startsWith("@")) continue;
+
+        // Engagement filter: drop posts below the configured min.
+        const likeCount = postView.likeCount || 0;
+        const repostCount = postView.repostCount || 0;
+        if ((likeCount + repostCount) < minEngagement) continue;
 
         const createdAt = record.createdAt || "";
         const ts = createdAt ? createdAt.replace("T", " ").replace("Z", "").slice(0, 19) : "";
