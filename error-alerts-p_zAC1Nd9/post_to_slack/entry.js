@@ -68,9 +68,11 @@ export default defineComponent({
     if (!data.ok) {
       console.log(`slack post failed: ${data.error || JSON.stringify(data)}`);
       $.export("$summary", `slack: ${data.error}`);
+      await $.respond({ status: 502, body: { ok: false, slack_error: data.error } });
       return { ok: false, slack_error: data.error };
     }
     $.export("$summary", `posted to ${this.channel}`);
+    await $.respond({ status: 200, body: { ok: true, channel: data.channel, ts: data.ts } });
     return { ok: true, channel: data.channel, ts: data.ts };
   },
 });
