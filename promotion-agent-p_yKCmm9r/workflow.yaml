@@ -5,6 +5,8 @@ settings:
   lambda_memory: 4096
   lambda_timeout: 600
   network: net_5Lnie3
+triggers:
+- id: hi_G7HnQg5
 steps:
 - namespace: handle_request
   runtime: nodejs20.x
@@ -43,3 +45,4 @@ steps:
   props:
     request: "{{steps.handle_request.$return_value}}"
     agent_result: "{{steps.run_subagent.$return_value}}"
+

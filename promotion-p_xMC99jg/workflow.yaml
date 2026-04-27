@@ -5,6 +5,8 @@ settings:
   lambda_memory: 4096
   lambda_timeout: 600
   network: net_5Lnie3
+triggers:
+- id: hi_99HRnQ5
 steps:
 - namespace: normalize_event
   runtime: nodejs20.x
@@ -285,3 +287,4 @@ steps:
     max_candidates: "{{steps.normalize_event.$return_value.max_candidates}}"
     lead_result: "{{steps.run_lead_agent.$return_value}}"
     apply_result: "{{steps.apply_promotion.$return_value}}"
+
