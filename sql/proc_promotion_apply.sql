@@ -28,11 +28,14 @@
 -- Signal lifecycle by decision:
 --   PROMOTE_NEW         — INSERT FCT_TRENDS row; mark candidate PROMOTED_AT/PROMOTED_TO=new_id
 --                         signals stay claimed via candidate's SUPPORTING_SIGNAL_IDS
---   MERGE_INTO_EXISTING — UPDATE existing FCT_TRENDS.LAST_UPDATE_AT;
+--   MERGE_INTO_EXISTING — recompute target FCT_TRENDS cluster_size/source_count/vector;
 --                         mark candidate PROMOTED_AT/PROMOTED_TO/DEDUP_OF_TREND_ID=target
---   REJECT              — mark candidate REJECTED_AT, REJECTION_REASON;
---                         RELEASE signal claims (set AGENT_SESSION_ID=NULL on STG_EXTERNAL_SIGNALS)
---                         so future distillation runs can re-cluster them
+--   REJECT              — mark candidate REJECTED_AT, REJECTION_REASON.
+--                         AGENT_SESSION_ID is intentionally NOT released here. Rejected
+--                         signals stay stamped so they age out of the main distillation
+--                         pool via the 24h window. The daily revisit workflow picks
+--                         them up via "stamped but no PROMOTED_TO" and gives them a
+--                         second look against signals from later sessions.
 --   DEFER               — mark candidate DEFERRED_UNTIL, DEFER_REASON;
 --                         signal claims preserved (we'll resolve later)
 --
@@ -353,25 +356,17 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                                 'target_trend_id': target, 'status': 'ok'})
 
             elif decision == 'REJECT':
-                # Mark candidate rejected
+                # Mark candidate rejected. AGENT_SESSION_ID stamps on the
+                # supporting signals are intentionally preserved — they let
+                # the daily revisit workflow find these signals via "stamped
+                # but no candidate has PROMOTED_TO" and give them a second
+                # look against signals from later main-run sessions.
                 session.sql(f"""
                     UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
                     SET REJECTED_AT = CURRENT_TIMESTAMP(),
                         REJECTION_REASON = {sql_str((rej_reason or 'UNSPECIFIED')[:200])},
                         PROMOTION_DECIDED_BY = {sql_str(chain_id)}
                     WHERE CANDIDATE_ID = {sql_str(cid)}
-                """).collect()
-
-                # Release signal claims so future distillation can re-cluster
-                session.sql(f"""
-                    UPDATE MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
-                    SET AGENT_SESSION_ID = NULL
-                    WHERE s.SIGNAL_ID IN (
-                        SELECT DISTINCT sig.value::STRING
-                        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
-                             LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) sig
-                        WHERE c.CANDIDATE_ID = {sql_str(cid)}
-                    )
                 """).collect()
 
                 session.sql("COMMIT").collect()

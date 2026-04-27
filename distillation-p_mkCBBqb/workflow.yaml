@@ -235,7 +235,16 @@ steps:
         WHERE :1 != '[]'
       params:
       - "{{steps.run_lead_agent.$return_value.candidates_json}}"
-- namespace: claim_supporting_signals
+- namespace: serialize_window_signal_ids
+  runtime: nodejs20.x
+  uses: "./serialize_window_signal_ids/entry.js"
+  props:
+    rows: "{{steps.q_signals_window.$return_value}}"
+- namespace: claim_window_signals
+  # Stamp ALL signals the agent considered (not just those in candidates),
+  # so each signal gets exactly one main-distillation pass before it ages
+  # out via the 24h window. The daily revisit workflow re-stamps these
+  # with a 'revisit-' prefix; nothing released on REJECT (per design).
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
   props:
@@ -247,22 +256,17 @@ steps:
         SET AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
         WHERE s.AGENT_SESSION_ID IS NULL
           AND s.SIGNAL_ID IN (
-            SELECT DISTINCT sig.value::STRING
-            FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
-                 LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) sig
-            WHERE c.AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+            SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1)))
           )
       query: |-
         UPDATE MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
         SET AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
         WHERE s.AGENT_SESSION_ID IS NULL
           AND s.SIGNAL_ID IN (
-            SELECT DISTINCT sig.value::STRING
-            FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
-                 LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) sig
-            WHERE c.AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+            SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1)))
           )
-      params: []
+      params:
+      - "{{steps.serialize_window_signal_ids.$return_value.signal_ids_json}}"
 - namespace: update_cursor
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
