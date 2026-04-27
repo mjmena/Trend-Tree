@@ -66,6 +66,7 @@ $$
         TRY_TO_TIMESTAMP_NTZ(s.value:SIGNAL_TIMESTAMP::STRING)  AS SIGNAL_TIMESTAMP,
         s.value:SIGNAL_TITLE::STRING                            AS SIGNAL_TITLE,
         s.value:SIGNAL_TEXT::STRING                             AS SIGNAL_TEXT,
+        s.value:URL::STRING                                     AS URL,
         TRY_PARSE_JSON(s.value:METADATA::STRING)                AS METADATA,
         ?::STRING                                               AS AGENT_SESSION_ID
       FROM TABLE(FLATTEN(INPUT => PARSE_JSON(?))) s
@@ -78,10 +79,10 @@ $$
       target.AGENT_SESSION_ID = source.AGENT_SESSION_ID
     WHEN NOT MATCHED THEN INSERT (
       SIGNAL_ID, SOURCE_NAME, SIGNAL_TIMESTAMP,
-      SIGNAL_TITLE, SIGNAL_TEXT, METADATA, AGENT_SESSION_ID
+      SIGNAL_TITLE, SIGNAL_TEXT, URL, METADATA, AGENT_SESSION_ID
     ) VALUES (
       source.SIGNAL_ID, source.SOURCE_NAME, source.SIGNAL_TIMESTAMP,
-      source.SIGNAL_TITLE, source.SIGNAL_TEXT, source.METADATA, source.AGENT_SESSION_ID
+      source.SIGNAL_TITLE, source.SIGNAL_TEXT, source.URL, source.METADATA, source.AGENT_SESSION_ID
     )
   `;
 

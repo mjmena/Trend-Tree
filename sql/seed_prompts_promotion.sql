@@ -165,7 +165,8 @@ DEFER (decision_category: AMBIGUOUS_TOPIC_JUDGMENT)
 REJECT (decision_category: LOW_QUALITY) is auto-applied BEFORE you see the
 candidate when any of these fail:
   - cluster_size < 3
-  - source_count < 2
+  - source_families < 2 (counts distinct platforms, not raw source names —
+    amazon_movers + amazon_trends together count as ONE family `amazon`)
   - confidence < 0.3
   - specificity_score < 0.3
 

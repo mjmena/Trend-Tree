@@ -107,20 +107,46 @@ async function fanoutSubagents({
 
 const QUALITY_GATE = {
   min_cluster_size: 3,
-  min_source_count: 2,
+  min_source_families: 2,
   min_confidence: 0.3,
   min_specificity: 0.3,
 };
 
+// Group SOURCE_BREAKDOWN keys into families. Two source variants from the
+// same platform (e.g. amazon_movers + amazon_trends) count as ONE family —
+// they don't constitute independent corroboration. A trend needs evidence
+// from at least 2 distinct families to pass the gate.
+function sourceFamilyOf(sourceName) {
+  const s = String(sourceName || "").toLowerCase();
+  if (s.startsWith("amazon")) return "amazon";
+  if (s.startsWith("agent_") && s.endsWith("_discovery")) return "agent_discovery";
+  if (s.startsWith("google_trends")) return "google_trends";
+  if (s === "wikimedia") return "wikimedia";
+  return s; // bluesky, gdelt, tiktok, pinterest, etc. — each their own family
+}
+
+function distinctSourceFamilies(sourceBreakdown) {
+  if (!sourceBreakdown || typeof sourceBreakdown !== "object") return new Set();
+  const families = new Set();
+  for (const k of Object.keys(sourceBreakdown)) {
+    families.add(sourceFamilyOf(k));
+  }
+  return families;
+}
+
 function failQualityGate(c) {
   const size = c.CLUSTER_SIZE ?? 0;
-  const srcs = c.SOURCE_COUNT ?? 0;
   const conf = c.CONFIDENCE ?? 0;
   const spec = c.SPECIFICITY_SCORE ?? 0;
-  if (size < QUALITY_GATE.min_cluster_size) return `cluster_size=${size}<${QUALITY_GATE.min_cluster_size}`;
-  if (srcs < QUALITY_GATE.min_source_count) return `source_count=${srcs}<${QUALITY_GATE.min_source_count}`;
-  if (conf < QUALITY_GATE.min_confidence)   return `confidence=${conf}<${QUALITY_GATE.min_confidence}`;
-  if (spec < QUALITY_GATE.min_specificity)  return `specificity_score=${spec}<${QUALITY_GATE.min_specificity}`;
+  const families = distinctSourceFamilies(c.SOURCE_BREAKDOWN);
+  if (size < QUALITY_GATE.min_cluster_size)
+    return `cluster_size=${size}<${QUALITY_GATE.min_cluster_size}`;
+  if (families.size < QUALITY_GATE.min_source_families)
+    return `source_families=${families.size}<${QUALITY_GATE.min_source_families} (got [${[...families].join(",")}])`;
+  if (conf < QUALITY_GATE.min_confidence)
+    return `confidence=${conf}<${QUALITY_GATE.min_confidence}`;
+  if (spec < QUALITY_GATE.min_specificity)
+    return `specificity_score=${spec}<${QUALITY_GATE.min_specificity}`;
   return null;
 }
 
