@@ -30,10 +30,6 @@ export default defineComponent({
     event: { type: "any" },
     agent_result: { type: "any" },
     commit_result: { type: "any" },
-    promoted_trends_result: { type: "any" },
-    duplicate_updates_result: { type: "any" },
-    real_trend_promotion_result: { type: "any" },
-    duplicate_promotion_result: { type: "any" },
     claim_signals_result: { type: "any" },
   },
   async run({ $ }) {
@@ -41,12 +37,11 @@ export default defineComponent({
     const ar = this.agent_result || {};
     const commitOk = Array.isArray(this.commit_result) || (this.commit_result && !this.commit_result.error);
 
-    const promoted_count = affectedRows(this.promoted_trends_result);
-    const duplicate_count = affectedRows(this.duplicate_updates_result);
-    const candidate_promotion_count =
-      affectedRows(this.real_trend_promotion_result) + affectedRows(this.duplicate_promotion_result);
     const claimed_signal_count = affectedRows(this.claim_signals_result);
 
+    // Promotion to FCT_TRENDS now happens in the separate promotion-p_xMC99jg
+    // workflow on its own cron. Distillation no longer reports promoted/dup
+    // counts because those decisions are made downstream.
     const body = {
       tool: "distillation_lead",
       chain_id: ar.chain_id,
@@ -56,9 +51,6 @@ export default defineComponent({
       louvain_seen: ar.louvain_seen || 0,
       candidates_count: ar.candidates_count || 0,
       candidates_persisted: !!commitOk,
-      promoted_count,
-      duplicate_count,
-      candidate_promotion_count,
       claimed_signal_count,
       cost_usd: ar.cost_usd || 0,
       tokens: ar.tokens || { input: 0, output: 0, total: 0 },

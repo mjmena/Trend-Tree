@@ -2,4 +2,286 @@ schema: workflow/2022.04
 name: Promotion
 settings:
   error_notification: true
-
+  lambda_memory: 4096
+  lambda_timeout: 600
+  network: net_5Lnie3
+steps:
+- namespace: normalize_event
+  runtime: nodejs20.x
+  uses: "./normalize_event/entry.js"
+  props:
+    trigger_event: "{{steps.trigger.event}}"
+- namespace: q_load_pending_candidates
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT
+          CANDIDATE_ID, AGENT_SESSION_ID, CHAIN_ID, ITERATION, CREATED_AT,
+          TOPIC AS CANDIDATE_TOPIC,
+          VERDICT AS DISTILLATION_VERDICT,
+          DEDUP_OF_TREND_ID AS DISTILLATION_DEDUP_TARGET,
+          REASONING AS DISTILLATION_REASONING,
+          SUPPORTING_SIGNAL_IDS,
+          SOURCE_BREAKDOWN,
+          ARRAY_SIZE(SUPPORTING_SIGNAL_IDS) AS CLUSTER_SIZE,
+          ARRAY_SIZE(OBJECT_KEYS(SOURCE_BREAKDOWN)) AS SOURCE_COUNT,
+          CONFIDENCE,
+          SPECIFICITY_SCORE,
+          BUCKET
+        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
+        WHERE PROMOTED_AT IS NULL
+          AND REJECTED_AT IS NULL
+          AND (DEFERRED_UNTIL IS NULL OR DEFERRED_UNTIL <= CURRENT_TIMESTAMP())
+          AND VERDICT IS NOT NULL
+        ORDER BY
+          CASE WHEN VERDICT = 'REAL_TREND' THEN 1
+               WHEN VERDICT LIKE 'DUPLICATE_OF%' THEN 2
+               WHEN VERDICT IN ('NOISE','CATEGORY_TOO_BROAD') THEN 3
+               ELSE 4 END,
+          CONFIDENCE DESC NULLS LAST,
+          CREATED_AT ASC
+        LIMIT 50
+      query: |-
+        SELECT
+          CANDIDATE_ID, AGENT_SESSION_ID, CHAIN_ID, ITERATION, CREATED_AT,
+          TOPIC AS CANDIDATE_TOPIC,
+          VERDICT AS DISTILLATION_VERDICT,
+          DEDUP_OF_TREND_ID AS DISTILLATION_DEDUP_TARGET,
+          REASONING AS DISTILLATION_REASONING,
+          SUPPORTING_SIGNAL_IDS,
+          SOURCE_BREAKDOWN,
+          ARRAY_SIZE(SUPPORTING_SIGNAL_IDS) AS CLUSTER_SIZE,
+          ARRAY_SIZE(OBJECT_KEYS(SOURCE_BREAKDOWN)) AS SOURCE_COUNT,
+          CONFIDENCE,
+          SPECIFICITY_SCORE,
+          BUCKET
+        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
+        WHERE PROMOTED_AT IS NULL
+          AND REJECTED_AT IS NULL
+          AND (DEFERRED_UNTIL IS NULL OR DEFERRED_UNTIL <= CURRENT_TIMESTAMP())
+          AND VERDICT IS NOT NULL
+        ORDER BY
+          CASE WHEN VERDICT = 'REAL_TREND' THEN 1
+               WHEN VERDICT LIKE 'DUPLICATE_OF%' THEN 2
+               WHEN VERDICT IN ('NOISE','CATEGORY_TOO_BROAD') THEN 3
+               ELSE 4 END,
+          CONFIDENCE DESC NULLS LAST,
+          CREATED_AT ASC
+        LIMIT 50
+      params: []
+- namespace: extract_candidate_ids
+  runtime: nodejs20.x
+  uses: "./extract_candidate_ids/entry.js"
+  props:
+    pending_rows: "{{steps.q_load_pending_candidates.$return_value}}"
+    max_candidates: "{{steps.normalize_event.$return_value.max_candidates}}"
+- namespace: q_compute_candidate_vectors
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        WITH candidate_signal_titles AS (
+          SELECT
+            c.CANDIDATE_ID,
+            LISTAGG(s.SIGNAL_TITLE, ', ') WITHIN GROUP (ORDER BY s.INGESTED_AT DESC) AS TOP_SIGNAL_TITLES
+          FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
+               LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+          JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s ON s.SIGNAL_ID = f.value::STRING
+          WHERE c.CANDIDATE_ID IN (SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))))
+            AND s.SIGNAL_TITLE IS NOT NULL
+          QUALIFY ROW_NUMBER() OVER (PARTITION BY c.CANDIDATE_ID ORDER BY s.INGESTED_AT DESC) <= 3
+          GROUP BY c.CANDIDATE_ID
+        ),
+        candidate_text AS (
+          SELECT
+            c.CANDIDATE_ID,
+            COALESCE(c.TOPIC, '') || ' | ' ||
+            COALESCE(LEFT(c.REASONING, 800), '') || ' | ' ||
+            COALESCE(t.TOP_SIGNAL_TITLES, '') AS EMBEDDING_TEXT
+          FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+          LEFT JOIN candidate_signal_titles t ON c.CANDIDATE_ID = t.CANDIDATE_ID
+          WHERE c.CANDIDATE_ID IN (SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))))
+        )
+        SELECT
+          CANDIDATE_ID,
+          EMBEDDING_TEXT,
+          SNOWFLAKE.CORTEX.EMBED_TEXT_1024('snowflake-arctic-embed-l-v2.0', EMBEDDING_TEXT) AS CANDIDATE_VECTOR
+        FROM candidate_text
+      query: |-
+        WITH candidate_signal_titles AS (
+          SELECT
+            c.CANDIDATE_ID,
+            LISTAGG(s.SIGNAL_TITLE, ', ') WITHIN GROUP (ORDER BY s.INGESTED_AT DESC) AS TOP_SIGNAL_TITLES
+          FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
+               LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+          JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s ON s.SIGNAL_ID = f.value::STRING
+          WHERE c.CANDIDATE_ID IN (SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))))
+            AND s.SIGNAL_TITLE IS NOT NULL
+          QUALIFY ROW_NUMBER() OVER (PARTITION BY c.CANDIDATE_ID ORDER BY s.INGESTED_AT DESC) <= 3
+          GROUP BY c.CANDIDATE_ID
+        ),
+        candidate_text AS (
+          SELECT
+            c.CANDIDATE_ID,
+            COALESCE(c.TOPIC, '') || ' | ' ||
+            COALESCE(LEFT(c.REASONING, 800), '') || ' | ' ||
+            COALESCE(t.TOP_SIGNAL_TITLES, '') AS EMBEDDING_TEXT
+          FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+          LEFT JOIN candidate_signal_titles t ON c.CANDIDATE_ID = t.CANDIDATE_ID
+          WHERE c.CANDIDATE_ID IN (SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))))
+        )
+        SELECT
+          CANDIDATE_ID,
+          EMBEDDING_TEXT,
+          SNOWFLAKE.CORTEX.EMBED_TEXT_1024('snowflake-arctic-embed-l-v2.0', EMBEDDING_TEXT) AS CANDIDATE_VECTOR
+        FROM candidate_text
+      params:
+      - "{{steps.extract_candidate_ids.$return_value.selected_ids_json}}"
+- namespace: q_load_neighbor_pool
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        WITH candidate_vectors AS (
+          SELECT
+            f.value:CANDIDATE_ID::STRING AS CANDIDATE_ID,
+            f.value:CANDIDATE_VECTOR::VECTOR(FLOAT, 1024) AS CANDIDATE_VECTOR
+          FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) f
+        ),
+        scored AS (
+          SELECT
+            c.CANDIDATE_ID,
+            t.TREND_ID                 AS NEIGHBOR_TREND_ID,
+            t.TREND_TOPIC              AS NEIGHBOR_TOPIC,
+            t.LAST_UPDATE_AT           AS NEIGHBOR_LAST_UPDATE,
+            t.TOTAL_CLUSTER_SIZE       AS NEIGHBOR_CLUSTER_SIZE,
+            t.DETECTED_AT              AS NEIGHBOR_DETECTED_AT,
+            t.TREND_HEAT_INDEX         AS NEIGHBOR_HEAT,
+            DATEDIFF(day, t.DETECTED_AT, CURRENT_TIMESTAMP()) AS NEIGHBOR_AGE_DAYS,
+            e.SUMMARY_SHORT            AS NEIGHBOR_SUMMARY,
+            e.CATEGORY                 AS NEIGHBOR_CATEGORY,
+            ROUND(VECTOR_COSINE_SIMILARITY(c.CANDIDATE_VECTOR, t.TREND_VECTOR), 4) AS SIMILARITY
+          FROM candidate_vectors c
+          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+            ON t.TREND_VECTOR IS NOT NULL
+          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT e ON t.TREND_ID = e.TREND_ID
+          WHERE VECTOR_COSINE_SIMILARITY(c.CANDIDATE_VECTOR, t.TREND_VECTOR) >= 0.50
+        )
+        SELECT *
+        FROM scored
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY CANDIDATE_ID ORDER BY SIMILARITY DESC) <= 8
+        ORDER BY CANDIDATE_ID, SIMILARITY DESC
+      query: |-
+        WITH candidate_vectors AS (
+          SELECT
+            f.value:CANDIDATE_ID::STRING AS CANDIDATE_ID,
+            f.value:CANDIDATE_VECTOR::VECTOR(FLOAT, 1024) AS CANDIDATE_VECTOR
+          FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) f
+        ),
+        scored AS (
+          SELECT
+            c.CANDIDATE_ID,
+            t.TREND_ID                 AS NEIGHBOR_TREND_ID,
+            t.TREND_TOPIC              AS NEIGHBOR_TOPIC,
+            t.LAST_UPDATE_AT           AS NEIGHBOR_LAST_UPDATE,
+            t.TOTAL_CLUSTER_SIZE       AS NEIGHBOR_CLUSTER_SIZE,
+            t.DETECTED_AT              AS NEIGHBOR_DETECTED_AT,
+            t.TREND_HEAT_INDEX         AS NEIGHBOR_HEAT,
+            DATEDIFF(day, t.DETECTED_AT, CURRENT_TIMESTAMP()) AS NEIGHBOR_AGE_DAYS,
+            e.SUMMARY_SHORT            AS NEIGHBOR_SUMMARY,
+            e.CATEGORY                 AS NEIGHBOR_CATEGORY,
+            ROUND(VECTOR_COSINE_SIMILARITY(c.CANDIDATE_VECTOR, t.TREND_VECTOR), 4) AS SIMILARITY
+          FROM candidate_vectors c
+          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+            ON t.TREND_VECTOR IS NOT NULL
+          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT e ON t.TREND_ID = e.TREND_ID
+          WHERE VECTOR_COSINE_SIMILARITY(c.CANDIDATE_VECTOR, t.TREND_VECTOR) >= 0.50
+        )
+        SELECT *
+        FROM scored
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY CANDIDATE_ID ORDER BY SIMILARITY DESC) <= 8
+        ORDER BY CANDIDATE_ID, SIMILARITY DESC
+      params:
+      - "{{steps.q_compute_candidate_vectors.$return_value}}"
+- namespace: q_load_neighbor_signal_samples
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        WITH neighbor_set AS (
+          SELECT DISTINCT f.value:NEIGHBOR_TREND_ID::STRING AS TREND_ID
+          FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) f
+        )
+        SELECT s.TREND_ID, s.SIGNAL_NAME AS SIGNAL_TITLE, s.URL, s.DOMAIN, s.DETECTED_AT
+        FROM MCC_PRESENTATION.TREND_AGENT.STG_TREND_SIGNALS s
+        JOIN neighbor_set n ON s.TREND_ID = n.TREND_ID
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY s.TREND_ID ORDER BY s.DETECTED_AT DESC NULLS LAST) <= 3
+        ORDER BY s.TREND_ID, s.DETECTED_AT DESC
+      query: |-
+        WITH neighbor_set AS (
+          SELECT DISTINCT f.value:NEIGHBOR_TREND_ID::STRING AS TREND_ID
+          FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) f
+        )
+        SELECT s.TREND_ID, s.SIGNAL_NAME AS SIGNAL_TITLE, s.URL, s.DOMAIN, s.DETECTED_AT
+        FROM MCC_PRESENTATION.TREND_AGENT.STG_TREND_SIGNALS s
+        JOIN neighbor_set n ON s.TREND_ID = n.TREND_ID
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY s.TREND_ID ORDER BY s.DETECTED_AT DESC NULLS LAST) <= 3
+        ORDER BY s.TREND_ID, s.DETECTED_AT DESC
+      params:
+      - "{{steps.q_load_neighbor_pool.$return_value}}"
+- namespace: run_lead_agent
+  runtime: nodejs20.x
+  uses: "./run_lead_agent/entry.js"
+  props:
+    event: "{{steps.normalize_event.$return_value}}"
+    selected_candidates: "{{steps.extract_candidate_ids.$return_value.selected}}"
+    candidate_vectors: "{{steps.q_compute_candidate_vectors.$return_value}}"
+    neighbor_rows: "{{steps.q_load_neighbor_pool.$return_value}}"
+    neighbor_signal_samples: "{{steps.q_load_neighbor_signal_samples.$return_value}}"
+    subagent_url: https://PLACEHOLDER-promotion-subagent.m.pipedream.net
+- namespace: apply_promotion
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        CALL MCC_RAW.MARKETING_DEV.PROC_PROMOTION_APPLY(
+          PARSE_JSON($${{steps.run_lead_agent.$return_value.bundle_json}}$$),
+          '{{steps.normalize_event.$return_value.chain_id}}',
+          {{steps.normalize_event.$return_value.iteration}}
+        )
+      query: |-
+        CALL MCC_RAW.MARKETING_DEV.PROC_PROMOTION_APPLY(
+          PARSE_JSON($${{steps.run_lead_agent.$return_value.bundle_json}}$$),
+          '{{steps.normalize_event.$return_value.chain_id}}',
+          {{steps.normalize_event.$return_value.iteration}}
+        )
+      params: []
+- namespace: eval_and_retrigger
+  runtime: nodejs20.x
+  uses: "./eval_and_retrigger/entry.js"
+  props:
+    chain_id: "{{steps.normalize_event.$return_value.chain_id}}"
+    iteration: "{{steps.normalize_event.$return_value.iteration}}"
+    max_iterations: "{{steps.normalize_event.$return_value.max_iterations}}"
+    budget_usd: "{{steps.normalize_event.$return_value.budget_usd}}"
+    budget_remaining_usd: "{{steps.normalize_event.$return_value.budget_remaining_usd}}"
+    dry_run: "{{steps.normalize_event.$return_value.dry_run}}"
+    max_candidates: "{{steps.normalize_event.$return_value.max_candidates}}"
+    lead_result: "{{steps.run_lead_agent.$return_value}}"
+    apply_result: "{{steps.apply_promotion.$return_value}}"
