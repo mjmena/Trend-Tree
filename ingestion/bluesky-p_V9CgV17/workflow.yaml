@@ -7,6 +7,7 @@ settings:
   network: net_5Lnie3
 triggers:
 - id: ti_rrTAJ2X
+- id: hi_PrH6qpZ
 steps:
 - namespace: fetch_source
   runtime: nodejs20.x
