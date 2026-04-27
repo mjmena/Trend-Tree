@@ -60,6 +60,9 @@ function fmtCandidateBlock(b) {
       .join(", ");
     parts.push(`- source_breakdown: ${breakdown}`);
   }
+  if (Array.isArray(b.quality_flags) && b.quality_flags.length > 0) {
+    parts.push(`- quality_flags: [${b.quality_flags.join(", ")}]  ⚠ apply extra skepticism — defer if uncertain`);
+  }
   return parts.join("\n");
 }
 
@@ -125,6 +128,7 @@ export default defineComponent({
       specificity_score: Number(body.specificity_score || 0),
       bucket: body.bucket || null,
       source_breakdown: body.source_breakdown || {},
+      quality_flags: Array.isArray(body.quality_flags) ? body.quality_flags : [],
       candidate_vector,
     };
 

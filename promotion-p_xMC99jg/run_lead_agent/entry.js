@@ -101,21 +101,33 @@ async function fanoutSubagents({
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Quality-gate pre-check (no LLM dispatch on obvious LOW_QUALITY)
-// Mirror the threshold in seed_prompts_promotion.sql / decision_rubric.
+// Quality gate
+//
+// HARD reject (no LLM dispatch, $0 cost): cluster_size < 2 — truly orphan
+// signals can't be a trend.
+//
+// SOFT pass to LLM with quality_flags: anything that has at least 2 signals
+// goes to the LLM. Concerns (single-source-family, low confidence, etc.)
+// are surfaced as flags in the dispatch payload so the subagent can apply
+// extra skepticism — defaulting to DEFER over confident PROMOTE_NEW when
+// evidence is thin. The LLM is the precision filter; SQL/JS only stops
+// the most obvious garbage.
 // ─────────────────────────────────────────────────────────────────────
 
-const QUALITY_GATE = {
+const HARD_GATE = {
+  min_cluster_size: 2,
+};
+
+const SOFT_THRESHOLDS = {
   min_cluster_size: 3,
   min_source_families: 2,
-  min_confidence: 0.3,
-  min_specificity: 0.3,
+  min_confidence: 0.5,
+  min_specificity: 0.5,
 };
 
 // Group SOURCE_BREAKDOWN keys into families. Two source variants from the
 // same platform (e.g. amazon_movers + amazon_trends) count as ONE family —
-// they don't constitute independent corroboration. A trend needs evidence
-// from at least 2 distinct families to pass the gate.
+// they don't constitute independent corroboration.
 function sourceFamilyOf(sourceName) {
   const s = String(sourceName || "").toLowerCase();
   if (s.startsWith("amazon")) return "amazon";
@@ -134,20 +146,25 @@ function distinctSourceFamilies(sourceBreakdown) {
   return families;
 }
 
-function failQualityGate(c) {
+function failHardGate(c) {
+  const size = c.CLUSTER_SIZE ?? 0;
+  if (size < HARD_GATE.min_cluster_size)
+    return `cluster_size=${size}<${HARD_GATE.min_cluster_size}`;
+  return null;
+}
+
+function qualityFlags(c) {
+  const flags = [];
   const size = c.CLUSTER_SIZE ?? 0;
   const conf = c.CONFIDENCE ?? 0;
   const spec = c.SPECIFICITY_SCORE ?? 0;
   const families = distinctSourceFamilies(c.SOURCE_BREAKDOWN);
-  if (size < QUALITY_GATE.min_cluster_size)
-    return `cluster_size=${size}<${QUALITY_GATE.min_cluster_size}`;
-  if (families.size < QUALITY_GATE.min_source_families)
-    return `source_families=${families.size}<${QUALITY_GATE.min_source_families} (got [${[...families].join(",")}])`;
-  if (conf < QUALITY_GATE.min_confidence)
-    return `confidence=${conf}<${QUALITY_GATE.min_confidence}`;
-  if (spec < QUALITY_GATE.min_specificity)
-    return `specificity_score=${spec}<${QUALITY_GATE.min_specificity}`;
-  return null;
+  if (size < SOFT_THRESHOLDS.min_cluster_size) flags.push(`low_cluster_size:${size}`);
+  if (families.size < SOFT_THRESHOLDS.min_source_families)
+    flags.push(`single_source_family:${[...families].join(",")}`);
+  if (conf < SOFT_THRESHOLDS.min_confidence) flags.push(`low_confidence:${conf}`);
+  if (spec < SOFT_THRESHOLDS.min_specificity) flags.push(`low_specificity:${spec}`);
+  return flags;
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -209,7 +226,7 @@ function indexCombinedRows(combinedRows, signalSampleRows) {
 // Format candidate context for subagent (compact, readable blocks)
 // ─────────────────────────────────────────────────────────────────────
 
-function buildDispatch(candidate, candidateVector, neighborPool, ctx) {
+function buildDispatch(candidate, candidateVector, neighborPool, flags, ctx) {
   return {
     candidate_id: candidate.CANDIDATE_ID,
     candidate_topic: candidate.CANDIDATE_TOPIC,
@@ -222,6 +239,7 @@ function buildDispatch(candidate, candidateVector, neighborPool, ctx) {
     specificity_score: candidate.SPECIFICITY_SCORE,
     bucket: candidate.BUCKET,
     source_breakdown: candidate.SOURCE_BREAKDOWN,
+    quality_flags: flags,                              // soft-gate concerns the LLM should weigh
     candidate_vector: candidateVector,                // pass through to apply step on PROMOTE_NEW
     neighbor_pool: neighborPool,
     chain_id: ctx.chain_id,
@@ -267,14 +285,14 @@ export default defineComponent({
     const dispatches = [];
 
     for (const c of candidates) {
-      const fail = failQualityGate(c);
-      if (fail) {
+      const hardFail = failHardGate(c);
+      if (hardFail) {
         bundle.push({
           candidate_id: c.CANDIDATE_ID,
           decision: "REJECT",
           decision_category: "LOW_QUALITY",
-          rejection_reason: `LOW_QUALITY: ${fail}`,
-          rationale: `Auto-rejected by quality gate: ${fail}.`,
+          rejection_reason: `HARD_GATE: ${hardFail}`,
+          rationale: `Auto-rejected by hard gate: ${hardFail}.`,
           distillation_verdict: c.DISTILLATION_VERDICT,
           max_neighbor_sim: null,
           considered_neighbors: [],
@@ -283,9 +301,10 @@ export default defineComponent({
         });
         continue;
       }
+      const flags = qualityFlags(c);
       const vec = vecByCid.get(c.CANDIDATE_ID) || null;
       const neighbors = neighborsByCandidate.get(c.CANDIDATE_ID) || [];
-      dispatches.push(buildDispatch(c, vec, neighbors, {
+      dispatches.push(buildDispatch(c, vec, neighbors, flags, {
         chain_id: evt.chain_id,
         iteration: evt.iteration,
         dry_run: dryRun,

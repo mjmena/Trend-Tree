@@ -160,17 +160,15 @@ DEFER (decision_category: AMBIGUOUS_TOPIC_JUDGMENT)
   Genuine same-vs-different ambiguity. defer_until = now + 48h. This will be
   surfaced in audit for human review.
 
-═══ Quality gate (mechanical pre-check, not for LLM) ═══
+═══ Quality flags (you weigh these — not auto-reject) ═══
 
-REJECT (decision_category: LOW_QUALITY) is auto-applied BEFORE you see the
-candidate when any of these fail:
-  - cluster_size < 3
-  - source_families < 2 (counts distinct platforms, not raw source names —
-    amazon_movers + amazon_trends together count as ONE family `amazon`)
-  - confidence < 0.3
-  - specificity_score < 0.3
-
-If you receive a candidate, it has already passed this gate.$$,
+The candidate may arrive with quality_flags listing concerns:
+low_cluster_size, single_source_family, low_confidence, low_specificity.
+These are warnings, not disqualifications. When flags are present,
+default to DEFER over confident PROMOTE_NEW unless the topic is
+unambiguously real (clear concrete behavior, named brand/product,
+plausible cultural moment). The hard gate only auto-rejects
+cluster_size < 2 (orphan signals) — anything else reaches you.$$,
     NULL,
     TRUE,
     SHA2(CONCAT_WS(':', 'promotion.subagent.decision_rubric', 'v1'), 256),
