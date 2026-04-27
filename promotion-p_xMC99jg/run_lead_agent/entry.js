@@ -127,10 +127,16 @@ const SOFT_THRESHOLDS = {
 // Group SOURCE_BREAKDOWN keys into families. Two source variants from the
 // same platform (e.g. amazon_movers + amazon_trends) count as ONE family —
 // they don't constitute independent corroboration.
+//
+// Discovery LLMs (Gemini/Grok/ChatGPT) are kept as INDEPENDENT families:
+// three different model architectures hitting the same trend is genuine
+// cross-corroboration, not a single platform burst.
 function sourceFamilyOf(sourceName) {
   const s = String(sourceName || "").toLowerCase();
   if (s.startsWith("amazon")) return "amazon";
-  if (s.startsWith("agent_") && s.endsWith("_discovery")) return "agent_discovery";
+  if (s === "agent_gemini_discovery") return "agent_gemini_discovery";
+  if (s === "agent_grok_discovery") return "agent_grok_discovery";
+  if (s === "agent_chatgpt_discovery") return "agent_chatgpt_discovery";
   if (s.startsWith("google_trends")) return "google_trends";
   if (s === "wikimedia") return "wikimedia";
   return s; // bluesky, gdelt, tiktok, pinterest, etc. — each their own family
