@@ -1,0 +1,5 @@
+schema: workflow/2022.04
+name: Promotion Agent
+settings:
+  error_notification: true
+
