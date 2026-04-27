@@ -2,4 +2,265 @@ schema: workflow/2022.04
 name: Distillation Revisit
 settings:
   error_notification: true
-
+  lambda_memory: 4096
+  lambda_timeout: 750
+  network: net_5Lnie3
+triggers:
+- id: dc_RWu7L4x
+steps:
+- namespace: normalize_event
+  runtime: nodejs20.x
+  uses: "./normalize_event/entry.js"
+  props:
+    trigger_event: "{{steps.trigger.event}}"
+- namespace: q_load_pool
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT s.SIGNAL_ID, s.SOURCE_NAME, s.SIGNAL_TIMESTAMP,
+               s.SIGNAL_TITLE, LEFT(s.SIGNAL_TEXT, 600) AS SIGNAL_TEXT,
+               s.AGENT_SESSION_ID
+        FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
+        WHERE s.SIGNAL_TIMESTAMP > DATEADD(hour, -24, CURRENT_TIMESTAMP())
+          AND s.AGENT_SESSION_ID LIKE 'sess-%'
+          AND COALESCE(s.METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
+          AND NOT EXISTS (
+            SELECT 1
+            FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
+                 LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+            WHERE f.value::STRING = s.SIGNAL_ID
+              AND c.PROMOTED_TO IS NOT NULL
+          )
+        ORDER BY s.SIGNAL_TIMESTAMP DESC NULLS LAST
+        LIMIT 400
+      query: |-
+        SELECT s.SIGNAL_ID, s.SOURCE_NAME, s.SIGNAL_TIMESTAMP,
+               s.SIGNAL_TITLE, LEFT(s.SIGNAL_TEXT, 600) AS SIGNAL_TEXT,
+               s.AGENT_SESSION_ID
+        FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
+        WHERE s.SIGNAL_TIMESTAMP > DATEADD(hour, -24, CURRENT_TIMESTAMP())
+          AND s.AGENT_SESSION_ID LIKE 'sess-%'
+          AND COALESCE(s.METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
+          AND NOT EXISTS (
+            SELECT 1
+            FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
+                 LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+            WHERE f.value::STRING = s.SIGNAL_ID
+              AND c.PROMOTED_TO IS NOT NULL
+          )
+        ORDER BY s.SIGNAL_TIMESTAMP DESC NULLS LAST
+        LIMIT 400
+      params: []
+- namespace: serialize_pool_signal_ids
+  runtime: nodejs20.x
+  uses: "./serialize_pool_signal_ids/entry.js"
+  props:
+    rows: "{{steps.q_load_pool.$return_value}}"
+- namespace: q_cluster_signals
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        CALL MCC_RAW.MARKETING_DEV.PROC_CLUSTER_SIGNAL_SUBSET(
+          PARSE_JSON(:1)::ARRAY,
+          {{steps.normalize_event.$return_value.cluster_count}}::NUMBER
+        )
+      query: |-
+        CALL MCC_RAW.MARKETING_DEV.PROC_CLUSTER_SIGNAL_SUBSET(
+          PARSE_JSON(:1)::ARRAY,
+          {{steps.normalize_event.$return_value.cluster_count}}::NUMBER
+        )
+      params:
+      - "{{steps.serialize_pool_signal_ids.$return_value.signal_ids_json}}"
+- namespace: dispatch_to_subagents
+  runtime: nodejs20.x
+  uses: "./dispatch_to_subagents/entry.js"
+  props:
+    event: "{{steps.normalize_event.$return_value}}"
+    cluster_rows: "{{steps.q_cluster_signals.$return_value}}"
+    subagent_url: https://REVISIT_SUBAGENT_URL_PLACEHOLDER.m.pipedream.net
+- namespace: commit_candidates
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES (
+          CANDIDATE_ID, AGENT_SESSION_ID, CHAIN_ID, ITERATION,
+          TOPIC, SUPPORTING_SIGNAL_IDS, CONFIDENCE, SPECIFICITY_SCORE,
+          SOURCE_BREAKDOWN, BUCKET, VERDICT, EVIDENCE_ADDED,
+          REASONING, REASONING_TRACE, DEDUP_OF_TREND_ID
+        )
+        WITH cand AS (
+          SELECT c.value AS j FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) c
+        ),
+        sig_counts AS (
+          SELECT cand.j:candidate_id::STRING AS candidate_id, s.SOURCE_NAME, COUNT(*) AS n
+          FROM cand, LATERAL FLATTEN(INPUT => cand.j:supporting_signal_ids) sid
+          JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s ON s.SIGNAL_ID = sid.value::STRING
+          GROUP BY 1, 2
+        ),
+        sb AS (
+          SELECT candidate_id, OBJECT_AGG(SOURCE_NAME, n::VARIANT) AS source_breakdown
+          FROM sig_counts GROUP BY 1
+        )
+        SELECT
+          cand.j:candidate_id::STRING,
+          cand.j:agent_session_id::STRING,
+          cand.j:chain_id::STRING,
+          cand.j:iteration::NUMBER,
+          cand.j:topic::STRING,
+          cand.j:supporting_signal_ids,
+          cand.j:confidence::FLOAT,
+          cand.j:specificity_score::FLOAT,
+          COALESCE(sb.source_breakdown, OBJECT_CONSTRUCT()),
+          cand.j:bucket::STRING,
+          cand.j:verdict::STRING,
+          cand.j:evidence_added,
+          cand.j:reasoning::STRING,
+          cand.j:reasoning_trace,
+          cand.j:dedup_of_trend_id::STRING
+        FROM cand LEFT JOIN sb ON sb.candidate_id = cand.j:candidate_id::STRING
+        WHERE :1 != '[]'
+      query: |-
+        INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES (
+          CANDIDATE_ID, AGENT_SESSION_ID, CHAIN_ID, ITERATION,
+          TOPIC, SUPPORTING_SIGNAL_IDS, CONFIDENCE, SPECIFICITY_SCORE,
+          SOURCE_BREAKDOWN, BUCKET, VERDICT, EVIDENCE_ADDED,
+          REASONING, REASONING_TRACE, DEDUP_OF_TREND_ID
+        )
+        WITH cand AS (
+          SELECT c.value AS j FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) c
+        ),
+        sig_counts AS (
+          SELECT cand.j:candidate_id::STRING AS candidate_id, s.SOURCE_NAME, COUNT(*) AS n
+          FROM cand, LATERAL FLATTEN(INPUT => cand.j:supporting_signal_ids) sid
+          JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s ON s.SIGNAL_ID = sid.value::STRING
+          GROUP BY 1, 2
+        ),
+        sb AS (
+          SELECT candidate_id, OBJECT_AGG(SOURCE_NAME, n::VARIANT) AS source_breakdown
+          FROM sig_counts GROUP BY 1
+        )
+        SELECT
+          cand.j:candidate_id::STRING,
+          cand.j:agent_session_id::STRING,
+          cand.j:chain_id::STRING,
+          cand.j:iteration::NUMBER,
+          cand.j:topic::STRING,
+          cand.j:supporting_signal_ids,
+          cand.j:confidence::FLOAT,
+          cand.j:specificity_score::FLOAT,
+          COALESCE(sb.source_breakdown, OBJECT_CONSTRUCT()),
+          cand.j:bucket::STRING,
+          cand.j:verdict::STRING,
+          cand.j:evidence_added,
+          cand.j:reasoning::STRING,
+          cand.j:reasoning_trace,
+          cand.j:dedup_of_trend_id::STRING
+        FROM cand LEFT JOIN sb ON sb.candidate_id = cand.j:candidate_id::STRING
+        WHERE :1 != '[]'
+      params:
+      - "{{steps.dispatch_to_subagents.$return_value.candidates_json}}"
+- namespace: claim_revisit_signals
+  # Re-stamp every signal the revisit run looked at with `revisit-<session>`.
+  # Now they're done with: future revisit runs filter AGENT_SESSION_ID LIKE 'sess-%'
+  # only, so revisit-stamped signals naturally fall out.
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        UPDATE MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
+        SET AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+        WHERE s.SIGNAL_ID IN (
+          SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1)))
+        )
+      query: |-
+        UPDATE MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
+        SET AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
+        WHERE s.SIGNAL_ID IN (
+          SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1)))
+        )
+      params:
+      - "{{steps.serialize_pool_signal_ids.$return_value.signal_ids_json}}"
+- namespace: update_cursor
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        MERGE INTO MCC_RAW.MARKETING_DEV.STG_DISTILLATION_CURSOR target
+        USING (
+          SELECT
+            'distillation_revisit'::STRING                                AS CURSOR_NAME,
+            CURRENT_TIMESTAMP()::TIMESTAMP_NTZ                            AS LAST_RUN_AT,
+            CURRENT_TIMESTAMP()::TIMESTAMP_NTZ                            AS LAST_SIGNAL_TS,
+            {{steps.dispatch_to_subagents.$return_value.run_duration_ms}}::NUMBER AS RUN_DURATION_MS,
+            {{steps.dispatch_to_subagents.$return_value.signals_seen}}::NUMBER    AS SIGNAL_COUNT,
+            {{steps.dispatch_to_subagents.$return_value.candidates_count}}::NUMBER AS CANDIDATE_COUNT,
+            {{steps.dispatch_to_subagents.$return_value.cost_usd}}::FLOAT          AS COST_USD
+        ) source
+        ON target.CURSOR_NAME = source.CURSOR_NAME
+        WHEN MATCHED THEN UPDATE SET
+          target.LAST_RUN_AT      = source.LAST_RUN_AT,
+          target.LAST_SIGNAL_TS   = source.LAST_SIGNAL_TS,
+          target.RUN_DURATION_MS  = source.RUN_DURATION_MS,
+          target.SIGNAL_COUNT     = source.SIGNAL_COUNT,
+          target.CANDIDATE_COUNT  = source.CANDIDATE_COUNT,
+          target.COST_USD         = source.COST_USD
+        WHEN NOT MATCHED THEN INSERT (
+          CURSOR_NAME, LAST_RUN_AT, LAST_SIGNAL_TS, RUN_DURATION_MS, SIGNAL_COUNT, CANDIDATE_COUNT, COST_USD
+        ) VALUES (
+          source.CURSOR_NAME, source.LAST_RUN_AT, source.LAST_SIGNAL_TS,
+          source.RUN_DURATION_MS, source.SIGNAL_COUNT, source.CANDIDATE_COUNT, source.COST_USD
+        )
+      query: |-
+        MERGE INTO MCC_RAW.MARKETING_DEV.STG_DISTILLATION_CURSOR target
+        USING (
+          SELECT
+            'distillation_revisit'::STRING                                AS CURSOR_NAME,
+            CURRENT_TIMESTAMP()::TIMESTAMP_NTZ                            AS LAST_RUN_AT,
+            CURRENT_TIMESTAMP()::TIMESTAMP_NTZ                            AS LAST_SIGNAL_TS,
+            {{steps.dispatch_to_subagents.$return_value.run_duration_ms}}::NUMBER AS RUN_DURATION_MS,
+            {{steps.dispatch_to_subagents.$return_value.signals_seen}}::NUMBER    AS SIGNAL_COUNT,
+            {{steps.dispatch_to_subagents.$return_value.candidates_count}}::NUMBER AS CANDIDATE_COUNT,
+            {{steps.dispatch_to_subagents.$return_value.cost_usd}}::FLOAT          AS COST_USD
+        ) source
+        ON target.CURSOR_NAME = source.CURSOR_NAME
+        WHEN MATCHED THEN UPDATE SET
+          target.LAST_RUN_AT      = source.LAST_RUN_AT,
+          target.LAST_SIGNAL_TS   = source.LAST_SIGNAL_TS,
+          target.RUN_DURATION_MS  = source.RUN_DURATION_MS,
+          target.SIGNAL_COUNT     = source.SIGNAL_COUNT,
+          target.CANDIDATE_COUNT  = source.CANDIDATE_COUNT,
+          target.COST_USD         = source.COST_USD
+        WHEN NOT MATCHED THEN INSERT (
+          CURSOR_NAME, LAST_RUN_AT, LAST_SIGNAL_TS, RUN_DURATION_MS, SIGNAL_COUNT, CANDIDATE_COUNT, COST_USD
+        ) VALUES (
+          source.CURSOR_NAME, source.LAST_RUN_AT, source.LAST_SIGNAL_TS,
+          source.RUN_DURATION_MS, source.SIGNAL_COUNT, source.CANDIDATE_COUNT, source.COST_USD
+        )
+      params: []
+- namespace: respond
+  runtime: nodejs20.x
+  uses: "./respond/entry.js"
+  props:
+    event: "{{steps.normalize_event.$return_value}}"
+    pool_size: "{{steps.serialize_pool_signal_ids.$return_value.count}}"
+    dispatch_result: "{{steps.dispatch_to_subagents.$return_value}}"
+    commit_result: "{{steps.commit_candidates.$return_value}}"
+    claim_result: "{{steps.claim_revisit_signals.$return_value}}"

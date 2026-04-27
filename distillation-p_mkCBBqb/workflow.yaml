@@ -325,5 +325,5 @@ steps:
     event: "{{steps.normalize_event.$return_value}}"
     agent_result: "{{steps.run_lead_agent.$return_value}}"
     commit_result: "{{steps.commit_candidates.$return_value}}"
-    claim_signals_result: "{{steps.claim_supporting_signals.$return_value}}"
+    claim_signals_result: "{{steps.claim_window_signals.$return_value}}"
 
