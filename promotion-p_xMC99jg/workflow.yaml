@@ -160,6 +160,11 @@ steps:
         FROM candidate_text
       params:
       - "{{steps.extract_candidate_ids.$return_value.selected_ids_json}}"
+- namespace: serialize_for_neighbor_query
+  runtime: nodejs20.x
+  uses: "./serialize_for_neighbor_query/entry.js"
+  props:
+    candidate_vectors: "{{steps.q_compute_candidate_vectors.$return_value}}"
 - namespace: q_load_neighbor_pool
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -228,7 +233,12 @@ steps:
         QUALIFY ROW_NUMBER() OVER (PARTITION BY CANDIDATE_ID ORDER BY SIMILARITY DESC) <= 8
         ORDER BY CANDIDATE_ID, SIMILARITY DESC
       params:
-      - "{{steps.q_compute_candidate_vectors.$return_value}}"
+      - "{{steps.serialize_for_neighbor_query.$return_value.candidate_vectors_json}}"
+- namespace: serialize_neighbor_pool
+  runtime: nodejs20.x
+  uses: "./serialize_neighbor_pool/entry.js"
+  props:
+    neighbor_rows: "{{steps.q_load_neighbor_pool.$return_value}}"
 - namespace: q_load_neighbor_signal_samples
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -257,7 +267,7 @@ steps:
         QUALIFY ROW_NUMBER() OVER (PARTITION BY s.TREND_ID ORDER BY s.DETECTED_AT DESC NULLS LAST) <= 3
         ORDER BY s.TREND_ID, s.DETECTED_AT DESC
       params:
-      - "{{steps.q_load_neighbor_pool.$return_value}}"
+      - "{{steps.serialize_neighbor_pool.$return_value.neighbor_pool_json}}"
 - namespace: run_lead_agent
   runtime: nodejs20.x
   uses: "./run_lead_agent/entry.js"
