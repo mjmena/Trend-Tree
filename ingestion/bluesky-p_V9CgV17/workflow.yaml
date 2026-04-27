@@ -14,16 +14,11 @@ steps:
   props:
     bluesky: {}
 - namespace: upsert_signals
-  runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
+  runtime: python3.11
+  uses: "./upsert_signals/handler.py"
   props:
     snowflake:
       authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(:1, '', 500, 'STG_EXTERNAL_SIGNALS_TEST')
-      query: |-
-        CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(:1, '', 500, 'STG_EXTERNAL_SIGNALS_TEST')
-      params:
-      - "{{steps.fetch_source.$return_value.signals_json}}"
+    signals_json: "{{steps.fetch_source.$return_value.signals_json}}"
+    target_table: STG_EXTERNAL_SIGNALS_TEST
 
