@@ -702,25 +702,11 @@ export default defineComponent({
     }
 
     const queueRow = (this.queue_rows || [])[0] || null;
+    // ENRICHMENT_TYPE is captured for telemetry/audit but no longer gates
+    // the run. The promotion agent only queues trends that need enrichment,
+    // so every invocation should run the full agent loop. Legacy values
+    // (SOURCES_ONLY, REFRESH) still flow through but are ignored.
     const enrichment_type = (queueRow?.ENRICHMENT_TYPE || evt.enrichment_type || "FULL").toUpperCase();
-
-    // Gating: SOURCES_ONLY / REFRESH skip the LLM and return an empty
-    // enrichment record. Same contract as legacy.
-    if (enrichment_type !== "FULL") {
-      console.log(`enrichment gated: type=${enrichment_type} for trend ${trend_id}`);
-      $.export("$summary", `${trend_id}: gated (${enrichment_type})`);
-      return {
-        gated: true,
-        enrichment_type,
-        enrichment_output: null,
-        agent_session_id: evt.agent_session_id,
-        chain_id: evt.chain_id,
-        tokens: { input: 0, output: 0 },
-        cost_usd: 0,
-        turns: 0,
-        stop_reason: "gated",
-      };
-    }
 
     // Normalize prefetched pools.
     const source_metrics_pool = (this.source_metrics_rows || []).map((r) => ({

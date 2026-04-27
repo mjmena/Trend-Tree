@@ -9,13 +9,12 @@
 // Responsibilities:
 //   1. Normalize category to the 13-value enum (plus subcategory snake_case)
 //   2. Compute SOURCE_METRICS_SNAPSHOT object for history
-//   3. Determine ENRICHMENT_TIER (FULL | SOURCES_ONLY)
-//   4. Stringify to payload_json for downstream SQL steps
+//   3. Stringify to payload_json for downstream SQL steps
 //
-// For SOURCES_ONLY or REFRESH runs, or when llm_output is missing/null,
-// returns payload_json = "{}" so the downstream MERGE/INSERT become
-// no-ops (they match nothing). update_queue still runs and marks the
-// row COMPLETED with tier = SOURCES_ONLY.
+// The SOURCES_ONLY / REFRESH gate has been removed — the promotion agent
+// only queues trends that need enrichment, so every run is a FULL run
+// from the dashboard's perspective. `enrichment_type` is captured for
+// audit/telemetry but no longer skips the DIM write.
 
 const CATEGORY_MAP = {
   // Canonical pass-through
@@ -111,14 +110,17 @@ export default defineComponent({
       };
     }
 
-    // ── Early return for non-FULL runs ───────────────────────────────
-    if (enrichmentType !== "FULL" || !llmOutput) {
-      console.log(`Skipping DIM write: enrichment_type=${enrichmentType}, has_llm_output=${!!llmOutput}`);
-      $.export("$summary", `${trendId} [${enrichmentType}] — DIM skipped`);
+    // ── Skip DIM write only when llm_output is genuinely absent ──────
+    // (e.g. agent loop errored out before propose_enrichment fired). The
+    // legacy ENRICHMENT_TYPE gate is gone — every queued trend gets a
+    // full DIM merge.
+    if (!llmOutput) {
+      console.log(`Skipping DIM write: no llm_output for ${trendId}`);
+      $.export("$summary", `${trendId} — DIM skipped (no llm_output)`);
       return {
         trend_id: trendId,
         enrichment_type: enrichmentType,
-        tier: "SOURCES_ONLY",
+        tier: "NO_OUTPUT",
         skip_dim: true,
         source_coverage: sourceCoverage,
         llm_total_tokens: 0,
