@@ -192,23 +192,36 @@ steps:
           SOURCE_BREAKDOWN, BUCKET, VERDICT, EVIDENCE_ADDED,
           REASONING, REASONING_TRACE, DEDUP_OF_TREND_ID
         )
+        WITH cand AS (
+          SELECT c.value AS j FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) c
+        ),
+        sig_counts AS (
+          SELECT cand.j:candidate_id::STRING AS candidate_id, s.SOURCE_NAME, COUNT(*) AS n
+          FROM cand, LATERAL FLATTEN(INPUT => cand.j:supporting_signal_ids) sid
+          JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s ON s.SIGNAL_ID = sid.value::STRING
+          GROUP BY 1, 2
+        ),
+        sb AS (
+          SELECT candidate_id, OBJECT_AGG(SOURCE_NAME, n::VARIANT) AS source_breakdown
+          FROM sig_counts GROUP BY 1
+        )
         SELECT
-          c.value:candidate_id::STRING,
-          c.value:agent_session_id::STRING,
-          c.value:chain_id::STRING,
-          c.value:iteration::NUMBER,
-          c.value:topic::STRING,
-          c.value:supporting_signal_ids,
-          c.value:confidence::FLOAT,
-          c.value:specificity_score::FLOAT,
-          c.value:source_breakdown,
-          c.value:bucket::STRING,
-          c.value:verdict::STRING,
-          c.value:evidence_added,
-          c.value:reasoning::STRING,
-          c.value:reasoning_trace,
-          c.value:dedup_of_trend_id::STRING
-        FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) c
+          cand.j:candidate_id::STRING,
+          cand.j:agent_session_id::STRING,
+          cand.j:chain_id::STRING,
+          cand.j:iteration::NUMBER,
+          cand.j:topic::STRING,
+          cand.j:supporting_signal_ids,
+          cand.j:confidence::FLOAT,
+          cand.j:specificity_score::FLOAT,
+          COALESCE(sb.source_breakdown, OBJECT_CONSTRUCT()),
+          cand.j:bucket::STRING,
+          cand.j:verdict::STRING,
+          cand.j:evidence_added,
+          cand.j:reasoning::STRING,
+          cand.j:reasoning_trace,
+          cand.j:dedup_of_trend_id::STRING
+        FROM cand LEFT JOIN sb ON sb.candidate_id = cand.j:candidate_id::STRING
         WHERE :1 != '[]'
       query: |-
         INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES (
@@ -217,23 +230,36 @@ steps:
           SOURCE_BREAKDOWN, BUCKET, VERDICT, EVIDENCE_ADDED,
           REASONING, REASONING_TRACE, DEDUP_OF_TREND_ID
         )
+        WITH cand AS (
+          SELECT c.value AS j FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) c
+        ),
+        sig_counts AS (
+          SELECT cand.j:candidate_id::STRING AS candidate_id, s.SOURCE_NAME, COUNT(*) AS n
+          FROM cand, LATERAL FLATTEN(INPUT => cand.j:supporting_signal_ids) sid
+          JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s ON s.SIGNAL_ID = sid.value::STRING
+          GROUP BY 1, 2
+        ),
+        sb AS (
+          SELECT candidate_id, OBJECT_AGG(SOURCE_NAME, n::VARIANT) AS source_breakdown
+          FROM sig_counts GROUP BY 1
+        )
         SELECT
-          c.value:candidate_id::STRING,
-          c.value:agent_session_id::STRING,
-          c.value:chain_id::STRING,
-          c.value:iteration::NUMBER,
-          c.value:topic::STRING,
-          c.value:supporting_signal_ids,
-          c.value:confidence::FLOAT,
-          c.value:specificity_score::FLOAT,
-          c.value:source_breakdown,
-          c.value:bucket::STRING,
-          c.value:verdict::STRING,
-          c.value:evidence_added,
-          c.value:reasoning::STRING,
-          c.value:reasoning_trace,
-          c.value:dedup_of_trend_id::STRING
-        FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) c
+          cand.j:candidate_id::STRING,
+          cand.j:agent_session_id::STRING,
+          cand.j:chain_id::STRING,
+          cand.j:iteration::NUMBER,
+          cand.j:topic::STRING,
+          cand.j:supporting_signal_ids,
+          cand.j:confidence::FLOAT,
+          cand.j:specificity_score::FLOAT,
+          COALESCE(sb.source_breakdown, OBJECT_CONSTRUCT()),
+          cand.j:bucket::STRING,
+          cand.j:verdict::STRING,
+          cand.j:evidence_added,
+          cand.j:reasoning::STRING,
+          cand.j:reasoning_trace,
+          cand.j:dedup_of_trend_id::STRING
+        FROM cand LEFT JOIN sb ON sb.candidate_id = cand.j:candidate_id::STRING
         WHERE :1 != '[]'
       params:
       - "{{steps.run_lead_agent.$return_value.candidates_json}}"
