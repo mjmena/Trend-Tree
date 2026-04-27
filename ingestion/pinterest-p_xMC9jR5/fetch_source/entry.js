@@ -78,6 +78,7 @@ function parseCategoryTrends(html, category, path) {
         const pinterestUrl = `https://trends.pinterest.com/${category}/?id=${encodeURIComponent(entityId || hash)}`;
         signals.push({
           SIGNAL_ID: pinterestUrl,
+          URL: pinterestUrl,
           SOURCE_NAME: "pinterest",
           SIGNAL_TIMESTAMP: now,
           SIGNAL_TITLE: title,

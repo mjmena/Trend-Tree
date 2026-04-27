@@ -129,6 +129,7 @@ export default defineComponent({
         // SIGNAL_ID is the canonical TikTok tag URL — slice-4 cross-source
         // dedup key. Same shape as the metadata.url already populated below.
         SIGNAL_ID: `https://www.tiktok.com/tag/${hashtag}`,
+        URL: `https://www.tiktok.com/tag/${hashtag}`,
         SOURCE_NAME: "tiktok",
         SIGNAL_TIMESTAMP: now,
         SIGNAL_TITLE: hashtag,

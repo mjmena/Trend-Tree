@@ -79,6 +79,7 @@ async function fetchRssTrends(cookieJar) {
     const rssExploreUrl = `https://trends.google.com/trends/explore?q=${title.replace(/\s+/g, "+")}&geo=${GEO}`;
     signals.push({
       SIGNAL_ID: rssExploreUrl,
+      URL: rssExploreUrl,
       SOURCE_NAME: "google_trends_rss",
       SIGNAL_TIMESTAMP: ts,
       SIGNAL_TITLE: title,
@@ -163,6 +164,7 @@ async function fetchRelatedQueries(cookieJar, keyword, categoryName) {
       const rqExploreUrl = `https://trends.google.com/trends/explore?q=${query.replace(/\s+/g, "+")}&geo=${GEO}`;
       signals.push({
         SIGNAL_ID: rqExploreUrl,
+        URL: rqExploreUrl,
         SOURCE_NAME: "google_trends_explore",
         SIGNAL_TIMESTAMP: now,
         SIGNAL_TITLE: query,

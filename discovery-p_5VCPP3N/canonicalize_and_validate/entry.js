@@ -106,6 +106,24 @@ function extractDateFromJsonLd(html) {
   return null;
 }
 
+function extractTitleFromJsonLd(html) {
+  const re = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    try {
+      const blob = m[1].trim();
+      if (!blob) continue;
+      const parsed = JSON.parse(blob);
+      const arr = Array.isArray(parsed) ? parsed : (parsed["@graph"] || [parsed]);
+      for (const obj of arr) {
+        const t = obj?.headline || obj?.name;
+        if (typeof t === "string" && t.trim()) return t.trim();
+      }
+    } catch { /* ignore parse errors */ }
+  }
+  return null;
+}
+
 function parseDateLoose(s) {
   if (!s || typeof s !== "string") return null;
   const dt = new Date(s);
@@ -196,7 +214,7 @@ async function fetchArticleMeta(rawUrl, opts = {}) {
     }
     const html = Buffer.concat(chunks.map((c) => Buffer.from(c))).toString("utf-8");
 
-    const article_title = extractFirst(html, TITLE_PATTERNS)?.slice(0, 300) || null;
+    const article_title = (extractFirst(html, TITLE_PATTERNS) || extractTitleFromJsonLd(html))?.slice(0, 300) || null;
     const dateRaw = extractFirst(html, DATE_PATTERNS) || extractDateFromJsonLd(html);
     let published_date = parseDateLoose(dateRaw);
     if (!published_date) {

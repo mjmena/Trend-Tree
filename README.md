@@ -39,7 +39,6 @@ Each layer can be redesigned independently. Layer 2 (Distillation) was the first
 | [`llm-enrichment-p_YyC86Zo`](llm-enrichment-p_YyC86Zo/) | Synchronous Gemini + Grok + Claude chain producing the trend's full enrichment payload (categories, vibe, commercial fit, B2B/B2C names). |
 | [`write-p_o7CWa2K`](write-p_o7CWa2K/) | Persists the enrichment result to `DIM_TREND_ENRICHMENT` + `FCT_TREND_ENRICHMENT_HISTORY`, marks the queue row complete. |
 | [`daily-digest-p_vQCkwgV`](daily-digest-p_vQCkwgV/) | Scheduled link-checker + LLM source-verifier → Braze email of the day's trend dashboard. |
-| [`empty-workflow-p_NMCYY6a`](empty-workflow-p_NMCYY6a/) | Placeholder, no steps — safe to delete. |
 
 ### Discovery (LLM trend hypothesis generation)
 
@@ -84,6 +83,12 @@ All five write URL-shaped `SIGNAL_ID`s via JS + `snowflake-sdk` direct connector
 
 ---
 
+---
+
+## Roadmap
+
+The 4-layer mental model maps to phases. Below: status as of 2026-04-27.
+
 ## ✅ Phase 1 — Distillation agent (shipped 2026-04-25)
 
 **Goal:** replace the static SQL clustering's "what counts as a trend?" decision with a Sonnet 4.6 agent loop that's opinionated about specificity (rejects "wellness" / "AI" categories, demands noun-verb consumer behaviors).
@@ -119,33 +124,41 @@ The "too broad" failure mode (wellness / AI / sustainability) is gone — every 
 
 ---
 
-## 🔧 Phase 2 — Ingestion layer (next)
+## ✅ Phase 2 — Ingestion + discovery layer (shipped 2026-04-26..27)
 
-**Why this is next:** Phase 1's first run exposed an *upstream* problem the distillation agent can't solve:
-- Total signal volume: **76 in 24h** — too thin for the agent to find emergent patterns reliably.
-- Source mix: **52 / 76 = 68% Amazon Movers** (commerce-led products); only 10 Bluesky and 15 GDELT signals; zero from TikTok, Reddit, Pinterest, Wikimedia, Google Trends.
-- Workflow status: of the 8 batch ingestion workflows, **7 are marked `inactive: true`** in this repo (gdelt is the only active one); legacy `trends-sql/pipedream/` may be feeding the rest.
+**Two parallel streams shipped in this phase:**
 
-The agentic distillation can't surface trends that don't have signal evidence. Without a richer, more diverse firehose, the rubric will keep finding the same kinds of Amazon-trend-driven candidates.
+**Discovery (LLM-driven trend hypothesis generation)**
+- 3-LLM ensemble (Gemini, Grok, ChatGPT) sharded across 6 verticals — wellness, food_beverage, beauty_personal_care, fashion_apparel, home_lifestyle, commerce_retail
+- Per-model cron sources allow independent cadence tuning (currently 2h each)
+- HTTP trigger supports per-model fires via `{"model": "gemini"}` payload
+- Claude Sonnet 4.6 reranks the combined proposal pool, drops below-threshold scores
+- `canonicalize_and_validate` fetches each cited article (GET, ~64KB body parse), extracts `og:title` + `article:published_time` from HTML head + JSON-LD, drops articles >30 days old or with title irrelevant to the topic, soft-keeps paywall/bot-block 4xx URLs as `unverified`
+- v4 prompts in `DIM_LLM_PROMPT` template `{{current_date}}` and demand 14-day-recent citations
+- Writes via direct snowflake-sdk TCP (the registry SQL proxy 413's at ~256KB)
 
-**Open questions for Phase 2 design** (no decisions made yet):
-1. **Activate vs replace:** are the dormant batch ingesters worth turning on, or do they need redesign? (Several use Playwright scraping — fragile.)
-2. **Static seed terms vs adaptive:** today's batch ingesters loop a fixed list (`["wellness trends", "beauty trends", ...]`). Should an agent decide what to fetch based on emerging patterns from yesterday's distillation output?
-3. **Cadence:** batch every-N-hours vs streaming vs event-driven (e.g., distillation lead requests "more on X")?
-4. **Source coverage gaps:** TikTok is firehose-only (not query-driven); Pinterest / Amazon / Wikimedia have placeholder workflows with no implementation; Reddit only fetches fixed-subreddit hot lists. Each needs a separate decision.
-5. **Quality vs volume:** more signals isn't automatically better — would deduplication + better domain filtering at ingest time produce a higher-signal feed?
+**Ingestion (5 platform feeds)**
+- `amazon`, `bluesky`, `google_trends`, `tiktok` actively writing to `STG_EXTERNAL_SIGNALS`; `pinterest` deferred (`inactive: true` — raw output didn't fit the specificity rubric)
+- All five emit URL-shaped `SIGNAL_ID` + `URL` fields, plus per-source `METADATA`
+- `bluesky` queries `searchPosts?sort=top` with a configurable 24h `since` window and engagement filter (likes + reposts ≥ N)
+- All five upsert via JS + `snowflake-sdk` direct connector — bypasses the proxy that bit the original Python attempts
 
-**No code changes scheduled yet** — Phase 2 starts with an alignment session on the questions above.
+**Quality gates active in promotion**
+- `min_source_families >= 2` HARD_GATE; `agent_*_discovery` rows are split per-LLM (gemini, grok, chatgpt are independent families) so 3-LLM agreement alone passes the gate
+- `SOURCE_BREAKDOWN` is computed in SQL at insert time from real signal joins, not from the LLM's self-reported claim — kills hallucinated source labels
+
+**Trust calibration (deferred)**
+- [Issue #22](https://github.com/mjmena/Trend-Tree/issues/22) — measure unverified-vs-verified URL promotion rates after ~30 days, decide whether to tighten the soft-keep policy.
 
 ---
 
-## ⏸ Phase 3 — Enrichment redesign (deferred)
+## 🔧 Phase 3 — Enrichment redesign (next)
 
 **Current state:** [`llm-enrichment-p_YyC86Zo`](llm-enrichment-p_YyC86Zo/) — the legacy 3-LLM-in-parallel chain (Gemini for categorization + Grok for cultural context + Claude for synthesis) consuming a frozen `enrich_context` blob. Works, in production. Limitations: no tool use, no feedback between models, can't ask follow-up questions of the data.
 
 **Planned redesign:** collapse to a single Sonnet 4.6 agent loop that decides what evidence it needs (Gemini and Grok become *tools* the agent calls, not parallel pre-computed inputs). Same canonical `agents/lib/` runtime as the Distillation agent.
 
-Deferred until Phase 1 promotion is settled and Phase 2 ingestion is healthier.
+The Phase 2 work makes this much easier: signals now carry `article_title`, `article_published_date`, `days_since_published`, `unverified`, `source_model` in METADATA. The enrichment agent can reason over richer per-signal context than the legacy chain ever saw.
 
 ---
 

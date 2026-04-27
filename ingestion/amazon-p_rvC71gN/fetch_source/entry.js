@@ -77,6 +77,7 @@ function parseMoversPage(html, department) {
       // SIGNAL_ID is the canonical Amazon product URL — cross-source dedup
       // key shared by gdelt/bluesky/wikimedia (slice-4 swap).
       SIGNAL_ID: `https://www.amazon.com/dp/${asin}`,
+      URL: `https://www.amazon.com/dp/${asin}`,
       SOURCE_NAME: "amazon_movers",
       SIGNAL_TIMESTAMP: now,
       SIGNAL_TITLE: title,

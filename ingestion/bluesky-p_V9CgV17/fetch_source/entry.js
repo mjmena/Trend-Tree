@@ -148,6 +148,7 @@ export default defineComponent({
           : `bsky_${uriHash}`; // fallback for malformed uris (~1% of rows)
         allSignals.push({
           SIGNAL_ID: bskyWebUrl,
+          URL: bskyWebUrl,
           SOURCE_NAME: "bluesky",
           SIGNAL_TIMESTAMP: ts,
           SIGNAL_TITLE: signalTitle,
