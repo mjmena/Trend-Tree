@@ -4,6 +4,7 @@ settings:
   error_notification: true
   lambda_memory: 1024
   lambda_timeout: 60
+  network: net_5Lnie3
 triggers:
 - id: hi_WBHR6av
 steps:
@@ -20,9 +21,30 @@ steps:
       authProvisionId: apn_WYhE6e6
     query: "{{steps.handle_request.$return_value.query}}"
     mode: "{{steps.handle_request.$return_value.mode}}"
+- namespace: upsert_signals
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(
+          $${{steps.fetch_search.$return_value.signals_json}}$$,
+          '{{steps.handle_request.$return_value.agent_session_id}}',
+          500
+        )
+      query: |-
+        CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(
+          $${{steps.fetch_search.$return_value.signals_json}}$$,
+          '{{steps.handle_request.$return_value.agent_session_id}}',
+          500
+        )
+    params: []
 - namespace: respond
   runtime: nodejs20.x
   uses: "./respond/entry.js"
   props:
     fetch_result: "{{steps.fetch_search.$return_value}}"
+    upsert_result: "{{steps.upsert_signals.$return_value}}"
 

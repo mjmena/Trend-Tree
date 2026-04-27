@@ -117,13 +117,42 @@ export default defineComponent({
       .map((c) => (typeof c === "string" ? { url: c } : c))
       .filter((c) => c && (c.url || c.title));
 
-    console.log(`grok-live-search: ${summary.length}-char summary, ${citations.length} citations, ${usage.output_tokens || usage.completion_tokens || 0}out tok`);
+    // Shape citations as STG_EXTERNAL_SIGNALS rows so the upsert_signals
+    // step can MERGE them in. Each citation gets the full Grok summary
+    // as SIGNAL_TEXT (no per-citation snippets are available from the API
+    // — the summary is the closest contextual frame). SIGNAL_ID = URL
+    // matches the Phase 2 URL-as-ID convention so the dashboard can
+    // join SOCIAL_PROOF entries back to STG_EXTERNAL_SIGNALS via URL.
+    const nowIso = new Date().toISOString().replace("T", " ").replace("Z", "").slice(0, 19);
+    const signals = [];
+    for (const c of citations) {
+      const url = c.url ? String(c.url).trim() : "";
+      if (!url || !/^https?:\/\//i.test(url)) continue;
+      const title = (c.title || "").trim() || deriveTitleFromUrl(url);
+      signals.push({
+        SIGNAL_ID: url,
+        SOURCE_NAME: "grok_live",
+        SIGNAL_TIMESTAMP: nowIso,
+        SIGNAL_TITLE: title.slice(0, 500),
+        SIGNAL_TEXT: (summary || "").slice(0, 2000) || title,
+        METADATA: JSON.stringify({
+          search_query: this.query,
+          mode: this.mode || "both",
+          model: MODEL,
+          citation_title: title,
+        }),
+      });
+    }
+
+    console.log(`grok-live-search: ${summary.length}-char summary, ${citations.length} citations (${signals.length} persistable), ${usage.output_tokens || usage.completion_tokens || 0}out tok`);
     $.export("$summary", `${citations.length} citations for "${this.query.slice(0, 60)}"`);
 
     return {
       query: this.query,
       summary,
       citations,
+      signals,
+      signals_json: JSON.stringify(signals),
       tokens: {
         input: usage.input_tokens || usage.prompt_tokens || 0,
         output: usage.output_tokens || usage.completion_tokens || 0,
@@ -132,3 +161,13 @@ export default defineComponent({
     };
   },
 });
+
+function deriveTitleFromUrl(url) {
+  try {
+    const u = new URL(url);
+    const path = u.pathname.replace(/\/$/, "").split("/").filter(Boolean).pop() || u.hostname;
+    return decodeURIComponent(path).replace(/[-_]/g, " ").slice(0, 100);
+  } catch {
+    return url.slice(0, 100);
+  }
+}
