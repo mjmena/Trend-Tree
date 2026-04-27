@@ -33,19 +33,14 @@ steps:
         WHERE CURSOR_NAME = '{{steps.normalize_event.$return_value.cursor_name}}'
       params: []
 - namespace: q_release_stale_claims
-  # Releases AGENT_SESSION_ID stamps from prior timed-out runs so the
-  # unclaimed pool below reflects only truly available signals. See
-  # sql/proc_release_stale_signal_claims.sql for the rule.
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
   props:
     snowflake:
       authProvisionId: apn_yghdQYJ
     sql:
-      value: |-
-        CALL MCC_RAW.MARKETING_DEV.PROC_RELEASE_STALE_SIGNAL_CLAIMS()
-      query: |-
-        CALL MCC_RAW.MARKETING_DEV.PROC_RELEASE_STALE_SIGNAL_CLAIMS()
+      value: CALL MCC_RAW.MARKETING_DEV.PROC_RELEASE_STALE_SIGNAL_CLAIMS()
+      query: CALL MCC_RAW.MARKETING_DEV.PROC_RELEASE_STALE_SIGNAL_CLAIMS()
       params: []
 - namespace: q_signals_window
   runtime: nodejs20.x
@@ -241,10 +236,6 @@ steps:
   props:
     rows: "{{steps.q_signals_window.$return_value}}"
 - namespace: claim_window_signals
-  # Stamp ALL signals the agent considered (not just those in candidates),
-  # so each signal gets exactly one main-distillation pass before it ages
-  # out via the 24h window. The daily revisit workflow re-stamps these
-  # with a 'revisit-' prefix; nothing released on REJECT (per design).
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
   props:
