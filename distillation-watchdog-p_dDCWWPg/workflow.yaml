@@ -1,0 +1,5 @@
+schema: workflow/2022.04
+name: Distillation Watchdog
+settings:
+  error_notification: true
+
