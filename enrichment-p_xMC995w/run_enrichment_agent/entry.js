@@ -757,9 +757,19 @@ export default defineComponent({
       last_update_at: metricsRow.LAST_UPDATE_AT,
     });
 
-    const top_signals_formatted = (this.signal_rows || []).map((s, i) =>
-      `${i + 1}. [${s.DOMAIN || "?"}] ${s.TITLE || s.SIGNAL_NAME || "(no title)"} — ${s.URL || "(no url)"}`
-    ).join("\n") || "(no signals)";
+    const top_signals_formatted = (this.signal_rows || []).map((s, i) => {
+      const head = `${i + 1}. [${s.DOMAIN || "?"}] ${s.TITLE || s.SIGNAL_NAME || "(no title)"} — ${s.URL || "(no url)"}`;
+      const body = (s.ARTICLE_BODY || "").trim();
+      // Body content is reachable for the subset of prefetched signals where
+      // SIGNAL_ID == URL (mostly wikimedia + google_trends_explore + recent
+      // bluesky/grok). When present, include a short snippet so the agent
+      // has actual context to cite from rather than just title + URL.
+      if (body) {
+        const snippet = body.replace(/\s+/g, " ").slice(0, 400);
+        return `${head}\n     body: "${snippet}${body.length > 400 ? "…" : ""}"`;
+      }
+      return head;
+    }).join("\n") || "(no signals)";
 
     const source_breakdown_formatted = source_metrics_pool.map((s) =>
       `  • ${s.source_name}: ${s.headline_metric_name || "metric"}=${s.headline_metric ?? "?"}`
