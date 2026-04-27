@@ -226,6 +226,90 @@ function indexCombinedRows(combinedRows, signalSampleRows) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Intra-batch clustering — finds candidates in the same batch that are
+// near-dupes of each other (q_compute_intra_batch_pairs returns pairs
+// at or above INTRA_BATCH_THRESHOLD, see workflow.yaml). Per cluster of
+// 2+, we pick a leader deterministically and emit MERGE_INTO_CANDIDATE
+// for the followers. Only the leader gets sent to the subagent.
+//
+// Why: parallel subagents see the same neighbor pool against existing
+// FCT_TRENDS but can't see each other's candidates. Without this step,
+// two near-dupe candidates from different distillation chains both
+// land as PROMOTE_NEW.
+//
+// Threshold lives in the SQL step (q_compute_intra_batch_pairs); we
+// just consume what it returns. Tied separately so SQL-side filtering
+// can be tuned without redeploying JS.
+// ─────────────────────────────────────────────────────────────────────
+
+function buildClusters(candidates, intraPairs) {
+  // Union-find over candidate IDs that participate in any intra-batch pair.
+  // Candidates with no qualifying pair end up as singleton clusters and
+  // are returned alongside leaders (subagent processes them normally).
+  const parent = new Map();
+  const find = (x) => {
+    while (parent.get(x) !== x) {
+      parent.set(x, parent.get(parent.get(x)));
+      x = parent.get(x);
+    }
+    return x;
+  };
+  const union = (a, b) => {
+    const ra = find(a), rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  };
+  for (const c of candidates) parent.set(c.CANDIDATE_ID, c.CANDIDATE_ID);
+  for (const p of (intraPairs || [])) {
+    const a = p.CANDIDATE_A_ID, b = p.CANDIDATE_B_ID;
+    if (parent.has(a) && parent.has(b)) union(a, b);
+  }
+
+  // Group by root
+  const groups = new Map();
+  const candById = new Map(candidates.map((c) => [c.CANDIDATE_ID, c]));
+  for (const c of candidates) {
+    const root = find(c.CANDIDATE_ID);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root).push(c);
+  }
+
+  // Per cluster, pick leader: max cluster_size → max confidence → earliest CREATED_AT.
+  // Same tie-break order used by the backfill dedup script — keep them in sync.
+  const leaders = [];
+  const followers = []; // { follower, leader }
+  for (const cluster of groups.values()) {
+    if (cluster.length === 1) {
+      leaders.push(cluster[0]);
+      continue;
+    }
+    cluster.sort((a, b) => {
+      const aSize = a.CLUSTER_SIZE ?? 0, bSize = b.CLUSTER_SIZE ?? 0;
+      if (aSize !== bSize) return bSize - aSize;
+      const aConf = a.CONFIDENCE ?? 0, bConf = b.CONFIDENCE ?? 0;
+      if (aConf !== bConf) return bConf - aConf;
+      return new Date(a.CREATED_AT || 0) - new Date(b.CREATED_AT || 0);
+    });
+    const leader = cluster[0];
+    leaders.push(leader);
+    for (const f of cluster.slice(1)) followers.push({ follower: f, leader });
+  }
+  return { leaders, followers };
+}
+
+function indexIntraPairs(intraPairs) {
+  // Map: candidate_id → [{other_id, similarity}, ...] for telemetry/audit.
+  const m = new Map();
+  for (const p of (intraPairs || [])) {
+    const a = p.CANDIDATE_A_ID, b = p.CANDIDATE_B_ID, s = p.SIMILARITY;
+    if (!m.has(a)) m.set(a, []);
+    if (!m.has(b)) m.set(b, []);
+    m.get(a).push({ other_id: b, similarity: s });
+    m.get(b).push({ other_id: a, similarity: s });
+  }
+  return m;
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Format candidate context for subagent (compact, readable blocks)
 // ─────────────────────────────────────────────────────────────────────
 
@@ -264,6 +348,7 @@ export default defineComponent({
     selected_candidates: { type: "any", optional: true },
     vectors_and_neighbors: { type: "any", optional: true },
     neighbor_signal_samples: { type: "any", optional: true },
+    intra_batch_pairs: { type: "any", optional: true },
     subagent_url: { type: "string", label: "Promotion subagent endpoint" },
   },
   async run({ $ }) {
@@ -282,10 +367,11 @@ export default defineComponent({
     const { vectorsByCandidate: vecByCid, neighborsByCandidate } =
       indexCombinedRows(this.vectors_and_neighbors, this.neighbor_signal_samples);
 
-    // Quality-gate pre-check: short-circuit obvious LOW_QUALITY rejects so we don't
-    // burn LLM tokens on them. They land in the bundle as REJECT directly.
+    // Pass 1: quality-gate pre-check. Short-circuit obvious LOW_QUALITY rejects
+    // so we don't burn LLM tokens on them, and don't let them participate in
+    // intra-batch clustering.
     const bundle = [];
-    const dispatches = [];
+    const survivors = [];
 
     for (const c of candidates) {
       const hardFail = failHardGate(c);
@@ -304,6 +390,38 @@ export default defineComponent({
         });
         continue;
       }
+      survivors.push(c);
+    }
+
+    // Pass 2: intra-batch dedup. Cluster survivors by candidate-to-candidate
+    // similarity (precomputed in q_compute_intra_batch_pairs). Followers get
+    // a MERGE_INTO_CANDIDATE decision pre-baked into the bundle — the proc
+    // resolves target_candidate_id → trend_id after the leader is promoted.
+    const intraPairs = Array.isArray(this.intra_batch_pairs) ? this.intra_batch_pairs : [];
+    const intraByCid = indexIntraPairs(intraPairs);
+    const { leaders, followers } = buildClusters(survivors, intraPairs);
+
+    for (const { follower, leader } of followers) {
+      const peers = intraByCid.get(follower.CANDIDATE_ID) || [];
+      const sims = peers.map((p) => p.similarity);
+      const maxSim = sims.length ? Math.max(...sims) : null;
+      bundle.push({
+        candidate_id: follower.CANDIDATE_ID,
+        decision: "MERGE_INTO_CANDIDATE",
+        decision_category: "INTRA_BATCH_DUPE",
+        target_candidate_id: leader.CANDIDATE_ID,
+        rationale: `Intra-batch dupe of leader ${leader.CANDIDATE_ID} (max_sim=${maxSim ?? "n/a"}). Leader picked by cluster_size=${leader.CLUSTER_SIZE}, confidence=${leader.CONFIDENCE}, created_at=${leader.CREATED_AT}.`,
+        distillation_verdict: follower.DISTILLATION_VERDICT,
+        max_neighbor_sim: maxSim,
+        considered_neighbors: peers,
+        tokens: { input: 0, output: 0 },
+        cost_usd: 0,
+      });
+    }
+
+    // Pass 3: build subagent dispatches for leaders + singletons.
+    const dispatches = [];
+    for (const c of leaders) {
       const flags = qualityFlags(c);
       const vec = vecByCid.get(c.CANDIDATE_ID) || null;
       const neighbors = neighborsByCandidate.get(c.CANDIDATE_ID) || [];
@@ -315,7 +433,10 @@ export default defineComponent({
     }
 
     console.log(
-      `lead: ${candidates.length} candidates, ${bundle.length} pre-rejected (quality gate), ${dispatches.length} to dispatch`,
+      `lead: ${candidates.length} candidates, ` +
+      `${bundle.filter((b) => b.decision_category === "LOW_QUALITY").length} hard-gated, ` +
+      `${followers.length} intra-batch-merged, ` +
+      `${dispatches.length} to dispatch`,
     );
 
     if (dryRun) {

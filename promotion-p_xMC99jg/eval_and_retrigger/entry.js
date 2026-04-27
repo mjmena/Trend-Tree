@@ -68,7 +68,8 @@ export default defineComponent({
         if (applyResultParsed && typeof applyResultParsed === "object") {
           appliedCount = Number(applyResultParsed.applied_count || 0);
           promoteCount = Number(applyResultParsed.promote_count || 0);
-          mergeCount = Number(applyResultParsed.merge_count || 0);
+          mergeCount = Number(applyResultParsed.merge_count || 0)
+                     + Number(applyResultParsed.merge_candidate_count || 0);
           rejectCount = Number(applyResultParsed.reject_count || 0);
           deferCount = Number(applyResultParsed.defer_count || 0);
           errorCount = Number(applyResultParsed.error_count || 0);

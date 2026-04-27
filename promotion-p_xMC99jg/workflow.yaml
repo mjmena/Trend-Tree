@@ -253,6 +253,95 @@ steps:
         ORDER BY s.TREND_ID, s.DETECTED_AT DESC
       params:
       - "{{steps.serialize_neighbor_pool.$return_value.neighbor_pool_json}}"
+- namespace: q_compute_intra_batch_pairs
+  # Pairwise candidate-to-candidate similarity within the batch. Catches
+  # the case where two candidates from different distillation chains
+  # describe the same trend — the per-candidate neighbor query alone
+  # can't see this since neither has a FCT_TRENDS row yet.
+  #
+  # Threshold 0.70 was tuned empirically against the 2026-04-27 batch:
+  # cleanly catches the mushroom format-shift trio (0.82-0.87) and the
+  # mineral SPF trio (0.74-0.97) while sparing the K-beauty trio
+  # (0.52-0.58, three genuinely distinct trends in the same category).
+  # If you tune, also retune INTRA_BATCH_THRESHOLD in run_lead_agent.
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        WITH ranked_signals AS (
+          SELECT c.CANDIDATE_ID, s.SIGNAL_TITLE, s.INGESTED_AT
+          FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
+               LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+          JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s ON s.SIGNAL_ID = f.value::STRING
+          WHERE c.CANDIDATE_ID IN (SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))))
+            AND s.SIGNAL_TITLE IS NOT NULL
+          QUALIFY ROW_NUMBER() OVER (PARTITION BY c.CANDIDATE_ID ORDER BY s.INGESTED_AT DESC) <= 3
+        ),
+        candidate_signal_titles AS (
+          SELECT CANDIDATE_ID, LISTAGG(SIGNAL_TITLE, ', ') WITHIN GROUP (ORDER BY INGESTED_AT DESC) AS TOP_SIGNAL_TITLES
+          FROM ranked_signals GROUP BY CANDIDATE_ID
+        ),
+        candidate_vectors AS (
+          SELECT
+            c.CANDIDATE_ID,
+            SNOWFLAKE.CORTEX.EMBED_TEXT_1024(
+              'snowflake-arctic-embed-l-v2.0',
+              COALESCE(c.TOPIC, '') || ' | ' ||
+              COALESCE(LEFT(c.REASONING, 800), '') || ' | ' ||
+              COALESCE(t.TOP_SIGNAL_TITLES, '')
+            ) AS CANDIDATE_VECTOR
+          FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+          LEFT JOIN candidate_signal_titles t ON c.CANDIDATE_ID = t.CANDIDATE_ID
+          WHERE c.CANDIDATE_ID IN (SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))))
+        )
+        SELECT
+          a.CANDIDATE_ID AS CANDIDATE_A_ID,
+          b.CANDIDATE_ID AS CANDIDATE_B_ID,
+          ROUND(VECTOR_COSINE_SIMILARITY(a.CANDIDATE_VECTOR, b.CANDIDATE_VECTOR), 4) AS SIMILARITY
+        FROM candidate_vectors a
+        JOIN candidate_vectors b ON a.CANDIDATE_ID < b.CANDIDATE_ID
+        WHERE VECTOR_COSINE_SIMILARITY(a.CANDIDATE_VECTOR, b.CANDIDATE_VECTOR) >= 0.70
+        ORDER BY SIMILARITY DESC
+      query: |-
+        WITH ranked_signals AS (
+          SELECT c.CANDIDATE_ID, s.SIGNAL_TITLE, s.INGESTED_AT
+          FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
+               LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+          JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s ON s.SIGNAL_ID = f.value::STRING
+          WHERE c.CANDIDATE_ID IN (SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))))
+            AND s.SIGNAL_TITLE IS NOT NULL
+          QUALIFY ROW_NUMBER() OVER (PARTITION BY c.CANDIDATE_ID ORDER BY s.INGESTED_AT DESC) <= 3
+        ),
+        candidate_signal_titles AS (
+          SELECT CANDIDATE_ID, LISTAGG(SIGNAL_TITLE, ', ') WITHIN GROUP (ORDER BY INGESTED_AT DESC) AS TOP_SIGNAL_TITLES
+          FROM ranked_signals GROUP BY CANDIDATE_ID
+        ),
+        candidate_vectors AS (
+          SELECT
+            c.CANDIDATE_ID,
+            SNOWFLAKE.CORTEX.EMBED_TEXT_1024(
+              'snowflake-arctic-embed-l-v2.0',
+              COALESCE(c.TOPIC, '') || ' | ' ||
+              COALESCE(LEFT(c.REASONING, 800), '') || ' | ' ||
+              COALESCE(t.TOP_SIGNAL_TITLES, '')
+            ) AS CANDIDATE_VECTOR
+          FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+          LEFT JOIN candidate_signal_titles t ON c.CANDIDATE_ID = t.CANDIDATE_ID
+          WHERE c.CANDIDATE_ID IN (SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))))
+        )
+        SELECT
+          a.CANDIDATE_ID AS CANDIDATE_A_ID,
+          b.CANDIDATE_ID AS CANDIDATE_B_ID,
+          ROUND(VECTOR_COSINE_SIMILARITY(a.CANDIDATE_VECTOR, b.CANDIDATE_VECTOR), 4) AS SIMILARITY
+        FROM candidate_vectors a
+        JOIN candidate_vectors b ON a.CANDIDATE_ID < b.CANDIDATE_ID
+        WHERE VECTOR_COSINE_SIMILARITY(a.CANDIDATE_VECTOR, b.CANDIDATE_VECTOR) >= 0.70
+        ORDER BY SIMILARITY DESC
+      params:
+      - "{{steps.extract_candidate_ids.$return_value.selected_ids_json}}"
 - namespace: run_lead_agent
   runtime: nodejs20.x
   uses: "./run_lead_agent/entry.js"
@@ -261,6 +350,7 @@ steps:
     selected_candidates: "{{steps.extract_candidate_ids.$return_value.selected}}"
     vectors_and_neighbors: "{{steps.q_compute_vectors_and_neighbors.$return_value}}"
     neighbor_signal_samples: "{{steps.q_load_neighbor_signal_samples.$return_value}}"
+    intra_batch_pairs: "{{steps.q_compute_intra_batch_pairs.$return_value}}"
     subagent_url: https://eompw435droaqbo.m.pipedream.net
 - namespace: apply_promotion
   runtime: nodejs20.x

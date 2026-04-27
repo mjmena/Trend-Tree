@@ -9,9 +9,10 @@
 -- Decision object shape:
 --   {
 --     "candidate_id":         "uuid",
---     "decision":             "PROMOTE_NEW" | "MERGE_INTO_EXISTING" | "REJECT" | "DEFER",
---     "decision_category":    "CONFIRM_NEW" | "MISSED_DUPLICATE" | ... ,
+--     "decision":             "PROMOTE_NEW" | "MERGE_INTO_EXISTING" | "MERGE_INTO_CANDIDATE" | "REJECT" | "DEFER",
+--     "decision_category":    "CONFIRM_NEW" | "MISSED_DUPLICATE" | "INTRA_BATCH_DUPE" | ... ,
 --     "target_trend_id":      "uuid"  // for MERGE_INTO_EXISTING (must exist in FCT_TRENDS)
+--     "target_candidate_id":  "uuid"  // for MERGE_INTO_CANDIDATE (the leader candidate in the same batch)
 --     "trend_topic":          "..."   // for PROMOTE_NEW
 --     "trend_vector":         [1024 floats]  // for PROMOTE_NEW
 --     "rejection_reason":     "..."   // for REJECT
@@ -24,6 +25,14 @@
 --     "tokens":               {"input": 3000, "output": 800},
 --     "cost_usd":             0.04
 --   }
+--
+-- MERGE_INTO_CANDIDATE: emitted by run_lead_agent when intra-batch clustering
+-- finds two candidates that are near-dupes of each other. The "leader" gets
+-- the normal subagent treatment (PROMOTE_NEW or whatever the LLM decides);
+-- followers point at the leader via target_candidate_id. The proc topo-sorts
+-- decisions so PROMOTE_NEW runs first, then MERGE_INTO_CANDIDATE looks up
+-- the leader's PROMOTED_TO and falls through to MERGE_INTO_EXISTING. If the
+-- leader was REJECTed/DEFERred, followers mirror that outcome.
 --
 -- Signal lifecycle by decision:
 --   PROMOTE_NEW         — INSERT FCT_TRENDS row; mark candidate PROMOTED_AT/PROMOTED_TO=new_id
@@ -64,7 +73,17 @@ AS
 $$
 import json
 
-ALLOWED_DECISIONS = {'PROMOTE_NEW', 'MERGE_INTO_EXISTING', 'REJECT', 'DEFER'}
+ALLOWED_DECISIONS = {'PROMOTE_NEW', 'MERGE_INTO_EXISTING', 'MERGE_INTO_CANDIDATE', 'REJECT', 'DEFER'}
+
+# Process order: PROMOTE_NEW first so any MERGE_INTO_CANDIDATE pointing at
+# a leader can resolve target_candidate_id → PROMOTED_TO trend_id.
+DECISION_ORDER = {
+    'PROMOTE_NEW':           0,
+    'MERGE_INTO_EXISTING':   1,
+    'REJECT':                1,
+    'DEFER':                 1,
+    'MERGE_INTO_CANDIDATE':  2,
+}
 
 
 def sql_str(s):
@@ -159,6 +178,72 @@ def derive_candidate_meta(session, candidate_id):
     return (rs[0][0], rs[0][1], rs[0][2])
 
 
+def apply_merge_into_existing(session, cid, target_tid, chain_id):
+    """Link candidate to target trend and recompute the trend's aggregates.
+    Caller is responsible for BEGIN/COMMIT and target validation."""
+    session.sql(f"""
+        UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
+        SET PROMOTED_AT = CURRENT_TIMESTAMP(),
+            PROMOTED_TO = {sql_str(target_tid)},
+            DEDUP_OF_TREND_ID = {sql_str(target_tid)},
+            PROMOTION_DECIDED_BY = {sql_str(chain_id)}
+        WHERE CANDIDATE_ID = {sql_str(cid)}
+    """).collect()
+    session.sql(f"""
+        UPDATE MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+        SET
+            TOTAL_CLUSTER_SIZE = (
+                SELECT COUNT(DISTINCT f.value::STRING)
+                FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
+                     LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+                WHERE c.CANDIDATE_ID = t.CANDIDATE_ID
+                   OR c.DEDUP_OF_TREND_ID = t.TREND_ID
+            ),
+            DISTINCT_SOURCE_COUNT = (
+                SELECT COUNT(DISTINCT f.value::STRING)
+                FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
+                     LATERAL FLATTEN(INPUT => OBJECT_KEYS(c.SOURCE_BREAKDOWN)) f
+                WHERE c.CANDIDATE_ID = t.CANDIDATE_ID
+                   OR c.DEDUP_OF_TREND_ID = t.TREND_ID
+            ),
+            TREND_VECTOR = SNOWFLAKE.CORTEX.EMBED_TEXT_1024(
+                'snowflake-arctic-embed-l-v2.0',
+                LEFT(
+                    COALESCE(t.TREND_TOPIC, '') || ' | ' ||
+                    COALESCE((
+                        SELECT LISTAGG(LEFT(c.REASONING, 400), ' || ')
+                                 WITHIN GROUP (ORDER BY c.CREATED_AT)
+                        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+                        WHERE c.CANDIDATE_ID = t.CANDIDATE_ID
+                           OR c.DEDUP_OF_TREND_ID = t.TREND_ID
+                    ), ''),
+                    4000
+                )
+            ),
+            LAST_UPDATE_AT = CURRENT_TIMESTAMP()
+        WHERE t.TREND_ID = {sql_str(target_tid)}
+    """).collect()
+
+
+def lookup_leader_outcome(session, leader_cid):
+    """For MERGE_INTO_CANDIDATE — fetch the leader candidate's PROMOTED_TO,
+    REJECTED_AT, DEFERRED_UNTIL so we can mirror or resolve."""
+    rs = session.sql(f"""
+        SELECT PROMOTED_TO, REJECTED_AT, DEFERRED_UNTIL, REJECTION_REASON, DEFER_REASON
+        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
+        WHERE CANDIDATE_ID = {sql_str(leader_cid)}
+    """).collect()
+    if not rs:
+        return None
+    return {
+        'promoted_to':       rs[0][0],
+        'rejected_at':       rs[0][1],
+        'deferred_until':    rs[0][2],
+        'rejection_reason':  rs[0][3],
+        'defer_reason':      rs[0][4],
+    }
+
+
 def run(session, DECISIONS, CHAIN_ID, ITERATION):
     if DECISIONS is None:
         return {'applied_count': 0, 'results': []}
@@ -171,12 +256,17 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
     iteration = int(ITERATION or 1)
     results   = []
 
+    # Topo-sort: PROMOTE_NEW first so MERGE_INTO_CANDIDATE can resolve the
+    # leader's PROMOTED_TO. Stable sort preserves caller order within a tier.
+    DECISIONS.sort(key=lambda x: DECISION_ORDER.get((x.get('decision') or '').upper(), 99))
+
     for d in DECISIONS:
         cid       = d.get('candidate_id')
         decision  = (d.get('decision') or '').upper()
         rationale = d.get('rationale', '')
         cat       = d.get('decision_category')
         target    = d.get('target_trend_id')
+        target_cid= d.get('target_candidate_id')
         topic     = d.get('trend_topic')
         vector    = d.get('trend_vector')
         rej_reason= d.get('rejection_reason')
@@ -290,7 +380,9 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                                 'target_trend_id': new_tid, 'status': 'ok'})
 
             elif decision == 'MERGE_INTO_EXISTING':
-                # Validate target exists in FCT_TRENDS
+                # Validate target exists in FCT_TRENDS, then run the shared
+                # merge body. Heat index intentionally NOT touched here —
+                # placeholder formula belongs to the future lifecycle agent.
                 if not target:
                     raise ValueError('target_trend_id required for MERGE_INTO_EXISTING')
                 check = session.sql(f"""
@@ -300,60 +392,69 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                 if not check or int(check[0][0]) == 0:
                     raise ValueError(f'target_trend_id {target} not found in FCT_TRENDS')
 
-                # Link candidate to target FIRST so the aggregate below sees it.
-                session.sql(f"""
-                    UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
-                    SET PROMOTED_AT = CURRENT_TIMESTAMP(),
-                        PROMOTED_TO = {sql_str(target)},
-                        DEDUP_OF_TREND_ID = {sql_str(target)},
-                        PROMOTION_DECIDED_BY = {sql_str(chain_id)}
-                    WHERE CANDIDATE_ID = {sql_str(cid)}
-                """).collect()
-
-                # Recompute cluster fields across the original promoting
-                # candidate plus every candidate merged INTO this trend.
-                # Re-embed vector using topic + concatenated reasoning so it
-                # reflects the broader evidence. Heat index NOT touched here:
-                # placeholder formula belongs to the future lifecycle agent.
-                session.sql(f"""
-                    UPDATE MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-                    SET
-                        TOTAL_CLUSTER_SIZE = (
-                            SELECT COUNT(DISTINCT f.value::STRING)
-                            FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
-                                 LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
-                            WHERE c.CANDIDATE_ID = t.CANDIDATE_ID
-                               OR c.DEDUP_OF_TREND_ID = t.TREND_ID
-                        ),
-                        DISTINCT_SOURCE_COUNT = (
-                            SELECT COUNT(DISTINCT f.value::STRING)
-                            FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
-                                 LATERAL FLATTEN(INPUT => OBJECT_KEYS(c.SOURCE_BREAKDOWN)) f
-                            WHERE c.CANDIDATE_ID = t.CANDIDATE_ID
-                               OR c.DEDUP_OF_TREND_ID = t.TREND_ID
-                        ),
-                        TREND_VECTOR = SNOWFLAKE.CORTEX.EMBED_TEXT_1024(
-                            'snowflake-arctic-embed-l-v2.0',
-                            LEFT(
-                                COALESCE(t.TREND_TOPIC, '') || ' | ' ||
-                                COALESCE((
-                                    SELECT LISTAGG(LEFT(c.REASONING, 400), ' || ')
-                                             WITHIN GROUP (ORDER BY c.CREATED_AT)
-                                    FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
-                                    WHERE c.CANDIDATE_ID = t.CANDIDATE_ID
-                                       OR c.DEDUP_OF_TREND_ID = t.TREND_ID
-                                ), ''),
-                                4000
-                            )
-                        ),
-                        LAST_UPDATE_AT = CURRENT_TIMESTAMP()
-                    WHERE t.TREND_ID = {sql_str(target)}
-                """).collect()
+                apply_merge_into_existing(session, cid, target, chain_id)
 
                 audit_row['target_trend_id'] = target
                 session.sql("COMMIT").collect()
                 results.append({'candidate_id': cid, 'decision': 'MERGE_INTO_EXISTING',
                                 'target_trend_id': target, 'status': 'ok'})
+
+            elif decision == 'MERGE_INTO_CANDIDATE':
+                # Look up the leader's outcome and act accordingly:
+                #   - leader promoted (PROMOTED_TO set)  → MERGE_INTO_EXISTING into that trend_id
+                #   - leader rejected                     → mirror REJECT on this candidate
+                #   - leader deferred                     → mirror DEFER on this candidate
+                #   - leader has no outcome               → topo-sort failed; surface as error
+                if not target_cid:
+                    raise ValueError('target_candidate_id required for MERGE_INTO_CANDIDATE')
+
+                leader = lookup_leader_outcome(session, target_cid)
+                if leader is None:
+                    raise ValueError(f'target_candidate_id {target_cid} not found in STG_TREND_CANDIDATES')
+
+                if leader['promoted_to']:
+                    leader_tid = leader['promoted_to']
+                    apply_merge_into_existing(session, cid, leader_tid, chain_id)
+                    audit_row['target_trend_id'] = leader_tid
+                    audit_row['decision_category'] = cat or 'INTRA_BATCH_DUPE'
+                    session.sql("COMMIT").collect()
+                    results.append({'candidate_id': cid, 'decision': 'MERGE_INTO_CANDIDATE',
+                                    'target_candidate_id': target_cid,
+                                    'target_trend_id': leader_tid, 'status': 'ok'})
+
+                elif leader['rejected_at']:
+                    mirrored_reason = f"leader_{target_cid}_rejected: {(leader['rejection_reason'] or '')[:160]}"
+                    session.sql(f"""
+                        UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
+                        SET REJECTED_AT = CURRENT_TIMESTAMP(),
+                            REJECTION_REASON = {sql_str(mirrored_reason[:200])},
+                            PROMOTION_DECIDED_BY = {sql_str(chain_id)}
+                        WHERE CANDIDATE_ID = {sql_str(cid)}
+                    """).collect()
+                    session.sql("COMMIT").collect()
+                    results.append({'candidate_id': cid, 'decision': 'MERGE_INTO_CANDIDATE',
+                                    'target_candidate_id': target_cid,
+                                    'mirrored_outcome': 'REJECT', 'status': 'ok'})
+
+                elif leader['deferred_until']:
+                    mirrored_reason = f"leader_{target_cid}_deferred: {(leader['defer_reason'] or '')[:160]}"
+                    session.sql(f"""
+                        UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
+                        SET DEFERRED_UNTIL = DATEADD(hour, 48, CURRENT_TIMESTAMP()),
+                            DEFER_REASON = {sql_str(mirrored_reason[:200])},
+                            PROMOTION_DECIDED_BY = {sql_str(chain_id)}
+                        WHERE CANDIDATE_ID = {sql_str(cid)}
+                    """).collect()
+                    session.sql("COMMIT").collect()
+                    results.append({'candidate_id': cid, 'decision': 'MERGE_INTO_CANDIDATE',
+                                    'target_candidate_id': target_cid,
+                                    'mirrored_outcome': 'DEFER', 'status': 'ok'})
+
+                else:
+                    raise ValueError(
+                        f'leader candidate {target_cid} has no decided outcome '
+                        '(topo-sort should have processed it first)'
+                    )
 
             elif decision == 'REJECT':
                 # Mark candidate rejected. AGENT_SESSION_ID stamps on the
@@ -398,13 +499,14 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
         log_audit(session, audit_row)
 
     return {
-        'applied_count':  sum(1 for r in results if r['status'] == 'ok'),
-        'promote_count':  sum(1 for r in results if r['status'] == 'ok' and r['decision'] == 'PROMOTE_NEW'),
-        'merge_count':    sum(1 for r in results if r['status'] == 'ok' and r['decision'] == 'MERGE_INTO_EXISTING'),
-        'reject_count':   sum(1 for r in results if r['status'] == 'ok' and r['decision'] == 'REJECT'),
-        'defer_count':    sum(1 for r in results if r['status'] == 'ok' and r['decision'] == 'DEFER'),
-        'error_count':    sum(1 for r in results if r['status'] == 'error'),
-        'rejected_count': sum(1 for r in results if r['status'] == 'rejected'),
-        'results':        results,
+        'applied_count':         sum(1 for r in results if r['status'] == 'ok'),
+        'promote_count':         sum(1 for r in results if r['status'] == 'ok' and r['decision'] == 'PROMOTE_NEW'),
+        'merge_count':           sum(1 for r in results if r['status'] == 'ok' and r['decision'] == 'MERGE_INTO_EXISTING'),
+        'merge_candidate_count': sum(1 for r in results if r['status'] == 'ok' and r['decision'] == 'MERGE_INTO_CANDIDATE'),
+        'reject_count':          sum(1 for r in results if r['status'] == 'ok' and (r['decision'] == 'REJECT' or r.get('mirrored_outcome') == 'REJECT')),
+        'defer_count':           sum(1 for r in results if r['status'] == 'ok' and (r['decision'] == 'DEFER' or r.get('mirrored_outcome') == 'DEFER')),
+        'error_count':           sum(1 for r in results if r['status'] == 'error'),
+        'rejected_count':        sum(1 for r in results if r['status'] == 'rejected'),
+        'results':               results,
     }
 $$;
