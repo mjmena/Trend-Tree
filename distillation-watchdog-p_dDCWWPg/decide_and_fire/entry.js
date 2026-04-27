@@ -50,18 +50,42 @@ export default defineComponent({
     }
 
     console.log(`firing distillation: pool=${unclaimed}, ${minutesSince}m since last run`);
-    const res = await fetch(this.distillation_url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source: "distillation-watchdog", unclaimed_count: unclaimed }),
-    });
+
+    // Fire-and-forget. Distillation has custom_response=true and takes
+    // 8-12 min to respond, far longer than this watchdog's lambda_timeout.
+    // Short AbortController window: the POST is queued at Pipedream's edge
+    // long before the abort fires, so the run kicks off either way.
+    const POST_ABORT_MS = 5_000;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), POST_ABORT_MS);
+
+    let httpStatus = null;
+    let dispatchNote = "queued (no response within abort window)";
+    try {
+      const res = await fetch(this.distillation_url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: "distillation-watchdog", unclaimed_count: unclaimed }),
+        signal: ctrl.signal,
+      });
+      httpStatus = res.status;
+      dispatchNote = res.ok ? "accepted" : `non-ok response (${res.status})`;
+    } catch (e) {
+      if (e.name !== "AbortError") {
+        console.log(`fetch error: ${e.message}`);
+        dispatchNote = `error: ${e.message}`;
+      }
+    } finally {
+      clearTimeout(timer);
+    }
 
     return {
       fired: true,
       unclaimed_count: unclaimed,
       minutes_since_last_run: minutesSince,
       last_run_at: lastRunAt,
-      http_status: res.status,
+      http_status: httpStatus,
+      dispatch_note: dispatchNote,
     };
   },
 });
