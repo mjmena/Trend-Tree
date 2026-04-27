@@ -150,4 +150,7 @@ steps:
     rerank_result: "{{steps.rerank_claude.$return_value}}"
     canon_result: "{{steps.canonicalize_and_validate.$return_value}}"
     write_result: "{{steps.write_discovered_signals.$return_value}}"
+    gemini_result: "{{steps.discover_gemini.$return_value}}"
+    grok_result: "{{steps.discover_grok.$return_value}}"
+    chatgpt_result: "{{steps.discover_chatgpt.$return_value}}"
 
