@@ -312,4 +312,12 @@ steps:
     self_url: https://eot66usfdph5i7h.m.pipedream.net
     lead_result: "{{steps.run_lead_agent.$return_value}}"
     apply_result: "{{steps.apply_promotion.$return_value}}"
+- namespace: respond
+  runtime: nodejs20.x
+  uses: "./respond/entry.js"
+  props:
+    event: "{{steps.normalize_event.$return_value}}"
+    lead_result: "{{steps.run_lead_agent.$return_value}}"
+    apply_result: "{{steps.apply_promotion.$return_value}}"
+    eval_result: "{{steps.eval_and_retrigger.$return_value}}"
 
