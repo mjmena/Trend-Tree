@@ -253,7 +253,7 @@ steps:
     candidate_vectors: "{{steps.q_compute_candidate_vectors.$return_value}}"
     neighbor_rows: "{{steps.q_load_neighbor_pool.$return_value}}"
     neighbor_signal_samples: "{{steps.q_load_neighbor_signal_samples.$return_value}}"
-    subagent_url: https://PLACEHOLDER-promotion-subagent.m.pipedream.net
+    subagent_url: https://eompw435droaqbo.m.pipedream.net
 - namespace: apply_promotion
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
