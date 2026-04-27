@@ -4,6 +4,19 @@
 // strings that the discovery prompts' {{active_trends}} and
 // {{valuable_examples}} placeholders consume. Done once per workflow run
 // so the same blob feeds Gemini, Grok, ChatGPT, and Claude rerank.
+//
+// Also publishes the canonical vertical list — each discover_* step fans
+// out one parallel call per vertical (categorical sharding). v3 prompts
+// in DIM_LLM_PROMPT consume {{vertical}} accordingly.
+
+const VERTICALS = [
+  "wellness",
+  "food_beverage",
+  "beauty_personal_care",
+  "fashion_apparel",
+  "home_lifestyle",
+  "commerce_retail",
+];
 
 export default defineComponent({
   props: {
@@ -33,10 +46,11 @@ export default defineComponent({
       valuable_examples_formatted,
       active_count: activeRows.length,
       example_count: exampleRows.length,
+      verticals: VERTICALS,
     };
 
-    console.log(`Context built: ${out.active_count} active trends, ${out.example_count} examples`);
-    $.export("$summary", `${out.active_count} active / ${out.example_count} examples`);
+    console.log(`Context built: ${out.active_count} active trends, ${out.example_count} examples, ${VERTICALS.length} verticals`);
+    $.export("$summary", `${out.active_count} active / ${out.example_count} examples / ${VERTICALS.length} verticals`);
     return out;
   },
 });

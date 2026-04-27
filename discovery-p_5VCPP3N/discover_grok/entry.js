@@ -81,73 +81,86 @@ export default defineComponent({
     const ctx = this.discovery_context || {};
     const loaded = loadPrompts(this.prompts_rows);
     const prompt = mustGet(loaded, PROMPT_KEY);
+    const verticals = Array.isArray(ctx.verticals) && ctx.verticals.length ? ctx.verticals : ["consumer"];
+    const apiKey = this.x_ai.$auth.api_key;
 
-    const rendered = render(prompt.template, {
-      active_trends: ctx.active_trends_formatted || "(none)",
-      valuable_examples: ctx.valuable_examples_formatted || "(none)",
-    });
-
-    // xAI /v1/responses shape — must use tools[] (not deprecated
-    // search_parameters which returns HTTP 410 as of 2026-04-25).
-    // Mirrors the working pattern in
-    // ingestion/tools/grok-live-search-p_vQCkkGK/fetch_search/entry.js.
-    const body = {
-      model: prompt.model,
-      input: [{ role: "user", content: rendered }],
-      tools: [{ type: "web_search" }, { type: "x_search" }],
-      temperature: prompt.params.temperature ?? 0.6,
-    };
-
-    try {
+    async function callShard(vertical) {
+      const rendered = render(prompt.template, {
+        active_trends: ctx.active_trends_formatted || "(none)",
+        valuable_examples: ctx.valuable_examples_formatted || "(none)",
+        vertical,
+      });
+      // xAI /v1/responses + tools[] (search_parameters deprecated). See
+      // xai_grok_api_migration.md memory + grok-live-search tool for shape.
+      const body = {
+        model: prompt.model,
+        input: [{ role: "user", content: rendered }],
+        tools: [{ type: "web_search" }, { type: "x_search" }],
+        temperature: prompt.params.temperature ?? 0.6,
+      };
       const resp = await fetch("https://api.x.ai/v1/responses", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.x_ai.$auth.api_key}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify(body),
       });
-
       if (!resp.ok) throw new Error(`Grok HTTP ${resp.status}: ${(await resp.text()).slice(0, 400)}`);
       const data = await resp.json();
-
-      // Defensive extraction — xAI response shape may evolve.
       let text = "";
       if (typeof data.output_text === "string") text = data.output_text;
       else if (Array.isArray(data.output)) {
         for (const item of data.output) {
           if (item.type === "message" && Array.isArray(item.content)) {
-            for (const c of item.content) {
-              if (typeof c.text === "string") text += c.text;
-            }
+            for (const c of item.content) if (typeof c.text === "string") text += c.text;
           }
         }
       }
       if (!text) throw new Error(`No text in Grok response: ${JSON.stringify(data).slice(0, 240)}`);
-
       const arrText = extractJsonArray(text);
       if (!arrText) throw new Error(`No JSON array in Grok response: ${text.slice(0, 240)}`);
-      const proposals = JSON.parse(arrText);
-      if (!Array.isArray(proposals)) throw new Error("Parsed Grok response is not an array");
-
+      const parsed = JSON.parse(arrText);
+      if (!Array.isArray(parsed)) throw new Error("Parsed Grok response is not an array");
       const usage = data.usage || {};
-      console.log(`Grok discovery: ${proposals.length} proposals, ${usage.input_tokens || 0} in / ${usage.output_tokens || 0} out`);
-
+      const proposals = parsed
+        .filter((p) => p && typeof p === "object" && p.topic)
+        .map((p) => ({ ...p, vertical: p.vertical || vertical }));
       return {
-        proposals: proposals.filter((p) => p && typeof p === "object" && p.topic),
-        model: prompt.model,
-        prompt_key: PROMPT_KEY,
-        prompt_version: prompt.version,
-        _token_usage: {
-          input: usage.input_tokens || 0,
-          output: usage.output_tokens || 0,
-          model: prompt.model,
-        },
-        error: null,
+        vertical,
+        proposals,
+        input_tokens: usage.input_tokens || 0,
+        output_tokens: usage.output_tokens || 0,
       };
-    } catch (e) {
-      console.log(`Grok discovery error: ${e.message}`);
-      return { proposals: [], model: prompt.model, prompt_key: PROMPT_KEY, prompt_version: prompt.version, error: e.message };
     }
+
+    const settled = await Promise.allSettled(verticals.map((v) => callShard(v)));
+    const allProposals = [];
+    let totalIn = 0;
+    let totalOut = 0;
+    let firstError = null;
+    const perVerticalCounts = {};
+    for (const r of settled) {
+      if (r.status === "fulfilled") {
+        allProposals.push(...r.value.proposals);
+        totalIn += r.value.input_tokens;
+        totalOut += r.value.output_tokens;
+        perVerticalCounts[r.value.vertical] = r.value.proposals.length;
+      } else {
+        if (!firstError) firstError = r.reason?.message || String(r.reason);
+        console.log(`Grok shard error: ${r.reason?.message || r.reason}`);
+      }
+    }
+    const successCount = settled.filter((r) => r.status === "fulfilled").length;
+    console.log(`Grok discovery: ${allProposals.length} proposals across ${successCount}/${verticals.length} shards (${JSON.stringify(perVerticalCounts)}), ${totalIn} in / ${totalOut} out`);
+
+    return {
+      proposals: allProposals,
+      model: prompt.model,
+      prompt_key: PROMPT_KEY,
+      prompt_version: prompt.version,
+      shards_attempted: verticals.length,
+      shards_succeeded: successCount,
+      per_vertical_counts: perVerticalCounts,
+      _token_usage: { input: totalIn, output: totalOut, model: prompt.model },
+      error: successCount === 0 ? (firstError || "all shards failed") : null,
+    };
   },
 });

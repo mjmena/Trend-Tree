@@ -81,73 +81,86 @@ export default defineComponent({
     const ctx = this.discovery_context || {};
     const loaded = loadPrompts(this.prompts_rows);
     const prompt = mustGet(loaded, PROMPT_KEY);
+    const verticals = Array.isArray(ctx.verticals) && ctx.verticals.length ? ctx.verticals : ["consumer"];
+    const apiKey = this.openai.$auth.api_key;
 
-    const rendered = render(prompt.template, {
-      active_trends: ctx.active_trends_formatted || "(none)",
-      valuable_examples: ctx.valuable_examples_formatted || "(none)",
-    });
-
-    // OpenAI /v1/responses with built-in web_search tool. Input shape is
-    // the message-array form (matching the Grok pattern + existing /v1/chat
-    // patterns). Tool name is `web_search` (not `web_search_preview` which
-    // was the GA-preview name during the API's first months).
-    const body = {
-      model: prompt.model,
-      input: [{ role: "user", content: rendered }],
-      tools: [{ type: "web_search" }],
-      temperature: prompt.params.temperature ?? 0.5,
-    };
-
-    try {
+    async function callShard(vertical) {
+      const rendered = render(prompt.template, {
+        active_trends: ctx.active_trends_formatted || "(none)",
+        valuable_examples: ctx.valuable_examples_formatted || "(none)",
+        vertical,
+      });
+      // OpenAI /v1/responses + web_search tool. Tool name is `web_search`
+      // (not the older `web_search_preview` GA-preview name).
+      const body = {
+        model: prompt.model,
+        input: [{ role: "user", content: rendered }],
+        tools: [{ type: "web_search" }],
+        temperature: prompt.params.temperature ?? 0.5,
+      };
       const resp = await fetch("https://api.openai.com/v1/responses", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.openai.$auth.api_key}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify(body),
       });
-
       if (!resp.ok) throw new Error(`OpenAI HTTP ${resp.status}: ${(await resp.text()).slice(0, 400)}`);
       const data = await resp.json();
-
-      // OpenAI Responses API: text lives in output_text or output[].content[].text
       let text = "";
       if (typeof data.output_text === "string") text = data.output_text;
       else if (Array.isArray(data.output)) {
         for (const item of data.output) {
           if (item.type === "message" && Array.isArray(item.content)) {
-            for (const c of item.content) {
-              if (typeof c.text === "string") text += c.text;
-            }
+            for (const c of item.content) if (typeof c.text === "string") text += c.text;
           }
         }
       }
       if (!text) throw new Error(`No text in ChatGPT response: ${JSON.stringify(data).slice(0, 240)}`);
-
       const arrText = extractJsonArray(text);
       if (!arrText) throw new Error(`No JSON array in ChatGPT response: ${text.slice(0, 240)}`);
-      const proposals = JSON.parse(arrText);
-      if (!Array.isArray(proposals)) throw new Error("Parsed ChatGPT response is not an array");
-
+      const parsed = JSON.parse(arrText);
+      if (!Array.isArray(parsed)) throw new Error("Parsed ChatGPT response is not an array");
       const usage = data.usage || {};
-      console.log(`ChatGPT discovery: ${proposals.length} proposals, ${usage.input_tokens || 0} in / ${usage.output_tokens || 0} out`);
-
+      const proposals = parsed
+        .filter((p) => p && typeof p === "object" && p.topic)
+        .map((p) => ({ ...p, vertical: p.vertical || vertical }));
       return {
-        proposals: proposals.filter((p) => p && typeof p === "object" && p.topic),
-        model: prompt.model,
-        prompt_key: PROMPT_KEY,
-        prompt_version: prompt.version,
-        _token_usage: {
-          input: usage.input_tokens || 0,
-          output: usage.output_tokens || 0,
-          model: prompt.model,
-        },
-        error: null,
+        vertical,
+        proposals,
+        input_tokens: usage.input_tokens || 0,
+        output_tokens: usage.output_tokens || 0,
       };
-    } catch (e) {
-      console.log(`ChatGPT discovery error: ${e.message}`);
-      return { proposals: [], model: prompt.model, prompt_key: PROMPT_KEY, prompt_version: prompt.version, error: e.message };
     }
+
+    const settled = await Promise.allSettled(verticals.map((v) => callShard(v)));
+    const allProposals = [];
+    let totalIn = 0;
+    let totalOut = 0;
+    let firstError = null;
+    const perVerticalCounts = {};
+    for (const r of settled) {
+      if (r.status === "fulfilled") {
+        allProposals.push(...r.value.proposals);
+        totalIn += r.value.input_tokens;
+        totalOut += r.value.output_tokens;
+        perVerticalCounts[r.value.vertical] = r.value.proposals.length;
+      } else {
+        if (!firstError) firstError = r.reason?.message || String(r.reason);
+        console.log(`ChatGPT shard error: ${r.reason?.message || r.reason}`);
+      }
+    }
+    const successCount = settled.filter((r) => r.status === "fulfilled").length;
+    console.log(`ChatGPT discovery: ${allProposals.length} proposals across ${successCount}/${verticals.length} shards (${JSON.stringify(perVerticalCounts)}), ${totalIn} in / ${totalOut} out`);
+
+    return {
+      proposals: allProposals,
+      model: prompt.model,
+      prompt_key: PROMPT_KEY,
+      prompt_version: prompt.version,
+      shards_attempted: verticals.length,
+      shards_succeeded: successCount,
+      per_vertical_counts: perVerticalCounts,
+      _token_usage: { input: totalIn, output: totalOut, model: prompt.model },
+      error: successCount === 0 ? (firstError || "all shards failed") : null,
+    };
   },
 });

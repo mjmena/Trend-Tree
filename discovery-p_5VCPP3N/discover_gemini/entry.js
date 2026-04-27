@@ -83,56 +83,73 @@ export default defineComponent({
     const ctx = this.discovery_context || {};
     const loaded = loadPrompts(this.prompts_rows);
     const prompt = mustGet(loaded, PROMPT_KEY);
+    const verticals = Array.isArray(ctx.verticals) && ctx.verticals.length ? ctx.verticals : ["consumer"];
+    const apiKey = this.google_gemini.$auth.api_key;
 
-    const rendered = render(prompt.template, {
-      active_trends: ctx.active_trends_formatted || "(none)",
-      valuable_examples: ctx.valuable_examples_formatted || "(none)",
-    });
-
-    const body = {
-      contents: [{ parts: [{ text: rendered }] }],
-      tools: prompt.params.tools ?? [{ google_search: {} }],
-      generationConfig: {
-        temperature: prompt.params.temperature ?? 0.5,
-      },
-    };
-
-    try {
+    async function callShard(vertical) {
+      const rendered = render(prompt.template, {
+        active_trends: ctx.active_trends_formatted || "(none)",
+        valuable_examples: ctx.valuable_examples_formatted || "(none)",
+        vertical,
+      });
+      const body = {
+        contents: [{ parts: [{ text: rendered }] }],
+        tools: prompt.params.tools ?? [{ google_search: {} }],
+        generationConfig: { temperature: prompt.params.temperature ?? 0.5 },
+      };
       const resp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${prompt.model}:generateContent?key=${this.google_gemini.$auth.api_key}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
+        `https://generativelanguage.googleapis.com/v1beta/models/${prompt.model}:generateContent?key=${apiKey}`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
       );
-
       if (!resp.ok) throw new Error(`Gemini HTTP ${resp.status}: ${(await resp.text()).slice(0, 400)}`);
       const data = await resp.json();
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
       const arrText = extractJsonArray(text);
       if (!arrText) throw new Error(`No JSON array in Gemini response: ${text.slice(0, 240)}`);
-      const proposals = JSON.parse(arrText);
-      if (!Array.isArray(proposals)) throw new Error("Parsed Gemini response is not an array");
-
+      const parsed = JSON.parse(arrText);
+      if (!Array.isArray(parsed)) throw new Error("Parsed Gemini response is not an array");
       const usage = data.usageMetadata || {};
-      console.log(`Gemini discovery: ${proposals.length} proposals, ${usage.promptTokenCount || 0} in / ${usage.candidatesTokenCount || 0} out`);
-
+      const proposals = parsed
+        .filter((p) => p && typeof p === "object" && p.topic)
+        .map((p) => ({ ...p, vertical: p.vertical || vertical }));
       return {
-        proposals: proposals.filter((p) => p && typeof p === "object" && p.topic),
-        model: prompt.model,
-        prompt_key: PROMPT_KEY,
-        prompt_version: prompt.version,
-        _token_usage: {
-          input: usage.promptTokenCount || 0,
-          output: usage.candidatesTokenCount || 0,
-          model: prompt.model,
-        },
-        error: null,
+        vertical,
+        proposals,
+        input_tokens: usage.promptTokenCount || 0,
+        output_tokens: usage.candidatesTokenCount || 0,
       };
-    } catch (e) {
-      console.log(`Gemini discovery error: ${e.message}`);
-      return { proposals: [], model: prompt.model, prompt_key: PROMPT_KEY, prompt_version: prompt.version, error: e.message };
     }
+
+    const settled = await Promise.allSettled(verticals.map((v) => callShard(v)));
+    const allProposals = [];
+    let totalIn = 0;
+    let totalOut = 0;
+    let firstError = null;
+    const perVerticalCounts = {};
+    for (const r of settled) {
+      if (r.status === "fulfilled") {
+        allProposals.push(...r.value.proposals);
+        totalIn += r.value.input_tokens;
+        totalOut += r.value.output_tokens;
+        perVerticalCounts[r.value.vertical] = r.value.proposals.length;
+      } else {
+        if (!firstError) firstError = r.reason?.message || String(r.reason);
+        console.log(`Gemini shard error: ${r.reason?.message || r.reason}`);
+      }
+    }
+    const successCount = settled.filter((r) => r.status === "fulfilled").length;
+    console.log(`Gemini discovery: ${allProposals.length} proposals across ${successCount}/${verticals.length} shards (${JSON.stringify(perVerticalCounts)}), ${totalIn} in / ${totalOut} out`);
+
+    return {
+      proposals: allProposals,
+      model: prompt.model,
+      prompt_key: PROMPT_KEY,
+      prompt_version: prompt.version,
+      shards_attempted: verticals.length,
+      shards_succeeded: successCount,
+      per_vertical_counts: perVerticalCounts,
+      _token_usage: { input: totalIn, output: totalOut, model: prompt.model },
+      error: successCount === 0 ? (firstError || "all shards failed") : null,
+    };
   },
 });

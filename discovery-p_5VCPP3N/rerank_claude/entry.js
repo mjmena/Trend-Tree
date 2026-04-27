@@ -77,6 +77,7 @@ export default defineComponent({
           topic: String(p.topic || "").slice(0, 200),
           evidence_url: String(p.evidence_url || "").trim(),
           why_now: String(p.why_now || "").slice(0, 600),
+          vertical: String(p.vertical || "").slice(0, 64),
         });
       }
     }
@@ -89,7 +90,7 @@ export default defineComponent({
 
     // Format proposals for the prompt: numbered list with index for the rubric
     const proposalsFormatted = all.map((p, i) =>
-      `${i}. [${p.source_model}] "${p.topic}"\n   URL: ${p.evidence_url || "(missing)"}\n   why_now: ${p.why_now}`,
+      `${i}. [${p.source_model}${p.vertical ? `/${p.vertical}` : ""}] "${p.topic}"\n   URL: ${p.evidence_url || "(missing)"}\n   why_now: ${p.why_now}`,
     ).join("\n\n");
 
     const rendered = render(prompt.template, {
