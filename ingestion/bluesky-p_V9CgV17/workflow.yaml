@@ -11,6 +11,8 @@ steps:
 - namespace: fetch_source
   runtime: nodejs20.x
   uses: "./fetch_source/entry.js"
+  props:
+    bluesky: {}
 - namespace: upsert_signals
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -19,18 +21,9 @@ steps:
       authProvisionId: apn_yghdQYJ
     sql:
       value: |-
-        CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(
-          $${{steps.fetch_source.$return_value.signals_json}}$$,
-          '',
-          500,
-          'STG_EXTERNAL_SIGNALS_TEST'
-        )
+        CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(:1, '', 500, 'STG_EXTERNAL_SIGNALS_TEST')
       query: |-
-        CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(
-          $${{steps.fetch_source.$return_value.signals_json}}$$,
-          '',
-          500,
-          'STG_EXTERNAL_SIGNALS_TEST'
-        )
-    params: []
+        CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(:1, '', 500, 'STG_EXTERNAL_SIGNALS_TEST')
+    params:
+    - "{{steps.fetch_source.$return_value.signals_json}}"
 

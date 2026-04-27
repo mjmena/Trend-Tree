@@ -5,9 +5,9 @@
 // list of search terms. Auth is the standard ATProto createSession
 // flow with handle + app password (NOT user password).
 //
-// Credentials come from project env vars (set in Pipedream UI):
-//   BLUESKY_HANDLE        — e.g. user.bsky.social
-//   BLUESKY_APP_PASSWORD  — generated under Settings → App Passwords
+// Credentials come from a connected Pipedream Bluesky app — connect
+// via the Pipedream UI on this workflow's `bluesky` prop. The app
+// exposes $auth.identifier (handle) and $auth.password (app password).
 //
 // Port of trends-sql/pipedream/ingestion/ingest_bluesky.mjs.
 
@@ -28,12 +28,16 @@ function sleep(ms) {
 }
 
 export default defineComponent({
+  props: {
+    bluesky: { type: "app", app: "bluesky" },
+  },
   async run({ $ }) {
-    const handle = process.env.BLUESKY_HANDLE;
-    const appPassword = process.env.BLUESKY_APP_PASSWORD;
+    const auth = this.bluesky?.$auth || {};
+    const handle = auth.identifier || auth.handle;
+    const appPassword = auth.password || auth.app_password;
     if (!handle || !appPassword) {
       throw new Error(
-        "BLUESKY_HANDLE and BLUESKY_APP_PASSWORD env vars required",
+        "Bluesky app must be connected with identifier (handle) + password (app password)",
       );
     }
 
