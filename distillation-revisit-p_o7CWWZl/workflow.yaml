@@ -173,9 +173,6 @@ steps:
       params:
       - "{{steps.dispatch_to_subagents.$return_value.candidates_json}}"
 - namespace: claim_revisit_signals
-  # Re-stamp every signal the revisit run looked at with `revisit-<session>`.
-  # Now they're done with: future revisit runs filter AGENT_SESSION_ID LIKE 'sess-%'
-  # only, so revisit-stamped signals naturally fall out.
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
   props:
@@ -265,3 +262,4 @@ steps:
     dispatch_result: "{{steps.dispatch_to_subagents.$return_value}}"
     commit_result: "{{steps.commit_candidates.$return_value}}"
     claim_result: "{{steps.claim_revisit_signals.$return_value}}"
+

@@ -1,0 +1,5 @@
+schema: workflow/2022.04
+name: Error Alerts
+settings:
+  error_notification: true
+
