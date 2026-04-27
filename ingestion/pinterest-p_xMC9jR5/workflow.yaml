@@ -13,8 +13,8 @@ steps:
   runtime: nodejs20.x
   uses: "./fetch_source/entry.js"
 - namespace: upsert_signals
-  runtime: python3.11
-  uses: "./upsert_signals/handler.py"
+  runtime: nodejs20.x
+  uses: "./upsert_signals/entry.js"
   props:
     snowflake:
       authProvisionId: apn_yghdQYJ
