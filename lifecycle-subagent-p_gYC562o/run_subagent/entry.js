@@ -99,7 +99,7 @@ const TOOL_SCHEMAS = {
           description: "Modifier in [-20, 20]; clamped at commit. Use sparingly — see decision rubric.",
         },
         heat_modifier_reason: { type: "string" },
-        retirement_reason: { type: ["string", "null"], description: "Required if status='RETIRED'." },
+        retirement_reason: { type: "string", nullable: true, description: "Required if status='RETIRED'." },
         next_eval_in_hours: { type: "number", description: "Commit clamps to [1, 168]." },
         request_re_enrichment: {
           type: "boolean",
