@@ -35,8 +35,8 @@ steps:
   runtime: nodejs20.x
   uses: "./run_subagent/entry.js"
   props:
-    anthropic:
-      authProvisionId: apn_Oghan1O
+    google_gemini:
+      authProvisionId: apn_EOhp9DY
     request: "{{steps.handle_request.$return_value}}"
     prompts_rows: "{{steps.q_load_prompts.$return_value}}"
 - namespace: respond
