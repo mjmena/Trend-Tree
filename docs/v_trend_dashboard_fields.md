@@ -33,7 +33,7 @@
 | `SUMMARY_LONG` | `VARCHAR` | `DIM_TREND_ENRICHMENT` | Multi-paragraph narrative summary from the Claude synthesizer. |
 | `HEAT_INDEX` | `NUMBER(4,1)` | `FCT_TREND_METRICS` | Composite score (0-100) combining velocity, volume, and source breadth. Rounded to 1 decimal place. Higher = hotter trend. |
 | `TOTAL_CLUSTER_SIZE` | `NUMBER` | `FCT_TREND_METRICS` | Total number of signals (articles, posts, data points) that make up this trend cluster. |
-| `VELOCITY_DIRECTION` | `VARCHAR` | `FCT_TREND_METRICS` | Trajectory of the trend: `ACCELERATING`, `STABLE`, `DECELERATING`, or `SUPERSEDED`. |
+| `VELOCITY_DIRECTION` | `VARCHAR` | `FCT_TREND_METRICS` | Trajectory of the trend. Current values: `GROWING`, `STABLE`, `STAGNANT`, `DECLINING`. |
 
 ### Key data points
 

@@ -16,15 +16,57 @@ steps:
       authProvisionId: apn_yghdQYJ
     sql:
       value: |-
-        SELECT TREND_ID, TREND_TOPIC, TOTAL_CLUSTER_SIZE, VELOCITY_DIRECTION,
-               COALESCE(TREND_HEAT_INDEX, 0) AS TREND_HEAT_INDEX
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS
-        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+        WITH latest_lifecycle AS (
+          SELECT NEW_STATUS         AS LIFECYCLE_STATUS,
+                 NEW_HEAT_SMOOTHED  AS HEAT_SMOOTHED,
+                 NEW_HEAT           AS HEAT
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+          ORDER BY EVALUATED_AT DESC
+          LIMIT 1
+        ),
+        cluster_size AS (
+          SELECT COUNT(DISTINCT f.value::STRING) AS TOTAL_CLUSTER_SIZE
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+            ON c.CANDIDATE_ID = t.CANDIDATE_ID OR c.DEDUP_OF_TREND_ID = t.TREND_ID,
+               LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+          WHERE t.TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+        )
+        SELECT t.TREND_ID, t.TREND_TOPIC,
+               COALESCE(cs.TOTAL_CLUSTER_SIZE, 0)               AS TOTAL_CLUSTER_SIZE,
+               COALESCE(lc.LIFECYCLE_STATUS, 'NEW')              AS VELOCITY_DIRECTION,
+               COALESCE(lc.HEAT_SMOOTHED, lc.HEAT, 0)            AS TREND_HEAT_INDEX
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+        LEFT JOIN latest_lifecycle lc ON TRUE
+        LEFT JOIN cluster_size     cs ON TRUE
+        WHERE t.TREND_ID = '{{steps.trigger.event.body.trend_id}}'
       query: |-
-        SELECT TREND_ID, TREND_TOPIC, TOTAL_CLUSTER_SIZE, VELOCITY_DIRECTION,
-               COALESCE(TREND_HEAT_INDEX, 0) AS TREND_HEAT_INDEX
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS
-        WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+        WITH latest_lifecycle AS (
+          SELECT NEW_STATUS         AS LIFECYCLE_STATUS,
+                 NEW_HEAT_SMOOTHED  AS HEAT_SMOOTHED,
+                 NEW_HEAT           AS HEAT
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+          ORDER BY EVALUATED_AT DESC
+          LIMIT 1
+        ),
+        cluster_size AS (
+          SELECT COUNT(DISTINCT f.value::STRING) AS TOTAL_CLUSTER_SIZE
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+            ON c.CANDIDATE_ID = t.CANDIDATE_ID OR c.DEDUP_OF_TREND_ID = t.TREND_ID,
+               LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+          WHERE t.TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+        )
+        SELECT t.TREND_ID, t.TREND_TOPIC,
+               COALESCE(cs.TOTAL_CLUSTER_SIZE, 0)               AS TOTAL_CLUSTER_SIZE,
+               COALESCE(lc.LIFECYCLE_STATUS, 'NEW')              AS VELOCITY_DIRECTION,
+               COALESCE(lc.HEAT_SMOOTHED, lc.HEAT, 0)            AS TREND_HEAT_INDEX
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+        LEFT JOIN latest_lifecycle lc ON TRUE
+        LEFT JOIN cluster_size     cs ON TRUE
+        WHERE t.TREND_ID = '{{steps.trigger.event.body.trend_id}}'
       params: []
 - namespace: generate_search_terms
   runtime: nodejs20.x
