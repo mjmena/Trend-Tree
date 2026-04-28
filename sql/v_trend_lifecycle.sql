@@ -1,27 +1,23 @@
--- View: Trend lifecycle management — identifies trends needing action
+-- View: Lightweight diagnostic over trend lifecycle state.
 -- Database: MCC_PRESENTATION.TREND_AGENT
 --
--- Surfaces trends that are stale, expiring, or showing lifecycle changes
--- since last enrichment. Used by ops to prioritize re-enrichment and by the
--- enrichment queue task.
+-- 2026-04-28: simplified once the lifecycle agent landed. Previously this
+-- view tried to be a state-machine-via-SQL (NEEDS_ENRICHMENT, NEEDS_RETRY,
+-- GOING_DORMANT, LIFECYCLE_CHANGE, etc.). Now the lifecycle agent owns
+-- those decisions directly via FCT_TRENDS.LIFECYCLE_STATUS and writes its
+-- own ledger to FCT_TREND_LIFECYCLE_HISTORY. This view exists for ops
+-- visibility only — surface what's stale, what's unenriched, what the
+-- sweeper is about to pick up.
 --
--- Source-first shape: lifecycle stage now comes from
--- FCT_TREND_METRICS.VELOCITY_DIRECTION (computed by PROC_CLUSTER_TRENDS from
--- signal velocity) rather than from an LLM-classified LIFECYCLE_STAGE column
--- on DIM_TREND_ENRICHMENT. Once a trend arrives in FCT_TREND_METRICS the
--- clustering has already validated it, so there is no validity/confidence
--- judgment to carry forward from the enrichment layer.
+-- Removed since prior version:
+--   - STG_ENRICHMENT_QUEUE join (queue eliminated 2026-04-27)
+--   - NEEDS_RETRY case (was queue-driven)
+--   - SUPERSEDED / GOING_DORMANT cases (the agent emits these directly now)
+--   - Priority scoring (the lifecycle sweeper has its own ORDER BY)
+--   - FCT_TREND_METRICS dependency (legacy, schema-disjoint from FCT_TRENDS)
 
 CREATE OR REPLACE VIEW MCC_PRESENTATION.TREND_AGENT.V_TREND_LIFECYCLE AS
-WITH queue_latest AS (
-    SELECT TREND_ID, STATUS, RETRY_COUNT, ERROR_MESSAGE
-    FROM (
-        SELECT TREND_ID, STATUS, RETRY_COUNT, ERROR_MESSAGE,
-               ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY QUEUED_AT DESC NULLS LAST) AS rn
-        FROM MCC_RAW.MARKETING_DEV.STG_ENRICHMENT_QUEUE
-    ) WHERE rn = 1
-),
-source_summary AS (
+WITH source_summary AS (
     SELECT
         TREND_ID,
         COUNT(*)         AS SOURCE_COVERAGE_BREADTH,
@@ -29,103 +25,62 @@ source_summary AS (
     FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCE_METRICS
     WHERE HEADLINE_METRIC IS NOT NULL AND HEADLINE_METRIC > 0
     GROUP BY TREND_ID
-),
-trend_state AS (
-    SELECT
-        m.TREND_ID,
-        COALESCE(d.TREND_NAME_B2B, m.TREND_TOPIC)  AS TREND_NAME,
-        m.TREND_HEAT_INDEX,
-        m.TOTAL_CLUSTER_SIZE,
-        m.VELOCITY_DIRECTION                        AS LIFECYCLE_STAGE,
-        m.VELOCITY_DIRECTION,
-        m.DETECTED_AT,
-        m.LAST_UPDATE_AT,
-
-        d.ENRICHED_AT,
-        d.ENRICHMENT_VERSION,
-        ss.SOURCES_ENRICHED_AT,
-        COALESCE(ss.SOURCE_COVERAGE_BREADTH, 0)     AS SOURCE_COVERAGE_BREADTH,
-
-        DATEDIFF('hour', m.DETECTED_AT,       CURRENT_TIMESTAMP()) AS AGE_HOURS,
-        DATEDIFF('hour', m.LAST_UPDATE_AT,    CURRENT_TIMESTAMP()) AS HOURS_SINCE_UPDATE,
-        DATEDIFF('hour', d.ENRICHED_AT,       CURRENT_TIMESTAMP()) AS HOURS_SINCE_ENRICHMENT,
-        DATEDIFF('hour', ss.SOURCES_ENRICHED_AT, CURRENT_TIMESTAMP()) AS HOURS_SINCE_SOURCE_REFRESH,
-
-        -- Signal momentum score derived from VELOCITY_DIRECTION
-        -- (NEW|GROWING|STABLE|DECLINING|STAGNANT|SUPERSEDED)
-        CASE m.VELOCITY_DIRECTION
-            WHEN 'NEW'        THEN 2
-            WHEN 'GROWING'    THEN 2
-            WHEN 'STABLE'     THEN 1
-            WHEN 'STAGNANT'   THEN 0
-            WHEN 'DECLINING'  THEN -1
-            WHEN 'SUPERSEDED' THEN -2
-            ELSE 0
-        END                                          AS VELOCITY_SCORE,
-
-        q.STATUS       AS QUEUE_STATUS,
-        q.RETRY_COUNT,
-        q.ERROR_MESSAGE
-
-    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
-    LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d
-        ON m.TREND_ID = d.TREND_ID
-    LEFT JOIN source_summary ss
-        ON m.TREND_ID = ss.TREND_ID
-    LEFT JOIN queue_latest q
-        ON m.TREND_ID = q.TREND_ID
 )
 SELECT
-    *,
+    t.TREND_ID,
+    COALESCE(d.TREND_NAME_B2B, t.TREND_TOPIC)                AS TREND_NAME,
+    t.LIFECYCLE_STATUS,
+    ROUND(COALESCE(t.TREND_HEAT_INDEX_SMOOTHED, t.TREND_HEAT_INDEX), 1) AS HEAT_INDEX,
+    t.TOTAL_CLUSTER_SIZE,
+    t.DISTINCT_SOURCE_COUNT,
 
+    t.PROMOTED_AT,
+    t.LAST_UPDATE_AT,
+    t.LAST_LIFECYCLE_EVAL_AT,
+    t.NEXT_LIFECYCLE_EVAL_AT,
+    t.RETIREMENT_REASON,
+
+    d.ENRICHED_AT,
+    d.ENRICHMENT_VERSION,
+    COALESCE(ss.SOURCE_COVERAGE_BREADTH, 0)                  AS SOURCE_COVERAGE_BREADTH,
+    ss.SOURCES_ENRICHED_AT,
+
+    DATEDIFF('hour', t.PROMOTED_AT,            CURRENT_TIMESTAMP()) AS AGE_HOURS,
+    DATEDIFF('hour', t.LAST_UPDATE_AT,         CURRENT_TIMESTAMP()) AS HOURS_SINCE_UPDATE,
+    DATEDIFF('hour', d.ENRICHED_AT,            CURRENT_TIMESTAMP()) AS HOURS_SINCE_ENRICHMENT,
+    DATEDIFF('hour', t.LAST_LIFECYCLE_EVAL_AT, CURRENT_TIMESTAMP()) AS HOURS_SINCE_LIFECYCLE_EVAL,
+    DATEDIFF('hour', ss.SOURCES_ENRICHED_AT,   CURRENT_TIMESTAMP()) AS HOURS_SINCE_SOURCE_REFRESH,
+
+    -- ACTION_NEEDED is a coarse diagnostic for ops dashboards.
+    -- The lifecycle agent does NOT consume this — it computes its own
+    -- decisions per the prompts in DIM_LLM_PROMPT.
     CASE
-        WHEN VELOCITY_DIRECTION = 'SUPERSEDED'
-            THEN 'SUPERSEDED'
+        WHEN t.LIFECYCLE_STATUS = 'RETIRED'
+            THEN 'RETIRED'
 
-        WHEN ENRICHED_AT IS NULL AND TOTAL_CLUSTER_SIZE >= 3
+        WHEN d.ENRICHED_AT IS NULL AND t.TOTAL_CLUSTER_SIZE >= 3
             THEN 'NEEDS_ENRICHMENT'
 
-        WHEN QUEUE_STATUS = 'FAILED' AND COALESCE(RETRY_COUNT, 0) < 3
-            THEN 'NEEDS_RETRY'
+        WHEN t.NEXT_LIFECYCLE_EVAL_AT IS NOT NULL
+             AND t.NEXT_LIFECYCLE_EVAL_AT <= CURRENT_TIMESTAMP()
+            THEN 'LIFECYCLE_DUE'
 
-        -- High-heat active trend with stale enrichment
-        WHEN TREND_HEAT_INDEX >= 50
-             AND HOURS_SINCE_ENRICHMENT > 48
-             AND VELOCITY_SCORE >= 1
+        WHEN COALESCE(t.TREND_HEAT_INDEX, 0) >= 50
+             AND DATEDIFF('hour', d.ENRICHED_AT, CURRENT_TIMESTAMP()) > 48
             THEN 'NEEDS_REFRESH'
 
-        WHEN HOURS_SINCE_SOURCE_REFRESH > 24
-             AND HOURS_SINCE_UPDATE < 24
+        WHEN DATEDIFF('hour', ss.SOURCES_ENRICHED_AT, CURRENT_TIMESTAMP()) > 24
+             AND DATEDIFF('hour', t.LAST_UPDATE_AT, CURRENT_TIMESTAMP()) < 24
             THEN 'SOURCES_STALE'
 
-        -- Trend going dormant (no updates in 72h, was previously active)
-        WHEN HOURS_SINCE_UPDATE > 72
-             AND AGE_HOURS > 72
-             AND VELOCITY_SCORE <= 0
-             AND VELOCITY_DIRECTION IN ('NEW', 'GROWING')
-            THEN 'GOING_DORMANT'
-
-        -- Newly accelerating — enrichment may be out of date
-        WHEN VELOCITY_SCORE >= 2
-             AND VELOCITY_DIRECTION = 'NEW'
-             AND HOURS_SINCE_ENRICHMENT > 24
-            THEN 'LIFECYCLE_CHANGE'
-
         ELSE 'OK'
-    END                                         AS ACTION_NEEDED,
+    END                                                       AS ACTION_NEEDED
 
-    CASE
-        WHEN VELOCITY_DIRECTION = 'SUPERSEDED' THEN 0
-        WHEN ENRICHED_AT IS NULL THEN 90 + LEAST(TREND_HEAT_INDEX, 10)
-        WHEN QUEUE_STATUS = 'FAILED' THEN 80
-        WHEN TREND_HEAT_INDEX >= 50 AND HOURS_SINCE_ENRICHMENT > 48 THEN 70
-        WHEN VELOCITY_SCORE >= 2 AND VELOCITY_DIRECTION = 'NEW' THEN 60
-        WHEN HOURS_SINCE_SOURCE_REFRESH > 24 THEN 50
-        WHEN HOURS_SINCE_UPDATE > 72 AND VELOCITY_SCORE <= 0 THEN 20
-        ELSE 0
-    END                                         AS ACTION_PRIORITY
-
-FROM trend_state
+FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d
+       ON t.TREND_ID = d.TREND_ID
+LEFT JOIN source_summary ss
+       ON t.TREND_ID = ss.TREND_ID
 ORDER BY
-    CASE WHEN ACTION_NEEDED != 'OK' THEN 0 ELSE 1 END,
-    ACTION_PRIORITY DESC;
+    CASE WHEN t.LIFECYCLE_STATUS = 'RETIRED' THEN 1 ELSE 0 END,
+    COALESCE(t.TREND_HEAT_INDEX_SMOOTHED, t.TREND_HEAT_INDEX) DESC NULLS LAST;

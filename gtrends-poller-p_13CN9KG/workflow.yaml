@@ -2,4 +2,89 @@ schema: workflow/2022.04
 name: GTrends Poller
 settings:
   error_notification: true
-
+  lambda_memory: 2048
+  lambda_timeout: 600
+  network: net_5Lnie3
+triggers:
+- id: dc_bPu6eGd   # gtrends-cron-24h (timer)
+- id: dc_MDu0yvR   # gtrends-poller-http (manual fire)
+steps:
+- namespace: normalize_event
+  runtime: nodejs20.x
+  uses: "./normalize_event/entry.js"
+  props:
+    trigger_event: "{{steps.trigger.event}}"
+- namespace: q_select_active_trends
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT TREND_ID, TREND_TOPIC
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS
+        WHERE LIFECYCLE_STATUS != 'RETIRED'
+        ORDER BY COALESCE(TREND_HEAT_INDEX, 0) DESC
+      query: |-
+        SELECT TREND_ID, TREND_TOPIC
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS
+        WHERE LIFECYCLE_STATUS != 'RETIRED'
+        ORDER BY COALESCE(TREND_HEAT_INDEX, 0) DESC
+    params: []
+- namespace: fetch_and_compute
+  runtime: nodejs20.x
+  uses: "./fetch_and_compute/entry.js"
+  props:
+    event: "{{steps.normalize_event.$return_value}}"
+    trend_rows: "{{steps.q_select_active_trends.$return_value}}"
+- namespace: q_insert_results
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_GTRENDS_DAILY (
+          TREND_ID, KEYWORD, GEO, TIMEFRAME,
+          INTEREST_OVER_TIME, RELATED_QUERIES,
+          INTEREST_PEAK_PCT, INTEREST_AVG_PCT
+        )
+        SELECT
+          j:trend_id::STRING,
+          j:keyword::STRING,
+          j:geo::STRING,
+          j:timeframe::STRING,
+          j:interest_over_time,
+          j:related_queries,
+          j:interest_peak_pct::FLOAT,
+          j:interest_avg_pct::FLOAT
+        FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1)))
+        WHERE :1 != '[]'
+      query: |-
+        INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_GTRENDS_DAILY (
+          TREND_ID, KEYWORD, GEO, TIMEFRAME,
+          INTEREST_OVER_TIME, RELATED_QUERIES,
+          INTEREST_PEAK_PCT, INTEREST_AVG_PCT
+        )
+        SELECT
+          j:trend_id::STRING,
+          j:keyword::STRING,
+          j:geo::STRING,
+          j:timeframe::STRING,
+          j:interest_over_time,
+          j:related_queries,
+          j:interest_peak_pct::FLOAT,
+          j:interest_avg_pct::FLOAT
+        FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1)))
+        WHERE :1 != '[]'
+      params:
+      - "{{steps.fetch_and_compute.$return_value.results_json}}"
+- namespace: respond
+  runtime: nodejs20.x
+  uses: "./respond/entry.js"
+  props:
+    event: "{{steps.normalize_event.$return_value}}"
+    fetch_result: "{{steps.fetch_and_compute.$return_value}}"
+    insert_result: "{{steps.q_insert_results.$return_value}}"

@@ -318,9 +318,9 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                 rs = session.sql(f"""
                     INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS (
                         TREND_ID, CANDIDATE_ID, TREND_TOPIC, AGENT_SESSION_ID, CHAIN_ID,
-                        DETECTED_AT, LAST_UPDATE_AT, PROMOTED_AT,
+                        DETECTED_AT, LAST_UPDATE_AT, PROMOTED_AT, NEXT_LIFECYCLE_EVAL_AT,
                         TOTAL_CLUSTER_SIZE, DISTINCT_SOURCE_COUNT,
-                        CONFIDENCE, SPECIFICITY_SCORE, VELOCITY_DIRECTION,
+                        CONFIDENCE, SPECIFICITY_SCORE, LIFECYCLE_STATUS,
                         TREND_HEAT_INDEX, TREND_VECTOR
                     )
                     SELECT
@@ -330,13 +330,17 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                         c.AGENT_SESSION_ID,
                         c.CHAIN_ID,
                         c.CREATED_AT, c.CREATED_AT, CURRENT_TIMESTAMP(),
+                        DATEADD(hour, 1, CURRENT_TIMESTAMP()),
                         ARRAY_SIZE(c.SUPPORTING_SIGNAL_IDS),
                         ARRAY_SIZE(OBJECT_KEYS(c.SOURCE_BREAKDOWN)),
                         c.CONFIDENCE, c.SPECIFICITY_SCORE, 'NEW',
-                        -- Heat formula (placeholder until a daily-snapshot
-                        -- recomputation task lands): cluster_size × 5 +
-                        -- source_count × 3 + confidence × 20, baselined at 50,
-                        -- capped at 100. New trends typically land 75-100.
+                        -- Initial heat at promotion. The lifecycle agent
+                        -- recomputes this on every cycle using a hybrid
+                        -- formula (SQL baseline + LLM modifier ±20%),
+                        -- starting at PROMOTED_AT + 1h (NEXT_LIFECYCLE_EVAL_AT).
+                        -- Formula: cluster_size × 5 + source_count × 3 +
+                        -- confidence × 20, baselined at 50, capped at 100.
+                        -- New trends typically land 75-100.
                         LEAST(
                             50
                             + COALESCE(ARRAY_SIZE(c.SUPPORTING_SIGNAL_IDS), 0) * 5
@@ -382,7 +386,7 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
             elif decision == 'MERGE_INTO_EXISTING':
                 # Validate target exists in FCT_TRENDS, then run the shared
                 # merge body. Heat index intentionally NOT touched here —
-                # placeholder formula belongs to the future lifecycle agent.
+                # the lifecycle agent owns heat recomputation per its own cadence.
                 if not target:
                     raise ValueError('target_trend_id required for MERGE_INTO_EXISTING')
                 check = session.sql(f"""

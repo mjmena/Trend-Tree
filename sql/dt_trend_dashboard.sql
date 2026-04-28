@@ -44,9 +44,13 @@ unioned_trends AS (
     -- Agent-promoted trends (canonical going forward)
     SELECT
         t.TREND_ID, t.TREND_TOPIC, t.TOTAL_CLUSTER_SIZE, t.DISTINCT_SOURCE_COUNT,
-        t.VELOCITY_DIRECTION, t.TREND_HEAT_INDEX, t.DETECTED_AT, t.LAST_UPDATE_AT,
+        t.LIFECYCLE_STATUS,
+        COALESCE(t.TREND_HEAT_INDEX_SMOOTHED, t.TREND_HEAT_INDEX) AS TREND_HEAT_INDEX,
+        t.DETECTED_AT, t.LAST_UPDATE_AT,
         t.CONFIDENCE          AS PROMOTION_CONFIDENCE,
         t.SPECIFICITY_SCORE   AS PROMOTION_SPECIFICITY,
+        t.LAST_LIFECYCLE_EVAL_AT,
+        t.RETIREMENT_REASON,
         'fct_trends'          AS TREND_SOURCE
     FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
 
@@ -54,13 +58,22 @@ unioned_trends AS (
 
     -- Legacy SQL-clustered trends — kept visible while audit/lifecycle agent
     -- triages them. Filter out any TREND_IDs that already appear in FCT_TRENDS
-    -- so we don't double-count overlap.
+    -- so we don't double-count overlap. Map the legacy VELOCITY_DIRECTION enum
+    -- forward (STAGNANT→DORMANT, SUPERSEDED→RETIRED) so the unified
+    -- LIFECYCLE_STATUS column is consistent across sources.
     SELECT
         m.TREND_ID, m.TREND_TOPIC, m.TOTAL_CLUSTER_SIZE, m.DISTINCT_SOURCE_COUNT,
-        m.VELOCITY_DIRECTION, m.TREND_HEAT_INDEX, m.DETECTED_AT, m.LAST_UPDATE_AT,
-        NULL                  AS PROMOTION_CONFIDENCE,
-        NULL                  AS PROMOTION_SPECIFICITY,
-        'fct_trend_metrics'   AS TREND_SOURCE
+        CASE m.VELOCITY_DIRECTION
+          WHEN 'STAGNANT'   THEN 'DORMANT'
+          WHEN 'SUPERSEDED' THEN 'RETIRED'
+          ELSE m.VELOCITY_DIRECTION
+        END                    AS LIFECYCLE_STATUS,
+        m.TREND_HEAT_INDEX, m.DETECTED_AT, m.LAST_UPDATE_AT,
+        NULL                   AS PROMOTION_CONFIDENCE,
+        NULL                   AS PROMOTION_SPECIFICITY,
+        NULL::TIMESTAMP_NTZ    AS LAST_LIFECYCLE_EVAL_AT,
+        NULL                   AS RETIREMENT_REASON,
+        'fct_trend_metrics'    AS TREND_SOURCE
     FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
     WHERE m.TREND_ID NOT IN (SELECT TREND_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS)
 )
@@ -78,7 +91,10 @@ SELECT
     ROUND(COALESCE(u.TREND_HEAT_INDEX, 0), 1)    AS HEAT_INDEX,
     u.TOTAL_CLUSTER_SIZE,
     u.DISTINCT_SOURCE_COUNT,
-    u.VELOCITY_DIRECTION,
+    u.LIFECYCLE_STATUS,
+    u.LIFECYCLE_STATUS                            AS VELOCITY_DIRECTION,  -- backwards-compat alias; drop once dashboard repoints
+    u.LAST_LIFECYCLE_EVAL_AT,
+    u.RETIREMENT_REASON,
     u.PROMOTION_CONFIDENCE,
     u.PROMOTION_SPECIFICITY,
     u.TREND_SOURCE,

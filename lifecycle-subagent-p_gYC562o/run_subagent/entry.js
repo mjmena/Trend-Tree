@@ -1,0 +1,697 @@
+// Lifecycle Subagent — run_subagent
+//
+// Single Sonnet 4.6 agent loop. Purely evaluative — no live HTTP tools.
+// Reads pre-fetched Snowflake context (trend metrics, source metrics,
+// lifecycle history, narrative history, recent signals via flatten-join,
+// gtrends history, vector neighbors), computes heat_base in SQL-equivalent
+// JS, then runs an agent loop with three in-process query tools and one
+// terminal tool (propose_lifecycle_decision).
+//
+// Output: { lifecycle_decision, heat_base, tokens, cost_usd, ...telemetry }
+//
+// =====================================================================
+// Helper code below is INLINED. Pipedream packages each step as a single
+// self-contained file — cross-file imports fail at deploy. Canonical
+// agent-loop code lives at agents/lib/anthropic_loop.mjs / prompt_loader.mjs;
+// keep edits in sync if you have a parallel enrichment change.
+// =====================================================================
+
+// ─────────────────────────────────────────────────────────────────────
+// prompt_loader (canonical: agents/lib/prompt_loader.mjs)
+// ─────────────────────────────────────────────────────────────────────
+
+function loadPrompts(rows) {
+  const out = {};
+  for (const r of rows || []) {
+    let params = {};
+    try { params = typeof r.MODEL_PARAMS === "string" ? JSON.parse(r.MODEL_PARAMS) : (r.MODEL_PARAMS || {}); } catch { params = {}; }
+    out[r.PROMPT_KEY] = { template: r.TEMPLATE, version: r.VERSION, model: r.MODEL, params };
+  }
+  return out;
+}
+
+function render(template, vars) {
+  return String(template || "").replace(/\{\{\s*([a-zA-Z0-9_.]+)\s*\}\}/g, (_, key) => {
+    const v = vars[key];
+    return v === undefined || v === null ? "" : String(v);
+  });
+}
+
+function mustGet(loaded, key) {
+  const p = loaded[key];
+  if (!p) throw new Error(`prompt ${key} not found in DIM_LLM_PROMPT (IS_ACTIVE=TRUE)`);
+  return p;
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Tool schemas — lifecycle has only in-process query tools + terminal
+// ─────────────────────────────────────────────────────────────────────
+
+const TOOL_SCHEMAS = {
+  query_trend_neighbors: {
+    name: "query_trend_neighbors",
+    description:
+      "Filter the prefetched neighbor pool. Use to check if any near-similarity trend has flipped status recently (might inform RESURGENT vs DORMANT for this one). Returns trend_id, trend_topic, lifecycle_status, heat, similarity, plus the neighbor's name/category if enriched. Operates on the prefetched 30-trend pool — no live SQL.",
+    input_schema: {
+      type: "object",
+      properties: {
+        min_similarity: { type: "number", description: "Optional cosine cutoff 0.0-1.0 (default 0.0)." },
+        limit: { type: "integer", description: "Max neighbors to return (default 5, max 30)." },
+      },
+    },
+  },
+  query_signal_velocity: {
+    name: "query_signal_velocity",
+    description:
+      "Count signals in time windows. Returns counts for last 24h, last 7d, last 14d, plus per-source breakdown. Operates on the prefetched recent_signals pool (last 14d, top 30 by timestamp).",
+    input_schema: {
+      type: "object",
+      properties: {
+        per_source: { type: "boolean", description: "If true, include per-source counts (default false)." },
+      },
+    },
+  },
+  query_lifecycle_history: {
+    name: "query_lifecycle_history",
+    description:
+      "Page through prior lifecycle decisions for this trend. Use especially to check if the most recent prior decision proposed RETIRE (drives the two-cycle confirm). Operates on the prefetched 5-row history.",
+    input_schema: {
+      type: "object",
+      properties: {
+        limit: { type: "integer", description: "Max rows to return (default 5)." },
+      },
+    },
+  },
+  propose_lifecycle_decision: {
+    name: "propose_lifecycle_decision",
+    description:
+      "Emit the final lifecycle decision for this trend. Call exactly ONCE near the end of the loop. The commit step persists this. If you don't call it, nothing gets written and the trend's NEXT_LIFECYCLE_EVAL_AT does not advance.",
+    input_schema: {
+      type: "object",
+      properties: {
+        status: {
+          type: "string",
+          enum: ["NEW", "GROWING", "STABLE", "DECLINING", "DORMANT", "RESURGENT", "RETIRED"],
+          description: "The lifecycle state to commit. RETIRED requires two-cycle confirm — see system prompt.",
+        },
+        heat_modifier_pct: {
+          type: "number",
+          description: "Modifier in [-20, 20]; clamped at commit. Use sparingly — see decision rubric.",
+        },
+        heat_modifier_reason: { type: "string" },
+        description_update: {
+          type: ["object", "null"],
+          properties: {
+            summary_short: { type: "string" },
+            summary_long: { type: "string" },
+            vibe_shift: { type: "string" },
+            social_narrative: {},
+            change_reason: { type: "string", description: "One short sentence on what shifted." },
+          },
+        },
+        retirement_reason: { type: ["string", "null"], description: "Required if status='RETIRED'." },
+        next_eval_in_hours: { type: "number", description: "Commit clamps to [1, 168]." },
+        request_re_enrichment: { type: "boolean" },
+        reasoning: { type: "string", description: "≤500 chars defending the decision." },
+      },
+      required: ["status", "heat_modifier_pct", "next_eval_in_hours", "reasoning"],
+    },
+  },
+};
+
+const ALL_TOOL_NAMES = ["query_trend_neighbors", "query_signal_velocity", "query_lifecycle_history", "propose_lifecycle_decision"];
+
+function getToolSchemas(names) {
+  return names.map((n) => {
+    const s = TOOL_SCHEMAS[n];
+    if (!s) throw new Error(`Unknown tool: ${n}`);
+    return s;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// In-process tool dispatchers (operate on prefetched context only)
+// ─────────────────────────────────────────────────────────────────────
+
+function lookupTrendNeighbors(input, ctx) {
+  const pool = ctx.neighbor_pool || [];
+  const { min_similarity = 0, limit = 5 } = input || {};
+  const cap = Math.min(Number(limit) || 5, 30);
+  const filtered = pool
+    .filter((n) => Number(n.similarity || 0) >= min_similarity)
+    .slice(0, cap);
+  return { neighbors: filtered, total_in_pool: pool.length };
+}
+
+function querySignalVelocity(input, ctx) {
+  const signals = ctx.recent_signals || [];
+  const now = Date.now();
+  const WINDOWS = { last_24h: 24 * 3600 * 1000, last_7d: 7 * 24 * 3600 * 1000, last_14d: 14 * 24 * 3600 * 1000 };
+  const counts = {};
+  for (const [k, ms] of Object.entries(WINDOWS)) {
+    counts[k] = signals.filter((s) => {
+      const ts = s.signal_timestamp ? new Date(s.signal_timestamp).getTime() : 0;
+      return ts > 0 && (now - ts) <= ms;
+    }).length;
+  }
+  const out = { counts, total_in_pool: signals.length };
+  if (input?.per_source) {
+    const bySource = {};
+    for (const s of signals) {
+      const src = s.source_name || "unknown";
+      bySource[src] = (bySource[src] || 0) + 1;
+    }
+    out.per_source = bySource;
+  }
+  return out;
+}
+
+function queryLifecycleHistory(input, ctx) {
+  const history = ctx.lifecycle_history || [];
+  const cap = Math.min(Number(input?.limit) || 5, 20);
+  return { history: history.slice(0, cap), total_in_pool: history.length };
+}
+
+function proposeLifecycleDecision(input, ctx) {
+  // Single-shot accumulator — last call wins.
+  ctx.proposed_decision = { ...input, emitted_at: new Date().toISOString() };
+  return {
+    accepted: true,
+    note: "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard.",
+  };
+}
+
+const DISPATCHERS = {
+  query_trend_neighbors: (input, ctx) => lookupTrendNeighbors(input, ctx),
+  query_signal_velocity: (input, ctx) => querySignalVelocity(input, ctx),
+  query_lifecycle_history: (input, ctx) => queryLifecycleHistory(input, ctx),
+  propose_lifecycle_decision: (input, ctx) => proposeLifecycleDecision(input, ctx),
+};
+
+async function dispatchTool(name, input, ctx) {
+  const fn = DISPATCHERS[name];
+  if (!fn) return { error: `unknown tool: ${name}` };
+  try {
+    return await fn(input || {}, ctx || {});
+  } catch (e) {
+    return { error: `tool '${name}' threw: ${e.message}` };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Heat-base SQL-equivalent computation
+// ─────────────────────────────────────────────────────────────────────
+
+function shannonEntropyNormalized(counts) {
+  const vals = Object.values(counts).filter((v) => v > 0);
+  if (vals.length <= 1) return 0;
+  const total = vals.reduce((a, b) => a + b, 0);
+  let h = 0;
+  for (const v of vals) {
+    const p = v / total;
+    h -= p * Math.log(p);
+  }
+  return h / Math.log(vals.length);
+}
+
+function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
+
+function computeHeatBase({ metrics, source_metrics, recent_signals, gtrends_history }) {
+  const now = Date.now();
+
+  // recency_factor: half-life 72h on hours_since_last_signal
+  const lastSignalTs = recent_signals[0]?.signal_timestamp
+    ? new Date(recent_signals[0].signal_timestamp).getTime()
+    : metrics?.last_update_at ? new Date(metrics.last_update_at).getTime() : now;
+  const hoursSince = Math.max(0, (now - lastSignalTs) / (3600 * 1000));
+  const recency_factor = Math.exp(-hoursSince / 72);
+
+  // velocity_factor: simple 7-day count, sigmoid-normalized
+  const sevenD = 7 * 24 * 3600 * 1000;
+  const last7dCount = recent_signals.filter((s) => {
+    const ts = s.signal_timestamp ? new Date(s.signal_timestamp).getTime() : 0;
+    return ts > 0 && (now - ts) <= sevenD;
+  }).length;
+  // Center sigmoid at 5 signals/week; growing trends pull toward 1
+  const velocity_factor = sigmoid((last7dCount - 5) / 3);
+
+  // breadth_factor: shannon entropy of source_breakdown
+  const sourceCounts = {};
+  for (const sm of source_metrics) {
+    if (Number(sm.headline_metric || 0) > 0) {
+      sourceCounts[sm.source_name] = Number(sm.headline_metric || 1);
+    }
+  }
+  const breadth_factor = shannonEntropyNormalized(sourceCounts);
+
+  // external_factor: latest gtrends INTEREST_PEAK_PCT normalized to [0,1].
+  // Default 0.5 (neutral) when no gtrends data yet — never penalize for
+  // poller not having run yet.
+  const latestGt = gtrends_history[0];
+  const external_factor = latestGt && Number.isFinite(Number(latestGt.interest_peak_pct))
+    ? Math.min(1, Math.max(0, Number(latestGt.interest_peak_pct) / 100))
+    : 0.5;
+
+  // confidence: from FCT_TRENDS.CONFIDENCE (0-1)
+  const confidence = Number(metrics?.confidence || 0.5);
+
+  const heat_base =
+    20 * recency_factor +
+    25 * velocity_factor +
+    25 * breadth_factor +
+    20 * external_factor +
+    10 * confidence;
+
+  return {
+    heat_base: Math.round(heat_base * 10) / 10,
+    components: {
+      recency_factor: Math.round(recency_factor * 1000) / 1000,
+      velocity_factor: Math.round(velocity_factor * 1000) / 1000,
+      breadth_factor: Math.round(breadth_factor * 1000) / 1000,
+      external_factor: Math.round(external_factor * 1000) / 1000,
+      confidence: Math.round(confidence * 1000) / 1000,
+    },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Anthropic agent loop runtime (canonical: agents/lib/anthropic_loop.mjs)
+// ─────────────────────────────────────────────────────────────────────
+
+const MODEL = "claude-sonnet-4-6";
+const RATES_PER_M = { input: 3.0, output: 15.0 };
+const ANTHROPIC_VERSION = "2023-06-01";
+const BETA_HEADERS = "interleaved-thinking-2025-05-14";
+
+const LOOP_DEFAULTS = {
+  max_iterations: 8,
+  budget_usd: 0.06,
+  per_call_max_tokens: 3072,
+  thinking_budget_tokens: 1500,
+  temperature: 1.0,
+  request_timeout_ms: 120_000,
+};
+
+async function runAgentLoop({
+  anthropic, tool_names, system, user_message, context,
+  max_iterations = LOOP_DEFAULTS.max_iterations,
+  budget_usd = LOOP_DEFAULTS.budget_usd,
+  per_call_max_tokens = LOOP_DEFAULTS.per_call_max_tokens,
+  thinking_budget_tokens = LOOP_DEFAULTS.thinking_budget_tokens,
+}) {
+  if (!anthropic?.$auth?.api_key) throw new Error("anthropic app prop missing $auth.api_key");
+
+  const tools = getToolSchemas(tool_names);
+  const messages = [{
+    role: "user",
+    content: typeof user_message === "string" ? [{ type: "text", text: user_message }] : user_message,
+  }];
+
+  const tokens = { input: 0, output: 0, total: 0 };
+  const reasoning_trace = [];
+  const tool_calls = [];
+  let cost_usd = 0;
+  let final_text = "";
+  let stop_reason = "max_iterations";
+  let turn = 0;
+
+  while (turn < max_iterations) {
+    turn += 1;
+    if (cost_usd >= budget_usd) {
+      stop_reason = "budget_exhausted";
+      reasoning_trace.push({ turn, kind: "stop", reason: stop_reason, cost_usd });
+      break;
+    }
+
+    const reqBody = {
+      model: MODEL, max_tokens: per_call_max_tokens, system, messages, tools,
+      tool_choice: { type: "auto" }, temperature: LOOP_DEFAULTS.temperature,
+      thinking: { type: "enabled", budget_tokens: thinking_budget_tokens },
+    };
+
+    let resp;
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), LOOP_DEFAULTS.request_timeout_ms);
+      resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": anthropic.$auth.api_key,
+          "anthropic-version": ANTHROPIC_VERSION,
+          "anthropic-beta": BETA_HEADERS,
+        },
+        body: JSON.stringify(reqBody),
+        signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+    } catch (e) {
+      throw new Error(`Anthropic fetch failed (turn ${turn}): ${e.message}`);
+    }
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(`Anthropic HTTP ${resp.status} (turn ${turn}): ${errText.slice(0, 600)}`);
+    }
+
+    const data = await resp.json();
+    const usage = data.usage || {};
+    const tin = usage.input_tokens || 0;
+    const tout = usage.output_tokens || 0;
+    tokens.input += tin;
+    tokens.output += tout;
+    tokens.total = tokens.input + tokens.output;
+    cost_usd += (tin / 1_000_000) * RATES_PER_M.input + (tout / 1_000_000) * RATES_PER_M.output;
+
+    const content = Array.isArray(data.content) ? data.content : [];
+    for (const block of content) {
+      if (block.type === "thinking") {
+        reasoning_trace.push({ turn, kind: "thinking", text: block.thinking, signature: block.signature });
+      } else if (block.type === "text") {
+        reasoning_trace.push({ turn, kind: "text", text: block.text });
+        final_text = block.text;
+      } else if (block.type === "tool_use") {
+        reasoning_trace.push({ turn, kind: "tool_use", id: block.id, name: block.name, input: block.input });
+      }
+    }
+    messages.push({ role: "assistant", content });
+
+    if (data.stop_reason === "tool_use") {
+      const toolUses = content.filter((b) => b.type === "tool_use");
+      const toolResults = [];
+      const dispatched = await Promise.all(toolUses.map(async (tu) => {
+        const started = Date.now();
+        const out = await dispatchTool(tu.name, tu.input, context);
+        const duration_ms = Date.now() - started;
+        tool_calls.push({ turn, name: tu.name, input: tu.input, output: out, duration_ms });
+        return { id: tu.id, name: tu.name, output: out };
+      }));
+      for (const d of dispatched) {
+        toolResults.push({
+          type: "tool_result", tool_use_id: d.id,
+          content: typeof d.output === "string" ? d.output : JSON.stringify(d.output),
+          is_error: !!(d.output && d.output.error),
+        });
+      }
+      messages.push({ role: "user", content: toolResults });
+      continue;
+    }
+
+    stop_reason = data.stop_reason || "end_turn";
+    break;
+  }
+
+  return {
+    stop_reason, turns: turn, tokens,
+    cost_usd: Math.round(cost_usd * 10000) / 10000,
+    reasoning_trace, tool_calls, final_text, model: MODEL,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Step entrypoint
+// ─────────────────────────────────────────────────────────────────────
+
+const SYSTEM_PROMPT_KEY = "lifecycle.subagent.system";
+const RUBRIC_PROMPT_KEY = "lifecycle.subagent.decision_rubric";
+
+function parseVariant(v) {
+  if (v == null) return null;
+  if (typeof v === "object") return v;
+  if (typeof v === "string") {
+    try { return JSON.parse(v); } catch { return v; }
+  }
+  return v;
+}
+
+function fmtJson(obj) {
+  return JSON.stringify(obj, null, 2);
+}
+
+export default defineComponent({
+  props: {
+    anthropic: { type: "app", app: "anthropic" },
+    event: { type: "any" },
+    metrics_rows: { type: "any" },
+    source_metrics_rows: { type: "any", optional: true },
+    lifecycle_history_rows: { type: "any", optional: true },
+    narrative_history_rows: { type: "any", optional: true },
+    recent_signal_rows: { type: "any", optional: true },
+    gtrends_rows: { type: "any", optional: true },
+    neighbor_rows: { type: "any", optional: true },
+    prompts_rows: { type: "any" },
+  },
+  async run({ $ }) {
+    const ev = this.event || {};
+    const trend_id = ev.trend_id;
+    const started = Date.now();
+
+    const metricsRow = (this.metrics_rows || [])[0];
+    if (!metricsRow) {
+      throw new Error(`lifecycle: no FCT_TRENDS row for trend_id ${trend_id}`);
+    }
+
+    // Normalize prefetched data into context shape
+    const metrics = {
+      trend_id: metricsRow.TREND_ID,
+      trend_topic: metricsRow.TREND_TOPIC,
+      lifecycle_status: metricsRow.LIFECYCLE_STATUS,
+      total_cluster_size: metricsRow.TOTAL_CLUSTER_SIZE,
+      distinct_source_count: metricsRow.DISTINCT_SOURCE_COUNT,
+      confidence: metricsRow.CONFIDENCE,
+      specificity_score: metricsRow.SPECIFICITY_SCORE,
+      trend_heat_index: metricsRow.TREND_HEAT_INDEX,
+      trend_heat_index_smoothed: metricsRow.TREND_HEAT_INDEX_SMOOTHED,
+      promoted_at: metricsRow.PROMOTED_AT,
+      last_update_at: metricsRow.LAST_UPDATE_AT,
+      last_lifecycle_eval_at: metricsRow.LAST_LIFECYCLE_EVAL_AT,
+      trend_name_b2b: metricsRow.TREND_NAME_B2B,
+      trend_name_b2c: metricsRow.TREND_NAME_B2C,
+      category: metricsRow.CATEGORY,
+      subcategory: metricsRow.SUBCATEGORY,
+      summary_short: metricsRow.SUMMARY_SHORT,
+      summary_long: metricsRow.SUMMARY_LONG,
+      vibe_shift: metricsRow.VIBE_SHIFT,
+      enriched_at: metricsRow.ENRICHED_AT,
+      enrichment_version: metricsRow.ENRICHMENT_VERSION,
+    };
+
+    const source_metrics = (this.source_metrics_rows || []).map((r) => ({
+      source_name: r.SOURCE_NAME,
+      headline_metric: r.HEADLINE_METRIC,
+      headline_metric_name: r.HEADLINE_METRIC_NAME,
+      metrics: parseVariant(r.METRICS),
+      enriched_at: r.ENRICHED_AT,
+    }));
+
+    const lifecycle_history = (this.lifecycle_history_rows || []).map((r) => ({
+      evaluated_at: r.EVALUATED_AT,
+      prior_status: r.PRIOR_STATUS,
+      new_status: r.NEW_STATUS,
+      prior_heat: r.PRIOR_HEAT,
+      new_heat: r.NEW_HEAT,
+      heat_modifier_pct: r.HEAT_MODIFIER_PCT,
+      reasoning: r.REASONING,
+      retirement_proposal: parseVariant(r.RETIREMENT_PROPOSAL),
+      requested_re_enrichment: r.REQUESTED_RE_ENRICHMENT,
+    }));
+
+    const narrative_history = (this.narrative_history_rows || []).map((r) => ({
+      narrative_version: r.NARRATIVE_VERSION,
+      written_at: r.WRITTEN_AT,
+      written_by: r.WRITTEN_BY,
+      summary_short: r.SUMMARY_SHORT,
+      vibe_shift: r.VIBE_SHIFT,
+      change_reason: r.CHANGE_REASON,
+    }));
+
+    const recent_signals = (this.recent_signal_rows || []).map((r) => ({
+      signal_id: r.SIGNAL_ID,
+      source_name: r.SOURCE_NAME,
+      signal_timestamp: r.SIGNAL_TIMESTAMP,
+      signal_title: r.SIGNAL_TITLE,
+      signal_text: r.SIGNAL_TEXT,
+    }));
+
+    const gtrends_history = (this.gtrends_rows || []).map((r) => ({
+      pulled_at: r.PULLED_AT,
+      interest_peak_pct: r.INTEREST_PEAK_PCT,
+      interest_avg_pct: r.INTEREST_AVG_PCT,
+      related_queries: parseVariant(r.RELATED_QUERIES),
+    }));
+
+    const neighbor_pool = (this.neighbor_rows || []).map((r) => ({
+      trend_id: r.TREND_ID,
+      trend_topic: r.TREND_TOPIC,
+      lifecycle_status: r.LIFECYCLE_STATUS,
+      heat: r.HEAT,
+      last_update_at: r.LAST_UPDATE_AT,
+      trend_name_b2c: r.TREND_NAME_B2C,
+      category: r.CATEGORY,
+      subcategory: r.SUBCATEGORY,
+      summary_short: r.SUMMARY_SHORT,
+      similarity: Number(r.SIMILARITY || 0),
+    }));
+
+    // Compute heat baseline
+    const { heat_base, components } = computeHeatBase({
+      metrics, source_metrics, recent_signals, gtrends_history,
+    });
+
+    const context = {
+      neighbor_pool,
+      recent_signals,
+      lifecycle_history,
+      proposed_decision: null,
+      agent_session_id: ev.agent_session_id,
+      chain_id: ev.chain_id,
+    };
+
+    // Build context blocks for the system prompt
+    const trend_state_block = `TREND_ID: ${metrics.trend_id}
+TREND_TOPIC: ${metrics.trend_topic}
+TREND_NAME_B2B / B2C: ${metrics.trend_name_b2b || "(unenriched)"} / ${metrics.trend_name_b2c || "(unenriched)"}
+CATEGORY: ${metrics.category || "?"} / ${metrics.subcategory || "?"}
+CURRENT LIFECYCLE_STATUS: ${metrics.lifecycle_status}
+CURRENT HEAT (smoothed): ${metrics.trend_heat_index_smoothed ?? metrics.trend_heat_index}
+CURRENT HEAT (raw): ${metrics.trend_heat_index}
+PROMOTED_AT: ${metrics.promoted_at}
+LAST_UPDATE_AT: ${metrics.last_update_at}
+LAST_LIFECYCLE_EVAL_AT: ${metrics.last_lifecycle_eval_at || "(never)"}`;
+
+    const metrics_block = `Cluster size: ${metrics.total_cluster_size}
+Distinct source count: ${metrics.distinct_source_count}
+Confidence: ${metrics.confidence}
+Specificity score: ${metrics.specificity_score}`;
+
+    const lifecycle_history_block = lifecycle_history.length
+      ? lifecycle_history.map((h, i) =>
+          `${i + 1}. ${h.evaluated_at} — ${h.prior_status} → ${h.new_status} | heat ${h.prior_heat} → ${h.new_heat} ` +
+          `${h.retirement_proposal ? "[RETIREMENT_PROPOSED] " : ""}` +
+          `reason: ${(h.reasoning || "").slice(0, 200)}`
+        ).join("\n")
+      : "(no prior lifecycle evaluations)";
+
+    const narrative_history_block = narrative_history.length
+      ? narrative_history.map((n) =>
+          `v${n.narrative_version} (${n.written_at}, by ${n.written_by}): "${(n.summary_short || "").slice(0, 200)}" — ${n.change_reason || ""}`
+        ).join("\n")
+      : "(no narrative history yet)";
+
+    const recent_signals_block = recent_signals.length
+      ? recent_signals.slice(0, 20).map((s, i) =>
+          `${i + 1}. [${s.source_name}] ${s.signal_timestamp} — "${(s.signal_title || "").slice(0, 120)}"`
+        ).join("\n")
+      : "(no signals in last 14d)";
+
+    const gtrends_block = gtrends_history.length
+      ? gtrends_history.slice(0, 10).map((g) =>
+          `${g.pulled_at}: peak=${g.interest_peak_pct}, avg=${g.interest_avg_pct}`
+        ).join("\n")
+      : "(no GTrends data yet — gtrends-poller may not have run for this trend)";
+
+    const neighbor_block = neighbor_pool.length
+      ? neighbor_pool.slice(0, 10).map((n, i) =>
+          `${i + 1}. sim=${n.similarity.toFixed(2)} | ${n.lifecycle_status} | "${n.trend_name_b2c || n.trend_topic}" (heat ${n.heat})`
+        ).join("\n")
+      : "(no neighbors in pool)";
+
+    const heat_baseline_block = `heat_base = ${heat_base}
+components: ${fmtJson(components)}
+formula: 20*recency + 25*velocity + 25*breadth + 20*external + 10*confidence
+Your modifier window: [-20, 20] %`;
+
+    // Load + render prompts
+    const loaded = loadPrompts(this.prompts_rows);
+    const systemPrompt = mustGet(loaded, SYSTEM_PROMPT_KEY);
+    const rubric = mustGet(loaded, RUBRIC_PROMPT_KEY);
+
+    const renderedSystem = render(systemPrompt.template, {
+      decision_rubric: rubric.template,
+      trend_state_block,
+      metrics_block,
+      lifecycle_history_block,
+      narrative_history_block,
+      recent_signals_block,
+      gtrends_block,
+      neighbor_block,
+      heat_baseline_block,
+    });
+
+    const userMessage = `Evaluate trend ${trend_id}. Current status is ${metrics.lifecycle_status}. ` +
+      `Use the prefetched context to decide the new status, heat modifier, and any description update. ` +
+      `Call propose_lifecycle_decision exactly once with your final answer.`;
+
+    console.log(
+      `lcy-sub: trend=${trend_id} status=${metrics.lifecycle_status} heat_base=${heat_base} ` +
+      `prompt=${SYSTEM_PROMPT_KEY} v${systemPrompt.version}`
+    );
+
+    if (ev.dry_run) {
+      console.log("lcy-sub: dry_run=true — skipping LLM");
+      $.export("$summary", `${trend_id}: dry_run`);
+      return {
+        lifecycle_decision: null,
+        heat_base,
+        heat_components: components,
+        tokens: { input: 0, output: 0 },
+        cost_usd: 0,
+        turns: 0,
+        stop_reason: "dry_run",
+        skipped: "dry_run",
+      };
+    }
+
+    let result;
+    try {
+      result = await runAgentLoop({
+        anthropic: this.anthropic,
+        tool_names: ALL_TOOL_NAMES,
+        system: renderedSystem,
+        user_message: userMessage,
+        context,
+        max_iterations: ev.max_iterations || systemPrompt.params.max_iterations || LOOP_DEFAULTS.max_iterations,
+        budget_usd: ev.budget_usd || systemPrompt.params.budget_usd || LOOP_DEFAULTS.budget_usd,
+        per_call_max_tokens: systemPrompt.params.per_call_max_tokens || LOOP_DEFAULTS.per_call_max_tokens,
+        thinking_budget_tokens: systemPrompt.params.thinking_budget_tokens || LOOP_DEFAULTS.thinking_budget_tokens,
+      });
+    } catch (e) {
+      console.log(`lcy-sub loop error: ${e.message}`);
+      throw e;
+    }
+
+    const duration_ms = Date.now() - started;
+    const lifecycle_decision = context.proposed_decision;
+
+    if (!lifecycle_decision) {
+      console.log(`lcy-sub: agent did NOT call propose_lifecycle_decision (stop=${result.stop_reason}, turns=${result.turns})`);
+    }
+
+    console.log(
+      `lcy-sub done: trend=${trend_id} status_proposed=${lifecycle_decision?.status || "(none)"} ` +
+      `turns=${result.turns} cost=$${result.cost_usd.toFixed(4)} stop=${result.stop_reason} duration=${duration_ms}ms`
+    );
+    $.export(
+      "$summary",
+      `${result.turns} turns, $${result.cost_usd.toFixed(3)}, ${Math.round(duration_ms / 1000)}s` +
+      `${lifecycle_decision ? " → " + lifecycle_decision.status : " — no decision"}`
+    );
+
+    return {
+      lifecycle_decision,
+      heat_base,
+      heat_components: components,
+      trend_id,
+      chain_id: ev.chain_id,
+      agent_session_id: ev.agent_session_id,
+      tokens: result.tokens,
+      cost_usd: result.cost_usd,
+      turns: result.turns,
+      stop_reason: result.stop_reason,
+      reasoning_trace_size: result.reasoning_trace.length,
+      tool_call_count: result.tool_calls.length,
+      duration_ms,
+      model: result.model,
+    };
+  },
+});
