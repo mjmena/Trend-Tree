@@ -83,24 +83,62 @@ steps:
       authProvisionId: apn_yghdQYJ
     sql:
       value: |-
-        SELECT s.URL, s.TITLE, s.SIGNAL_NAME, s.DOMAIN, s.DETECTED_AT,
-               s.PAGERANK_SCORE, s.INGESTION_ID,
-               x.SIGNAL_TEXT AS ARTICLE_BODY, x.METADATA AS SIGNAL_METADATA,
-               x.SOURCE_NAME AS X_SOURCE_NAME
-        FROM MCC_PRESENTATION.TREND_AGENT.STG_TREND_SIGNALS s
-        LEFT JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS x ON x.SIGNAL_ID = s.URL
-        WHERE s.TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
-        ORDER BY s.PAGERANK_SCORE DESC NULLS LAST
+        WITH cand AS (
+          SELECT c.SUPPORTING_SIGNAL_IDS
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+            ON c.CANDIDATE_ID = t.CANDIDATE_ID
+                OR c.DEDUP_OF_TREND_ID = t.TREND_ID
+          WHERE t.TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
+        ),
+        sig_ids AS (
+          SELECT DISTINCT f.value::STRING AS sid
+          FROM cand, LATERAL FLATTEN(input => cand.SUPPORTING_SIGNAL_IDS) f
+        )
+        SELECT
+          x.URL,
+          x.SIGNAL_TITLE        AS TITLE,
+          x.SOURCE_NAME         AS SIGNAL_NAME,
+          COALESCE(SPLIT_PART(SPLIT_PART(x.URL, '://', 2), '/', 1), '?') AS DOMAIN,
+          x.SIGNAL_TIMESTAMP    AS DETECTED_AT,
+          NULL::FLOAT           AS PAGERANK_SCORE,
+          NULL                  AS INGESTION_ID,
+          x.SIGNAL_TEXT         AS ARTICLE_BODY,
+          x.METADATA            AS SIGNAL_METADATA,
+          x.SOURCE_NAME         AS X_SOURCE_NAME
+        FROM sig_ids
+        JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS x
+          ON x.SIGNAL_ID = sig_ids.sid OR x.LEGACY_SIGNAL_ID = sig_ids.sid
+        ORDER BY x.SIGNAL_TIMESTAMP DESC NULLS LAST
         LIMIT 10
       query: |-
-        SELECT s.URL, s.TITLE, s.SIGNAL_NAME, s.DOMAIN, s.DETECTED_AT,
-               s.PAGERANK_SCORE, s.INGESTION_ID,
-               x.SIGNAL_TEXT AS ARTICLE_BODY, x.METADATA AS SIGNAL_METADATA,
-               x.SOURCE_NAME AS X_SOURCE_NAME
-        FROM MCC_PRESENTATION.TREND_AGENT.STG_TREND_SIGNALS s
-        LEFT JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS x ON x.SIGNAL_ID = s.URL
-        WHERE s.TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
-        ORDER BY s.PAGERANK_SCORE DESC NULLS LAST
+        WITH cand AS (
+          SELECT c.SUPPORTING_SIGNAL_IDS
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+            ON c.CANDIDATE_ID = t.CANDIDATE_ID
+                OR c.DEDUP_OF_TREND_ID = t.TREND_ID
+          WHERE t.TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
+        ),
+        sig_ids AS (
+          SELECT DISTINCT f.value::STRING AS sid
+          FROM cand, LATERAL FLATTEN(input => cand.SUPPORTING_SIGNAL_IDS) f
+        )
+        SELECT
+          x.URL,
+          x.SIGNAL_TITLE        AS TITLE,
+          x.SOURCE_NAME         AS SIGNAL_NAME,
+          COALESCE(SPLIT_PART(SPLIT_PART(x.URL, '://', 2), '/', 1), '?') AS DOMAIN,
+          x.SIGNAL_TIMESTAMP    AS DETECTED_AT,
+          NULL::FLOAT           AS PAGERANK_SCORE,
+          NULL                  AS INGESTION_ID,
+          x.SIGNAL_TEXT         AS ARTICLE_BODY,
+          x.METADATA            AS SIGNAL_METADATA,
+          x.SOURCE_NAME         AS X_SOURCE_NAME
+        FROM sig_ids
+        JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS x
+          ON x.SIGNAL_ID = sig_ids.sid OR x.LEGACY_SIGNAL_ID = sig_ids.sid
+        ORDER BY x.SIGNAL_TIMESTAMP DESC NULLS LAST
         LIMIT 10
     params: []
 - namespace: q_source_metrics
