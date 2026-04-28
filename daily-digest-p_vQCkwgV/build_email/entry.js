@@ -1,6 +1,6 @@
 // Pipedream Workflow Step: Build Email
 //
-// Renders a light-themed HTML digest of NEW + GROWING trends from V_TREND_DASHBOARD
+// Renders a light-themed HTML digest of NEW + GROWING trends from DT_TREND_DASHBOARD
 // and returns { subject, html_body } for the downstream braze_send step.
 //
 // Layout (light):
@@ -78,7 +78,7 @@ const sourceRow = (sig) => {
 };
 
 const renderCard = (row) => {
-  // TREND_NAME is the B2C-first coalesced headline from V_TREND_DASHBOARD
+  // TREND_NAME is the B2C-first coalesced headline from DT_TREND_DASHBOARD
   // (COALESCE(B2C, B2B, topic)). B2B is shown as a muted subtitle when it
   // exists and differs from the headline.
   const headline = row.TREND_NAME ?? "(untitled trend)";
@@ -132,7 +132,7 @@ export default defineComponent({
   props: {
     dashboard_rows: {
       type: "any",
-      label: "V_TREND_DASHBOARD rows (NEW + GROWING)",
+      label: "DT_TREND_DASHBOARD rows (NEW + GROWING)",
     },
   },
   async run({ $ }) {
@@ -183,7 +183,7 @@ export default defineComponent({
     ${header}
     <div style="padding:32px 24px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;text-align:center;">
       <div style="font-size:15px;color:#4b5563;">No new or rising trends right now.</div>
-      <div style="font-size:12px;color:#9ca3af;margin-top:6px;">The digest will resume once fresh enrichment output lands in V_TREND_DASHBOARD.</div>
+      <div style="font-size:12px;color:#9ca3af;margin-top:6px;">The digest will resume once fresh enrichment output lands in DT_TREND_DASHBOARD.</div>
     </div>
   </div>
 </body></html>`;

@@ -13,8 +13,17 @@
 -- used to live in V_TREND_LIFECYCLE_CURRENT, V_TREND_ENRICHMENT_CURRENT,
 -- and V_TREND_AGGREGATES. The taxonomy join also inlined from V_TREND_TAXONOMY.
 --
+-- 2026-04-28 (STG_TREND_SIGNALS retirement): top_signals CTE now derives from
+-- the enrichment EVIDENCE pool (filtered to type IN news/commerce/social,
+-- first 5 in agent emit order) instead of reading the frozen STG_TREND_SIGNALS
+-- table by PageRank. EVIDENCE already includes the strongest pre-fetched
+-- cluster signals — the agent is instructed to tag them — so this is the
+-- same data through a different pipe. Stays inside MCC_PRESENTATION;
+-- no cross-DB grant on MCC_RAW needed.
+-- TOP_SIGNALS object shape: pagerank_score field removed; rest preserved.
+--
 -- Output column shape preserved for Steeple consumers (minus the two dropped
--- promotion-* columns).
+-- promotion-* columns and TOP_SIGNALS.pagerank_score).
 
 CREATE OR REPLACE DYNAMIC TABLE MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD
   TARGET_LAG = '15 minutes'
@@ -105,19 +114,27 @@ trend_aggregates AS (
     GROUP BY TARGET_TREND_ID
 ),
 top_signals AS (
+    -- First 5 EVIDENCE entries per trend with type IN news/commerce/social,
+    -- preserving the order the agent emitted them. Reference / search_volume /
+    -- video are excluded — those are background, not "what defined the cluster".
     SELECT TREND_ID,
            ARRAY_AGG(OBJECT_CONSTRUCT(
-               'title', TITLE,
-               'url', URL,
-               'source', SIGNAL_NAME,
-               'pagerank_score', ROUND(PAGERANK_SCORE, 3)
-           )) WITHIN GROUP (ORDER BY PAGERANK_SCORE DESC) AS TOP_SIGNALS
+               -- EVIDENCE entries from agent emit `claim` (their one-sentence summary of why
+               -- this URL is relevant), not raw `title`. Surface as `title` for backward
+               -- compatibility with the previous TOP_SIGNALS shape.
+               'title',  COALESCE(EV:title::STRING, EV:claim::STRING),
+               'url',    EV:url::STRING,
+               'source', EV:source::STRING
+           )) WITHIN GROUP (ORDER BY ORIG_IDX) AS TOP_SIGNALS
     FROM (
-        SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY PAGERANK_SCORE DESC) AS rn
-        FROM MCC_PRESENTATION.TREND_AGENT.STG_TREND_SIGNALS
-        WHERE PAGERANK_SCORE IS NOT NULL
+        SELECT le.TREND_ID,
+               f.index AS ORIG_IDX,
+               f.value AS EV,
+               ROW_NUMBER() OVER (PARTITION BY le.TREND_ID ORDER BY f.index) AS RN
+        FROM latest_enrichment le, LATERAL FLATTEN(input => le.EVIDENCE, OUTER => TRUE) f
+        WHERE COALESCE(f.value:type::STRING, f.value:source_type::STRING) IN ('news', 'commerce', 'social')
     )
-    WHERE rn <= 5
+    WHERE RN <= 5
     GROUP BY TREND_ID
 ),
 macro_tags AS (

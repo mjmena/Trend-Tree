@@ -6,7 +6,7 @@
 // `dead_signals` to each dashboard row.
 //
 // Pseudo-URLs (non-http(s) strings — e.g. Amazon aggregated SIGNAL_IDs that
-// leaked into STG_TREND_SIGNALS.URL) are filtered BEFORE the HTTP check and
+// leak into STG_EXTERNAL_SIGNALS.URL) are filtered BEFORE the HTTP check and
 // recorded as dead with reason "pseudo_url", so we never render them as
 // <a href> in the email and they're treated as needing replacement.
 
@@ -148,7 +148,6 @@ export default defineComponent({
         url: norm,
         source: s.SOURCE || "",
         domain: s.DOMAIN || "",
-        pagerank_score: s.PAGERANK_SCORE ?? null,
       });
     }
 
@@ -187,7 +186,6 @@ export default defineComponent({
               url: sig.url,
               source: sig.source,
               domain: sig.domain,
-              pagerank_score: sig.pagerank_score,
               final_url: result.final_url,
               http_status: result.http_status,
             });

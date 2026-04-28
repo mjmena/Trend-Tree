@@ -293,22 +293,50 @@ steps:
         WITH neighbor_set AS (
           SELECT DISTINCT f.value:NEIGHBOR_TREND_ID::STRING AS TREND_ID
           FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) f
+        ),
+        neighbor_signals AS (
+          SELECT t.TREND_ID,
+                 es.SIGNAL_TITLE,
+                 es.URL,
+                 PARSE_URL(es.URL):host::STRING AS DOMAIN,
+                 es.SIGNAL_TIMESTAMP AS DETECTED_AT
+          FROM neighbor_set n
+          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t ON t.TREND_ID = n.TREND_ID
+          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+            ON c.CANDIDATE_ID = t.CANDIDATE_ID OR c.DEDUP_OF_TREND_ID = t.TREND_ID
+          ,LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+          JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS es
+            ON es.SIGNAL_ID = f.value::STRING OR es.LEGACY_SIGNAL_ID = f.value::STRING
+          WHERE es.SIGNAL_TITLE IS NOT NULL
         )
-        SELECT s.TREND_ID, s.SIGNAL_NAME AS SIGNAL_TITLE, s.URL, s.DOMAIN, s.DETECTED_AT
-        FROM MCC_PRESENTATION.TREND_AGENT.STG_TREND_SIGNALS s
-        JOIN neighbor_set n ON s.TREND_ID = n.TREND_ID
-        QUALIFY ROW_NUMBER() OVER (PARTITION BY s.TREND_ID ORDER BY s.DETECTED_AT DESC NULLS LAST) <= 3
-        ORDER BY s.TREND_ID, s.DETECTED_AT DESC
+        SELECT TREND_ID, SIGNAL_TITLE, URL, DOMAIN, DETECTED_AT
+        FROM neighbor_signals
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY DETECTED_AT DESC NULLS LAST) <= 3
+        ORDER BY TREND_ID, DETECTED_AT DESC
       query: |-
         WITH neighbor_set AS (
           SELECT DISTINCT f.value:NEIGHBOR_TREND_ID::STRING AS TREND_ID
           FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) f
+        ),
+        neighbor_signals AS (
+          SELECT t.TREND_ID,
+                 es.SIGNAL_TITLE,
+                 es.URL,
+                 PARSE_URL(es.URL):host::STRING AS DOMAIN,
+                 es.SIGNAL_TIMESTAMP AS DETECTED_AT
+          FROM neighbor_set n
+          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t ON t.TREND_ID = n.TREND_ID
+          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+            ON c.CANDIDATE_ID = t.CANDIDATE_ID OR c.DEDUP_OF_TREND_ID = t.TREND_ID
+          ,LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+          JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS es
+            ON es.SIGNAL_ID = f.value::STRING OR es.LEGACY_SIGNAL_ID = f.value::STRING
+          WHERE es.SIGNAL_TITLE IS NOT NULL
         )
-        SELECT s.TREND_ID, s.SIGNAL_NAME AS SIGNAL_TITLE, s.URL, s.DOMAIN, s.DETECTED_AT
-        FROM MCC_PRESENTATION.TREND_AGENT.STG_TREND_SIGNALS s
-        JOIN neighbor_set n ON s.TREND_ID = n.TREND_ID
-        QUALIFY ROW_NUMBER() OVER (PARTITION BY s.TREND_ID ORDER BY s.DETECTED_AT DESC NULLS LAST) <= 3
-        ORDER BY s.TREND_ID, s.DETECTED_AT DESC
+        SELECT TREND_ID, SIGNAL_TITLE, URL, DOMAIN, DETECTED_AT
+        FROM neighbor_signals
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY DETECTED_AT DESC NULLS LAST) <= 3
+        ORDER BY TREND_ID, DETECTED_AT DESC
       params:
       - "{{steps.serialize_neighbor_pool.$return_value.neighbor_pool_json}}"
 - namespace: q_compute_intra_batch_pairs
