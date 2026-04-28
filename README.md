@@ -17,8 +17,6 @@ A multi-agent system that watches the public consumer-culture firehose — news,
   │  there?      │    │ trends?     │    │ really?     │    │ alive?       │
   │              │    │             │    │             │    │              │
   └──────────────┘    └─────────────┘    └─────────────┘    └──────────────┘
-        ✅                  ✅                  ✅                  ✅
-      Apr 26             Apr 25             Apr 27           Apr 28 (today)
 ```
 
 Each layer is one or more LLM agents (Sonnet 4.6 + supporting models) deciding things, not pipelines moving rows. The decisions chain: discovery emits hypotheses, distillation accepts the worthy ones, promotion turns accepted candidates into named trends, enrichment writes the canonical narrative, lifecycle re-evaluates the portfolio every hour.
