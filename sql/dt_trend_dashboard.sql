@@ -108,8 +108,9 @@ related_trends AS (
      AND a.TREND_ID != b.TREND_ID
     GROUP BY a.TREND_ID
 ),
-unioned_trends AS (
-    -- Agent-promoted trends (canonical going forward)
+trend_base AS (
+    -- Sourced from FCT_TRENDS only. Legacy FCT_TREND_METRICS union removed
+    -- 2026-04-28 to test dashboard scoped exclusively to agent-promoted trends.
     SELECT
         t.TREND_ID,
         t.TREND_TOPIC,
@@ -128,34 +129,10 @@ unioned_trends AS (
     LEFT JOIN latest_lifecycle    lc  ON lc.TREND_ID  = t.TREND_ID
     LEFT JOIN trend_aggregates    agg ON agg.TREND_ID = t.TREND_ID
     LEFT JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c ON c.CANDIDATE_ID = t.CANDIDATE_ID
-
-    UNION ALL
-
-    -- Legacy SQL-clustered trends (FCT_TREND_METRICS)
-    SELECT
-        m.TREND_ID,
-        m.TREND_TOPIC,
-        m.TOTAL_CLUSTER_SIZE,
-        m.DISTINCT_SOURCE_COUNT,
-        CASE m.VELOCITY_DIRECTION
-          WHEN 'STAGNANT'   THEN 'DORMANT'
-          WHEN 'SUPERSEDED' THEN 'RETIRED'
-          ELSE m.VELOCITY_DIRECTION
-        END                                       AS LIFECYCLE_STATUS,
-        m.TREND_HEAT_INDEX,
-        m.DETECTED_AT,
-        m.LAST_UPDATE_AT,
-        NULL                                      AS PROMOTION_CONFIDENCE,
-        NULL                                      AS PROMOTION_SPECIFICITY,
-        NULL::TIMESTAMP_NTZ                       AS LAST_LIFECYCLE_EVAL_AT,
-        NULL                                      AS RETIREMENT_REASON,
-        'fct_trend_metrics'                       AS TREND_SOURCE
-    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
-    WHERE m.TREND_ID NOT IN (SELECT TREND_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS)
 )
 SELECT
-    u.TREND_ID,
-    COALESCE(t.TREND_NAME_B2C, t.TREND_NAME_B2B, e.TREND_NAME_B2C, e.TREND_NAME_B2B, u.TREND_TOPIC) AS TREND_NAME,
+    tb.TREND_ID,
+    COALESCE(t.TREND_NAME_B2C, t.TREND_NAME_B2B, e.TREND_NAME_B2C, e.TREND_NAME_B2B, tb.TREND_TOPIC) AS TREND_NAME,
     COALESCE(t.TREND_NAME_B2B, e.TREND_NAME_B2B)                          AS TREND_NAME_B2B,
     COALESCE(t.CATEGORY,       e.CATEGORY)                                AS CATEGORY,
     COALESCE(t.SUBCATEGORY,    e.SUBCATEGORY)                             AS SUBCATEGORY,
@@ -163,17 +140,17 @@ SELECT
     e.LOW_CONFIDENCE_FLAG,
     e.SUMMARY_SHORT,
     e.SUMMARY_LONG,
-    ROUND(COALESCE(u.TREND_HEAT_INDEX, 0), 1)                             AS HEAT_INDEX,
-    u.TOTAL_CLUSTER_SIZE,
-    u.DISTINCT_SOURCE_COUNT,
-    u.LIFECYCLE_STATUS,
-    u.LIFECYCLE_STATUS                                                    AS VELOCITY_DIRECTION,
-    u.LAST_LIFECYCLE_EVAL_AT,
-    u.RETIREMENT_REASON,
-    u.PROMOTION_CONFIDENCE,
-    u.PROMOTION_SPECIFICITY,
-    u.TREND_SOURCE,
-    COALESCE(e.ORIGINALLY_SURFACED_AT, u.DETECTED_AT)                     AS ORIGINALLY_SURFACED_AT,
+    ROUND(COALESCE(tb.TREND_HEAT_INDEX, 0), 1)                            AS HEAT_INDEX,
+    tb.TOTAL_CLUSTER_SIZE,
+    tb.DISTINCT_SOURCE_COUNT,
+    tb.LIFECYCLE_STATUS,
+    tb.LIFECYCLE_STATUS                                                    AS VELOCITY_DIRECTION,
+    tb.LAST_LIFECYCLE_EVAL_AT,
+    tb.RETIREMENT_REASON,
+    tb.PROMOTION_CONFIDENCE,
+    tb.PROMOTION_SPECIFICITY,
+    tb.TREND_SOURCE,
+    COALESCE(e.ORIGINALLY_SURFACED_AT, tb.DETECTED_AT)                     AS ORIGINALLY_SURFACED_AT,
 
     (SELECT ARRAY_AGG(
          OBJECT_CONSTRUCT(
@@ -182,7 +159,7 @@ SELECT
              'metric_value', sm.HEADLINE_METRIC
          )
      ) FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCE_METRICS sm
-       WHERE sm.TREND_ID = u.TREND_ID
+       WHERE sm.TREND_ID = tb.TREND_ID
          AND sm.HEADLINE_METRIC IS NOT NULL
          AND sm.HEADLINE_METRIC > 0
     )                                                                     AS KEY_DATA_POINTS,
@@ -204,9 +181,9 @@ SELECT
     r.RELATED_TRENDS,
     e.ENRICHED_AT
 
-FROM unioned_trends u
-LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t  ON u.TREND_ID = t.TREND_ID  AND u.TREND_SOURCE = 'fct_trends'
-LEFT JOIN latest_enrichment e                         ON u.TREND_ID = e.TREND_ID
-LEFT JOIN top_signals ts                              ON u.TREND_ID = ts.TREND_ID
-LEFT JOIN macro_tags mt                               ON u.TREND_ID = mt.TREND_ID
-LEFT JOIN related_trends r                            ON u.TREND_ID = r.TREND_ID;
+FROM trend_base tb
+LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t  ON tb.TREND_ID = t.TREND_ID
+LEFT JOIN latest_enrichment e                         ON tb.TREND_ID = e.TREND_ID
+LEFT JOIN top_signals ts                              ON tb.TREND_ID = ts.TREND_ID
+LEFT JOIN macro_tags mt                               ON tb.TREND_ID = mt.TREND_ID
+LEFT JOIN related_trends r                            ON tb.TREND_ID = r.TREND_ID;
