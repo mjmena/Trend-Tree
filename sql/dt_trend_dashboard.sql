@@ -39,6 +39,13 @@ latest_enrichment AS (
            r.PAYLOAD:seasonal_relevance           AS SEASONAL_RELEVANCE,
            r.PAYLOAD:geographic_hotspots          AS GEOGRAPHIC_HOTSPOTS,
            COALESCE(r.PAYLOAD:evidence, r.PAYLOAD:social_proof) AS EVIDENCE,
+           -- Legacy columns kept for front-end backward compat during cutover.
+           -- Steeple consumers read these column names directly. EVIDENCE supersedes
+           -- SOCIAL_PROOF + VOICE_OF_CUSTOMER going forward; remove these once
+           -- consumers have migrated to filter the typed pool by `type`.
+           r.PAYLOAD:social_proof                 AS SOCIAL_PROOF,
+           r.PAYLOAD:voice_of_customer            AS VOICE_OF_CUSTOMER,
+           r.PAYLOAD:vibe_shift::STRING           AS VIBE_SHIFT,
            r.PAYLOAD:name_candidates_considered   AS NAME_CANDIDATES_CONSIDERED,
            r.PAYLOAD:name_reviewer                AS NAME_REVIEWER,
            r.PAYLOAD:originally_surfaced_at::TIMESTAMP_NTZ AS ORIGINALLY_SURFACED_AT
@@ -185,6 +192,11 @@ SELECT
     e.SEASONAL_RELEVANCE,
     e.GEOGRAPHIC_HOTSPOTS,
     e.EVIDENCE,
+    -- Legacy columns for front-end backward compat. Remove once consumers
+    -- have migrated to EVIDENCE (filter by type for proof / VoC / etc.).
+    e.SOCIAL_PROOF,
+    e.VOICE_OF_CUSTOMER,
+    e.VIBE_SHIFT,
     e.NAME_CANDIDATES_CONSIDERED,
     e.NAME_REVIEWER,
     ts.TOP_SIGNALS,

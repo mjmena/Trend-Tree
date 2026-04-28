@@ -30,6 +30,10 @@ WITH latest_enrichment AS (
          r.PAYLOAD:seasonal_relevance AS SEASONAL_RELEVANCE,
          r.PAYLOAD:geographic_hotspots AS GEOGRAPHIC_HOTSPOTS,
          COALESCE(r.PAYLOAD:evidence, r.PAYLOAD:social_proof) AS EVIDENCE,
+         -- Legacy columns kept for front-end backward compat during cutover.
+         r.PAYLOAD:social_proof       AS SOCIAL_PROOF,
+         r.PAYLOAD:voice_of_customer  AS VOICE_OF_CUSTOMER,
+         r.PAYLOAD:vibe_shift::STRING AS VIBE_SHIFT,
          r.PAYLOAD:name_candidates_considered AS NAME_CANDIDATES_CONSIDERED,
          r.PAYLOAD:name_reviewer      AS NAME_REVIEWER,
          r.PAYLOAD:agent_telemetry    AS AGENT_TELEMETRY,
@@ -116,6 +120,12 @@ SELECT
 
     -- Typed link pool (filter by type for news/social/commerce/etc.)
     d.EVIDENCE,
+
+    -- Legacy columns for front-end backward compat. Remove once consumers
+    -- have migrated to EVIDENCE (filter by type for proof / VoC / etc.).
+    d.SOCIAL_PROOF,
+    d.VOICE_OF_CUSTOMER,
+    d.VIBE_SHIFT,
 
     -- Top 5 signals by PageRank
     ts.TOP_SIGNALS,
