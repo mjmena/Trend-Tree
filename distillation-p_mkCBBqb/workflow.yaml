@@ -186,11 +186,65 @@ steps:
       authProvisionId: apn_yghdQYJ
     sql:
       value: |-
-        SELECT TREND_NAME_B2B, TREND_NAME_B2C, CATEGORY, SUBCATEGORY, SUMMARY_SHORT, TREND_HEAT_INDEX
-        FROM MCC_PRESENTATION.TREND_AGENT.V_VALUABLE_TREND_EXAMPLES
+        WITH latest_lifecycle AS (
+          SELECT TREND_ID,
+                 NEW_STATUS         AS LIFECYCLE_STATUS,
+                 NEW_HEAT_SMOOTHED  AS HEAT_SMOOTHED,
+                 NEW_HEAT           AS HEAT
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          ) WHERE rn = 1
+        ),
+        latest_enrichment AS (
+          SELECT TREND_ID,
+                 PAYLOAD:summary_short::STRING  AS SUMMARY_SHORT
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+          ) WHERE rn = 1
+        )
+        SELECT t.TREND_NAME_B2B, t.TREND_NAME_B2C, t.CATEGORY, t.SUBCATEGORY,
+               e.SUMMARY_SHORT,
+               COALESCE(lc.HEAT_SMOOTHED, lc.HEAT, 0) AS TREND_HEAT_INDEX
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+        JOIN latest_enrichment e ON e.TREND_ID = t.TREND_ID
+        LEFT JOIN latest_lifecycle lc ON lc.TREND_ID = t.TREND_ID
+        WHERE t.TREND_NAME_B2B IS NOT NULL
+          AND COALESCE(lc.LIFECYCLE_STATUS, 'NEW') != 'RETIRED'
+          AND t.LAST_UPDATE_AT > DATEADD(day, -30, CURRENT_TIMESTAMP())
+        ORDER BY TREND_HEAT_INDEX DESC NULLS LAST
+        LIMIT 20
       query: |-
-        SELECT TREND_NAME_B2B, TREND_NAME_B2C, CATEGORY, SUBCATEGORY, SUMMARY_SHORT, TREND_HEAT_INDEX
-        FROM MCC_PRESENTATION.TREND_AGENT.V_VALUABLE_TREND_EXAMPLES
+        WITH latest_lifecycle AS (
+          SELECT TREND_ID,
+                 NEW_STATUS         AS LIFECYCLE_STATUS,
+                 NEW_HEAT_SMOOTHED  AS HEAT_SMOOTHED,
+                 NEW_HEAT           AS HEAT
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          ) WHERE rn = 1
+        ),
+        latest_enrichment AS (
+          SELECT TREND_ID,
+                 PAYLOAD:summary_short::STRING  AS SUMMARY_SHORT
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+          ) WHERE rn = 1
+        )
+        SELECT t.TREND_NAME_B2B, t.TREND_NAME_B2C, t.CATEGORY, t.SUBCATEGORY,
+               e.SUMMARY_SHORT,
+               COALESCE(lc.HEAT_SMOOTHED, lc.HEAT, 0) AS TREND_HEAT_INDEX
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+        JOIN latest_enrichment e ON e.TREND_ID = t.TREND_ID
+        LEFT JOIN latest_lifecycle lc ON lc.TREND_ID = t.TREND_ID
+        WHERE t.TREND_NAME_B2B IS NOT NULL
+          AND COALESCE(lc.LIFECYCLE_STATUS, 'NEW') != 'RETIRED'
+          AND t.LAST_UPDATE_AT > DATEADD(day, -30, CURRENT_TIMESTAMP())
+        ORDER BY TREND_HEAT_INDEX DESC NULLS LAST
+        LIMIT 20
       params: []
 - namespace: run_lead_agent
   runtime: nodejs20.x
