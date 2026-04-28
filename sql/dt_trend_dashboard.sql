@@ -31,7 +31,10 @@ latest_enrichment AS (
            (r.PAYLOAD:category_confidence::FLOAT < 0.6) AS LOW_CONFIDENCE_FLAG,
            r.PAYLOAD:summary_short::STRING        AS SUMMARY_SHORT,
            r.PAYLOAD:summary_long::STRING         AS SUMMARY_LONG,
-           COALESCE(r.PAYLOAD:social_narrative, r.PAYLOAD:social_narrative_v2) AS SOCIAL_NARRATIVE,
+           -- New records emit `social_narrative` as the structured array.
+           -- Legacy records emit `social_narrative_v2` as the array and put a string preview in `social_narrative`.
+           -- Prefer v2 first to keep the array shape consistent across both eras.
+           COALESCE(r.PAYLOAD:social_narrative_v2, r.PAYLOAD:social_narrative) AS SOCIAL_NARRATIVE,
            r.PAYLOAD:cultural_drivers             AS CULTURAL_DRIVERS,
            r.PAYLOAD:seasonal_relevance           AS SEASONAL_RELEVANCE,
            r.PAYLOAD:geographic_hotspots          AS GEOGRAPHIC_HOTSPOTS,
