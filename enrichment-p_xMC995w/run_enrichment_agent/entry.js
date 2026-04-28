@@ -306,12 +306,12 @@ const EAGER_TOOL_NAMES = [
 ];
 
 const DEFERRED_BY_NEED = {
-  social: ["ingest_search_bluesky"],
+  social: ["ingest_search_bluesky", "ingest_grok_live_search"],
   web: ["ingest_grok_live_search", "ingest_search_google_trends"],
-  search: ["ingest_search_gdelt", "ingest_grok_live_search", "ingest_search_google_trends"],
+  search: ["ingest_grok_live_search", "ingest_search_google_trends"],
   cultural: ["ingest_search_bluesky", "ingest_grok_live_search"],
-  competitive: ["ingest_grok_live_search", "ingest_search_gdelt"],
-  all: ["ingest_search_bluesky", "ingest_search_gdelt", "ingest_search_google_trends", "ingest_grok_live_search"],
+  competitive: ["ingest_grok_live_search"],
+  all: ["ingest_search_bluesky", "ingest_search_google_trends", "ingest_grok_live_search"],
 };
 
 function getToolSchemas(names) {
@@ -485,11 +485,16 @@ async function ingestGrokLive(input, ctx) {
 }
 
 function proposeEnrichment(input, ctx) {
-  // Single-shot accumulator: latest call wins (the agent's "final answer").
-  ctx.proposed_enrichment = { ...input, emitted_at: new Date().toISOString() };
+  const seenUrls = new Set();
+  const deduped = (input.social_proof || []).filter(item => {
+    if (!item.source_url || seenUrls.has(item.source_url)) return false;
+    seenUrls.add(item.source_url);
+    return true;
+  });
+  ctx.proposed_enrichment = { ...input, social_proof: deduped, emitted_at: new Date().toISOString() };
   return {
     accepted: true,
-    note: "Enrichment record captured. The workflow's terminal step will persist it.",
+    note: `Enrichment record captured. social_proof: ${input.social_proof?.length ?? 0} → ${deduped.length} items after dedup.`,
   };
 }
 
