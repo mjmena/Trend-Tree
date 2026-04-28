@@ -321,7 +321,7 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                         DETECTED_AT, LAST_UPDATE_AT, PROMOTED_AT, NEXT_LIFECYCLE_EVAL_AT,
                         TOTAL_CLUSTER_SIZE, DISTINCT_SOURCE_COUNT,
                         CONFIDENCE, SPECIFICITY_SCORE, LIFECYCLE_STATUS,
-                        TREND_HEAT_INDEX, TREND_VECTOR
+                        TREND_HEAT_INDEX, TREND_VECTOR, GTRENDS_KEYWORD
                     )
                     SELECT
                         UUID_STRING(),
@@ -357,7 +357,16 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                                 'snowflake-arctic-embed-l-v2.0',
                                 COALESCE({sql_str(topic)}, c.TOPIC)
                             )
-                        )
+                        ),
+                        -- Search keyword for the gtrends-poller. Long
+                        -- descriptive topics ("Multi-type collagen peptide
+                        -- powder stacking for women's beauty and joints")
+                        -- return empty Google Trends data; we derive a
+                        -- 2-4 word search query that real consumers type.
+                        TRIM(SNOWFLAKE.CORTEX.COMPLETE(
+                            'mistral-large2',
+                            'You convert long marketing trend descriptions into short Google Trends search queries. Output a 2 to 4 word query that real consumers would type into Google when researching this trend. Use simple common terms, not jargon. Output ONLY the query as plain text, no quotes, no explanation, no preamble.\n\nTrend topic: ' || COALESCE({sql_str(topic)}, c.TOPIC) || '\n\nSearch query:'
+                        ), ' "''\n\r\t')
                     FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
                     WHERE c.CANDIDATE_ID = {sql_str(cid)}
                 """).collect()

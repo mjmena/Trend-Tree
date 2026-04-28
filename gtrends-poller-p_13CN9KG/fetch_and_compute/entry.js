@@ -106,9 +106,10 @@ async function pollOneTrend(trend, geo, timeframe) {
     console.log(`gtrends-poller: cookie warmup failed for ${trend.trend_id}: ${e.message}`);
   }
 
-  // Truncate keyword to 100 chars (existing tool's limit) — long topics
-  // can break GTrends Explore.
-  const keyword = String(trend.trend_topic || "").trim().slice(0, 100);
+  // Use the LLM-derived search keyword (2-4 words). Truncate to 100 chars
+  // as a defensive cap — GTrends rejects very long queries. Falls back to
+  // trend_topic for any unkeyworded legacy rows.
+  const keyword = String(trend.search_keyword || trend.trend_topic || "").trim().slice(0, 100);
   if (!keyword) {
     return { trend_id: trend.trend_id, error: "empty keyword" };
   }
@@ -164,6 +165,10 @@ export default defineComponent({
     const allTrends = (this.trend_rows || []).map((r) => ({
       trend_id: r.TREND_ID,
       trend_topic: r.TREND_TOPIC,
+      // SEARCH_KEYWORD is the LLM-derived short query (2-4 words) that
+      // produces actual GTrends data. Falls back to TREND_TOPIC for any
+      // pre-keyword row, but TOPIC strings rarely return useful data.
+      search_keyword: r.SEARCH_KEYWORD || r.TREND_TOPIC,
     }));
 
     // Apply optional filter from the trigger body
