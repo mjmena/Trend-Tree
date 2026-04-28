@@ -1,6 +1,6 @@
 // Lifecycle Subagent — run_subagent
 //
-// Single Sonnet 4.6 agent loop. Purely evaluative — no live HTTP tools.
+// Single Gemini 3.1 Pro agent loop. Purely evaluative — no live HTTP tools.
 // Reads pre-fetched Snowflake context (trend metrics, source metrics,
 // lifecycle history, narrative history, recent signals via flatten-join,
 // gtrends history, vector neighbors), computes heat_base in SQL-equivalent
@@ -11,9 +11,9 @@
 //
 // =====================================================================
 // Helper code below is INLINED. Pipedream packages each step as a single
-// self-contained file — cross-file imports fail at deploy. Canonical
-// agent-loop code lives at agents/lib/anthropic_loop.mjs / prompt_loader.mjs;
-// keep edits in sync if you have a parallel enrichment change.
+// self-contained file — cross-file imports fail at deploy. Cross-workflow
+// shared libs don't bundle either, so any parallel agent (promotion,
+// distillation, enrichment) carries its own copy of this loop.
 // =====================================================================
 
 // ─────────────────────────────────────────────────────────────────────
@@ -272,36 +272,49 @@ function computeHeatBase({ metrics, source_metrics, recent_signals, gtrends_hist
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Anthropic agent loop runtime (canonical: agents/lib/anthropic_loop.mjs)
+// Gemini 3.1 Pro agent loop runtime
+// Reference: discovery-p_5VCPP3N/discover_gemini/entry.js (single-shot
+// generateContent). This extends the same auth + URL pattern with a
+// function-calling tool loop and round-tripped thought signatures.
 // ─────────────────────────────────────────────────────────────────────
 
-const MODEL = "claude-sonnet-4-6";
-const RATES_PER_M = { input: 3.0, output: 15.0 };
-const ANTHROPIC_VERSION = "2023-06-01";
-const BETA_HEADERS = "interleaved-thinking-2025-05-14";
+const MODEL = "gemini-3.1-pro-preview";
+const RATES_PER_M = { input: 2.0, output: 12.0 };  // sub-200k context tier
 
 const LOOP_DEFAULTS = {
   max_iterations: 8,
   budget_usd: 0.06,
   per_call_max_tokens: 3072,
-  thinking_budget_tokens: 1500,
+  thinking_level: "medium",
   temperature: 1.0,
   request_timeout_ms: 120_000,
 };
 
+// Translate the shared TOOL_SCHEMAS (Anthropic-shaped: input_schema) into
+// Gemini's functionDeclarations shape (parameters). The JSON Schema body
+// itself is compatible — only the wrapper field name differs.
+function toFunctionDeclarations(toolNames) {
+  return toolNames.map((n) => {
+    const s = TOOL_SCHEMAS[n];
+    if (!s) throw new Error(`Unknown tool: ${n}`);
+    return { name: s.name, description: s.description, parameters: s.input_schema };
+  });
+}
+
 async function runAgentLoop({
-  anthropic, tool_names, system, user_message, context,
+  google_gemini, tool_names, system, user_message, context,
   max_iterations = LOOP_DEFAULTS.max_iterations,
   budget_usd = LOOP_DEFAULTS.budget_usd,
   per_call_max_tokens = LOOP_DEFAULTS.per_call_max_tokens,
-  thinking_budget_tokens = LOOP_DEFAULTS.thinking_budget_tokens,
+  thinking_level = LOOP_DEFAULTS.thinking_level,
 }) {
-  if (!anthropic?.$auth?.api_key) throw new Error("anthropic app prop missing $auth.api_key");
+  if (!google_gemini?.$auth?.api_key) throw new Error("google_gemini app prop missing $auth.api_key");
+  const apiKey = google_gemini.$auth.api_key;
 
-  const tools = getToolSchemas(tool_names);
-  const messages = [{
+  const tools = [{ functionDeclarations: toFunctionDeclarations(tool_names) }];
+  const contents = [{
     role: "user",
-    content: typeof user_message === "string" ? [{ type: "text", text: user_message }] : user_message,
+    parts: typeof user_message === "string" ? [{ text: user_message }] : user_message,
   }];
 
   const tokens = { input: 0, output: 0, total: 0 };
@@ -321,81 +334,101 @@ async function runAgentLoop({
     }
 
     const reqBody = {
-      model: MODEL, max_tokens: per_call_max_tokens, system, messages, tools,
-      tool_choice: { type: "auto" }, temperature: LOOP_DEFAULTS.temperature,
-      thinking: { type: "enabled", budget_tokens: thinking_budget_tokens },
+      systemInstruction: { parts: [{ text: system }] },
+      contents,
+      tools,
+      toolConfig: { functionCallingConfig: { mode: "AUTO" } },
+      generationConfig: {
+        temperature: LOOP_DEFAULTS.temperature,
+        maxOutputTokens: per_call_max_tokens,
+        thinkingConfig: { thinkingLevel: thinking_level },
+      },
     };
 
     let resp;
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), LOOP_DEFAULTS.request_timeout_ms);
-      resp = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": anthropic.$auth.api_key,
-          "anthropic-version": ANTHROPIC_VERSION,
-          "anthropic-beta": BETA_HEADERS,
+      resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(reqBody),
+          signal: ctrl.signal,
         },
-        body: JSON.stringify(reqBody),
-        signal: ctrl.signal,
-      });
+      );
       clearTimeout(timer);
     } catch (e) {
-      throw new Error(`Anthropic fetch failed (turn ${turn}): ${e.message}`);
+      throw new Error(`Gemini fetch failed (turn ${turn}): ${e.message}`);
     }
 
     if (!resp.ok) {
       const errText = await resp.text();
-      throw new Error(`Anthropic HTTP ${resp.status} (turn ${turn}): ${errText.slice(0, 600)}`);
+      throw new Error(`Gemini HTTP ${resp.status} (turn ${turn}): ${errText.slice(0, 600)}`);
     }
 
     const data = await resp.json();
-    const usage = data.usage || {};
-    const tin = usage.input_tokens || 0;
-    const tout = usage.output_tokens || 0;
+    const usage = data.usageMetadata || {};
+    const tin = usage.promptTokenCount || 0;
+    // candidatesTokenCount on AI Studio's Gemini API already includes
+    // thinking tokens — do NOT add thoughtsTokenCount on top.
+    const tout = usage.candidatesTokenCount || 0;
     tokens.input += tin;
     tokens.output += tout;
     tokens.total = tokens.input + tokens.output;
     cost_usd += (tin / 1_000_000) * RATES_PER_M.input + (tout / 1_000_000) * RATES_PER_M.output;
 
-    const content = Array.isArray(data.content) ? data.content : [];
-    for (const block of content) {
-      if (block.type === "thinking") {
-        reasoning_trace.push({ turn, kind: "thinking", text: block.thinking, signature: block.signature });
-      } else if (block.type === "text") {
-        reasoning_trace.push({ turn, kind: "text", text: block.text });
-        final_text = block.text;
-      } else if (block.type === "tool_use") {
-        reasoning_trace.push({ turn, kind: "tool_use", id: block.id, name: block.name, input: block.input });
-      }
-    }
-    messages.push({ role: "assistant", content });
+    const candidate = (data.candidates || [])[0] || {};
+    const parts = (candidate.content && candidate.content.parts) || [];
 
-    if (data.stop_reason === "tool_use") {
-      const toolUses = content.filter((b) => b.type === "tool_use");
-      const toolResults = [];
-      const dispatched = await Promise.all(toolUses.map(async (tu) => {
-        const started = Date.now();
-        const out = await dispatchTool(tu.name, tu.input, context);
-        const duration_ms = Date.now() - started;
-        tool_calls.push({ turn, name: tu.name, input: tu.input, output: out, duration_ms });
-        return { id: tu.id, name: tu.name, output: out };
-      }));
-      for (const d of dispatched) {
-        toolResults.push({
-          type: "tool_result", tool_use_id: d.id,
-          content: typeof d.output === "string" ? d.output : JSON.stringify(d.output),
-          is_error: !!(d.output && d.output.error),
+    const functionCallParts = [];
+    for (const p of parts) {
+      if (p.functionCall) {
+        functionCallParts.push(p);
+        reasoning_trace.push({
+          turn, kind: "tool_use",
+          name: p.functionCall.name,
+          input: p.functionCall.args || {},
+          has_signature: Boolean(p.thoughtSignature),
         });
+      } else if (p.thought === true) {
+        reasoning_trace.push({ turn, kind: "thinking", text: p.text || "" });
+      } else if (typeof p.text === "string") {
+        reasoning_trace.push({ turn, kind: "text", text: p.text });
+        final_text = p.text;
       }
-      messages.push({ role: "user", content: toolResults });
-      continue;
     }
 
-    stop_reason = data.stop_reason || "end_turn";
-    break;
+    // Push the assistant turn back VERBATIM. Gemini 3 enforces strict
+    // validation on thoughtSignature round-trip for function calling —
+    // reconstructing the parts array would drop signatures and cause 400.
+    contents.push({ role: "model", parts });
+
+    if (functionCallParts.length === 0) {
+      stop_reason = candidate.finishReason || "STOP";
+      break;
+    }
+
+    // Sequential dispatch (not Promise.all): Gemini matches functionResponse
+    // parts to functionCall parts by name, with positional fallback when the
+    // same name is called twice in one turn. Preserving order is cheap insurance.
+    const responseParts = [];
+    for (const fcp of functionCallParts) {
+      const fc = fcp.functionCall;
+      const started = Date.now();
+      const out = await dispatchTool(fc.name, fc.args || {}, context);
+      const duration_ms = Date.now() - started;
+      tool_calls.push({ turn, name: fc.name, input: fc.args || {}, output: out, duration_ms });
+      responseParts.push({
+        functionResponse: {
+          name: fc.name,
+          // Gemini requires `response` to be an object.
+          response: out && typeof out === "object" ? out : { result: out },
+        },
+      });
+    }
+    contents.push({ role: "user", parts: responseParts });
   }
 
   return {
@@ -427,7 +460,7 @@ function fmtJson(obj) {
 
 export default defineComponent({
   props: {
-    anthropic: { type: "app", app: "anthropic" },
+    google_gemini: { type: "app", app: "google_gemini" },
     event: { type: "any" },
     metrics_rows: { type: "any" },
     source_metrics_rows: { type: "any", optional: true },
@@ -625,7 +658,7 @@ Your modifier window: [-20, 20] %`;
     let result;
     try {
       result = await runAgentLoop({
-        anthropic: this.anthropic,
+        google_gemini: this.google_gemini,
         tool_names: ALL_TOOL_NAMES,
         system: renderedSystem,
         user_message: userMessage,
@@ -633,7 +666,7 @@ Your modifier window: [-20, 20] %`;
         max_iterations: ev.max_iterations || systemPrompt.params.max_iterations || LOOP_DEFAULTS.max_iterations,
         budget_usd: ev.budget_usd || systemPrompt.params.budget_usd || LOOP_DEFAULTS.budget_usd,
         per_call_max_tokens: systemPrompt.params.per_call_max_tokens || LOOP_DEFAULTS.per_call_max_tokens,
-        thinking_budget_tokens: systemPrompt.params.thinking_budget_tokens || LOOP_DEFAULTS.thinking_budget_tokens,
+        thinking_level: systemPrompt.params.thinking_level || LOOP_DEFAULTS.thinking_level,
       });
     } catch (e) {
       console.log(`lcy-sub loop error: ${e.message}`);

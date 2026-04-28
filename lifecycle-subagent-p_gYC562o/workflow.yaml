@@ -361,8 +361,8 @@ steps:
   runtime: nodejs20.x
   uses: "./run_subagent/entry.js"
   props:
-    anthropic:
-      authProvisionId: apn_Oghan1O
+    google_gemini:
+      authProvisionId: apn_EOhp9DY
     event: "{{steps.handle_request.$return_value}}"
     metrics_rows: "{{steps.q_metrics.$return_value}}"
     source_metrics_rows: "{{steps.q_source_metrics.$return_value}}"
