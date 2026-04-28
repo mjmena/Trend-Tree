@@ -1,0 +1,58 @@
+-- One-time backfill: populate FCT_TREND_SIGNALS 'supporting' rows from
+-- existing STG_TREND_CANDIDATES so downstream consumers (and the future
+-- DT_TREND_DASHBOARD repoint) have data on day one.
+--
+-- Same body as TASK_PROMOTE_TREND_SIGNALS — runs immediately, then the
+-- recurring TASK takes over.
+--
+-- Idempotent (NOT EXISTS guard); safe to re-run.
+
+INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
+    (TREND_ID, SIGNAL_ID, LINK_KIND, LINK_TYPE)
+WITH promoted AS (
+    SELECT c.PROMOTED_TO       AS TREND_ID, c.SUPPORTING_SIGNAL_IDS
+    FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+    WHERE c.PROMOTED_TO IS NOT NULL
+    UNION ALL
+    SELECT c.DEDUP_OF_TREND_ID  AS TREND_ID, c.SUPPORTING_SIGNAL_IDS
+    FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+    WHERE c.DEDUP_OF_TREND_ID IS NOT NULL
+),
+flattened AS (
+    SELECT p.TREND_ID, f.value::STRING AS SIGNAL_ID
+    FROM promoted p, LATERAL FLATTEN(INPUT => p.SUPPORTING_SIGNAL_IDS) f
+    WHERE LENGTH(f.value::STRING) <= 255
+)
+SELECT
+    fl.TREND_ID,
+    fl.SIGNAL_ID,
+    'supporting' AS LINK_KIND,
+    CASE
+      WHEN s.SOURCE_NAME IN ('gdelt', 'google_trends_explore', 'google_trends_rss') THEN 'news'
+      WHEN s.SOURCE_NAME IN ('bluesky', 'tiktok', 'reddit')                          THEN 'social'
+      WHEN s.SOURCE_NAME IN ('amazon_trends', 'amazon_movers')                       THEN 'commerce'
+      WHEN s.SOURCE_NAME LIKE 'agent_%_discovery'                                    THEN 'other'
+      WHEN s.SOURCE_NAME = 'grok_live'                                               THEN 'other'
+      ELSE 'other'
+    END AS LINK_TYPE
+FROM flattened fl
+LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS s
+       ON s.SIGNAL_ID = fl.SIGNAL_ID
+WHERE NOT EXISTS (
+    SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS x
+    WHERE x.TREND_ID  = fl.TREND_ID
+      AND x.SIGNAL_ID = fl.SIGNAL_ID
+      AND x.LINK_KIND = 'supporting'
+)
+QUALIFY ROW_NUMBER() OVER (PARTITION BY fl.TREND_ID, fl.SIGNAL_ID ORDER BY fl.SIGNAL_ID) = 1;
+
+-- Verification
+SELECT
+  (SELECT COUNT(*) FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS)                       AS LINK_TOTAL,
+  (SELECT COUNT(*) FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS WHERE LINK_TYPE IS NULL) AS LINK_TYPE_NULLS,
+  (SELECT COUNT(*) FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS WHERE LINK_TYPE = 'other') AS LINK_TYPE_OTHER,
+  (SELECT COUNT(DISTINCT TREND_ID) FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS)        AS DISTINCT_TRENDS;
+
+SELECT LINK_TYPE, COUNT(*) AS N
+FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
+GROUP BY LINK_TYPE ORDER BY N DESC;

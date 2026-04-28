@@ -153,7 +153,7 @@ const QUERY_SCHEMAS = {
   query_signals_window: {
     name: "query_signals_window",
     description:
-      "Filter the pre-fetched signal window (recent unclustered/clustered signals from STG_EXTERNAL_SIGNALS) by source, domain, time window, or full-text match against title/body. Returns up to `limit` signal records with id, title, source, domain, detected_at, and a snippet. Use this to scan the firehose, find specific patterns, or look up a specific signal by id. Note: this tool reads from a context-provided pool, not live Snowflake.",
+      "Filter the pre-fetched signal window (recent unclustered/clustered signals from STG_EXTERNAL_SIGNALS) by source, domain, time window, full-text match, or cluster_id. Returns up to `limit` signal records with id, title, source, domain, detected_at, cluster_id, and a snippet. Use this to scan the firehose, find specific patterns, or zoom into one cluster. Note: this tool reads from a context-provided pool, not live Snowflake.",
     input_schema: {
       type: "object",
       properties: {
@@ -161,6 +161,7 @@ const QUERY_SCHEMAS = {
         domain_contains: { type: "string", description: "Optional substring match against signal domain (e.g. 'reddit.com', 'wsj')." },
         text_contains: { type: "string", description: "Optional case-insensitive substring match against signal title and body." },
         signal_ids: { type: "array", items: { type: "string" }, description: "Optional list of signal UUIDs to look up directly." },
+        cluster_id: { type: "integer", description: "Optional: filter pool to one k-means cluster id (see cluster summary at top of user message)." },
         limit: { type: "integer", description: "Max signals to return (default 25, hard cap 100)." },
       },
     },
@@ -377,15 +378,17 @@ function cryptoRandomId() {
 
 function lookupSignals(input, ctx) {
   const pool = ctx.signal_pool || [];
-  const { source, domain_contains, text_contains, signal_ids, limit = 25 } = input || {};
+  const { source, domain_contains, text_contains, signal_ids, cluster_id, limit = 25 } = input || {};
   const cap = Math.min(Number(limit) || 25, 100);
   const ids = signal_ids ? new Set(signal_ids) : null;
   const txt = text_contains ? text_contains.toLowerCase() : null;
+  const filterClusterId = (cluster_id === 0 || Number.isFinite(cluster_id)) ? Number(cluster_id) : null;
   const out = [];
   for (const s of pool) {
     if (out.length >= cap) break;
     if (ids && !ids.has(s.signal_id)) continue;
     if (source && s.source_name !== source) continue;
+    if (filterClusterId !== null && s.cluster_id !== filterClusterId) continue;
     if (domain_contains && !(s.domain || "").toLowerCase().includes(domain_contains.toLowerCase())) continue;
     if (txt) {
       const hay = `${s.title || ""} ${s.body || ""}`.toLowerCase();
@@ -394,6 +397,7 @@ function lookupSignals(input, ctx) {
     out.push({
       signal_id: s.signal_id, title: s.title, source: s.source_name, domain: s.domain,
       detected_at: s.detected_at, snippet: (s.body || s.title || "").slice(0, 240), url: s.url,
+      cluster_id: s.cluster_id ?? null,
     });
   }
   return { signals: out, total_in_pool: pool.length, returned: out.length };
@@ -746,6 +750,71 @@ function previewOutput(out) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Cluster helpers
+// ─────────────────────────────────────────────────────────────────────
+
+// PROC_CLUSTER_SIGNAL_SUBSET returns a VARIANT array; the registry action
+// wraps it in a single-row, single-column response. Pull the array out
+// however it arrives. If anything looks unexpected, return [] — the
+// agent then sees no cluster summary and behaves as it did pre-clustering.
+function parseClusterRows(input) {
+  if (!input) return [];
+  // Already an array of {signal_id, cluster_id, ...} entries.
+  if (Array.isArray(input) && input.length > 0 && typeof input[0] === "object" && "cluster_id" in input[0]) {
+    return input;
+  }
+  // Registry action shape: array of rows, each with one column whose value
+  // is the proc's VARIANT return. Keys vary by Snowflake; try common ones.
+  if (Array.isArray(input) && input.length === 1 && typeof input[0] === "object") {
+    const row = input[0];
+    for (const key of Object.keys(row)) {
+      const v = row[key];
+      if (Array.isArray(v) && v.length > 0 && "cluster_id" in (v[0] || {})) return v;
+      if (typeof v === "string") {
+        try {
+          const parsed = JSON.parse(v);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {}
+      }
+    }
+  }
+  // String — JSON-stringified array.
+  if (typeof input === "string") {
+    try {
+      const parsed = JSON.parse(input);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+  }
+  return [];
+}
+
+// Compress cluster assignments into a per-cluster summary block:
+// { cluster_id, size, source_breakdown: "src1*N,src2*M", sample_titles: [top 3 by similarity] }.
+function buildClusterSummary(assignments) {
+  if (!Array.isArray(assignments) || assignments.length === 0) return [];
+  const byCluster = new Map();
+  for (const a of assignments) {
+    const cid = a.cluster_id;
+    if (!byCluster.has(cid)) byCluster.set(cid, []);
+    byCluster.get(cid).push(a);
+  }
+  const out = [];
+  for (const [cluster_id, members] of byCluster.entries()) {
+    members.sort((x, y) => (y.similarity_to_seed || 0) - (x.similarity_to_seed || 0));
+    const sources = {};
+    for (const m of members) sources[m.source_name] = (sources[m.source_name] || 0) + 1;
+    const source_breakdown = Object.entries(sources)
+      .sort((a, b) => b[1] - a[1])
+      .map(([s, n]) => `${s}*${n}`)
+      .join(", ");
+    const sample_titles = members.slice(0, 3).map((m) => (m.signal_title || "").slice(0, 100));
+    out.push({ cluster_id, size: members.length, source_breakdown, sample_titles });
+  }
+  out.sort((a, b) => b.size - a.size);
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Step entrypoint
 // ─────────────────────────────────────────────────────────────────────
 //
@@ -763,6 +832,7 @@ export default defineComponent({
     cursor_rows: { type: "any", optional: true },
     signal_rows: { type: "any", optional: true },
     neighbor_rows: { type: "any", optional: true },
+    cluster_rows: { type: "any", optional: true },
     prompts_rows: {
       type: "any",
       label: "DIM_LLM_PROMPT rows",
@@ -787,15 +857,31 @@ export default defineComponent({
     const dryRun = evt.dry_run === true;
     const started = Date.now();
 
-    const signal_pool = (Array.isArray(this.signal_rows) ? this.signal_rows : []).map((r) => ({
-      signal_id: r.SIGNAL_ID,
-      source_name: r.SOURCE_NAME,
-      title: r.SIGNAL_TITLE,
-      body: r.SIGNAL_TEXT,
-      detected_at: r.SIGNAL_TIMESTAMP,
-      domain: tryParseMetadataDomain(r.METADATA),
-      url: tryParseMetadataUrl(r.METADATA),
-    }));
+    // PROC_CLUSTER_SIGNAL_SUBSET returns a VARIANT array; the registry
+    // action wraps it as a single row with one column. Extract defensively
+    // — if anything looks off, fall back to no clusters (graceful degrade).
+    const cluster_assignments = parseClusterRows(this.cluster_rows);
+    const cluster_lookup = new Map(
+      cluster_assignments.map((c) => [c.signal_id, c]),
+    );
+
+    const signal_pool = (Array.isArray(this.signal_rows) ? this.signal_rows : []).map((r) => {
+      const c = cluster_lookup.get(r.SIGNAL_ID);
+      return {
+        signal_id: r.SIGNAL_ID,
+        source_name: r.SOURCE_NAME,
+        title: r.SIGNAL_TITLE,
+        body: r.SIGNAL_TEXT,
+        detected_at: r.SIGNAL_TIMESTAMP,
+        domain: tryParseMetadataDomain(r.METADATA),
+        url: tryParseMetadataUrl(r.METADATA),
+        cluster_id: c ? c.cluster_id : null,
+      };
+    });
+
+    // Build the cluster summary block: per-cluster size + source mix +
+    // top-3 sample titles (ranked by similarity_to_seed desc).
+    const cluster_summary = buildClusterSummary(cluster_assignments);
     const trend_neighbor_pool = (Array.isArray(this.neighbor_rows) ? this.neighbor_rows : []).map((r) => ({
       trend_id: r.TREND_ID,
       trend_topic: r.TREND_TOPIC,
@@ -826,7 +912,14 @@ export default defineComponent({
       },
     };
 
-    const userMsg = `Window starts at ${this.cursor_rows?.[0]?.WINDOW_START_TS || "(none)"}.
+    const clusterBlock = cluster_summary.length > 0
+      ? `Pre-clustered into ${cluster_summary.length} groups (k-means over Snowflake Cortex arctic-embed-l-v2.0 vectors; HINT, not a partition — feel free to merge across clusters or split within):\n` +
+        cluster_summary.map((c) =>
+          `  cluster ${c.cluster_id}: ${c.size} signals, sources [${c.source_breakdown}], e.g. ${c.sample_titles.map((t) => JSON.stringify(t)).join(" / ")}`
+        ).join("\n") + "\n\n"
+      : "";
+
+    const userMsg = clusterBlock + `Window starts at ${this.cursor_rows?.[0]?.WINDOW_START_TS || "(none)"}.
 Pre-fetched pools available to your tools:
   - signal_pool: ${signal_pool.length} raw signals from STG_EXTERNAL_SIGNALS (agent-fetched evidence excluded)
   - trend_neighbor_pool: ${trend_neighbor_pool.length} active trends (last 30d) for dedup

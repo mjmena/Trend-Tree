@@ -11,10 +11,11 @@
 -- contains semantically-related signals so the agent has a real shot at
 -- spotting cross-signal patterns the main pass missed.
 --
--- Embeddings come from DT_EXTERNAL_TREND_EMBEDDINGS (joined to
--- STG_EXTERNAL_SIGNALS by URL). Signals without an embedding (NULL TITLE
--- or aged out of the dynamic table's 3-day window) are dropped — caller
--- should filter input to recent signals.
+-- Embeddings come from FCT_SIGNALS.SIGNAL_VECTOR (single vector over
+-- TITLE + first 512 chars of TEXT). Signals without a row in FCT_SIGNALS
+-- (e.g. ingested in the last 5 minutes and not yet promoted by
+-- TASK_PROMOTE_SIGNALS_TO_FCT, or filtered as amazon_movers) are dropped
+-- — caller should filter input to recent signals.
 --
 -- Usage:
 --   CALL MCC_RAW.MARKETING_DEV.PROC_CLUSTER_SIGNAL_SUBSET(
@@ -62,23 +63,21 @@ def run(session, SIGNAL_IDS, K):
         SIGNAL_IDS = json.loads(SIGNAL_IDS)
     k = max(1, int(K or 5))
 
-    # Pull signals with embeddings, joining STG_EXTERNAL_SIGNALS to
-    # DT_EXTERNAL_TREND_EMBEDDINGS via URL. Skip rows without an embedding.
+    # Pull signals with embeddings directly from FCT_SIGNALS — no STG join.
+    # FCT_SIGNALS.SIGNAL_ID is the same key the caller passed in.
     rs = session.sql(f"""
         WITH probe AS (
           SELECT VALUE::STRING AS SIGNAL_ID
           FROM TABLE(FLATTEN(INPUT => PARSE_JSON('{json.dumps(list(SIGNAL_IDS))}'))) f
         )
         SELECT
-            s.SIGNAL_ID,
-            s.SIGNAL_TITLE,
-            s.SOURCE_NAME,
-            e.TITLE_VECTOR
-        FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
-        JOIN probe p ON p.SIGNAL_ID = s.SIGNAL_ID
-        JOIN MCC_RAW.MARKETING_DEV.DT_EXTERNAL_TREND_EMBEDDINGS e
-          ON e.URL = s.SIGNAL_ID
-        WHERE e.TITLE_VECTOR IS NOT NULL
+            f.SIGNAL_ID,
+            f.SIGNAL_TITLE,
+            f.SOURCE_NAME,
+            f.SIGNAL_VECTOR
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f
+        JOIN probe p ON p.SIGNAL_ID = f.SIGNAL_ID
+        WHERE f.SIGNAL_VECTOR IS NOT NULL
     """).collect()
 
     if len(rs) == 0:
@@ -111,26 +110,22 @@ def run(session, SIGNAL_IDS, K):
         seed_clause = f"'{seed_list}'"
         next_seed_rs = session.sql(f"""
             WITH candidates AS (
-              SELECT s.SIGNAL_ID, e.TITLE_VECTOR
-              FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
-              JOIN MCC_RAW.MARKETING_DEV.DT_EXTERNAL_TREND_EMBEDDINGS e
-                ON e.URL = s.SIGNAL_ID
-              WHERE s.SIGNAL_ID IN (
+              SELECT f.SIGNAL_ID, f.SIGNAL_VECTOR
+              FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f
+              WHERE f.SIGNAL_ID IN (
                 SELECT VALUE::STRING
                 FROM TABLE(FLATTEN(INPUT => PARSE_JSON('{json.dumps(list(SIGNAL_IDS))}')))
               )
-              AND s.SIGNAL_ID NOT IN ({seed_clause})
+              AND f.SIGNAL_ID NOT IN ({seed_clause})
             ),
             seed_vecs AS (
-              SELECT s.SIGNAL_ID, e.TITLE_VECTOR
-              FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
-              JOIN MCC_RAW.MARKETING_DEV.DT_EXTERNAL_TREND_EMBEDDINGS e
-                ON e.URL = s.SIGNAL_ID
-              WHERE s.SIGNAL_ID IN ({seed_clause})
+              SELECT f.SIGNAL_ID, f.SIGNAL_VECTOR
+              FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f
+              WHERE f.SIGNAL_ID IN ({seed_clause})
             ),
             max_sim AS (
               SELECT c.SIGNAL_ID,
-                     MAX(VECTOR_COSINE_SIMILARITY(c.TITLE_VECTOR, sv.TITLE_VECTOR)) AS MAX_SIM
+                     MAX(VECTOR_COSINE_SIMILARITY(c.SIGNAL_VECTOR, sv.SIGNAL_VECTOR)) AS MAX_SIM
               FROM candidates c CROSS JOIN seed_vecs sv
               GROUP BY c.SIGNAL_ID
             )
@@ -148,31 +143,27 @@ def run(session, SIGNAL_IDS, K):
           FROM TABLE(FLATTEN(INPUT => PARSE_JSON('{json.dumps(list(SIGNAL_IDS))}'))) f
         ),
         signals AS (
-          SELECT s.SIGNAL_ID, s.SIGNAL_TITLE, s.SOURCE_NAME, e.TITLE_VECTOR
-          FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
-          JOIN probe p ON p.SIGNAL_ID = s.SIGNAL_ID
-          JOIN MCC_RAW.MARKETING_DEV.DT_EXTERNAL_TREND_EMBEDDINGS e
-            ON e.URL = s.SIGNAL_ID
-          WHERE e.TITLE_VECTOR IS NOT NULL
+          SELECT f.SIGNAL_ID, f.SIGNAL_TITLE, f.SOURCE_NAME, f.SIGNAL_VECTOR
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f
+          JOIN probe p ON p.SIGNAL_ID = f.SIGNAL_ID
+          WHERE f.SIGNAL_VECTOR IS NOT NULL
         ),
         seed_vecs AS (
-          SELECT s.SIGNAL_ID, e.TITLE_VECTOR,
-                 ROW_NUMBER() OVER (ORDER BY s.SIGNAL_ID) - 1 AS CLUSTER_ID
-          FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
-          JOIN MCC_RAW.MARKETING_DEV.DT_EXTERNAL_TREND_EMBEDDINGS e
-            ON e.URL = s.SIGNAL_ID
-          WHERE s.SIGNAL_ID IN ('{seed_clause}')
+          SELECT f.SIGNAL_ID, f.SIGNAL_VECTOR,
+                 ROW_NUMBER() OVER (ORDER BY f.SIGNAL_ID) - 1 AS CLUSTER_ID
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f
+          WHERE f.SIGNAL_ID IN ('{seed_clause}')
         )
         SELECT
             sg.SIGNAL_ID,
             sg.SIGNAL_TITLE,
             sg.SOURCE_NAME,
             sv.CLUSTER_ID,
-            ROUND(VECTOR_COSINE_SIMILARITY(sg.TITLE_VECTOR, sv.TITLE_VECTOR), 4) AS SIMILARITY
+            ROUND(VECTOR_COSINE_SIMILARITY(sg.SIGNAL_VECTOR, sv.SIGNAL_VECTOR), 4) AS SIMILARITY
         FROM signals sg CROSS JOIN seed_vecs sv
         QUALIFY ROW_NUMBER() OVER (
             PARTITION BY sg.SIGNAL_ID
-            ORDER BY VECTOR_COSINE_SIMILARITY(sg.TITLE_VECTOR, sv.TITLE_VECTOR) DESC
+            ORDER BY VECTOR_COSINE_SIMILARITY(sg.SIGNAL_VECTOR, sv.SIGNAL_VECTOR) DESC
         ) = 1
     """).collect()
 
