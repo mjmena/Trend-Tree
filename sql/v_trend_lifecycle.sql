@@ -1,20 +1,13 @@
 -- View: Lightweight diagnostic over trend lifecycle state.
 -- Database: MCC_PRESENTATION.TREND_AGENT
 --
--- 2026-04-28: simplified once the lifecycle agent landed. Previously this
--- view tried to be a state-machine-via-SQL (NEEDS_ENRICHMENT, NEEDS_RETRY,
--- GOING_DORMANT, LIFECYCLE_CHANGE, etc.). Now the lifecycle agent owns
--- those decisions directly via FCT_TRENDS.LIFECYCLE_STATUS and writes its
--- own ledger to FCT_TREND_LIFECYCLE_HISTORY. This view exists for ops
--- visibility only — surface what's stale, what's unenriched, what the
--- sweeper is about to pick up.
+-- 2026-04-28 (refactor): refactored to read from V_TREND_LIFECYCLE_CURRENT
+-- and V_TREND_AGGREGATES + FCT_TRENDS (identity only). DIM_TREND_ENRICHMENT
+-- replaced by V_TREND_ENRICHMENT_CURRENT.
 --
--- Removed since prior version:
---   - STG_ENRICHMENT_QUEUE join (queue eliminated 2026-04-27)
---   - NEEDS_RETRY case (was queue-driven)
---   - SUPERSEDED / GOING_DORMANT cases (the agent emits these directly now)
---   - Priority scoring (the lifecycle sweeper has its own ORDER BY)
---   - FCT_TREND_METRICS dependency (legacy, schema-disjoint from FCT_TRENDS)
+-- This view exists for ops visibility only. The lifecycle agent does NOT
+-- consume it — it computes its own decisions per the prompts in
+-- DIM_LLM_PROMPT.
 
 CREATE OR REPLACE VIEW MCC_PRESENTATION.TREND_AGENT.V_TREND_LIFECYCLE AS
 WITH source_summary AS (
@@ -28,45 +21,42 @@ WITH source_summary AS (
 )
 SELECT
     t.TREND_ID,
-    COALESCE(d.TREND_NAME_B2B, t.TREND_TOPIC)                AS TREND_NAME,
-    t.LIFECYCLE_STATUS,
-    ROUND(COALESCE(t.TREND_HEAT_INDEX_SMOOTHED, t.TREND_HEAT_INDEX), 1) AS HEAT_INDEX,
-    t.TOTAL_CLUSTER_SIZE,
-    t.DISTINCT_SOURCE_COUNT,
+    COALESCE(t.TREND_NAME_B2B, t.TREND_TOPIC)                AS TREND_NAME,
+    lc.LIFECYCLE_STATUS,
+    ROUND(COALESCE(lc.HEAT_INDEX_SMOOTHED, lc.HEAT_INDEX), 1) AS HEAT_INDEX,
+    agg.TOTAL_CLUSTER_SIZE,
+    agg.DISTINCT_SOURCE_COUNT,
 
     t.PROMOTED_AT,
     t.LAST_UPDATE_AT,
-    t.LAST_LIFECYCLE_EVAL_AT,
-    t.NEXT_LIFECYCLE_EVAL_AT,
-    t.RETIREMENT_REASON,
+    lc.LAST_EVAL_AT                                          AS LAST_LIFECYCLE_EVAL_AT,
+    lc.NEXT_EVAL_AT                                          AS NEXT_LIFECYCLE_EVAL_AT,
+    lc.RETIREMENT_REASON,
 
-    d.ENRICHED_AT,
-    d.ENRICHMENT_VERSION,
+    e.ENRICHED_AT,
+    e.ENRICHMENT_VERSION,
     COALESCE(ss.SOURCE_COVERAGE_BREADTH, 0)                  AS SOURCE_COVERAGE_BREADTH,
     ss.SOURCES_ENRICHED_AT,
 
-    DATEDIFF('hour', t.PROMOTED_AT,            CURRENT_TIMESTAMP()) AS AGE_HOURS,
-    DATEDIFF('hour', t.LAST_UPDATE_AT,         CURRENT_TIMESTAMP()) AS HOURS_SINCE_UPDATE,
-    DATEDIFF('hour', d.ENRICHED_AT,            CURRENT_TIMESTAMP()) AS HOURS_SINCE_ENRICHMENT,
-    DATEDIFF('hour', t.LAST_LIFECYCLE_EVAL_AT, CURRENT_TIMESTAMP()) AS HOURS_SINCE_LIFECYCLE_EVAL,
-    DATEDIFF('hour', ss.SOURCES_ENRICHED_AT,   CURRENT_TIMESTAMP()) AS HOURS_SINCE_SOURCE_REFRESH,
+    DATEDIFF('hour', t.PROMOTED_AT,        CURRENT_TIMESTAMP()) AS AGE_HOURS,
+    DATEDIFF('hour', t.LAST_UPDATE_AT,     CURRENT_TIMESTAMP()) AS HOURS_SINCE_UPDATE,
+    DATEDIFF('hour', e.ENRICHED_AT,        CURRENT_TIMESTAMP()) AS HOURS_SINCE_ENRICHMENT,
+    DATEDIFF('hour', lc.LAST_EVAL_AT,      CURRENT_TIMESTAMP()) AS HOURS_SINCE_LIFECYCLE_EVAL,
+    DATEDIFF('hour', ss.SOURCES_ENRICHED_AT, CURRENT_TIMESTAMP()) AS HOURS_SINCE_SOURCE_REFRESH,
 
-    -- ACTION_NEEDED is a coarse diagnostic for ops dashboards.
-    -- The lifecycle agent does NOT consume this — it computes its own
-    -- decisions per the prompts in DIM_LLM_PROMPT.
     CASE
-        WHEN t.LIFECYCLE_STATUS = 'RETIRED'
+        WHEN lc.LIFECYCLE_STATUS = 'RETIRED'
             THEN 'RETIRED'
 
-        WHEN d.ENRICHED_AT IS NULL AND t.TOTAL_CLUSTER_SIZE >= 3
+        WHEN e.ENRICHED_AT IS NULL AND COALESCE(agg.TOTAL_CLUSTER_SIZE, 0) >= 3
             THEN 'NEEDS_ENRICHMENT'
 
-        WHEN t.NEXT_LIFECYCLE_EVAL_AT IS NOT NULL
-             AND t.NEXT_LIFECYCLE_EVAL_AT <= CURRENT_TIMESTAMP()
+        WHEN lc.NEXT_EVAL_AT IS NOT NULL
+             AND lc.NEXT_EVAL_AT <= CURRENT_TIMESTAMP()
             THEN 'LIFECYCLE_DUE'
 
-        WHEN COALESCE(t.TREND_HEAT_INDEX, 0) >= 50
-             AND DATEDIFF('hour', d.ENRICHED_AT, CURRENT_TIMESTAMP()) > 48
+        WHEN COALESCE(lc.HEAT_INDEX, 0) >= 50
+             AND DATEDIFF('hour', e.ENRICHED_AT, CURRENT_TIMESTAMP()) > 48
             THEN 'NEEDS_REFRESH'
 
         WHEN DATEDIFF('hour', ss.SOURCES_ENRICHED_AT, CURRENT_TIMESTAMP()) > 24
@@ -77,10 +67,11 @@ SELECT
     END                                                       AS ACTION_NEEDED
 
 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d
-       ON t.TREND_ID = d.TREND_ID
+LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_LIFECYCLE_CURRENT  lc  ON lc.TREND_ID  = t.TREND_ID
+LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_ENRICHMENT_CURRENT e   ON e.TREND_ID   = t.TREND_ID
+LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_AGGREGATES         agg ON agg.TREND_ID = t.TREND_ID
 LEFT JOIN source_summary ss
        ON t.TREND_ID = ss.TREND_ID
 ORDER BY
-    CASE WHEN t.LIFECYCLE_STATUS = 'RETIRED' THEN 1 ELSE 0 END,
-    COALESCE(t.TREND_HEAT_INDEX_SMOOTHED, t.TREND_HEAT_INDEX) DESC NULLS LAST;
+    CASE WHEN lc.LIFECYCLE_STATUS = 'RETIRED' THEN 1 ELSE 0 END,
+    COALESCE(lc.HEAT_INDEX_SMOOTHED, lc.HEAT_INDEX) DESC NULLS LAST;

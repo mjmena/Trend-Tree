@@ -109,14 +109,16 @@ def sql_vector_literal(vec):
 
 
 def log_audit(session, audit_row):
-    """Insert one FCT_PROMOTION_AUDIT row. Best-effort; doesn't raise."""
+    """Insert one FCT_PROMOTION_LEDGER row. Best-effort; doesn't raise.
+    Renamed from FCT_PROMOTION_AUDIT in the agent-owned-ledgers refactor;
+    AUDIT is dropped in step 6 once readers are repointed."""
     try:
         considered = audit_row.get('considered_neighbors', [])
         tokens     = audit_row.get('tokens', {}) or {}
         in_tok     = tokens.get('input')
         out_tok    = tokens.get('output')
         session.sql(f"""
-            INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_PROMOTION_AUDIT
+            INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_PROMOTION_LEDGER
                 (CANDIDATE_ID, CHAIN_ID, ITERATION,
                  DECISION, DECISION_CATEGORY, TARGET_TREND_ID,
                  DISTILLATION_VERDICT, OVERRODE_VERDICT,
@@ -179,7 +181,13 @@ def derive_candidate_meta(session, candidate_id):
 
 
 def apply_merge_into_existing(session, cid, target_tid, chain_id):
-    """Link candidate to target trend and recompute the trend's aggregates.
+    """Link candidate to target trend. The cluster_size/source_count recompute
+    that used to live here was eliminated by the agent-owned-ledgers refactor —
+    those are now derived at query time via V_TREND_AGGREGATES from
+    STG_TREND_CANDIDATES (joining on CANDIDATE_ID OR DEDUP_OF_TREND_ID).
+    The vector recompute also went away — vectors live in
+    FCT_TREND_ENRICHMENT_LEDGER and stay frozen at the trend's most recent
+    enrichment/seed; merging signals doesn't justify a re-embed.
     Caller is responsible for BEGIN/COMMIT and target validation."""
     session.sql(f"""
         UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
@@ -190,38 +198,81 @@ def apply_merge_into_existing(session, cid, target_tid, chain_id):
         WHERE CANDIDATE_ID = {sql_str(cid)}
     """).collect()
     session.sql(f"""
-        UPDATE MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-        SET
-            TOTAL_CLUSTER_SIZE = (
-                SELECT COUNT(DISTINCT f.value::STRING)
-                FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
-                     LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
-                WHERE c.CANDIDATE_ID = t.CANDIDATE_ID
-                   OR c.DEDUP_OF_TREND_ID = t.TREND_ID
+        UPDATE MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS
+        SET LAST_UPDATE_AT = CURRENT_TIMESTAMP()
+        WHERE TREND_ID = {sql_str(target_tid)}
+    """).collect()
+
+
+def seed_lifecycle_v0(session, trend_id):
+    """Insert a v0 lifecycle ledger row for a freshly-promoted trend so
+    V_TREND_LIFECYCLE_CURRENT immediately surfaces it. Status NEW, initial
+    heat from the same formula PROC v2 used inline, NEXT_EVAL_AT = +1h."""
+    session.sql(f"""
+        INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER (
+            TREND_ID, EVALUATED_AT, AGENT_SESSION_ID,
+            PRIOR_STATUS, NEW_STATUS,
+            PRIOR_HEAT, NEW_HEAT, NEW_HEAT_SMOOTHED,
+            HEAT_BASE, HEAT_MODIFIER_PCT,
+            REASONING, NEXT_EVAL_AT
+        )
+        SELECT
+            t.TREND_ID, t.PROMOTED_AT, 'promotion',
+            NULL, 'NEW',
+            NULL,
+            -- Initial heat: 50 + cluster*5 + source*3 + conf*20, capped 100.
+            -- Derived from STG_TREND_CANDIDATES at insertion time.
+            LEAST(
+                50
+                + COALESCE(ARRAY_SIZE(c.SUPPORTING_SIGNAL_IDS), 0) * 5
+                + COALESCE(ARRAY_SIZE(OBJECT_KEYS(c.SOURCE_BREAKDOWN)), 0) * 3
+                + COALESCE(c.CONFIDENCE, 0.5) * 20,
+                100
             ),
-            DISTINCT_SOURCE_COUNT = (
-                SELECT COUNT(DISTINCT f.value::STRING)
-                FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
-                     LATERAL FLATTEN(INPUT => OBJECT_KEYS(c.SOURCE_BREAKDOWN)) f
-                WHERE c.CANDIDATE_ID = t.CANDIDATE_ID
-                   OR c.DEDUP_OF_TREND_ID = t.TREND_ID
+            LEAST(
+                50
+                + COALESCE(ARRAY_SIZE(c.SUPPORTING_SIGNAL_IDS), 0) * 5
+                + COALESCE(ARRAY_SIZE(OBJECT_KEYS(c.SOURCE_BREAKDOWN)), 0) * 3
+                + COALESCE(c.CONFIDENCE, 0.5) * 20,
+                100
             ),
-            TREND_VECTOR = SNOWFLAKE.CORTEX.EMBED_TEXT_1024(
-                'snowflake-arctic-embed-l-v2.0',
-                LEFT(
-                    COALESCE(t.TREND_TOPIC, '') || ' | ' ||
-                    COALESCE((
-                        SELECT LISTAGG(LEFT(c.REASONING, 400), ' || ')
-                                 WITHIN GROUP (ORDER BY c.CREATED_AT)
-                        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
-                        WHERE c.CANDIDATE_ID = t.CANDIDATE_ID
-                           OR c.DEDUP_OF_TREND_ID = t.TREND_ID
-                    ), ''),
-                    4000
-                )
+            LEAST(
+                50
+                + COALESCE(ARRAY_SIZE(c.SUPPORTING_SIGNAL_IDS), 0) * 5
+                + COALESCE(ARRAY_SIZE(OBJECT_KEYS(c.SOURCE_BREAKDOWN)), 0) * 3
+                + COALESCE(c.CONFIDENCE, 0.5) * 20,
+                100
             ),
-            LAST_UPDATE_AT = CURRENT_TIMESTAMP()
-        WHERE t.TREND_ID = {sql_str(target_tid)}
+            0,
+            'initial state at promotion',
+            DATEADD(hour, 1, CURRENT_TIMESTAMP())
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+        JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c ON c.CANDIDATE_ID = t.CANDIDATE_ID
+        WHERE t.TREND_ID = {sql_str(trend_id)}
+    """).collect()
+
+
+def seed_enrichment_v0(session, trend_id):
+    """Insert a promotion_seed enrichment ledger row so V_TREND_ENRICHMENT_CURRENT
+    has a vector for the freshly-promoted trend (lifecycle subagent's q_neighbors
+    needs vectors for all active trends). Vector copied from FCT_TRENDS.TREND_VECTOR
+    which was just written by PROMOTE_NEW."""
+    session.sql(f"""
+        INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER (
+            TREND_ID, WRITTEN_AT, WRITTEN_BY, ENRICHMENT_KIND,
+            PAYLOAD, TREND_VECTOR
+        )
+        SELECT
+            t.TREND_ID, t.PROMOTED_AT, 'promotion', 'promotion_seed',
+            OBJECT_CONSTRUCT(
+                'trend_topic',     t.TREND_TOPIC,
+                'gtrends_keyword', t.GTRENDS_KEYWORD,
+                'topic_only',      TRUE,
+                'note',            'promotion seed; full enrichment pending'
+            ),
+            t.TREND_VECTOR
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+        WHERE t.TREND_ID = {sql_str(trend_id)}
     """).collect()
 
 
@@ -387,6 +438,13 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                         PROMOTION_DECIDED_BY = {sql_str(chain_id)}
                     WHERE CANDIDATE_ID = {sql_str(cid)}
                 """).collect()
+
+                # Seed the agent-owned ledgers so the new trend is immediately
+                # visible via V_TREND_LIFECYCLE_CURRENT and V_TREND_ENRICHMENT_CURRENT.
+                # Both seeds are inside the same transaction as the FCT_TRENDS
+                # insert — a failure here rolls back the whole promotion.
+                seed_lifecycle_v0(session, new_tid)
+                seed_enrichment_v0(session, new_tid)
 
                 session.sql("COMMIT").collect()
                 results.append({'candidate_id': cid, 'decision': 'PROMOTE_NEW',

@@ -10,18 +10,23 @@ export default defineComponent({
       type: "object",
       label: "Output from compute_scores",
     },
-    merge_dim_result: {
-      type: "any",
-      optional: true,
-    },
-    insert_history_result: {
+    call_proc_result: {
       type: "any",
       optional: true,
     },
   },
   async run({ $ }) {
     const cs = this.compute_scores_output || {};
-    const rowCount = (r) => (Array.isArray(r) ? r.length : null);
+
+    // PROC_ENRICHMENT_APPLY returns a single VARIANT row; unwrap it.
+    let procResult = null;
+    try {
+      const raw = Array.isArray(this.call_proc_result) ? this.call_proc_result[0] : this.call_proc_result;
+      const value = raw?.PROC_ENRICHMENT_APPLY ?? raw?.proc_enrichment_apply ?? raw;
+      procResult = typeof value === "string" ? JSON.parse(value) : value;
+    } catch (e) {
+      procResult = { error: e.message };
+    }
 
     const body = {
       trend_id: cs.trend_id,
@@ -33,8 +38,7 @@ export default defineComponent({
       source_coverage: cs.source_coverage ?? 0,
       llm_total_tokens: cs.llm_total_tokens ?? 0,
       llm_cost_estimate: cs.llm_cost_estimate ?? 0,
-      merge_dim_rows: rowCount(this.merge_dim_result),
-      insert_history_rows: rowCount(this.insert_history_result),
+      proc_result: procResult,
     };
 
     console.log(`\n=== Write complete: ${body.trend_id} [${body.tier}] ===`);

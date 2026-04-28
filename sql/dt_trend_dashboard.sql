@@ -1,17 +1,16 @@
--- Snapshot Table: Dashboard — one row per trend with all fields needed for the UI
+-- Snapshot Table: Dashboard — one row per trend with all fields needed for the UI.
 -- Database: MCC_PRESENTATION.TREND_AGENT
 --
--- 2026-04-27 transitional: UNION ALL of FCT_TRENDS (canonical, agent-promoted)
--- and FCT_TREND_METRICS (legacy clustering output). Until a future audit/
--- lifecycle agent triages the 324 legacy rows, both surfaces are needed for
--- dashboard continuity. Once that work lands, this DT collapses back to
--- FCT_TRENDS-only.
+-- 2026-04-28 refactor: identity (FCT_TRENDS) + state (V_TREND_LIFECYCLE_CURRENT) +
+-- narrative (V_TREND_ENRICHMENT_CURRENT) + aggregates (V_TREND_AGGREGATES) +
+-- legacy UNION (FCT_TREND_METRICS).
+--
+-- DIM_TREND_ENRICHMENT joins removed; everything narrative now flows through
+-- V_TREND_ENRICHMENT_CURRENT. FCT_TRENDS holds frozen names + categories.
+-- All previous output column names preserved so dashboard consumers aren't broken.
+-- VELOCITY_DIRECTION kept as a backwards-compat alias of LIFECYCLE_STATUS.
 --
 -- To refresh: re-run this file (CREATE OR REPLACE TABLE ... AS SELECT).
---
--- Usage:
---   SELECT * FROM DT_TREND_DASHBOARD ORDER BY HEAT_INDEX DESC LIMIT 25;
---   SELECT * FROM DT_TREND_DASHBOARD WHERE CATEGORY = 'wellness';
 
 CREATE OR REPLACE TABLE MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD AS
 WITH top_signals AS (
@@ -43,62 +42,75 @@ related AS (
 unioned_trends AS (
     -- Agent-promoted trends (canonical going forward)
     SELECT
-        t.TREND_ID, t.TREND_TOPIC, t.TOTAL_CLUSTER_SIZE, t.DISTINCT_SOURCE_COUNT,
-        t.LIFECYCLE_STATUS,
-        COALESCE(t.TREND_HEAT_INDEX_SMOOTHED, t.TREND_HEAT_INDEX) AS TREND_HEAT_INDEX,
-        t.DETECTED_AT, t.LAST_UPDATE_AT,
-        t.CONFIDENCE          AS PROMOTION_CONFIDENCE,
-        t.SPECIFICITY_SCORE   AS PROMOTION_SPECIFICITY,
-        t.LAST_LIFECYCLE_EVAL_AT,
-        t.RETIREMENT_REASON,
-        'fct_trends'          AS TREND_SOURCE
+        t.TREND_ID,
+        t.TREND_TOPIC,
+        COALESCE(agg.TOTAL_CLUSTER_SIZE,    0) AS TOTAL_CLUSTER_SIZE,
+        COALESCE(agg.DISTINCT_SOURCE_COUNT, 0) AS DISTINCT_SOURCE_COUNT,
+        lc.LIFECYCLE_STATUS,
+        COALESCE(lc.HEAT_INDEX_SMOOTHED, lc.HEAT_INDEX) AS TREND_HEAT_INDEX,
+        t.DETECTED_AT,
+        t.LAST_UPDATE_AT,
+        c.CONFIDENCE                              AS PROMOTION_CONFIDENCE,
+        c.SPECIFICITY_SCORE                       AS PROMOTION_SPECIFICITY,
+        lc.LAST_EVAL_AT                           AS LAST_LIFECYCLE_EVAL_AT,
+        lc.RETIREMENT_REASON,
+        'fct_trends'                              AS TREND_SOURCE
     FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+    LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_LIFECYCLE_CURRENT lc ON lc.TREND_ID = t.TREND_ID
+    LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_AGGREGATES        agg ON agg.TREND_ID = t.TREND_ID
+    LEFT JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES             c   ON c.CANDIDATE_ID = t.CANDIDATE_ID
 
     UNION ALL
 
     -- Legacy SQL-clustered trends — kept visible while audit/lifecycle agent
     -- triages them. Filter out any TREND_IDs that already appear in FCT_TRENDS
     -- so we don't double-count overlap. Map the legacy VELOCITY_DIRECTION enum
-    -- forward (STAGNANT→DORMANT, SUPERSEDED→RETIRED) so the unified
-    -- LIFECYCLE_STATUS column is consistent across sources.
+    -- forward (STAGNANT→DORMANT, SUPERSEDED→RETIRED).
     SELECT
-        m.TREND_ID, m.TREND_TOPIC, m.TOTAL_CLUSTER_SIZE, m.DISTINCT_SOURCE_COUNT,
+        m.TREND_ID,
+        m.TREND_TOPIC,
+        m.TOTAL_CLUSTER_SIZE,
+        m.DISTINCT_SOURCE_COUNT,
         CASE m.VELOCITY_DIRECTION
           WHEN 'STAGNANT'   THEN 'DORMANT'
           WHEN 'SUPERSEDED' THEN 'RETIRED'
           ELSE m.VELOCITY_DIRECTION
-        END                    AS LIFECYCLE_STATUS,
-        m.TREND_HEAT_INDEX, m.DETECTED_AT, m.LAST_UPDATE_AT,
-        NULL                   AS PROMOTION_CONFIDENCE,
-        NULL                   AS PROMOTION_SPECIFICITY,
-        NULL::TIMESTAMP_NTZ    AS LAST_LIFECYCLE_EVAL_AT,
-        NULL                   AS RETIREMENT_REASON,
-        'fct_trend_metrics'    AS TREND_SOURCE
+        END                                       AS LIFECYCLE_STATUS,
+        m.TREND_HEAT_INDEX,
+        m.DETECTED_AT,
+        m.LAST_UPDATE_AT,
+        NULL                                      AS PROMOTION_CONFIDENCE,
+        NULL                                      AS PROMOTION_SPECIFICITY,
+        NULL::TIMESTAMP_NTZ                       AS LAST_LIFECYCLE_EVAL_AT,
+        NULL                                      AS RETIREMENT_REASON,
+        'fct_trend_metrics'                       AS TREND_SOURCE
     FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
     WHERE m.TREND_ID NOT IN (SELECT TREND_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS)
 )
 SELECT
-    -- Card header
+    -- Card header — names + category come from FCT_TRENDS (frozen) for new
+    -- trends; from V_TREND_ENRICHMENT_CURRENT for legacy (which lacks the
+    -- frozen columns since they were never promoted into FCT_TRENDS).
     u.TREND_ID,
-    COALESCE(d.TREND_NAME_B2C, d.TREND_NAME_B2B, u.TREND_TOPIC) AS TREND_NAME,
-    d.TREND_NAME_B2B,
-    d.CATEGORY,
-    d.SUBCATEGORY,
-    d.CATEGORY_CONFIDENCE,
-    d.LOW_CONFIDENCE_FLAG,
-    d.SUMMARY_SHORT,
-    d.SUMMARY_LONG,
-    ROUND(COALESCE(u.TREND_HEAT_INDEX, 0), 1)    AS HEAT_INDEX,
+    COALESCE(t.TREND_NAME_B2C, t.TREND_NAME_B2B, e.TREND_NAME_B2C, e.TREND_NAME_B2B, u.TREND_TOPIC) AS TREND_NAME,
+    COALESCE(t.TREND_NAME_B2B, e.TREND_NAME_B2B)                          AS TREND_NAME_B2B,
+    COALESCE(t.CATEGORY,       e.CATEGORY)                                AS CATEGORY,
+    COALESCE(t.SUBCATEGORY,    e.SUBCATEGORY)                             AS SUBCATEGORY,
+    e.CATEGORY_CONFIDENCE,
+    e.LOW_CONFIDENCE_FLAG,
+    e.SUMMARY_SHORT,
+    e.SUMMARY_LONG,
+    ROUND(COALESCE(u.TREND_HEAT_INDEX, 0), 1)                             AS HEAT_INDEX,
     u.TOTAL_CLUSTER_SIZE,
     u.DISTINCT_SOURCE_COUNT,
     u.LIFECYCLE_STATUS,
-    u.LIFECYCLE_STATUS                            AS VELOCITY_DIRECTION,  -- backwards-compat alias; drop once dashboard repoints
+    u.LIFECYCLE_STATUS                                                    AS VELOCITY_DIRECTION,  -- backwards-compat alias
     u.LAST_LIFECYCLE_EVAL_AT,
     u.RETIREMENT_REASON,
     u.PROMOTION_CONFIDENCE,
     u.PROMOTION_SPECIFICITY,
     u.TREND_SOURCE,
-    COALESCE(d.ORIGINALLY_SURFACED_AT, u.DETECTED_AT) AS ORIGINALLY_SURFACED_AT,
+    COALESCE(e.ORIGINALLY_SURFACED_AT, u.DETECTED_AT)                     AS ORIGINALLY_SURFACED_AT,
 
     -- Key data points (per-source headline metrics)
     (SELECT ARRAY_AGG(
@@ -111,35 +123,34 @@ SELECT
        WHERE sm.TREND_ID = u.TREND_ID
          AND sm.HEADLINE_METRIC IS NOT NULL
          AND sm.HEADLINE_METRIC > 0
-    )                                            AS KEY_DATA_POINTS,
+    )                                                                     AS KEY_DATA_POINTS,
 
     -- Cultural context (Phase 3 enrichment agent — null for legacy rows)
-    d.VOICE_OF_CUSTOMER,
-    d.VIBE_SHIFT,
-    COALESCE(d.SOCIAL_NARRATIVE_V2, TO_VARIANT(d.SOCIAL_NARRATIVE)) AS SOCIAL_NARRATIVE,
-    d.CULTURAL_DRIVERS,
-    d.SEASONAL_RELEVANCE,
-    d.GEOGRAPHIC_HOTSPOTS,
+    e.VOICE_OF_CUSTOMER,
+    e.VIBE_SHIFT,
+    e.SOCIAL_NARRATIVE,
+    e.CULTURAL_DRIVERS,
+    e.SEASONAL_RELEVANCE,
+    e.GEOGRAPHIC_HOTSPOTS,
 
     -- Phase 3 dashboard additions
-    d.SOCIAL_PROOF,
-    d.NAME_CANDIDATES_CONSIDERED,
-    d.NAME_REVIEWER,
+    e.SOCIAL_PROOF,
+    e.NAME_CANDIDATES_CONSIDERED,
+    e.NAME_REVIEWER,
 
     -- Top 5 signals by PageRank
     ts.TOP_SIGNALS,
 
-    -- Macro trend tags + related trends (legacy fields, kept for upstream
-    -- compatibility — Macro Trend layer marked for retirement in newer
-    -- dashboard feedback but consumers still read these columns).
+    -- Macro trend tags + related trends
     mt.MACROTREND_TAGS,
     r.RELATED_TRENDS,
 
     -- Enrichment freshness
-    d.ENRICHED_AT
+    e.ENRICHED_AT
 
 FROM unioned_trends u
-LEFT JOIN MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT d ON u.TREND_ID = d.TREND_ID
+LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS                t  ON u.TREND_ID = t.TREND_ID  AND u.TREND_SOURCE = 'fct_trends'
+LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_ENRICHMENT_CURRENT e  ON u.TREND_ID = e.TREND_ID
 LEFT JOIN top_signals ts  ON u.TREND_ID = ts.TREND_ID
 LEFT JOIN macro_tags mt   ON u.TREND_ID = mt.TREND_ID
 LEFT JOIN related r       ON u.TREND_ID = r.TREND_ID;

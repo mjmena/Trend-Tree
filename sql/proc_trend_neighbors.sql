@@ -77,7 +77,7 @@ def resolve_probe(probe):
     if probe.get('trend_id'):
         tid = probe['trend_id']
         return (
-            f"(SELECT TREND_VECTOR FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS "
+            f"(SELECT TREND_VECTOR FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_ENRICHMENT_CURRENT "
             f"WHERE TREND_ID = {sql_str(tid)})",
             tid,
         )

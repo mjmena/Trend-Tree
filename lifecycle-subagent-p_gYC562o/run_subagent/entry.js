@@ -85,7 +85,7 @@ const TOOL_SCHEMAS = {
   propose_lifecycle_decision: {
     name: "propose_lifecycle_decision",
     description:
-      "Emit the final lifecycle decision for this trend. Call exactly ONCE near the end of the loop. The commit step persists this. If you don't call it, nothing gets written and the trend's NEXT_LIFECYCLE_EVAL_AT does not advance.",
+      "Emit the final lifecycle decision for this trend. Call exactly ONCE near the end of the loop. The commit step persists this. If you don't call it, nothing gets written and the trend's NEXT_LIFECYCLE_EVAL_AT does not advance. Note: this tool no longer accepts description_update — narrative changes are owned by enrichment. To trigger a narrative refresh, set request_re_enrichment=true and the commit step will fire a re-enrichment.",
     input_schema: {
       type: "object",
       properties: {
@@ -99,19 +99,16 @@ const TOOL_SCHEMAS = {
           description: "Modifier in [-20, 20]; clamped at commit. Use sparingly — see decision rubric.",
         },
         heat_modifier_reason: { type: "string" },
-        description_update: {
-          type: ["object", "null"],
-          properties: {
-            summary_short: { type: "string" },
-            summary_long: { type: "string" },
-            vibe_shift: { type: "string" },
-            social_narrative: {},
-            change_reason: { type: "string", description: "One short sentence on what shifted." },
-          },
-        },
         retirement_reason: { type: ["string", "null"], description: "Required if status='RETIRED'." },
         next_eval_in_hours: { type: "number", description: "Commit clamps to [1, 168]." },
-        request_re_enrichment: { type: "boolean" },
+        request_re_enrichment: {
+          type: "boolean",
+          description: "True if narrative is stale enough to warrant a fresh enrichment run. Owned by enrichment workflow.",
+        },
+        re_enrichment_reason: {
+          type: "string",
+          description: "Why narrative refresh is warranted (e.g., 'new gdelt source type appeared, narrative still social-only').",
+        },
         reasoning: { type: "string", description: "≤500 chars defending the decision." },
       },
       required: ["status", "heat_modifier_pct", "next_eval_in_hours", "reasoning"],
@@ -435,7 +432,6 @@ export default defineComponent({
     metrics_rows: { type: "any" },
     source_metrics_rows: { type: "any", optional: true },
     lifecycle_history_rows: { type: "any", optional: true },
-    narrative_history_rows: { type: "any", optional: true },
     recent_signal_rows: { type: "any", optional: true },
     gtrends_rows: { type: "any", optional: true },
     neighbor_rows: { type: "any", optional: true },
@@ -494,15 +490,6 @@ export default defineComponent({
       reasoning: r.REASONING,
       retirement_proposal: parseVariant(r.RETIREMENT_PROPOSAL),
       requested_re_enrichment: r.REQUESTED_RE_ENRICHMENT,
-    }));
-
-    const narrative_history = (this.narrative_history_rows || []).map((r) => ({
-      narrative_version: r.NARRATIVE_VERSION,
-      written_at: r.WRITTEN_AT,
-      written_by: r.WRITTEN_BY,
-      summary_short: r.SUMMARY_SHORT,
-      vibe_shift: r.VIBE_SHIFT,
-      change_reason: r.CHANGE_REASON,
     }));
 
     const recent_signals = (this.recent_signal_rows || []).map((r) => ({
@@ -572,12 +559,6 @@ Specificity score: ${metrics.specificity_score}`;
         ).join("\n")
       : "(no prior lifecycle evaluations)";
 
-    const narrative_history_block = narrative_history.length
-      ? narrative_history.map((n) =>
-          `v${n.narrative_version} (${n.written_at}, by ${n.written_by}): "${(n.summary_short || "").slice(0, 200)}" — ${n.change_reason || ""}`
-        ).join("\n")
-      : "(no narrative history yet)";
-
     const recent_signals_block = recent_signals.length
       ? recent_signals.slice(0, 20).map((s, i) =>
           `${i + 1}. [${s.source_name}] ${s.signal_timestamp} — "${(s.signal_title || "").slice(0, 120)}"`
@@ -611,7 +592,6 @@ Your modifier window: [-20, 20] %`;
       trend_state_block,
       metrics_block,
       lifecycle_history_block,
-      narrative_history_block,
       recent_signals_block,
       gtrends_block,
       neighbor_block,
