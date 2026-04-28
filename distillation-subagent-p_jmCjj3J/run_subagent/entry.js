@@ -174,7 +174,7 @@ const PROPOSE_SCHEMA = {
         verdict: { type: "string", enum: ["REAL_TREND", "DUPLICATE_OF"] },
         dedup_of_trend_id: { type: "string" },
         source_breakdown: { type: "object" },
-        evidence_added: { type: "array" },
+        evidence_added: { type: "array", items: { type: "string" } },
         reasoning: { type: "string", description: "≤500 char rationale." },
       },
       required: ["topic", "supporting_signal_ids", "confidence", "specificity_score", "verdict", "reasoning"],
