@@ -7,6 +7,7 @@ settings:
   network: net_5Lnie3
 triggers:
 - id: hi_99HRnQ5
+- id: ti_xQTn2y2
 steps:
 - namespace: normalize_event
   runtime: nodejs20.x
@@ -82,11 +83,6 @@ steps:
     pending_rows: "{{steps.q_load_pending_candidates.$return_value}}"
     max_candidates: "{{steps.normalize_event.$return_value.max_candidates}}"
 - namespace: q_compute_vectors_and_neighbors
-  # Inline batch neighbor query for the promotion lead. Logic mirrors the
-  # standalone tool sql/proc_trend_neighbors.sql (PROC_TREND_NEIGHBORS) —
-  # if you tune the embedding recipe or similarity threshold, update both.
-  # Kept inline here (vs CALL the proc) because the procedure returns
-  # VARIANT and we need flat row output across N candidates in one step.
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
   props:
@@ -254,16 +250,6 @@ steps:
       params:
       - "{{steps.serialize_neighbor_pool.$return_value.neighbor_pool_json}}"
 - namespace: q_compute_intra_batch_pairs
-  # Pairwise candidate-to-candidate similarity within the batch. Catches
-  # the case where two candidates from different distillation chains
-  # describe the same trend — the per-candidate neighbor query alone
-  # can't see this since neither has a FCT_TRENDS row yet.
-  #
-  # Threshold 0.70 was tuned empirically against the 2026-04-27 batch:
-  # cleanly catches the mushroom format-shift trio (0.82-0.87) and the
-  # mineral SPF trio (0.74-0.97) while sparing the K-beauty trio
-  # (0.52-0.58, three genuinely distinct trends in the same category).
-  # If you tune, also retune INTRA_BATCH_THRESHOLD in run_lead_agent.
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
   props:
