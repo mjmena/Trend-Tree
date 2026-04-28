@@ -11,7 +11,6 @@
 const SIGNAL_ID_OK = /^[^\s\x00-\x1F\x7F]{1,300}$/;
 const SHORT_ID_OK = /^[A-Za-z0-9_\-]{1,64}$/;
 const HYPOTHESIS_MAX = 2000;
-const ALLOWED_BUCKETS = new Set(["OVERLAP", "AGENT_ONLY", "LOUVAIN_ONLY"]);
 
 function sanitizeId(s, regex) {
   if (!s) return "";
@@ -30,9 +29,6 @@ export default defineComponent({
     if (!hypothesis) throw new Error("missing 'hypothesis' in request body");
     if (hypothesis.length > HYPOTHESIS_MAX) throw new Error(`hypothesis too long (max ${HYPOTHESIS_MAX} chars)`);
 
-    const bucket = ALLOWED_BUCKETS.has(body.bucket) ? body.bucket : null;
-    if (!bucket) throw new Error(`bucket must be one of ${[...ALLOWED_BUCKETS].join("|")}`);
-
     const rawSignalIds = Array.isArray(body.signal_ids) ? body.signal_ids : [];
     const signal_ids = rawSignalIds.map((s) => sanitizeId(s, SIGNAL_ID_OK)).filter(Boolean).slice(0, 100);
     if (signal_ids.length === 0) throw new Error("no valid signal_ids in request body");
@@ -47,13 +43,12 @@ export default defineComponent({
     const dry_run = body.dry_run === true || body.dry_run === "true";
 
     console.log(
-      `subagent: bucket=${bucket} signals=${signal_ids.length} budget=${budget_tokens} session=${agent_session_id} chain=${chain_id} dry_run=${dry_run}`,
+      `subagent: signals=${signal_ids.length} budget=${budget_tokens} session=${agent_session_id} chain=${chain_id} dry_run=${dry_run}`,
     );
     console.log(`hypothesis: ${hypothesis.slice(0, 200)}`);
 
     return {
       hypothesis,
-      bucket,
       signal_ids,
       signal_ids_sql_in,
       budget_tokens,
