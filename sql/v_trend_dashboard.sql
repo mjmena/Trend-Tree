@@ -3,10 +3,8 @@
 --
 -- Stable schema for the Trend Agent dashboard. Each row powers one trend card.
 -- KEY_DATA_POINTS is populated from per-source headline metrics in
--- FCT_TREND_SOURCE_METRICS. Cultural-context fields (voice of customer,
--- vibe shift, narrative, drivers, seasonality, geography) come from the
--- Grok specialist output in DIM_TREND_ENRICHMENT and replace the former
--- ENGAGEMENT_METRICS placeholder.
+-- FCT_TREND_SOURCE_METRICS. EVIDENCE is the typed link pool from the
+-- enrichment agent — filter by `type` for news/social/commerce/etc.
 --
 -- Usage:
 --   SELECT * FROM V_TREND_DASHBOARD ORDER BY HEAT_INDEX DESC LIMIT 25;
@@ -21,16 +19,14 @@ WITH latest_enrichment AS (
          r.PAYLOAD:category::STRING       AS CATEGORY,
          r.PAYLOAD:subcategory::STRING    AS SUBCATEGORY,
          r.PAYLOAD:category_confidence::FLOAT  AS CATEGORY_CONFIDENCE,
-         r.PAYLOAD:low_confidence_flag::BOOLEAN AS LOW_CONFIDENCE_FLAG,
+         (r.PAYLOAD:category_confidence::FLOAT < 0.6) AS LOW_CONFIDENCE_FLAG,
          r.PAYLOAD:summary_short::STRING  AS SUMMARY_SHORT,
          r.PAYLOAD:summary_long::STRING   AS SUMMARY_LONG,
-         r.PAYLOAD:vibe_shift::STRING     AS VIBE_SHIFT,
-         COALESCE(r.PAYLOAD:social_narrative_v2, r.PAYLOAD:social_narrative) AS SOCIAL_NARRATIVE,
-         r.PAYLOAD:voice_of_customer  AS VOICE_OF_CUSTOMER,
+         COALESCE(r.PAYLOAD:social_narrative, r.PAYLOAD:social_narrative_v2) AS SOCIAL_NARRATIVE,
          r.PAYLOAD:cultural_drivers   AS CULTURAL_DRIVERS,
          r.PAYLOAD:seasonal_relevance AS SEASONAL_RELEVANCE,
          r.PAYLOAD:geographic_hotspots AS GEOGRAPHIC_HOTSPOTS,
-         r.PAYLOAD:social_proof       AS SOCIAL_PROOF,
+         COALESCE(r.PAYLOAD:evidence, r.PAYLOAD:social_proof) AS EVIDENCE,
          r.PAYLOAD:name_candidates_considered AS NAME_CANDIDATES_CONSIDERED,
          r.PAYLOAD:name_reviewer      AS NAME_REVIEWER,
          r.PAYLOAD:agent_telemetry    AS AGENT_TELEMETRY,
@@ -73,8 +69,14 @@ macro_tags AS (
     GROUP BY TREND_ID
 ),
 related AS (
-    SELECT TREND_ID, RELATED_TRENDS
-    FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_TAXONOMY
+    -- Inlined from V_TREND_TAXONOMY: trends sharing macrotrend tags
+    SELECT a.TREND_ID,
+           ARRAY_AGG(DISTINCT b.TREND_ID) AS RELATED_TRENDS
+    FROM MCC_PRESENTATION.TREND_AGENT.MAP_TREND_MACROTRENDS a
+    JOIN MCC_PRESENTATION.TREND_AGENT.MAP_TREND_MACROTRENDS b
+      ON a.MACROTREND_NAME = b.MACROTREND_NAME
+     AND a.TREND_ID != b.TREND_ID
+    GROUP BY a.TREND_ID
 )
 SELECT
     -- Card header
@@ -103,13 +105,14 @@ SELECT
          AND sm.HEADLINE_METRIC > 0
     )                                            AS KEY_DATA_POINTS,
 
-    -- Cultural context (Grok specialist — source-grounded via Bluesky)
-    d.VOICE_OF_CUSTOMER,
-    d.VIBE_SHIFT,
+    -- Cultural context (enrichment agent — source-grounded)
     d.SOCIAL_NARRATIVE,
     d.CULTURAL_DRIVERS,
     d.SEASONAL_RELEVANCE,
     d.GEOGRAPHIC_HOTSPOTS,
+
+    -- Typed link pool (filter by type for news/social/commerce/etc.)
+    d.EVIDENCE,
 
     -- Top 5 signals by PageRank
     ts.TOP_SIGNALS,

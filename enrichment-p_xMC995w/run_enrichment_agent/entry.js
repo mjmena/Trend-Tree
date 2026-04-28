@@ -177,20 +177,6 @@ const ENRICHMENT_SCHEMAS = {
         category: { type: "string", enum: ["wellness", "food_beverage", "beauty", "fitness", "fashion", "home_living", "sustainability", "consumer_tech", "personal_care", "social_lifestyle", "entertainment", "travel", "parenting", "other"] },
         subcategory: { type: "string", description: "Lowercase snake_case." },
         category_confidence: { type: "number", description: "0.0-1.0; set <0.6 if you genuinely couldn't fit a category." },
-        voice_of_customer: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              quote: { type: "string" },
-              source_url: { type: "string", description: "Required." },
-              platform: { type: "string" },
-            },
-            required: ["quote", "source_url"],
-          },
-          description: "3-8 quotes; each MUST have source_url.",
-        },
-        vibe_shift: { type: "string" },
         social_narrative: {
           type: "array",
           items: {
@@ -233,20 +219,29 @@ const ENRICHMENT_SCHEMAS = {
             required: ["region", "intensity"],
           },
         },
-        social_proof: {
+        evidence: {
           type: "array",
           items: {
             type: "object",
             properties: {
-              claim: { type: "string" },
-              source_url: { type: "string", description: "Click-through URL — required." },
-              source_type: { type: "string", enum: ["news", "social", "search_volume", "commerce", "other"] },
-              source_name: { type: "string" },
+              url: { type: "string", description: "Click-through URL — required." },
+              type: { type: "string", enum: ["news", "social", "commerce", "reference", "search_volume", "video", "other"], description: "What kind of link this is." },
+              source: { type: "string", description: "Outlet, handle, or retailer (e.g. 'Forbes', '@xyz', 'Amazon')." },
+              claim: { type: "string", description: "One-line description of what this evidence shows." },
               captured_at: { type: "string", description: "ISO timestamp." },
+              quote: { type: "string", description: "Verbatim post text — populate when type=social with a real quote." },
+              engagement: {
+                type: "object",
+                properties: {
+                  likes: { type: "number" },
+                  reposts: { type: "number" },
+                },
+                description: "Optional Bluesky/X engagement counts.",
+              },
             },
-            required: ["claim", "source_url", "source_type"],
+            required: ["url", "type", "source", "claim", "captured_at"],
           },
-          description: "≥2 structured proof points with click-throughs.",
+          description: "Typed pool of links — both pre-fetched signals you reference AND new tool-found links. Tag every entry with the right `type`. Aim for diversity (e.g. 2 news + 2 social w/ quotes + 1 commerce).",
         },
         name_candidates_considered: {
           type: "array",
@@ -270,7 +265,7 @@ const ENRICHMENT_SCHEMAS = {
         },
         reasoning: { type: "string", description: "≤500 chars on why these names + categorization fit." },
       },
-      required: ["trend_name_b2b", "trend_name_b2c", "summary_short", "summary_long", "category", "subcategory", "category_confidence", "social_proof", "name_candidates_considered", "reasoning"],
+      required: ["trend_name_b2b", "trend_name_b2c", "summary_short", "summary_long", "category", "subcategory", "category_confidence", "evidence", "name_candidates_considered", "reasoning"],
     },
   },
 };
@@ -486,15 +481,15 @@ async function ingestGrokLive(input, ctx) {
 
 function proposeEnrichment(input, ctx) {
   const seenUrls = new Set();
-  const deduped = (input.social_proof || []).filter(item => {
-    if (!item.source_url || seenUrls.has(item.source_url)) return false;
-    seenUrls.add(item.source_url);
+  const deduped = (input.evidence || []).filter(item => {
+    if (!item.url || seenUrls.has(item.url)) return false;
+    seenUrls.add(item.url);
     return true;
   });
-  ctx.proposed_enrichment = { ...input, social_proof: deduped, emitted_at: new Date().toISOString() };
+  ctx.proposed_enrichment = { ...input, evidence: deduped, emitted_at: new Date().toISOString() };
   return {
     accepted: true,
-    note: `Enrichment record captured. social_proof: ${input.social_proof?.length ?? 0} → ${deduped.length} items after dedup.`,
+    note: `Enrichment record captured. evidence: ${input.evidence?.length ?? 0} → ${deduped.length} items after dedup.`,
   };
 }
 

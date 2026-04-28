@@ -43,16 +43,21 @@
 
 ### Cultural context
 
-These fields come from the **Grok specialist** LLM step, which analyzes Bluesky social signals and broader cultural indicators. All are NULL when enrichment has not run or when the enrichment type was `SOURCES_ONLY`.
+These fields come from the enrichment agent (Sonnet 4.6 single-agent loop). All are NULL when enrichment has not run.
 
 | Column | Type | Source | Description |
 |--------|------|--------|-------------|
-| `VOICE_OF_CUSTOMER` | `VARCHAR` | `DIM_TREND_ENRICHMENT` | How real people are talking about this trend — sentiment, tone, common phrases, and emotional drivers drawn from social conversation. |
-| `VIBE_SHIFT` | `VARCHAR` | `DIM_TREND_ENRICHMENT` | Whether public perception of this trend is shifting and in what direction. Captures emerging sentiment changes before they show up in search data. |
-| `SOCIAL_NARRATIVE` | `VARCHAR` | `DIM_TREND_ENRICHMENT` | The dominant story or framing people are using when discussing this trend online. |
-| `CULTURAL_DRIVERS` | `VARCHAR` | `DIM_TREND_ENRICHMENT` | Underlying cultural forces, events, or movements fueling the trend. |
-| `SEASONAL_RELEVANCE` | `VARCHAR` | `DIM_TREND_ENRICHMENT` | Whether and how the trend ties to seasonal patterns, holidays, or recurring cultural moments. |
-| `GEOGRAPHIC_HOTSPOTS` | `VARCHAR` | `DIM_TREND_ENRICHMENT` | Regions or markets where the trend is strongest or emerging fastest. |
+| `SOCIAL_NARRATIVE` | `ARRAY` | `FCT_TREND_ENRICHMENT_LEDGER.PAYLOAD:social_narrative` | 3-5 narrative bullets explaining why this is happening now. Each is `{point, evidence_url}`. |
+| `CULTURAL_DRIVERS` | `ARRAY` | `FCT_TREND_ENRICHMENT_LEDGER.PAYLOAD:cultural_drivers` | Underlying cultural forces, events, or movements fueling the trend. Each `{driver, influence_level: high/medium/low}`. |
+| `SEASONAL_RELEVANCE` | `OBJECT` | `FCT_TREND_ENRICHMENT_LEDGER.PAYLOAD:seasonal_relevance` | `{is_seasonal, peak_months?}` — whether and when the trend ties to seasonal patterns. |
+| `GEOGRAPHIC_HOTSPOTS` | `ARRAY` | `FCT_TREND_ENRICHMENT_LEDGER.PAYLOAD:geographic_hotspots` | Regions where the trend is strongest. Each `{region, intensity: high/medium/low}`. |
+| `LOW_CONFIDENCE_FLAG` | `BOOLEAN` | Derived | `TRUE` when `category_confidence < 0.6`. Surfaces uncertain categorization in the UI. |
+
+### Evidence (typed link pool)
+
+| Column | Type | Source | Description |
+|--------|------|--------|-------------|
+| `EVIDENCE` | `ARRAY` | `FCT_TREND_ENRICHMENT_LEDGER.PAYLOAD:evidence` | Typed pool of links — both pre-fetched signals the agent referenced and new tool-found links. Each entry: `{url, type, source, claim, captured_at, quote?, engagement?}`. `type` is one of `news \| social \| commerce \| reference \| search_volume \| video \| other`. Filter by type for dashboard sections (e.g. `WHERE type='social' AND quote IS NOT NULL` for voice-of-customer; `WHERE type IN ('news','commerce')` for hard proof). Legacy rows (pre-2026-04-28) project the older `social_proof` shape (`source_url`/`source_type`/`source_name`) under the same column via COALESCE — consumers should tolerate both shapes during cutover. |
 
 ### Signals
 
@@ -64,7 +69,7 @@ These fields come from the **Grok specialist** LLM step, which analyzes Bluesky 
 
 | Column | Type | Source | Description |
 |--------|------|--------|-------------|
-| `RELATED_TRENDS` | `VARIANT` | `V_TREND_TAXONOMY` | Vector-similarity related trends from the taxonomy view. Structure depends on the taxonomy view definition. |
+| `RELATED_TRENDS` | `ARRAY` | `MAP_TREND_MACROTRENDS` | Trends sharing macrotrend tags (inlined from former V_TREND_TAXONOMY view). |
 
 ### Freshness
 

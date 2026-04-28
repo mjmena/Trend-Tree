@@ -149,10 +149,6 @@ export default defineComponent({
       const e = { ...enrichmentRaw };
       const category = normalizeCategory(e.category);
       const subcategory = normalizeSubcategory(e.subcategory);
-      const lowConfidenceFlag =
-        typeof e.low_confidence_flag === "boolean"
-          ? e.low_confidence_flag
-          : (typeof e.category_confidence === "number" ? e.category_confidence < 0.6 : null);
 
       payload = {
         trend_id: trendId,
@@ -163,20 +159,11 @@ export default defineComponent({
         category,
         subcategory,
         category_confidence: e.category_confidence ?? null,
-        low_confidence_flag: lowConfidenceFlag,
-        voice_of_customer: e.voice_of_customer ?? null,
-        vibe_shift: e.vibe_shift ?? null,
-        // Phase 3 social_narrative is a structured array — write to V2 column.
-        // Legacy SOCIAL_NARRATIVE STRING column gets a JSON-stringified preview
-        // so dashboards still rendering the old field continue to show something.
-        social_narrative_v2: e.social_narrative ?? null,
-        social_narrative: Array.isArray(e.social_narrative)
-          ? e.social_narrative.map((n) => n.point).filter(Boolean).join(" • ").slice(0, 4000) || null
-          : (typeof e.social_narrative === "string" ? e.social_narrative : null),
+        social_narrative: e.social_narrative ?? null,
         cultural_drivers: e.cultural_drivers ?? null,
         seasonal_relevance: e.seasonal_relevance ?? null,
         geographic_hotspots: e.geographic_hotspots ?? null,
-        social_proof: e.social_proof ?? null,
+        evidence: e.evidence ?? null,
         originally_surfaced_at: e.originally_surfaced_at ?? null,
         name_candidates_considered: e.name_candidates_considered ?? null,
         name_reviewer: e.name_reviewer ?? null,
@@ -235,7 +222,8 @@ export default defineComponent({
     }
 
     console.log(`Tokens: ${payload.llm_total_tokens}, cost: $${payload.llm_cost_estimate}`);
-    console.log(`Tier: ${tier}, Trend: B2B="${payload.trend_name_b2b}" / B2C="${payload.trend_name_b2c}" (${payload.category}/${payload.subcategory})${payload.low_confidence_flag ? " [LOW CONF]" : ""}`);
+    const lowConf = typeof payload.category_confidence === "number" && payload.category_confidence < 0.6;
+    console.log(`Tier: ${tier}, Trend: B2B="${payload.trend_name_b2b}" / B2C="${payload.trend_name_b2c}" (${payload.category}/${payload.subcategory})${lowConf ? " [LOW CONF]" : ""}`);
     if (payload.name_reviewer) {
       console.log(`Reviewer: b2b=${payload.name_reviewer.score_b2b} b2c=${payload.name_reviewer.score_b2c}${payload.name_reviewer.alternate_b2c ? ` alt='${payload.name_reviewer.alternate_b2c}'` : ""}`);
     }
