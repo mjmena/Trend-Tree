@@ -21,24 +21,58 @@ steps:
       authProvisionId: apn_yghdQYJ
     sql:
       value: |-
+        WITH lc AS (
+          SELECT NEW_STATUS AS LIFECYCLE_STATUS, NEW_HEAT AS HEAT_INDEX
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
+          ORDER BY EVALUATED_AT DESC LIMIT 1
+        ),
+        agg AS (
+          SELECT
+            (SELECT COUNT(DISTINCT f.value::STRING)
+               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+              WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}')
+                 OR c.DEDUP_OF_TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}') AS TOTAL_CLUSTER_SIZE,
+            (SELECT COUNT(DISTINCT k.value::STRING)
+               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => OBJECT_KEYS(c.SOURCE_BREAKDOWN)) k
+              WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}')
+                 OR c.DEDUP_OF_TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}') AS DISTINCT_SOURCE_COUNT
+        )
         SELECT t.TREND_ID, t.TREND_TOPIC,
                agg.TOTAL_CLUSTER_SIZE, agg.DISTINCT_SOURCE_COUNT,
                COALESCE(lc.LIFECYCLE_STATUS, 'NEW') AS VELOCITY_DIRECTION,
                COALESCE(lc.HEAT_INDEX, 0) AS TREND_HEAT_INDEX,
                t.DETECTED_AT, t.LAST_UPDATE_AT
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_LIFECYCLE_CURRENT lc  ON lc.TREND_ID = t.TREND_ID
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_AGGREGATES        agg ON agg.TREND_ID = t.TREND_ID
+        LEFT JOIN lc  ON TRUE
+        LEFT JOIN agg ON TRUE
         WHERE t.TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
       query: |-
+        WITH lc AS (
+          SELECT NEW_STATUS AS LIFECYCLE_STATUS, NEW_HEAT AS HEAT_INDEX
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
+          ORDER BY EVALUATED_AT DESC LIMIT 1
+        ),
+        agg AS (
+          SELECT
+            (SELECT COUNT(DISTINCT f.value::STRING)
+               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+              WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}')
+                 OR c.DEDUP_OF_TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}') AS TOTAL_CLUSTER_SIZE,
+            (SELECT COUNT(DISTINCT k.value::STRING)
+               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => OBJECT_KEYS(c.SOURCE_BREAKDOWN)) k
+              WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}')
+                 OR c.DEDUP_OF_TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}') AS DISTINCT_SOURCE_COUNT
+        )
         SELECT t.TREND_ID, t.TREND_TOPIC,
                agg.TOTAL_CLUSTER_SIZE, agg.DISTINCT_SOURCE_COUNT,
                COALESCE(lc.LIFECYCLE_STATUS, 'NEW') AS VELOCITY_DIRECTION,
                COALESCE(lc.HEAT_INDEX, 0) AS TREND_HEAT_INDEX,
                t.DETECTED_AT, t.LAST_UPDATE_AT
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_LIFECYCLE_CURRENT lc  ON lc.TREND_ID = t.TREND_ID
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_AGGREGATES        agg ON agg.TREND_ID = t.TREND_ID
+        LEFT JOIN lc  ON TRUE
+        LEFT JOIN agg ON TRUE
         WHERE t.TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
     params: []
 - namespace: q_signals
@@ -93,38 +127,118 @@ steps:
       authProvisionId: apn_yghdQYJ
     sql:
       value: |-
+        WITH latest_lifecycle AS (
+          SELECT TREND_ID, NEW_STATUS AS LIFECYCLE_STATUS, NEW_HEAT AS HEAT_INDEX
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          ) WHERE rn = 1
+        ),
+        latest_enrichment AS (
+          SELECT TREND_ID,
+                 PAYLOAD:trend_name_b2c::STRING AS E_TREND_NAME_B2C,
+                 PAYLOAD:category::STRING       AS E_CATEGORY,
+                 PAYLOAD:subcategory::STRING    AS E_SUBCATEGORY,
+                 PAYLOAD:summary_short::STRING  AS SUMMARY_SHORT
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+          ) WHERE rn = 1
+        ),
+        tc_for_agg AS (
+          SELECT t.TREND_ID, c.SUPPORTING_SIGNAL_IDS, c.SOURCE_BREAKDOWN
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+            ON c.CANDIDATE_ID = t.CANDIDATE_ID OR c.DEDUP_OF_TREND_ID = t.TREND_ID
+        ),
+        agg AS (
+          SELECT t.TREND_ID,
+                 COALESCE(s.TOTAL_CLUSTER_SIZE, 0)    AS TOTAL_CLUSTER_SIZE,
+                 COALESCE(src.DISTINCT_SOURCE_COUNT, 0) AS DISTINCT_SOURCE_COUNT
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+          LEFT JOIN (
+            SELECT TREND_ID, COUNT(DISTINCT f.value::STRING) AS TOTAL_CLUSTER_SIZE
+            FROM tc_for_agg, LATERAL FLATTEN(INPUT => SUPPORTING_SIGNAL_IDS) f
+            GROUP BY TREND_ID
+          ) s ON s.TREND_ID = t.TREND_ID
+          LEFT JOIN (
+            SELECT TREND_ID, COUNT(DISTINCT k.value::STRING) AS DISTINCT_SOURCE_COUNT
+            FROM tc_for_agg, LATERAL FLATTEN(INPUT => OBJECT_KEYS(SOURCE_BREAKDOWN)) k
+            GROUP BY TREND_ID
+          ) src ON src.TREND_ID = t.TREND_ID
+        )
         SELECT t.TREND_ID, t.TREND_TOPIC,
                agg.TOTAL_CLUSTER_SIZE, agg.DISTINCT_SOURCE_COUNT,
                COALESCE(lc.LIFECYCLE_STATUS, 'NEW') AS VELOCITY_DIRECTION,
                COALESCE(lc.HEAT_INDEX, 0) AS TREND_HEAT_INDEX,
                t.LAST_UPDATE_AT,
-               COALESCE(t.CATEGORY, e.CATEGORY)             AS CATEGORY,
-               COALESCE(t.SUBCATEGORY, e.SUBCATEGORY)       AS SUBCATEGORY,
-               COALESCE(t.TREND_NAME_B2C, e.TREND_NAME_B2C) AS TREND_NAME_B2C,
+               COALESCE(t.CATEGORY, e.E_CATEGORY)             AS CATEGORY,
+               COALESCE(t.SUBCATEGORY, e.E_SUBCATEGORY)       AS SUBCATEGORY,
+               COALESCE(t.TREND_NAME_B2C, e.E_TREND_NAME_B2C) AS TREND_NAME_B2C,
                e.SUMMARY_SHORT
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_LIFECYCLE_CURRENT  lc  ON lc.TREND_ID = t.TREND_ID
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_ENRICHMENT_CURRENT e   ON e.TREND_ID  = t.TREND_ID
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_AGGREGATES         agg ON agg.TREND_ID = t.TREND_ID
+        LEFT JOIN latest_lifecycle  lc  ON lc.TREND_ID  = t.TREND_ID
+        LEFT JOIN latest_enrichment e   ON e.TREND_ID   = t.TREND_ID
+        LEFT JOIN agg               agg ON agg.TREND_ID = t.TREND_ID
         WHERE COALESCE(lc.LIFECYCLE_STATUS, 'NEW') != 'RETIRED'
           AND t.LAST_UPDATE_AT > DATEADD(day, -14, CURRENT_TIMESTAMP())
           AND t.TREND_ID != '{{steps.normalize_event.$return_value.trend_id}}'
         ORDER BY COALESCE(lc.HEAT_INDEX, 0) DESC NULLS LAST
         LIMIT 30
       query: |-
+        WITH latest_lifecycle AS (
+          SELECT TREND_ID, NEW_STATUS AS LIFECYCLE_STATUS, NEW_HEAT AS HEAT_INDEX
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          ) WHERE rn = 1
+        ),
+        latest_enrichment AS (
+          SELECT TREND_ID,
+                 PAYLOAD:trend_name_b2c::STRING AS E_TREND_NAME_B2C,
+                 PAYLOAD:category::STRING       AS E_CATEGORY,
+                 PAYLOAD:subcategory::STRING    AS E_SUBCATEGORY,
+                 PAYLOAD:summary_short::STRING  AS SUMMARY_SHORT
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+          ) WHERE rn = 1
+        ),
+        tc_for_agg AS (
+          SELECT t.TREND_ID, c.SUPPORTING_SIGNAL_IDS, c.SOURCE_BREAKDOWN
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+            ON c.CANDIDATE_ID = t.CANDIDATE_ID OR c.DEDUP_OF_TREND_ID = t.TREND_ID
+        ),
+        agg AS (
+          SELECT t.TREND_ID,
+                 COALESCE(s.TOTAL_CLUSTER_SIZE, 0)    AS TOTAL_CLUSTER_SIZE,
+                 COALESCE(src.DISTINCT_SOURCE_COUNT, 0) AS DISTINCT_SOURCE_COUNT
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+          LEFT JOIN (
+            SELECT TREND_ID, COUNT(DISTINCT f.value::STRING) AS TOTAL_CLUSTER_SIZE
+            FROM tc_for_agg, LATERAL FLATTEN(INPUT => SUPPORTING_SIGNAL_IDS) f
+            GROUP BY TREND_ID
+          ) s ON s.TREND_ID = t.TREND_ID
+          LEFT JOIN (
+            SELECT TREND_ID, COUNT(DISTINCT k.value::STRING) AS DISTINCT_SOURCE_COUNT
+            FROM tc_for_agg, LATERAL FLATTEN(INPUT => OBJECT_KEYS(SOURCE_BREAKDOWN)) k
+            GROUP BY TREND_ID
+          ) src ON src.TREND_ID = t.TREND_ID
+        )
         SELECT t.TREND_ID, t.TREND_TOPIC,
                agg.TOTAL_CLUSTER_SIZE, agg.DISTINCT_SOURCE_COUNT,
                COALESCE(lc.LIFECYCLE_STATUS, 'NEW') AS VELOCITY_DIRECTION,
                COALESCE(lc.HEAT_INDEX, 0) AS TREND_HEAT_INDEX,
                t.LAST_UPDATE_AT,
-               COALESCE(t.CATEGORY, e.CATEGORY)             AS CATEGORY,
-               COALESCE(t.SUBCATEGORY, e.SUBCATEGORY)       AS SUBCATEGORY,
-               COALESCE(t.TREND_NAME_B2C, e.TREND_NAME_B2C) AS TREND_NAME_B2C,
+               COALESCE(t.CATEGORY, e.E_CATEGORY)             AS CATEGORY,
+               COALESCE(t.SUBCATEGORY, e.E_SUBCATEGORY)       AS SUBCATEGORY,
+               COALESCE(t.TREND_NAME_B2C, e.E_TREND_NAME_B2C) AS TREND_NAME_B2C,
                e.SUMMARY_SHORT
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_LIFECYCLE_CURRENT  lc  ON lc.TREND_ID = t.TREND_ID
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_ENRICHMENT_CURRENT e   ON e.TREND_ID  = t.TREND_ID
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_AGGREGATES         agg ON agg.TREND_ID = t.TREND_ID
+        LEFT JOIN latest_lifecycle  lc  ON lc.TREND_ID  = t.TREND_ID
+        LEFT JOIN latest_enrichment e   ON e.TREND_ID   = t.TREND_ID
+        LEFT JOIN agg               agg ON agg.TREND_ID = t.TREND_ID
         WHERE COALESCE(lc.LIFECYCLE_STATUS, 'NEW') != 'RETIRED'
           AND t.LAST_UPDATE_AT > DATEADD(day, -14, CURRENT_TIMESTAMP())
           AND t.TREND_ID != '{{steps.normalize_event.$return_value.trend_id}}'

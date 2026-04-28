@@ -21,6 +21,41 @@ steps:
       authProvisionId: apn_yghdQYJ
     sql:
       value: |-
+        WITH lc AS (
+          SELECT NEW_STATUS AS LIFECYCLE_STATUS, NEW_HEAT AS HEAT_INDEX,
+                 NEW_HEAT_SMOOTHED AS HEAT_INDEX_SMOOTHED,
+                 EVALUATED_AT AS LAST_EVAL_AT, NEXT_EVAL_AT,
+                 DECISION_PAYLOAD:retirement_reason::STRING AS RETIREMENT_REASON
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+          ORDER BY EVALUATED_AT DESC LIMIT 1
+        ),
+        e AS (
+          SELECT WRITTEN_AT AS ENRICHED_AT,
+                 PAYLOAD:summary_short::STRING AS SUMMARY_SHORT,
+                 PAYLOAD:summary_long::STRING  AS SUMMARY_LONG,
+                 PAYLOAD:vibe_shift::STRING    AS VIBE_SHIFT
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+          WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+          ORDER BY WRITTEN_AT DESC LIMIT 1
+        ),
+        ev AS (
+          SELECT COUNT(*) AS ENRICHMENT_VERSION
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+          WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+            AND ENRICHMENT_KIND IN ('initial', 'refinement')
+        ),
+        agg AS (
+          SELECT
+            (SELECT COUNT(DISTINCT f.value::STRING)
+               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+              WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}')
+                 OR c.DEDUP_OF_TREND_ID = '{{steps.handle_request.$return_value.trend_id}}') AS TOTAL_CLUSTER_SIZE,
+            (SELECT COUNT(DISTINCT k.value::STRING)
+               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => OBJECT_KEYS(c.SOURCE_BREAKDOWN)) k
+              WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}')
+                 OR c.DEDUP_OF_TREND_ID = '{{steps.handle_request.$return_value.trend_id}}') AS DISTINCT_SOURCE_COUNT
+        )
         SELECT
           t.TREND_ID, t.TREND_TOPIC, t.GTRENDS_KEYWORD,
           t.PROMOTED_AT, t.LAST_UPDATE_AT,
@@ -33,14 +68,50 @@ steps:
           lc.NEXT_EVAL_AT AS NEXT_LIFECYCLE_EVAL_AT,
           lc.RETIREMENT_REASON,
           e.SUMMARY_SHORT, e.SUMMARY_LONG, e.VIBE_SHIFT,
-          e.ENRICHED_AT, e.ENRICHMENT_VERSION
+          e.ENRICHED_AT, ev.ENRICHMENT_VERSION
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_LIFECYCLE_CURRENT  lc  ON lc.TREND_ID = t.TREND_ID
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_ENRICHMENT_CURRENT e   ON e.TREND_ID  = t.TREND_ID
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_AGGREGATES         agg ON agg.TREND_ID = t.TREND_ID
-        LEFT JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES              c   ON c.CANDIDATE_ID = t.CANDIDATE_ID
+        LEFT JOIN lc  ON TRUE
+        LEFT JOIN e   ON TRUE
+        LEFT JOIN ev  ON TRUE
+        LEFT JOIN agg ON TRUE
+        LEFT JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c ON c.CANDIDATE_ID = t.CANDIDATE_ID
         WHERE t.TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
       query: |-
+        WITH lc AS (
+          SELECT NEW_STATUS AS LIFECYCLE_STATUS, NEW_HEAT AS HEAT_INDEX,
+                 NEW_HEAT_SMOOTHED AS HEAT_INDEX_SMOOTHED,
+                 EVALUATED_AT AS LAST_EVAL_AT, NEXT_EVAL_AT,
+                 DECISION_PAYLOAD:retirement_reason::STRING AS RETIREMENT_REASON
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+          ORDER BY EVALUATED_AT DESC LIMIT 1
+        ),
+        e AS (
+          SELECT WRITTEN_AT AS ENRICHED_AT,
+                 PAYLOAD:summary_short::STRING AS SUMMARY_SHORT,
+                 PAYLOAD:summary_long::STRING  AS SUMMARY_LONG,
+                 PAYLOAD:vibe_shift::STRING    AS VIBE_SHIFT
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+          WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+          ORDER BY WRITTEN_AT DESC LIMIT 1
+        ),
+        ev AS (
+          SELECT COUNT(*) AS ENRICHMENT_VERSION
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+          WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+            AND ENRICHMENT_KIND IN ('initial', 'refinement')
+        ),
+        agg AS (
+          SELECT
+            (SELECT COUNT(DISTINCT f.value::STRING)
+               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+              WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}')
+                 OR c.DEDUP_OF_TREND_ID = '{{steps.handle_request.$return_value.trend_id}}') AS TOTAL_CLUSTER_SIZE,
+            (SELECT COUNT(DISTINCT k.value::STRING)
+               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => OBJECT_KEYS(c.SOURCE_BREAKDOWN)) k
+              WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}')
+                 OR c.DEDUP_OF_TREND_ID = '{{steps.handle_request.$return_value.trend_id}}') AS DISTINCT_SOURCE_COUNT
+        )
         SELECT
           t.TREND_ID, t.TREND_TOPIC, t.GTRENDS_KEYWORD,
           t.PROMOTED_AT, t.LAST_UPDATE_AT,
@@ -53,12 +124,13 @@ steps:
           lc.NEXT_EVAL_AT AS NEXT_LIFECYCLE_EVAL_AT,
           lc.RETIREMENT_REASON,
           e.SUMMARY_SHORT, e.SUMMARY_LONG, e.VIBE_SHIFT,
-          e.ENRICHED_AT, e.ENRICHMENT_VERSION
+          e.ENRICHED_AT, ev.ENRICHMENT_VERSION
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_LIFECYCLE_CURRENT  lc  ON lc.TREND_ID = t.TREND_ID
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_ENRICHMENT_CURRENT e   ON e.TREND_ID  = t.TREND_ID
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_AGGREGATES         agg ON agg.TREND_ID = t.TREND_ID
-        LEFT JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES              c   ON c.CANDIDATE_ID = t.CANDIDATE_ID
+        LEFT JOIN lc  ON TRUE
+        LEFT JOIN e   ON TRUE
+        LEFT JOIN ev  ON TRUE
+        LEFT JOIN agg ON TRUE
+        LEFT JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c ON c.CANDIDATE_ID = t.CANDIDATE_ID
         WHERE t.TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
     params: []
 - namespace: q_source_metrics
@@ -159,45 +231,111 @@ steps:
       authProvisionId: apn_yghdQYJ
     sql:
       value: |-
-        WITH target AS (
-          SELECT TREND_VECTOR FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_ENRICHMENT_CURRENT
+        WITH target_vec AS (
+          SELECT TREND_VECTOR
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
           WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+            AND TREND_VECTOR IS NOT NULL
+          ORDER BY WRITTEN_AT DESC LIMIT 1
+        ),
+        latest_enrichment AS (
+          SELECT TREND_ID, TREND_VECTOR,
+                 PAYLOAD:trend_name_b2c::STRING AS E_TREND_NAME_B2C,
+                 PAYLOAD:category::STRING       AS E_CATEGORY,
+                 PAYLOAD:subcategory::STRING    AS E_SUBCATEGORY,
+                 PAYLOAD:summary_short::STRING  AS SUMMARY_SHORT
+          FROM (
+            SELECT TREND_ID, TREND_VECTOR, PAYLOAD,
+                   ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+          ) WHERE rn = 1
+        ),
+        latest_vector AS (
+          SELECT TREND_ID, TREND_VECTOR
+          FROM (
+            SELECT TREND_ID, TREND_VECTOR,
+                   ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+            WHERE TREND_VECTOR IS NOT NULL
+          ) WHERE rn = 1
+        ),
+        latest_lifecycle AS (
+          SELECT TREND_ID, NEW_STATUS AS LIFECYCLE_STATUS,
+                 NEW_HEAT AS HEAT_INDEX, NEW_HEAT_SMOOTHED AS HEAT_INDEX_SMOOTHED
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          ) WHERE rn = 1
         )
         SELECT t.TREND_ID, t.TREND_TOPIC, lc.LIFECYCLE_STATUS,
                COALESCE(lc.HEAT_INDEX_SMOOTHED, lc.HEAT_INDEX) AS HEAT,
                t.LAST_UPDATE_AT,
-               COALESCE(t.TREND_NAME_B2C, e.TREND_NAME_B2C) AS TREND_NAME_B2C,
-               COALESCE(t.CATEGORY,       e.CATEGORY)       AS CATEGORY,
-               COALESCE(t.SUBCATEGORY,    e.SUBCATEGORY)    AS SUBCATEGORY,
+               COALESCE(t.TREND_NAME_B2C, e.E_TREND_NAME_B2C) AS TREND_NAME_B2C,
+               COALESCE(t.CATEGORY,       e.E_CATEGORY)       AS CATEGORY,
+               COALESCE(t.SUBCATEGORY,    e.E_SUBCATEGORY)    AS SUBCATEGORY,
                e.SUMMARY_SHORT,
-               VECTOR_COSINE_SIMILARITY(e.TREND_VECTOR, target.TREND_VECTOR) AS SIMILARITY
+               VECTOR_COSINE_SIMILARITY(lv.TREND_VECTOR, target_vec.TREND_VECTOR) AS SIMILARITY
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-        CROSS JOIN target
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_ENRICHMENT_CURRENT e ON e.TREND_ID = t.TREND_ID
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_LIFECYCLE_CURRENT  lc ON lc.TREND_ID = t.TREND_ID
+        CROSS JOIN target_vec
+        LEFT JOIN latest_enrichment e ON e.TREND_ID = t.TREND_ID
+        LEFT JOIN latest_vector     lv ON lv.TREND_ID = t.TREND_ID
+        LEFT JOIN latest_lifecycle  lc ON lc.TREND_ID = t.TREND_ID
         WHERE t.TREND_ID != '{{steps.handle_request.$return_value.trend_id}}'
-          AND e.TREND_VECTOR IS NOT NULL
+          AND lv.TREND_VECTOR IS NOT NULL
         ORDER BY SIMILARITY DESC NULLS LAST
         LIMIT 30
       query: |-
-        WITH target AS (
-          SELECT TREND_VECTOR FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_ENRICHMENT_CURRENT
+        WITH target_vec AS (
+          SELECT TREND_VECTOR
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
           WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+            AND TREND_VECTOR IS NOT NULL
+          ORDER BY WRITTEN_AT DESC LIMIT 1
+        ),
+        latest_enrichment AS (
+          SELECT TREND_ID, TREND_VECTOR,
+                 PAYLOAD:trend_name_b2c::STRING AS E_TREND_NAME_B2C,
+                 PAYLOAD:category::STRING       AS E_CATEGORY,
+                 PAYLOAD:subcategory::STRING    AS E_SUBCATEGORY,
+                 PAYLOAD:summary_short::STRING  AS SUMMARY_SHORT
+          FROM (
+            SELECT TREND_ID, TREND_VECTOR, PAYLOAD,
+                   ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+          ) WHERE rn = 1
+        ),
+        latest_vector AS (
+          SELECT TREND_ID, TREND_VECTOR
+          FROM (
+            SELECT TREND_ID, TREND_VECTOR,
+                   ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+            WHERE TREND_VECTOR IS NOT NULL
+          ) WHERE rn = 1
+        ),
+        latest_lifecycle AS (
+          SELECT TREND_ID, NEW_STATUS AS LIFECYCLE_STATUS,
+                 NEW_HEAT AS HEAT_INDEX, NEW_HEAT_SMOOTHED AS HEAT_INDEX_SMOOTHED
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          ) WHERE rn = 1
         )
         SELECT t.TREND_ID, t.TREND_TOPIC, lc.LIFECYCLE_STATUS,
                COALESCE(lc.HEAT_INDEX_SMOOTHED, lc.HEAT_INDEX) AS HEAT,
                t.LAST_UPDATE_AT,
-               COALESCE(t.TREND_NAME_B2C, e.TREND_NAME_B2C) AS TREND_NAME_B2C,
-               COALESCE(t.CATEGORY,       e.CATEGORY)       AS CATEGORY,
-               COALESCE(t.SUBCATEGORY,    e.SUBCATEGORY)    AS SUBCATEGORY,
+               COALESCE(t.TREND_NAME_B2C, e.E_TREND_NAME_B2C) AS TREND_NAME_B2C,
+               COALESCE(t.CATEGORY,       e.E_CATEGORY)       AS CATEGORY,
+               COALESCE(t.SUBCATEGORY,    e.E_SUBCATEGORY)    AS SUBCATEGORY,
                e.SUMMARY_SHORT,
-               VECTOR_COSINE_SIMILARITY(e.TREND_VECTOR, target.TREND_VECTOR) AS SIMILARITY
+               VECTOR_COSINE_SIMILARITY(lv.TREND_VECTOR, target_vec.TREND_VECTOR) AS SIMILARITY
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-        CROSS JOIN target
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_ENRICHMENT_CURRENT e ON e.TREND_ID = t.TREND_ID
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_LIFECYCLE_CURRENT  lc ON lc.TREND_ID = t.TREND_ID
+        CROSS JOIN target_vec
+        LEFT JOIN latest_enrichment e ON e.TREND_ID = t.TREND_ID
+        LEFT JOIN latest_vector     lv ON lv.TREND_ID = t.TREND_ID
+        LEFT JOIN latest_lifecycle  lc ON lc.TREND_ID = t.TREND_ID
         WHERE t.TREND_ID != '{{steps.handle_request.$return_value.trend_id}}'
-          AND e.TREND_VECTOR IS NOT NULL
+          AND lv.TREND_VECTOR IS NOT NULL
         ORDER BY SIMILARITY DESC NULLS LAST
         LIMIT 30
     params: []

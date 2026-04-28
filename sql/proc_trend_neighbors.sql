@@ -77,8 +77,9 @@ def resolve_probe(probe):
     if probe.get('trend_id'):
         tid = probe['trend_id']
         return (
-            f"(SELECT TREND_VECTOR FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_ENRICHMENT_CURRENT "
-            f"WHERE TREND_ID = {sql_str(tid)})",
+            f"(SELECT TREND_VECTOR FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER "
+            f"WHERE TREND_ID = {sql_str(tid)} AND TREND_VECTOR IS NOT NULL "
+            f"ORDER BY WRITTEN_AT DESC LIMIT 1)",
             tid,
         )
 

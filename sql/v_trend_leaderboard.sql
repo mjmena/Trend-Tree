@@ -8,7 +8,44 @@
 -- count from FCT_TREND_SOURCE_METRICS) is a secondary tiebreaker.
 
 CREATE OR REPLACE VIEW MCC_PRESENTATION.TREND_AGENT.V_TREND_LEADERBOARD AS
-WITH source_agg AS (
+WITH latest_enrichment AS (
+  SELECT r.TREND_ID, r.WRITTEN_AT AS ENRICHED_AT,
+         lv.TREND_VECTOR,
+         r.PAYLOAD:trend_name_b2b::STRING AS TREND_NAME_B2B,
+         r.PAYLOAD:trend_name_b2c::STRING AS TREND_NAME_B2C,
+         r.PAYLOAD:category::STRING       AS CATEGORY,
+         r.PAYLOAD:subcategory::STRING    AS SUBCATEGORY,
+         r.PAYLOAD:category_confidence::FLOAT  AS CATEGORY_CONFIDENCE,
+         r.PAYLOAD:low_confidence_flag::BOOLEAN AS LOW_CONFIDENCE_FLAG,
+         r.PAYLOAD:summary_short::STRING  AS SUMMARY_SHORT,
+         r.PAYLOAD:summary_long::STRING   AS SUMMARY_LONG,
+         r.PAYLOAD:vibe_shift::STRING     AS VIBE_SHIFT,
+         COALESCE(r.PAYLOAD:social_narrative_v2, r.PAYLOAD:social_narrative) AS SOCIAL_NARRATIVE,
+         r.PAYLOAD:voice_of_customer  AS VOICE_OF_CUSTOMER,
+         r.PAYLOAD:cultural_drivers   AS CULTURAL_DRIVERS,
+         r.PAYLOAD:seasonal_relevance AS SEASONAL_RELEVANCE,
+         r.PAYLOAD:geographic_hotspots AS GEOGRAPHIC_HOTSPOTS,
+         r.PAYLOAD:social_proof       AS SOCIAL_PROOF,
+         r.PAYLOAD:name_candidates_considered AS NAME_CANDIDATES_CONSIDERED,
+         r.PAYLOAD:name_reviewer      AS NAME_REVIEWER,
+         r.PAYLOAD:agent_telemetry    AS AGENT_TELEMETRY,
+         r.PAYLOAD:originally_surfaced_at::TIMESTAMP_NTZ AS ORIGINALLY_SURFACED_AT
+  FROM (
+    SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+  ) r
+  LEFT JOIN (
+    SELECT TREND_ID, TREND_VECTOR
+    FROM (
+      SELECT TREND_ID, TREND_VECTOR,
+             ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
+      FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+      WHERE TREND_VECTOR IS NOT NULL
+    ) WHERE rn = 1
+  ) lv ON lv.TREND_ID = r.TREND_ID
+  WHERE r.rn = 1
+),
+source_agg AS (
     SELECT
         TREND_ID,
         ARRAY_AGG(SOURCE_NAME)     AS SOURCE_NAMES,
@@ -65,7 +102,7 @@ SELECT
     )                                                AS CATEGORY_RANK
 
 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
-JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_ENRICHMENT_CURRENT d
+JOIN latest_enrichment d
     ON m.TREND_ID = d.TREND_ID
 LEFT JOIN source_agg sa
     ON m.TREND_ID = sa.TREND_ID

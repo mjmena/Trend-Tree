@@ -22,23 +22,45 @@ steps:
       authProvisionId: apn_yghdQYJ
     sql:
       value: |-
+        WITH latest_lifecycle AS (
+          SELECT TREND_ID,
+                 NEW_STATUS                AS LIFECYCLE_STATUS,
+                 NEW_HEAT                  AS HEAT_INDEX,
+                 NEW_HEAT_SMOOTHED         AS HEAT_INDEX_SMOOTHED,
+                 NEXT_EVAL_AT
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          ) WHERE rn = 1
+        )
         SELECT t.TREND_ID, t.TREND_TOPIC,
                COALESCE(lc.LIFECYCLE_STATUS, 'NEW') AS LIFECYCLE_STATUS,
                COALESCE(lc.HEAT_INDEX_SMOOTHED, lc.HEAT_INDEX, 0) AS HEAT,
                t.PROMOTED_AT, lc.NEXT_EVAL_AT AS NEXT_LIFECYCLE_EVAL_AT
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_LIFECYCLE_CURRENT lc ON lc.TREND_ID = t.TREND_ID
+        LEFT JOIN latest_lifecycle lc ON lc.TREND_ID = t.TREND_ID
         WHERE COALESCE(lc.LIFECYCLE_STATUS, 'NEW') != 'RETIRED'
           AND COALESCE(lc.NEXT_EVAL_AT, DATEADD(hour, 1, t.PROMOTED_AT)) <= CURRENT_TIMESTAMP()
         ORDER BY HEAT DESC NULLS LAST
         LIMIT {{steps.normalize_event.$return_value.sweep_cap}}
       query: |-
+        WITH latest_lifecycle AS (
+          SELECT TREND_ID,
+                 NEW_STATUS                AS LIFECYCLE_STATUS,
+                 NEW_HEAT                  AS HEAT_INDEX,
+                 NEW_HEAT_SMOOTHED         AS HEAT_INDEX_SMOOTHED,
+                 NEXT_EVAL_AT
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          ) WHERE rn = 1
+        )
         SELECT t.TREND_ID, t.TREND_TOPIC,
                COALESCE(lc.LIFECYCLE_STATUS, 'NEW') AS LIFECYCLE_STATUS,
                COALESCE(lc.HEAT_INDEX_SMOOTHED, lc.HEAT_INDEX, 0) AS HEAT,
                t.PROMOTED_AT, lc.NEXT_EVAL_AT AS NEXT_LIFECYCLE_EVAL_AT
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-        LEFT JOIN MCC_PRESENTATION.TREND_AGENT.V_TREND_LIFECYCLE_CURRENT lc ON lc.TREND_ID = t.TREND_ID
+        LEFT JOIN latest_lifecycle lc ON lc.TREND_ID = t.TREND_ID
         WHERE COALESCE(lc.LIFECYCLE_STATUS, 'NEW') != 'RETIRED'
           AND COALESCE(lc.NEXT_EVAL_AT, DATEADD(hour, 1, t.PROMOTED_AT)) <= CURRENT_TIMESTAMP()
         ORDER BY HEAT DESC NULLS LAST
