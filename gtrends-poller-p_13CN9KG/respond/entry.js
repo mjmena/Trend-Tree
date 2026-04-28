@@ -1,8 +1,9 @@
 // gtrends-poller — respond
 //
-// Cron-triggered, no $.respond() needed (Pipedream cron runs synchronously
-// and the workflow's return value is captured in the run log). Just emit
-// a $summary for the run list.
+// Manual HTTP fires get a JSON summary back (the agent_http trigger has
+// customResponse=true; without $.respond() the HTTP request hangs and
+// returns "Error in workflow"). Cron-fired runs ignore $.respond — they
+// have no HTTP request to answer.
 
 export default defineComponent({
   props: {
@@ -23,6 +24,12 @@ export default defineComponent({
       run_duration_ms: fr.run_duration_ms || 0,
       errors: fr.errors || [],
     };
+
+    await $.respond({
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+      body: summary,
+    });
 
     $.export("$summary", `${summary.ok_count}/${summary.attempted} polled, persisted=${summary.persisted}`);
     return summary;
