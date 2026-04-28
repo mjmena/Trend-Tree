@@ -1,12 +1,12 @@
 # Trend Tree
 
-A multi-agent system that watches the public consumer-culture firehose — news, social, search, marketplace, editorial — and decides, every few hours, what's worth calling a trend, what to name it, and when to retire it.
+A multi-agent system that watches the public consumer-culture firehose — news, social, search, marketplace, editorial — and decides, what's worth calling a trend.
 
-**As of 2026-04-28, all four agent stages are live in production.** The system runs end-to-end without human dispatch. A trend you saw yesterday may have been retired by an agent overnight, or split, or have its description rewritten because new evidence shifted the story.
+The system runs end-to-end without human dispatch. A trend you saw yesterday may have been retired by an agent overnight, or have its description rewritten because new evidence shifted the story.
 
 ---
 
-## The 4-layer model — all live
+## The 4-layer model
 
 ```
   ┌──────────────┐    ┌─────────────┐    ┌─────────────┐    ┌──────────────┐
