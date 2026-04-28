@@ -557,37 +557,49 @@ async function dispatchTool(name, input, ctx) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Anthropic agent loop runtime (Sonnet 4.6 + interleaved thinking)
+// Gemini 3.1 Pro agent loop runtime
+// Mirrors lifecycle-subagent / promotion-subagent: function-calling with
+// thoughtSignature round-trip and sequential dispatch.
 // ─────────────────────────────────────────────────────────────────────
 
-const MODEL = "claude-sonnet-4-6";
-const RATES_PER_M = { input: 3.0, output: 15.0 };
-const ANTHROPIC_VERSION = "2023-06-01";
-const BETA_HEADERS = "interleaved-thinking-2025-05-14";
+const MODEL = "gemini-3.1-pro-preview";
+const RATES_PER_M = { input: 2.0, output: 12.0 };  // sub-200k context tier
 
 const LOOP_DEFAULTS = {
   max_iterations: 12,
   budget_usd: 5.0,
   per_call_max_tokens: 8192,
-  thinking_budget_tokens: 4000,
+  thinking_level: "medium",
   temperature: 1.0,
   request_timeout_ms: 180_000,
 };
 
+// Translate the shared tool schemas (Anthropic-shaped: input_schema) into
+// Gemini's functionDeclarations shape (parameters). The JSON Schema body
+// itself is compatible — only the wrapper field name differs.
+function toFunctionDeclarations(toolNames) {
+  return toolNames.map((n) => {
+    const s = ALL_SCHEMAS[n];
+    if (!s) throw new Error(`Unknown tool: ${n}`);
+    return { name: s.name, description: s.description, parameters: s.input_schema };
+  });
+}
+
 async function runAgentLoop({
-  anthropic, tool_names, system, user_message, context,
+  google_gemini, tool_names, system, user_message, context,
   max_iterations = LOOP_DEFAULTS.max_iterations,
   budget_usd = LOOP_DEFAULTS.budget_usd,
   per_call_max_tokens = LOOP_DEFAULTS.per_call_max_tokens,
-  thinking_budget_tokens = LOOP_DEFAULTS.thinking_budget_tokens,
+  thinking_level = LOOP_DEFAULTS.thinking_level,
 }) {
-  if (!anthropic?.$auth?.api_key) throw new Error("anthropic app prop missing $auth.api_key");
+  if (!google_gemini?.$auth?.api_key) throw new Error("google_gemini app prop missing $auth.api_key");
   if (!Array.isArray(tool_names) || tool_names.length === 0) throw new Error("tool_names is required");
+  const apiKey = google_gemini.$auth.api_key;
 
-  const tools = getToolSchemas(tool_names);
-  const messages = [{
+  const tools = [{ functionDeclarations: toFunctionDeclarations(tool_names) }];
+  const contents = [{
     role: "user",
-    content: typeof user_message === "string" ? [{ type: "text", text: user_message }] : user_message,
+    parts: typeof user_message === "string" ? [{ text: user_message }] : user_message,
   }];
 
   const tokens = { input: 0, output: 0, total: 0 };
@@ -607,85 +619,105 @@ async function runAgentLoop({
     }
 
     const reqBody = {
-      model: MODEL, max_tokens: per_call_max_tokens, system, messages, tools,
-      tool_choice: { type: "auto" }, temperature: LOOP_DEFAULTS.temperature,
-      thinking: { type: "enabled", budget_tokens: thinking_budget_tokens },
+      systemInstruction: { parts: [{ text: system }] },
+      contents,
+      tools,
+      toolConfig: { functionCallingConfig: { mode: "AUTO" } },
+      generationConfig: {
+        temperature: LOOP_DEFAULTS.temperature,
+        maxOutputTokens: per_call_max_tokens,
+        thinkingConfig: { thinkingLevel: thinking_level },
+      },
     };
 
     let resp;
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), LOOP_DEFAULTS.request_timeout_ms);
-      resp = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": anthropic.$auth.api_key,
-          "anthropic-version": ANTHROPIC_VERSION,
-          "anthropic-beta": BETA_HEADERS,
+      resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(reqBody),
+          signal: ctrl.signal,
         },
-        body: JSON.stringify(reqBody),
-        signal: ctrl.signal,
-      });
+      );
       clearTimeout(timer);
     } catch (e) {
-      // Operator-fixable: network/timeout to Anthropic. Throw so it lands on
+      // Operator-fixable: network/timeout to Gemini. Throw so it lands on
       // Pipedream's $errors/event_summaries endpoint rather than getting
       // buried as a "successful" run with stop_reason: fetch_error.
-      throw new Error(`Anthropic fetch failed (turn ${turn}): ${e.message}`);
+      throw new Error(`Gemini fetch failed (turn ${turn}): ${e.message}`);
     }
 
     if (!resp.ok) {
       const errText = await resp.text();
-      throw new Error(`Anthropic HTTP ${resp.status} (turn ${turn}): ${errText.slice(0, 600)}`);
+      throw new Error(`Gemini HTTP ${resp.status} (turn ${turn}): ${errText.slice(0, 600)}`);
     }
 
     const data = await resp.json();
-    const usage = data.usage || {};
-    const tin = usage.input_tokens || 0;
-    const tout = usage.output_tokens || 0;
+    const usage = data.usageMetadata || {};
+    const tin = usage.promptTokenCount || 0;
+    // candidatesTokenCount on the AI Studio API already includes thinking
+    // tokens — do NOT add thoughtsTokenCount on top.
+    const tout = usage.candidatesTokenCount || 0;
     tokens.input += tin;
     tokens.output += tout;
     tokens.total = tokens.input + tokens.output;
     cost_usd += (tin / 1_000_000) * RATES_PER_M.input + (tout / 1_000_000) * RATES_PER_M.output;
 
-    const content = Array.isArray(data.content) ? data.content : [];
-    for (const block of content) {
-      if (block.type === "thinking") {
-        reasoning_trace.push({ turn, kind: "thinking", text: block.thinking, signature: block.signature });
-      } else if (block.type === "text") {
-        reasoning_trace.push({ turn, kind: "text", text: block.text });
-        final_text = block.text;
-      } else if (block.type === "tool_use") {
-        reasoning_trace.push({ turn, kind: "tool_use", id: block.id, name: block.name, input: block.input });
-      }
-    }
-    messages.push({ role: "assistant", content });
+    const candidate = (data.candidates || [])[0] || {};
+    const parts = (candidate.content && candidate.content.parts) || [];
 
-    if (data.stop_reason === "tool_use") {
-      const toolUses = content.filter((b) => b.type === "tool_use");
-      const toolResults = [];
-      const dispatched = await Promise.all(toolUses.map(async (tu) => {
-        const started = Date.now();
-        const out = await dispatchTool(tu.name, tu.input, context);
-        const duration_ms = Date.now() - started;
-        tool_calls.push({ turn, name: tu.name, input: tu.input, output: out, duration_ms });
-        return { id: tu.id, name: tu.name, output: out };
-      }));
-      for (const d of dispatched) {
-        toolResults.push({
-          type: "tool_result", tool_use_id: d.id,
-          content: typeof d.output === "string" ? d.output : JSON.stringify(d.output),
-          is_error: !!(d.output && d.output.error),
+    const functionCallParts = [];
+    for (const p of parts) {
+      if (p.functionCall) {
+        functionCallParts.push(p);
+        reasoning_trace.push({
+          turn, kind: "tool_use",
+          name: p.functionCall.name,
+          input: p.functionCall.args || {},
+          has_signature: Boolean(p.thoughtSignature),
         });
-        reasoning_trace.push({ turn, kind: "tool_result", id: d.id, name: d.name, output_preview: previewOutput(d.output) });
+      } else if (p.thought === true) {
+        reasoning_trace.push({ turn, kind: "thinking", text: p.text || "" });
+      } else if (typeof p.text === "string") {
+        reasoning_trace.push({ turn, kind: "text", text: p.text });
+        final_text = p.text;
       }
-      messages.push({ role: "user", content: toolResults });
-      continue;
     }
 
-    stop_reason = data.stop_reason || "end_turn";
-    break;
+    // Push the assistant turn back VERBATIM. Gemini 3 enforces strict
+    // validation on thoughtSignature round-trip for function calling —
+    // reconstructing the parts array would drop signatures and cause 400.
+    contents.push({ role: "model", parts });
+
+    if (functionCallParts.length === 0) {
+      stop_reason = candidate.finishReason || "STOP";
+      break;
+    }
+
+    // Sequential dispatch (not Promise.all): Gemini matches functionResponse
+    // parts to functionCall parts by name with positional fallback when the
+    // same name is called twice in one turn. Preserving order is cheap insurance.
+    const responseParts = [];
+    for (const fcp of functionCallParts) {
+      const fc = fcp.functionCall;
+      const started = Date.now();
+      const out = await dispatchTool(fc.name, fc.args || {}, context);
+      const duration_ms = Date.now() - started;
+      tool_calls.push({ turn, name: fc.name, input: fc.args || {}, output: out, duration_ms });
+      reasoning_trace.push({ turn, kind: "tool_result", name: fc.name, output_preview: previewOutput(out) });
+      responseParts.push({
+        functionResponse: {
+          name: fc.name,
+          // Gemini requires `response` to be an object.
+          response: out && typeof out === "object" ? out : { result: out },
+        },
+      });
+    }
+    contents.push({ role: "user", parts: responseParts });
   }
 
   if (turn >= max_iterations && stop_reason === "max_iterations") {
@@ -726,7 +758,7 @@ const PROMPT_KEY = "distillation.lead.system";
 
 export default defineComponent({
   props: {
-    anthropic: { type: "app", app: "anthropic" },
+    google_gemini: { type: "app", app: "google_gemini" },
     event: { type: "any" },
     cursor_rows: { type: "any", optional: true },
     signal_rows: { type: "any", optional: true },
@@ -836,7 +868,7 @@ Begin your scan. Be opinionated about specificity.`;
     let result;
     try {
       result = await runAgentLoop({
-        anthropic: this.anthropic,
+        google_gemini: this.google_gemini,
         tool_names: LEAD_TOOL_NAMES,
         system: renderedSystem,
         user_message: userMsg,
@@ -844,7 +876,7 @@ Begin your scan. Be opinionated about specificity.`;
         max_iterations: prompt.params.max_iterations ?? 15,
         budget_usd: evt.budget_remaining_usd ?? evt.budget_usd ?? prompt.params.budget_usd ?? 5.0,
         per_call_max_tokens: evt.per_call_max_tokens || prompt.params.per_call_max_tokens || 8192,
-        thinking_budget_tokens: evt.thinking_budget_tokens || prompt.params.thinking_budget_tokens || 5000,
+        thinking_level: evt.thinking_level || prompt.params.thinking_level || "medium",
       });
     } catch (e) {
       console.log(`lead loop error: ${e.message}`);

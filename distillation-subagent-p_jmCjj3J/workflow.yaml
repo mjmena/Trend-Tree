@@ -74,28 +74,12 @@ steps:
         SELECT PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS
         FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
         WHERE IS_ACTIVE = TRUE
-          AND PROMPT_KEY IN (
-            'distillation.subagent.system',
-            'distillation.subagent.bucket_instructions.overlap',
-            'distillation.subagent.bucket_instructions.agent_only',
-            'distillation.subagent.bucket_instructions.louvain_only',
-            'distillation.subagent.ingest_guidance.overlap',
-            'distillation.subagent.ingest_guidance.agent_only',
-            'distillation.subagent.ingest_guidance.louvain_only'
-          )
+          AND PROMPT_KEY = 'distillation.subagent.system'
       query: |-
         SELECT PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS
         FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
         WHERE IS_ACTIVE = TRUE
-          AND PROMPT_KEY IN (
-            'distillation.subagent.system',
-            'distillation.subagent.bucket_instructions.overlap',
-            'distillation.subagent.bucket_instructions.agent_only',
-            'distillation.subagent.bucket_instructions.louvain_only',
-            'distillation.subagent.ingest_guidance.overlap',
-            'distillation.subagent.ingest_guidance.agent_only',
-            'distillation.subagent.ingest_guidance.louvain_only'
-          )
+          AND PROMPT_KEY = 'distillation.subagent.system'
       params: []
 - namespace: q_load_examples
   runtime: nodejs20.x
@@ -169,8 +153,8 @@ steps:
   runtime: nodejs20.x
   uses: "./run_subagent/entry.js"
   props:
-    anthropic:
-      authProvisionId: apn_Oghan1O
+    google_gemini:
+      authProvisionId: apn_EOhp9DY
     request: "{{steps.handle_request.$return_value}}"
     signal_rows: "{{steps.q_fetch_signals.$return_value}}"
     neighbor_rows: "{{steps.q_fetch_neighbors.$return_value}}"
