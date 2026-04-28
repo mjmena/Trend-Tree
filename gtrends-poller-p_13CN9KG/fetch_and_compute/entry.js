@@ -10,9 +10,10 @@
 // pulls TIMESERIES, which is what the lifecycle agent reads as
 // gtrends_history).
 
-const FANOUT_CONCURRENCY = 3;          // GTrends rate-limits aggressively
+const FANOUT_CONCURRENCY = 1;          // GTrends throttles concurrent requests by IP — sequential only
 const PER_TREND_TIMEOUT_MS = 60_000;
 const RATE_LIMIT_BACKOFF_MS = 30_000;
+const INTER_TREND_SLEEP_MS = 3_000;    // back off between trends to avoid silent rate-limit empty responses
 
 function stripXssi(text) {
   const idx = text.indexOf("\n");
@@ -233,6 +234,11 @@ export default defineComponent({
           errors.push({ trend_id: t.trend_id, error: e.message });
         } finally {
           clearTimeout(timer);
+        }
+        // Pace between trends — even with concurrency=1, GTrends throttles
+        // back-to-back hits from the same IP and silently returns empty curves.
+        if (cursor < trends.length) {
+          await sleep(INTER_TREND_SLEEP_MS);
         }
       }
     }
