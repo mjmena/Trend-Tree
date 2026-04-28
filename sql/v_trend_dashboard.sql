@@ -53,6 +53,28 @@ WITH latest_enrichment AS (
   ) lv ON lv.TREND_ID = r.TREND_ID
   WHERE r.rn = 1
 ),
+evidence_split AS (
+    -- Pre-bucket the typed pool for the dashboard.
+    -- COALESCE on `type` (new schema) and `source_type` (legacy social_proof rows)
+    -- so legacy rows are grouped on their old enum until they re-enrich.
+    SELECT
+      le.TREND_ID,
+      ARRAY_COMPACT(ARRAY_AGG(
+        CASE WHEN COALESCE(f.value:type::STRING, f.value:source_type::STRING) IN ('news', 'commerce')
+             THEN f.value END
+      )) AS GENERAL_EVIDENCE,
+      ARRAY_COMPACT(ARRAY_AGG(
+        CASE WHEN COALESCE(f.value:type::STRING, f.value:source_type::STRING) = 'social'
+             THEN f.value END
+      )) AS SOCIAL_EVIDENCE,
+      ARRAY_COMPACT(ARRAY_AGG(
+        CASE WHEN COALESCE(f.value:type::STRING, f.value:source_type::STRING)
+                  IN ('reference', 'search_volume', 'video', 'other')
+             THEN f.value END
+      )) AS OTHER_EVIDENCE
+    FROM latest_enrichment le, LATERAL FLATTEN(input => le.EVIDENCE, OUTER => TRUE) f
+    GROUP BY le.TREND_ID
+),
 top_signals AS (
     SELECT TREND_ID,
            ARRAY_AGG(OBJECT_CONSTRUCT(
@@ -121,6 +143,11 @@ SELECT
     -- Typed link pool (filter by type for news/social/commerce/etc.)
     d.EVIDENCE,
 
+    -- Pre-bucketed typed pool for dashboard sections.
+    es.GENERAL_EVIDENCE,
+    es.SOCIAL_EVIDENCE,
+    es.OTHER_EVIDENCE,
+
     -- Legacy columns for front-end backward compat. Remove once consumers
     -- have migrated to EVIDENCE (filter by type for proof / VoC / etc.).
     d.SOCIAL_PROOF,
@@ -138,6 +165,7 @@ SELECT
 
 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS m
 LEFT JOIN latest_enrichment d ON m.TREND_ID = d.TREND_ID
+LEFT JOIN evidence_split es   ON m.TREND_ID = es.TREND_ID
 LEFT JOIN top_signals ts  ON m.TREND_ID = ts.TREND_ID
 LEFT JOIN macro_tags mt   ON m.TREND_ID = mt.TREND_ID
 LEFT JOIN related r       ON m.TREND_ID = r.TREND_ID;

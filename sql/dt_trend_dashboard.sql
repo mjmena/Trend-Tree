@@ -54,6 +54,28 @@ latest_enrichment AS (
       FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
     ) r WHERE r.rn = 1
 ),
+evidence_split AS (
+    -- Pre-bucket the typed pool for the dashboard.
+    -- COALESCE on `type` (new schema) and `source_type` (legacy social_proof rows)
+    -- so legacy rows are grouped on their old enum until they re-enrich.
+    SELECT
+      le.TREND_ID,
+      ARRAY_COMPACT(ARRAY_AGG(
+        CASE WHEN COALESCE(f.value:type::STRING, f.value:source_type::STRING) IN ('news', 'commerce')
+             THEN f.value END
+      )) AS GENERAL_EVIDENCE,
+      ARRAY_COMPACT(ARRAY_AGG(
+        CASE WHEN COALESCE(f.value:type::STRING, f.value:source_type::STRING) = 'social'
+             THEN f.value END
+      )) AS SOCIAL_EVIDENCE,
+      ARRAY_COMPACT(ARRAY_AGG(
+        CASE WHEN COALESCE(f.value:type::STRING, f.value:source_type::STRING)
+                  IN ('reference', 'search_volume', 'video', 'other')
+             THEN f.value END
+      )) AS OTHER_EVIDENCE
+    FROM latest_enrichment le, LATERAL FLATTEN(input => le.EVIDENCE, OUTER => TRUE) f
+    GROUP BY le.TREND_ID
+),
 tc_for_agg AS (
     SELECT t.TREND_ID, c.SUPPORTING_SIGNAL_IDS, c.SOURCE_BREAKDOWN
     FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
@@ -169,6 +191,10 @@ SELECT
     e.SEASONAL_RELEVANCE,
     e.GEOGRAPHIC_HOTSPOTS,
     e.EVIDENCE,
+    -- Pre-bucketed typed pool for dashboard sections.
+    es.GENERAL_EVIDENCE,
+    es.SOCIAL_EVIDENCE,
+    es.OTHER_EVIDENCE,
     -- Legacy columns for front-end backward compat. Remove once consumers
     -- have migrated to EVIDENCE (filter by type for proof / VoC / etc.).
     e.SOCIAL_PROOF,
@@ -184,6 +210,7 @@ SELECT
 FROM trend_base tb
 LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t  ON tb.TREND_ID = t.TREND_ID
 LEFT JOIN latest_enrichment e                         ON tb.TREND_ID = e.TREND_ID
+LEFT JOIN evidence_split es                           ON tb.TREND_ID = es.TREND_ID
 LEFT JOIN top_signals ts                              ON tb.TREND_ID = ts.TREND_ID
 LEFT JOIN macro_tags mt                               ON tb.TREND_ID = mt.TREND_ID
 LEFT JOIN related_trends r                            ON tb.TREND_ID = r.TREND_ID;
