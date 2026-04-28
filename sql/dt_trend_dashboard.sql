@@ -1,14 +1,27 @@
--- Snapshot Table: Dashboard — one row per trend with all fields needed for the UI.
+-- Dynamic Table: Dashboard — one row per trend with all fields needed for the UI.
 -- Database: MCC_PRESENTATION.TREND_AGENT
+--
+-- 2026-04-28 (dynamic table + ledger-only sources): converted to a dynamic
+-- table with a 15-minute target lag. Aggregate columns (TOTAL_CLUSTER_SIZE,
+-- DISTINCT_SOURCE_COUNT) now derive from FCT_PROMOTION_LEDGER instead of
+-- reaching cross-database into STG_TREND_CANDIDATES — which kept the schema-
+-- managed owner role MCC_PRESENTATION_TREND_AGENT_SFULL inside MCC_PRESENTATION
+-- so refresh succeeds without granting it cross-database privileges.
+-- PROMOTION_CONFIDENCE and PROMOTION_SPECIFICITY were dropped (undocumented).
 --
 -- 2026-04-28 (no-views refactor): inlined the windowed-latest CTEs that
 -- used to live in V_TREND_LIFECYCLE_CURRENT, V_TREND_ENRICHMENT_CURRENT,
 -- and V_TREND_AGGREGATES. The taxonomy join also inlined from V_TREND_TAXONOMY.
--- This snapshot table is now self-contained — re-run this file to refresh.
 --
--- Output column shape preserved for Steeple consumers.
+-- Output column shape preserved for Steeple consumers (minus the two dropped
+-- promotion-* columns).
 
-CREATE OR REPLACE TABLE MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD AS
+CREATE OR REPLACE DYNAMIC TABLE MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD
+  TARGET_LAG = '15 minutes'
+  WAREHOUSE = TREND_AGENT_WH
+  REFRESH_MODE = AUTO
+  INITIALIZE = ON_SCHEDULE
+AS
 WITH latest_lifecycle AS (
     SELECT TREND_ID,
            NEW_STATUS         AS LIFECYCLE_STATUS,
@@ -76,27 +89,20 @@ evidence_split AS (
     FROM latest_enrichment le, LATERAL FLATTEN(input => le.EVIDENCE, OUTER => TRUE) f
     GROUP BY le.TREND_ID
 ),
-tc_for_agg AS (
-    SELECT t.TREND_ID, c.SUPPORTING_SIGNAL_IDS, c.SOURCE_BREAKDOWN
-    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-    JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
-      ON c.CANDIDATE_ID = t.CANDIDATE_ID OR c.DEDUP_OF_TREND_ID = t.TREND_ID
-),
 trend_aggregates AS (
-    SELECT t.TREND_ID,
-           COALESCE(s.TOTAL_CLUSTER_SIZE, 0)      AS TOTAL_CLUSTER_SIZE,
-           COALESCE(src.DISTINCT_SOURCE_COUNT, 0) AS DISTINCT_SOURCE_COUNT
-    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-    LEFT JOIN (
-      SELECT TREND_ID, COUNT(DISTINCT f.value::STRING) AS TOTAL_CLUSTER_SIZE
-      FROM tc_for_agg, LATERAL FLATTEN(INPUT => SUPPORTING_SIGNAL_IDS) f
-      GROUP BY TREND_ID
-    ) s ON s.TREND_ID = t.TREND_ID
-    LEFT JOIN (
-      SELECT TREND_ID, COUNT(DISTINCT k.value::STRING) AS DISTINCT_SOURCE_COUNT
-      FROM tc_for_agg, LATERAL FLATTEN(INPUT => OBJECT_KEYS(SOURCE_BREAKDOWN)) k
-      GROUP BY TREND_ID
-    ) src ON src.TREND_ID = t.TREND_ID
+    -- Sums per-candidate counts across all PROMOTE_NEW + MERGE_INTO_EXISTING
+    -- ledger rows for each trend. Signals are partitioned across candidates
+    -- (claim semantics in distillation), so SUM(CLUSTER_SIZE) is exact.
+    -- SOURCE_COUNT can over-count if two merged candidates pulled from the
+    -- same source — acceptable; sources rarely overlap across distinct
+    -- candidates in practice.
+    SELECT TARGET_TREND_ID                AS TREND_ID,
+           COALESCE(SUM(CLUSTER_SIZE), 0) AS TOTAL_CLUSTER_SIZE,
+           COALESCE(SUM(SOURCE_COUNT), 0) AS DISTINCT_SOURCE_COUNT
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_PROMOTION_LEDGER
+    WHERE DECISION IN ('PROMOTE_NEW', 'MERGE_INTO_EXISTING')
+      AND TARGET_TREND_ID IS NOT NULL
+    GROUP BY TARGET_TREND_ID
 ),
 top_signals AS (
     SELECT TREND_ID,
@@ -142,15 +148,12 @@ trend_base AS (
         COALESCE(lc.HEAT_INDEX_SMOOTHED, lc.HEAT_INDEX) AS TREND_HEAT_INDEX,
         t.DETECTED_AT,
         t.LAST_UPDATE_AT,
-        c.CONFIDENCE                              AS PROMOTION_CONFIDENCE,
-        c.SPECIFICITY_SCORE                       AS PROMOTION_SPECIFICITY,
         lc.LAST_EVAL_AT                           AS LAST_LIFECYCLE_EVAL_AT,
         lc.RETIREMENT_REASON,
         'fct_trends'                              AS TREND_SOURCE
     FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
     LEFT JOIN latest_lifecycle    lc  ON lc.TREND_ID  = t.TREND_ID
     LEFT JOIN trend_aggregates    agg ON agg.TREND_ID = t.TREND_ID
-    LEFT JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c ON c.CANDIDATE_ID = t.CANDIDATE_ID
 )
 SELECT
     tb.TREND_ID,
@@ -169,8 +172,6 @@ SELECT
     tb.LIFECYCLE_STATUS                                                    AS VELOCITY_DIRECTION,
     tb.LAST_LIFECYCLE_EVAL_AT,
     tb.RETIREMENT_REASON,
-    tb.PROMOTION_CONFIDENCE,
-    tb.PROMOTION_SPECIFICITY,
     tb.TREND_SOURCE,
     COALESCE(e.ORIGINALLY_SURFACED_AT, tb.DETECTED_AT)                     AS ORIGINALLY_SURFACED_AT,
 
