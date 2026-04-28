@@ -255,8 +255,8 @@ def seed_lifecycle_v0(session, trend_id):
 def seed_enrichment_v0(session, trend_id):
     """Insert a promotion_seed enrichment ledger row so V_TREND_ENRICHMENT_CURRENT
     has a vector for the freshly-promoted trend (lifecycle subagent's q_neighbors
-    needs vectors for all active trends). Vector copied from FCT_TRENDS.TREND_VECTOR
-    which was just written by PROMOTE_NEW."""
+    needs vectors for all active trends). Vector computed inline via Cortex
+    from TREND_TOPIC since TREND_VECTOR is no longer on FCT_TRENDS."""
     session.sql(f"""
         INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER (
             TREND_ID, WRITTEN_AT, WRITTEN_BY, ENRICHMENT_KIND,
@@ -270,7 +270,10 @@ def seed_enrichment_v0(session, trend_id):
                 'topic_only',      TRUE,
                 'note',            'promotion seed; full enrichment pending'
             ),
-            t.TREND_VECTOR
+            SNOWFLAKE.CORTEX.EMBED_TEXT_1024(
+                'snowflake-arctic-embed-l-v2.0',
+                t.TREND_TOPIC
+            )
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
         WHERE t.TREND_ID = {sql_str(trend_id)}
     """).collect()
@@ -369,10 +372,7 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                 rs = session.sql(f"""
                     INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS (
                         TREND_ID, CANDIDATE_ID, TREND_TOPIC, AGENT_SESSION_ID, CHAIN_ID,
-                        DETECTED_AT, LAST_UPDATE_AT, PROMOTED_AT, NEXT_LIFECYCLE_EVAL_AT,
-                        TOTAL_CLUSTER_SIZE, DISTINCT_SOURCE_COUNT,
-                        CONFIDENCE, SPECIFICITY_SCORE, LIFECYCLE_STATUS,
-                        TREND_HEAT_INDEX, TREND_VECTOR, GTRENDS_KEYWORD
+                        DETECTED_AT, LAST_UPDATE_AT, PROMOTED_AT, GTRENDS_KEYWORD
                     )
                     SELECT
                         UUID_STRING(),
@@ -381,39 +381,9 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                         c.AGENT_SESSION_ID,
                         c.CHAIN_ID,
                         c.CREATED_AT, c.CREATED_AT, CURRENT_TIMESTAMP(),
-                        DATEADD(hour, 1, CURRENT_TIMESTAMP()),
-                        ARRAY_SIZE(c.SUPPORTING_SIGNAL_IDS),
-                        ARRAY_SIZE(OBJECT_KEYS(c.SOURCE_BREAKDOWN)),
-                        c.CONFIDENCE, c.SPECIFICITY_SCORE, 'NEW',
-                        -- Initial heat at promotion. The lifecycle agent
-                        -- recomputes this on every cycle using a hybrid
-                        -- formula (SQL baseline + LLM modifier ±20%),
-                        -- starting at PROMOTED_AT + 1h (NEXT_LIFECYCLE_EVAL_AT).
-                        -- Formula: cluster_size × 5 + source_count × 3 +
-                        -- confidence × 20, baselined at 50, capped at 100.
-                        -- New trends typically land 75-100.
-                        LEAST(
-                            50
-                            + COALESCE(ARRAY_SIZE(c.SUPPORTING_SIGNAL_IDS), 0) * 5
-                            + COALESCE(ARRAY_SIZE(OBJECT_KEYS(c.SOURCE_BREAKDOWN)), 0) * 3
-                            + COALESCE(c.CONFIDENCE, 0.5) * 20,
-                            100
-                        ),
-                        -- Vector: prefer agent-supplied (trend_vector in the
-                        -- decision payload) but fall back to a Cortex embedding
-                        -- of the topic so this column is never null.
-                        COALESCE(
-                            {sql_vector_literal(vector)},
-                            SNOWFLAKE.CORTEX.EMBED_TEXT_1024(
-                                'snowflake-arctic-embed-l-v2.0',
-                                COALESCE({sql_str(topic)}, c.TOPIC)
-                            )
-                        ),
-                        -- Search keyword for the gtrends-poller. Long
-                        -- descriptive topics ("Multi-type collagen peptide
-                        -- powder stacking for women's beauty and joints")
-                        -- return empty Google Trends data; we derive a
-                        -- 2-4 word search query that real consumers type.
+                        -- Search keyword for the gtrends-poller. LLM-derived
+                        -- 2-4 word consumer search query, persisted as
+                        -- frozen identity (cheap once at promotion).
                         TRIM(SNOWFLAKE.CORTEX.COMPLETE(
                             'mistral-large2',
                             'You convert long marketing trend descriptions into short Google Trends search queries. Output a 2 to 4 word query that real consumers would type into Google when researching this trend. Use simple common terms, not jargon. Output ONLY the query as plain text, no quotes, no explanation, no preamble.\n\nTrend topic: ' || COALESCE({sql_str(topic)}, c.TOPIC) || '\n\nSearch query:'
