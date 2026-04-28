@@ -51,7 +51,7 @@ steps:
           INTEREST_OVER_TIME, RELATED_QUERIES,
           INTEREST_PEAK_PCT, INTEREST_AVG_PCT
         )
-        WITH rows AS (
+        WITH pld AS (
           SELECT c.value AS j FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) c
         )
         SELECT
@@ -63,7 +63,7 @@ steps:
           j:related_queries,
           j:interest_peak_pct::FLOAT,
           j:interest_avg_pct::FLOAT
-        FROM rows
+        FROM pld
         WHERE :1 != '[]'
       query: |-
         INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_GTRENDS_DAILY (
@@ -71,7 +71,7 @@ steps:
           INTEREST_OVER_TIME, RELATED_QUERIES,
           INTEREST_PEAK_PCT, INTEREST_AVG_PCT
         )
-        WITH rows AS (
+        WITH pld AS (
           SELECT c.value AS j FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) c
         )
         SELECT
@@ -83,7 +83,7 @@ steps:
           j:related_queries,
           j:interest_peak_pct::FLOAT,
           j:interest_avg_pct::FLOAT
-        FROM rows
+        FROM pld
         WHERE :1 != '[]'
       params:
       - "{{steps.fetch_and_compute.$return_value.results_json}}"
