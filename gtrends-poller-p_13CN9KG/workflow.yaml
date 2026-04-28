@@ -51,22 +51,8 @@ steps:
           INTEREST_OVER_TIME, RELATED_QUERIES,
           INTEREST_PEAK_PCT, INTEREST_AVG_PCT
         )
-        SELECT
-          j:trend_id::STRING,
-          j:keyword::STRING,
-          j:geo::STRING,
-          j:timeframe::STRING,
-          j:interest_over_time,
-          j:related_queries,
-          j:interest_peak_pct::FLOAT,
-          j:interest_avg_pct::FLOAT
-        FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1)))
-        WHERE :1 != '[]'
-      query: |-
-        INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_GTRENDS_DAILY (
-          TREND_ID, KEYWORD, GEO, TIMEFRAME,
-          INTEREST_OVER_TIME, RELATED_QUERIES,
-          INTEREST_PEAK_PCT, INTEREST_AVG_PCT
+        WITH rows AS (
+          SELECT c.value AS j FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) c
         )
         SELECT
           j:trend_id::STRING,
@@ -77,7 +63,27 @@ steps:
           j:related_queries,
           j:interest_peak_pct::FLOAT,
           j:interest_avg_pct::FLOAT
-        FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1)))
+        FROM rows
+        WHERE :1 != '[]'
+      query: |-
+        INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_GTRENDS_DAILY (
+          TREND_ID, KEYWORD, GEO, TIMEFRAME,
+          INTEREST_OVER_TIME, RELATED_QUERIES,
+          INTEREST_PEAK_PCT, INTEREST_AVG_PCT
+        )
+        WITH rows AS (
+          SELECT c.value AS j FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) c
+        )
+        SELECT
+          j:trend_id::STRING,
+          j:keyword::STRING,
+          j:geo::STRING,
+          j:timeframe::STRING,
+          j:interest_over_time,
+          j:related_queries,
+          j:interest_peak_pct::FLOAT,
+          j:interest_avg_pct::FLOAT
+        FROM rows
         WHERE :1 != '[]'
       params:
       - "{{steps.fetch_and_compute.$return_value.results_json}}"
