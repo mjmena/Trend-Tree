@@ -240,9 +240,31 @@ steps:
     gtrends_rows: "{{steps.q_gtrends_history.$return_value}}"
     neighbor_rows: "{{steps.q_neighbors.$return_value}}"
     prompts_rows: "{{steps.q_prompts.$return_value}}"
+- namespace: commit_decision
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        CALL MCC_RAW.MARKETING_DEV.PROC_LIFECYCLE_APPLY(
+          PARSE_JSON(:1)::ARRAY,
+          '{{steps.handle_request.$return_value.chain_id}}',
+          '{{steps.handle_request.$return_value.write_live}}'::BOOLEAN
+        )
+      query: |-
+        CALL MCC_RAW.MARKETING_DEV.PROC_LIFECYCLE_APPLY(
+          PARSE_JSON(:1)::ARRAY,
+          '{{steps.handle_request.$return_value.chain_id}}',
+          '{{steps.handle_request.$return_value.write_live}}'::BOOLEAN
+        )
+      params:
+      - "{{steps.run_subagent.$return_value.decisions_json}}"
 - namespace: respond
   runtime: nodejs20.x
   uses: "./respond/entry.js"
   props:
     event: "{{steps.handle_request.$return_value}}"
     subagent_output: "{{steps.run_subagent.$return_value}}"
+    commit_result: "{{steps.commit_decision.$return_value}}"

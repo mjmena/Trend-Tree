@@ -47,27 +47,6 @@ steps:
     event: "{{steps.normalize_event.$return_value}}"
     due_rows: "{{steps.q_select_due_trends.$return_value}}"
     subagent_url: https://53536769d8379ab44edb7179328e9fd3.m.pipedream.net
-- namespace: commit_decisions
-  runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
-  props:
-    snowflake:
-      authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        CALL MCC_RAW.MARKETING_DEV.PROC_LIFECYCLE_APPLY(
-          PARSE_JSON(:1)::ARRAY,
-          '{{steps.normalize_event.$return_value.chain_id}}',
-          '{{steps.normalize_event.$return_value.write_live}}'::BOOLEAN
-        )
-      query: |-
-        CALL MCC_RAW.MARKETING_DEV.PROC_LIFECYCLE_APPLY(
-          PARSE_JSON(:1)::ARRAY,
-          '{{steps.normalize_event.$return_value.chain_id}}',
-          '{{steps.normalize_event.$return_value.write_live}}'::BOOLEAN
-        )
-      params:
-      - "{{steps.dispatch_to_subagents.$return_value.decisions_json}}"
 - namespace: respond
   runtime: nodejs20.x
   uses: "./respond/entry.js"
@@ -75,4 +54,3 @@ steps:
     event: "{{steps.normalize_event.$return_value}}"
     due_count: "{{steps.q_select_due_trends.$return_value.length}}"
     dispatch_result: "{{steps.dispatch_to_subagents.$return_value}}"
-    commit_result: "{{steps.commit_decisions.$return_value}}"

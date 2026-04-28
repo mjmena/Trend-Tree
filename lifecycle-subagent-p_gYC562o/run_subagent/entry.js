@@ -677,10 +677,31 @@ Your modifier window: [-20, 20] %`;
       `${lifecycle_decision ? " → " + lifecycle_decision.status : " — no decision"}`
     );
 
+    // Build the decisions array PROC_LIFECYCLE_APPLY consumes.
+    // Empty array if the agent didn't call propose_lifecycle_decision.
+    const decisions_json = lifecycle_decision
+      ? JSON.stringify([{
+          trend_id,
+          agent_session_id: ev.agent_session_id,
+          chain_id: ev.chain_id,
+          heat_base,
+          lifecycle_decision,
+          llm_token_usage: result.tokens,
+          llm_cost_estimate: result.cost_usd,
+          agent_telemetry: {
+            model: result.model,
+            turns: result.turns,
+            stop_reason: result.stop_reason,
+            tool_call_count: result.tool_calls.length,
+          },
+        }])
+      : "[]";
+
     return {
       lifecycle_decision,
       heat_base,
       heat_components: components,
+      decisions_json,
       trend_id,
       chain_id: ev.chain_id,
       agent_session_id: ev.agent_session_id,
