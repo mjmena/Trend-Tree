@@ -1,210 +1,230 @@
 # Trend Tree
 
-A GitHub-synced [Pipedream](https://pipedream.com) project that distills consumer trends from a daily firehose of signals (news headlines, Bluesky posts, Amazon movers, Google Trends, TikTok hashtags, etc.) and writes them to Snowflake for downstream brand-fit analysis.
+A multi-agent system that watches the public consumer-culture firehose — news, social, search, marketplace, editorial — and decides, every few hours, what's worth calling a trend, what to name it, and when to retire it.
 
-This README captures the **roadmap and current state**. Operational gotchas and per-workflow details live in [`CLAUDE.md`](CLAUDE.md).
+**As of 2026-04-28, all four agent stages are live in production.** The system runs end-to-end without human dispatch. A trend you saw yesterday may have been retired by an agent overnight, or split, or have its description rewritten because new evidence shifted the story.
 
 ---
 
-## The 4-layer mental model
+## The 4-layer model — all live
 
 ```
   ┌──────────────┐    ┌─────────────┐    ┌─────────────┐    ┌──────────────┐
-  │  INGESTION   │ →  │ DISTILLATION│ →  │ ENRICHMENT  │ →  │  LIFECYCLE   │
+  │  DISCOVERY   │ →  │ DISTILLATION│ →  │ ENRICHMENT  │ →  │  LIFECYCLE   │
   │              │    │             │    │             │    │              │
-  │  raw signals │    │ noun-verb   │    │ B2B/B2C     │    │ refresh /    │
-  │  → STG_      │    │ trends →    │    │ naming,     │    │ retire /     │
-  │  EXTERNAL_   │    │ FCT_TRENDS  │    │ category,   │    │ split /      │
-  │  SIGNALS     │    │ via         │    │ vibe shift, │    │ merge        │
-  │              │    │ promotion   │    │ social proof│    │              │
+  │  what's the  │    │ which of    │    │ what is     │    │ is this      │
+  │  noise out   │    │ these are   │    │ this trend  │    │ trend still  │
+  │  there?      │    │ trends?     │    │ really?     │    │ alive?       │
+  │              │    │             │    │             │    │              │
   └──────────────┘    └─────────────┘    └─────────────┘    └──────────────┘
-        ✅                  ✅                  ✅                  ⏸
-      SHIPPED            SHIPPED             SHIPPED            DEFERRED
+        ✅                  ✅                  ✅                  ✅
+      Apr 26             Apr 25             Apr 27           Apr 28 (today)
 ```
 
-Layers 1–3 are all live as agentic redesigns. Layer 4 (Lifecycle) is the only one still in static-SQL form and is the next agent redesign on deck.
-
-The trend pipeline runs synchronously per promoted trend:
-
-```
-discovery agents (cron, every 2h) → STG_EXTERNAL_SIGNALS
-                                       ↓
-                             distillation lead/subagent
-                                       ↓ (proposes candidates)
-                              STG_TREND_CANDIDATES_AGENT
-                                       ↓
-                              promotion agent evaluates
-                                       ↓ PROC_PROMOTION_APPLY
-                              FCT_TRENDS  ←  canonical trend table
-                                       ↓ promotion's fire_enrichment_chain
-                              dispatcher (HTTP per trend)
-                                       ↓
-                       sources → enrichment → write
-                                       ↓
-                              DIM_TREND_ENRICHMENT
-                                       ↓
-                              DT_TREND_DASHBOARD (upstream surface)
-```
+Each layer is one or more LLM agents (Sonnet 4.6 + supporting models) deciding things, not pipelines moving rows. The decisions chain: discovery emits hypotheses, distillation accepts the worthy ones, promotion turns accepted candidates into named trends, enrichment writes the canonical narrative, lifecycle re-evaluates the portfolio every hour.
 
 ---
 
-## Workflow inventory
+## Today's snapshot
 
-Grouped by role. Workflow IDs in headers; click each for the source.
-
-### Orchestration & persistence
-
-| Workflow | Role |
+| | |
 |---|---|
-| [`dispatcher-p_8rCBgnl`](dispatcher-p_8rCBgnl/) | Stateless HTTP-only chain runner. Takes `{trend_id}` and fires `sources` → `enrichment` → `write` synchronously. (Cron-poll trigger retired with the queue layer 2026-04-27.) |
-| [`sources-p_7NCy36w`](sources-p_7NCy36w/) | For one trend, generates search terms + fetches per-source metrics → `FCT_TREND_SOURCE_METRICS`. |
-| [`enrichment-p_xMC995w`](enrichment-p_xMC995w/) | **Phase 3 — single Sonnet 4.6 agent loop.** Replaces the legacy 3-LLM cascade. Live cultural grounding via Bluesky/GDELT/Grok; 4-layer naming refinement (interleaved thinking + tool loop + in-prompt critique + post-emission reviewer). |
-| [`write-p_o7CWa2K`](write-p_o7CWa2K/) | Persists enrichment to `DIM_TREND_ENRICHMENT` + `FCT_TREND_ENRICHMENT_HISTORY`. |
-| [`daily-digest-p_vQCkwgV`](daily-digest-p_vQCkwgV/) | Scheduled link-checker + LLM source-verifier → Braze email of the day's trend dashboard. |
-
-### Discovery (LLM trend hypothesis generation)
-
-| Workflow | Role |
-|---|---|
-| [`discovery-p_5VCPP3N`](discovery-p_5VCPP3N/) | Three LLMs (Gemini/Grok/ChatGPT) sharded across 6 verticals propose trend topics, Claude reranks + dedupes, URL HEAD-validate, write `agent_*_discovery` rows to `STG_EXTERNAL_SIGNALS`. Per-model crons run independently @ 2h each. |
-
-### Distillation (signal → candidate)
-
-| Workflow | Role |
-|---|---|
-| [`distillation-p_mkCBBqb`](distillation-p_mkCBBqb/) | Sonnet 4.6 lead agent pulls 24h of unclaimed signals, scans for noun-verb hypotheses, fans to subagents in parallel. (SQL Louvain bucketing retired 2026-04-27; agent works from raw signals + neighbors only.) |
-| [`distillation-subagent-p_jmCjj3J`](distillation-subagent-p_jmCjj3J/) | Single-hypothesis investigator: tool-calls signal-lookup / dedup / search-ingest, returns a verdict. |
-
-### Promotion (candidate → trend)
-
-| Workflow | Role |
-|---|---|
-| [`promotion-p_xMC99jg`](promotion-p_xMC99jg/) | Pulls pending REAL_TREND candidates, applies HARD_GATE (cluster_size, source_families), dispatches each to the agent, applies via `PROC_PROMOTION_APPLY` → writes `FCT_TRENDS`. New `fire_enrichment_chain` step then POSTs each newly-promoted `trend_id` to the dispatcher. |
-| [`promotion-agent-p_yKCmm9r`](promotion-agent-p_yKCmm9r/) | Per-candidate verifier; compares against neighboring active trends, returns PROMOTE_NEW / MERGE_INTO / DEFER / REJECT. |
-
-### Ingestion (raw signal feeds → `STG_EXTERNAL_SIGNALS`)
-
-All write URL-shaped `SIGNAL_ID`s via JS + `snowflake-sdk` direct connector (the registry SQL proxy 413's at ~256KB).
-
-| Workflow | Role |
-|---|---|
-| [`ingestion/amazon-p_rvC71gN`](ingestion/amazon-p_rvC71gN/) | Scrapes Amazon Movers & Shakers across 6 departments; `SIGNAL_ID = https://www.amazon.com/dp/<ASIN>`. |
-| [`ingestion/bluesky-p_V9CgV17`](ingestion/bluesky-p_V9CgV17/) | `searchPosts` against a fixed seed-term list (`sort=top`, 24h window, engagement-filtered). |
-| [`ingestion/google-trends-p_3nC3xkk`](ingestion/google-trends-p_3nC3xkk/) | Google Trends RSS + related-queries pull. |
-| [`ingestion/tiktok-p_yKCm9Am`](ingestion/tiktok-p_yKCm9Am/) | Playwright scrape of TikTok trending hashtags. |
-| [`ingestion/pinterest-p_xMC9jR5`](ingestion/pinterest-p_xMC9jR5/) | Pinterest trending categories scrape. **`inactive: true`** — raw output didn't fit specificity rubric, deferred. |
-
-### Ingestion tools (HTTP-callable, used by distillation + enrichment agents)
-
-All four now persist results to `STG_EXTERNAL_SIGNALS` with `signal_kind` tagging (`enrichment_citation` when called from enrichment, default `discovery_signal` otherwise).
-
-| Workflow | Role |
-|---|---|
-| [`ingestion/tools/search-bluesky-p_13CNNwP`](ingestion/tools/search-bluesky-p_13CNNwP/) | Ad-hoc Bluesky search. |
-| [`ingestion/tools/search-gdelt-p_WxCppoa`](ingestion/tools/search-gdelt-p_WxCppoa/) | Ad-hoc GDELT news search. |
-| [`ingestion/tools/search-google-trends-p_YyC88x8`](ingestion/tools/search-google-trends-p_YyC88x8/) | Ad-hoc Google Trends lookup. |
-| [`ingestion/tools/grok-live-search-p_vQCkkGK`](ingestion/tools/grok-live-search-p_vQCkkGK/) | Grok live web search via xAI; **citations now persist** (added 2026-04-27). |
-
-### Deactivated (kept in repo for rollback / reference)
-
-| Workflow | State |
-|---|---|
-| [`llm-enrichment-p_YyC86Zo`](llm-enrichment-p_YyC86Zo/) | Legacy 3-LLM cascade enrichment. Replaced by `enrichment-p_xMC995w` 2026-04-27. |
+| Trends actively tracked | **34** (agent-promoted; 324 legacy frozen) |
+| Trends promoted just today | **3** (e.g. *Honey-Note Gourmand Fragrances*, *Tooth-Gem Revival*, *Body-Serum Skinification*) |
+| Lifecycle evaluations on record | **91** across 31 trends |
+| Average enrichment cost per trend | **~$0.45** |
+| Average promotion cost per batch | **~$0.08** for 15 candidates |
+| Average distillation cost per cycle | **~$0.32** for ~5 accepted candidates |
+| Time from raw signal → named trend on the dashboard | **~10–15 min** end-to-end |
+| Currently presented surface | `DT_TREND_DASHBOARD` (358 rows, joined into Steeple) |
 
 ---
 
-## Roadmap
+## What each agent decides
 
-The 4-layer mental model maps to phases. Status as of 2026-04-27.
-
-### ✅ Phase 1 — Distillation agent (shipped 2026-04-25)
-
-Replaces the static SQL clustering's "what counts as a trend?" decision with a Sonnet 4.6 agent loop that's opinionated about specificity (rejects "wellness" / "AI" categories, demands noun-verb consumer behaviors).
-
-Architecture: lead orchestrator + per-hypothesis subagent + 4 agent-callable HTTP tools wrapping source APIs. Canonical Anthropic loop runtime + tool catalog in [`agents/lib/`](agents/lib/), inlined into each step's `entry.js` per Pipedream packaging.
-
-### ✅ Phase 2 — Ingestion + discovery layer (shipped 2026-04-26..27)
-
-**Discovery:** 3-LLM ensemble (Gemini, Grok, ChatGPT) sharded across 6 verticals; Claude Sonnet 4.6 reranks + canonicalizes; per-model cron sources allow independent cadence tuning.
-
-**Ingestion:** 5 platform feeds (4 active + Pinterest deferred) emitting URL-shaped `SIGNAL_ID` + per-source `METADATA`; `bluesky` queries `searchPosts?sort=top` with engagement filter; all upsert via `snowflake-sdk` direct TCP.
-
-**Quality gates active in promotion:** `min_source_families >= 2` HARD_GATE; `agent_*_discovery` rows split per-LLM; `SOURCE_BREAKDOWN` computed in SQL at insert time (kills hallucinated source labels).
-
-### ✅ Phase 3 — Enrichment agent (shipped 2026-04-27)
-
-Replaces the legacy 3-LLM cascade ([`llm-enrichment-p_YyC86Zo`](llm-enrichment-p_YyC86Zo/)) with a single Sonnet 4.6 agent loop ([`enrichment-p_xMC995w`](enrichment-p_xMC995w/)).
-
-**4-layer naming refinement:**
-1. Interleaved thinking (intra-turn)
-2. Tool loop with live cultural grounding (Bluesky/GDELT/Grok live search)
-3. In-prompt 5-candidate-per-audience procedure with anti-cliché blocklist + corporate-media floor
-4. Post-emission `run_name_reviewer` step (~$0.005 reviewer that emits alternates if score < 7)
-
-**Schema additions to `DIM_TREND_ENRICHMENT`:** `CATEGORY_CONFIDENCE`, `LOW_CONFIDENCE_FLAG`, `SOCIAL_PROOF` (structured array with click-through URLs), `ORIGINALLY_SURFACED_AT`, `NAME_CANDIDATES_CONSIDERED` (audit trail), `NAME_REVIEWER`, `AGENT_TELEMETRY`. STEPPS dropped per dashboard direction; prediction score deferred.
-
-**Empirical results across 9 sample trends:** 9/9 emit clean, all clear corporate-media floor (1 borderline caught + corrected by reviewer). Cost p95 ~$0.45/run.
-
-Sample naming wins: legacy "Beef Tallow Glow-Up" → new **"Carnivore Beauty"** / reviewer alt **"Tallow & Tradition"**. Legacy "Your Daily Scoop of Creatine" → **"Grey Matter Gains"**.
-
-### ✅ Phase 4.5 — FCT_TRENDS canonical, queue retired (shipped 2026-04-27)
-
-Promoted `FCT_TRENDS` to the primary trend table. Retired `FCT_TREND_METRICS` writes (frozen at 324 legacy rows; future audit/lifecycle agent will triage). Eliminated `STG_ENRICHMENT_QUEUE` + `TASK_QUEUE_ENRICHMENT` cron-poll layer; promotion now fires the `sources → enrichment → write` chain directly per newly-promoted `trend_id` via `fire_enrichment_chain`.
-
-Also retired in this phase: SQL Louvain bucketing in distillation (lead/subagent prompt v3 collapses OVERLAP/AGENT_ONLY/LOUVAIN_ONLY into a single procedure); audit workflow; per-bucket subagent prompt fragments. Louvain infrastructure (`proc_cluster_trends`, `dt_external_trend_embeddings`) preserved for possible future on-demand tool use.
-
-`DT_TREND_DASHBOARD` rebuilt as `UNION ALL` of `FCT_TRENDS` (canonical) + `FCT_TREND_METRICS` (legacy) so dashboard has 336 rows during the transition.
-
-### ⏸ Phase 4 — Lifecycle agent (deferred)
-
-**Current state:** static SQL — `v_trend_lifecycle.sql` (refresh / retire decisions on time thresholds). `proc_split_trend.sql` and `proc_dedup_trends.sql` retired 2026-04-27 because the distillation agent now handles split/dedup decisions at proposal time.
-
-**Planned redesign:** periodic Sonnet 4.6 agent reasoning over the active trend portfolio, deciding refresh / retire / split / merge with semantic context (was this trend seasonal? does the merged result lose a sub-narrative? is the split commercially viable?). First job for the lifecycle agent: triage the 324 frozen `FCT_TREND_METRICS` rows.
+| Agent | Decides | Cadence | Output goes to |
+|---|---|---|---|
+| **Discovery** (3-LLM ensemble) | "Is anything new bubbling up in this vertical?" | Every 2h, per LLM, per vertical | Raw signals table |
+| **Distillation lead + investigators** | "Among today's signals, which clusters describe a real consumer behavior worth tracking?" | Every 2h, per cursor | Candidate table (verdict: REAL_TREND / NOISE / DUPLICATE) |
+| **Promotion agent** | "Should this candidate become its own tracked trend, or merge into an existing one?" | Every 3h | New row in `FCT_TRENDS` + immediate enrichment chain |
+| **Enrichment agent** (Sonnet 4.6) | "What is this trend, who's it for, what should we call it, what proof do we have?" | Triggered per new promotion | Names (B2B + B2C), category, narrative, social proof |
+| **Lifecycle agent + sub-evaluators** *(new today)* | "Is this trend still alive, growing, stagnant, or retired? Should we re-enrich the description?" | Every 1h, scans all due trends | Status updates, heat-index decay, retirement flags |
 
 ---
 
-## Operating reference
+## Today's headline updates (2026-04-28)
 
-| What | Where |
+### 1. Lifecycle agent shipped (Phase 4)
+
+The pipeline now closes the loop. After a trend is promoted and enriched, the **lifecycle agent** revisits it every hour with fresh evidence:
+- Re-checks Google Trends search interest (a daily poller writes `FCT_TREND_GTRENDS_DAILY`).
+- Re-counts how many sources are still talking about the topic, and how diverse those sources are (a one-source social-only trend gets penalized vs. a trend with editorial + social + commerce coverage).
+- Smooths the heat index over time (EWMA — 70% prior + 30% new) so single-day spikes don't flip a trend's status.
+- Decides among **NEW → STABLE → STAGNANT / DECLINING / RETIRED**. Retirement requires two consecutive proposals to commit (no accidental retirements from one off day).
+
+The agent **does not** split or supersede trends — those decisions are concentrated upstream in distillation/promotion where the full signal context is fresher. The lifecycle agent has one job: triage what's already in the portfolio.
+
+If new evidence has shifted the story (e.g. a wellness trend pivots from "powders" to "gummies"), lifecycle can request a **re-enrichment** so the description gets rewritten without touching the trend's identity.
+
+### 2. Storage architecture cleanup — agent-owned ledgers
+
+Each agent now owns a single **append-only ledger** of its decisions. No agent overwrites another's history. The `FCT_TRENDS` table was slimmed to identity-only (the trend's name, category, and origin metadata — set once and frozen). Everything mutable — heat, lifecycle status, enrichment payloads — lives in the ledger that produced it:
+
+| Agent | Owns ledger |
 |---|---|
-| Per-workflow gotchas | [`CLAUDE.md`](CLAUDE.md) |
-| Distillation lead trigger | `https://eo8lg4tmkchk2qc.m.pipedream.net` (POST `{"dry_run": false}`) |
-| Distillation subagent trigger | `https://eo5h5le4j2qu3tm.m.pipedream.net` (POST `{hypothesis, signal_ids, ...}`) |
-| Enrichment agent trigger | `https://eoxadsat1xxgqa4.m.pipedream.net` (POST `{"trend_id":"<uuid>"}`) — single-trend; returns full enrichment payload |
-| Dispatcher trigger (full chain) | `https://eoqf5zok2vcvael.m.pipedream.net` (POST `{"trend_id":"<uuid>"}`) — fires sources → enrichment → write end-to-end |
-| Canonical trend table | `MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS` (12 rows agent-promoted) |
-| Legacy trend table (frozen) | `MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS` (324 rows; awaiting lifecycle-agent triage) |
-| Dashboard surface | `MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD` (336 rows: UNION of both trend tables) |
-| Run cursor | `MCC_RAW.MARKETING_DEV.STG_DISTILLATION_CURSOR` (one row per cursor name; `distillation_main` is live) |
-| Agent run cost telemetry | `MCC_RAW.MARKETING_DEV.STG_AGENT_RUN_COSTS` |
-| Pipedream errors API | `GET /v1/workflows/<id>/%24errors/event_summaries?org_id=o_qOIvyEa&limit=N&expand=event` (the `expand=event` param is required to see actual exception messages) |
+| Promotion | `FCT_PROMOTION_LEDGER` (every promote/reject decision with reasoning) |
+| Enrichment | `FCT_TREND_ENRICHMENT_LEDGER` (every enrichment run, full payload + vector embedding) |
+| Lifecycle | `FCT_TREND_LIFECYCLE_LEDGER` (every status evaluation with prior-state diff) |
 
-## Quick queries
+Trade-off accepted: storage duplication (each enrichment row may be 95% identical to the last) in exchange for full auditability. Every change to a trend can be traced back to the agent run that made it, with reasoning intact.
+
+The dashboard surface (`DT_TREND_DASHBOARD`) and Steeple-facing column shape were preserved across the refactor — consumers see no breaking change.
+
+---
+
+## How a trend moves through the system
+
+```
+discovery agents (Gemini + Grok + ChatGPT, every 2h, sharded by vertical)
+    │ each writes "I think X is happening" rows
+    ▼
+raw signals table (~thousands of rows/day, deduplicated)
+    │
+    ▼
+distillation lead (Sonnet 4.6) reviews 24h of new signals,
+hands hypotheses to subagent investigators in parallel
+    │ each investigator decides REAL_TREND / NOISE / DUPLICATE
+    ▼
+candidates table (~5 accepted per cycle, with reasoning)
+    │
+    ▼
+promotion agent (Sonnet 4.6, every 3h) evaluates each candidate
+against existing trends — should this be its own trend, or merge?
+    │ writes FCT_TRENDS + seeds the trend's lifecycle + enrichment ledgers
+    ▼
+trend identity row (frozen: trend_id, topic, candidate origin)
+    │ promotion fires the enrichment chain inline
+    ▼
+sources workflow (Google Trends, Wikimedia, GDELT) → enrichment agent (Sonnet 4.6, ~3-5 min)
+    │ produces names, category, narrative, social proof
+    ▼
+enrichment ledger row (named, categorized, vibe shift articulated)
+    │ first-run UPDATE on FCT_TRENDS sets the frozen name + category
+    ▼
+lifecycle agent sweeps every hour, evaluates due trends
+    │ each evaluation writes a new lifecycle ledger row
+    ▼
+DT_TREND_DASHBOARD (refreshed on demand) — what Steeple shows
+```
+
+The whole chain takes **~10–15 minutes** for a fresh trend from "first appears in distillation" to "named and on the dashboard." Lifecycle then keeps it current.
+
+---
+
+## Sample output
+
+A trend the system promoted yesterday and re-evaluated this morning:
+
+> **B2C name:** *The White Cast Vanishing Act*
+> **B2B name:** *Invisible Zinc Pivot*
+> **Category:** beauty
+> **Heat index:** 63.8 (smoothed)
+> **Status:** STABLE
+> **Cluster:** 21 supporting signals across 4 source families
+> **Summary:** Consumers are ditching chemical SPF formulas and reaching for tinted mineral sunscreens that go on invisibly — driven by Korean centella formulas and TikTok's "no white cast" demand…
+
+A trend promoted **today** (still in the enrichment queue as you read this):
+
+> **Topic:** Honey-note gourmand fragrances surging as the new feminine scent direction
+> **Status:** NEW
+> **Initial heat:** 82.4
+> **Promotion confidence:** 0.65
+
+---
+
+## What's next
+
+- **Re-enrichment mode for lifecycle.** When the lifecycle agent decides a trend's narrative has drifted (new sub-behaviors emerging, dominant source shifting), it currently flags `request_re_enrichment` but the lighter-weight "refinement" enrichment mode is still wired in stub form. Coming next.
+- **Operational dashboards.** Five ops views (cost-per-day, promotion-health, agent-leaderboard) were dropped during the ledger refactor and will be rebuilt as Steeple panels rather than Snowflake views, once that team picks them up.
+- **Lifecycle triage of the legacy 324.** The old SQL-clustered trend table (`FCT_TREND_METRICS`) is frozen pending a one-shot lifecycle pass to retire stale rows or migrate the live ones into `FCT_TRENDS`.
+
+---
+
+## Operating reference (engineer drill-down)
+
+### Active workflows
+
+| Layer | Workflow | Fires on |
+|---|---|---|
+| Discovery | `discovery-p_5VCPP3N` | Per-LLM cron @ 2h, sharded by vertical |
+| Distillation | `distillation-p_mkCBBqb` + `distillation-subagent-p_jmCjj3J` | Cron @ 2h via cursor |
+| Distillation revisit | `distillation-revisit-p_o7CWWZl` + `distillation-revisit-subagent-p_ezCwwKm` | Re-investigates earlier deferred candidates |
+| Distillation watchdog | `distillation-watchdog-p_dDCWWPg` | Releases stale signal claims if a distillation run fails mid-flight |
+| Promotion | `promotion-p_xMC99jg` + `promotion-agent-p_yKCmm9r` | Cron @ 3h + HTTP-on-demand |
+| Promotion → Enrichment chain | `dispatcher-p_8rCBgnl` → `sources-p_7NCy36w` → `enrichment-p_xMC995w` → `write-p_o7CWa2K` | Synchronous HTTP chain per newly-promoted trend |
+| Lifecycle | `lifecycle-agent-p_JZCz73w` (sweeper) → `lifecycle-subagent-p_gYC562o` (per-trend evaluator) | Sweeper cron @ 1h |
+| Lifecycle support | `gtrends-poller-p_13CN9KG` | Daily Google Trends timeseries fetch |
+| Daily digest | `daily-digest-p_vQCkwgV` | Scheduled email of top trends |
+| Error alerts | `error-alerts-p_zAC1Nd9` | Slack channel notifications when a workflow errors |
+
+### Ingestion (raw signal feeds)
+
+`ingestion/amazon` · `ingestion/bluesky` · `ingestion/google-trends` · `ingestion/tiktok` · (`ingestion/pinterest` deferred). Plus four agent-callable HTTP search tools under `ingestion/tools/` (Bluesky, GDELT, Google Trends, Grok live web).
+
+### Where data lives in Snowflake
+
+| Object | Role |
+|---|---|
+| `MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS` | Trend identity (34 rows). Slim, immutable per-trend metadata. |
+| `MCC_PRESENTATION.TREND_AGENT.FCT_PROMOTION_LEDGER` | Every promote/reject decision the promotion agent has made (255 rows). |
+| `MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER` | Every enrichment run, full payload + 1024-dim vector (315 rows). |
+| `MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER` | Every lifecycle evaluation with status diff + heat (91 rows). |
+| `MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD` | Refresh-on-demand snapshot table joining the above for Steeple (358 rows). |
+| `MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS` | Frozen legacy table (324 rows from the retired SQL clustering era). |
+| `MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS` | Raw inbound signals from all discovery + ingestion sources. |
+| `MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES` | Distillation output, awaiting promotion review. |
+
+### Endpoints
+
+| Action | Endpoint |
+|---|---|
+| Fire enrichment for one trend (full sources → enrichment → write chain) | `POST https://eoqf5zok2vcvael.m.pipedream.net {"trend_id":"<uuid>"}` |
+| Fire enrichment alone (already have sources) | `POST https://eoxadsat1xxgqa4.m.pipedream.net {"trend_id":"<uuid>"}` |
+| Fire distillation manually | `POST https://eo8lg4tmkchk2qc.m.pipedream.net {}` |
+| Fire promotion manually | `POST https://eot66usfdph5i7h.m.pipedream.net {}` |
+| Fire lifecycle for one trend | `POST https://53536769d8379ab44edb7179328e9fd3.m.pipedream.net {"trend_id":"<uuid>"}` |
+| Fire lifecycle sweeper | `POST https://23f3a2c4e5fbd681c1531592137719be.m.pipedream.net {"sweep_cap":25,"write_live":true}` |
+
+### Quick queries
 
 ```sql
--- Top trends by heat (joins canonical + legacy via the dashboard surface)
-SELECT TREND_NAME, CATEGORY, HEAT_INDEX, TOTAL_CLUSTER_SIZE, TREND_SOURCE
+-- Top trends right now (joins identity + latest enrichment + latest lifecycle)
+SELECT TREND_NAME, CATEGORY, HEAT_INDEX, LIFECYCLE_STATUS,
+       TOTAL_CLUSTER_SIZE, DISTINCT_SOURCE_COUNT
 FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD
 ORDER BY HEAT_INDEX DESC LIMIT 20;
 
--- Recent agent candidates with reasoning
-SELECT TOPIC, VERDICT, CONFIDENCE, SPECIFICITY_SCORE,
-       ARRAY_SIZE(SUPPORTING_SIGNAL_IDS) AS N_SIGNALS, REASONING
-FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES_AGENT
-WHERE CREATED_AT > DATEADD(day, -1, CURRENT_TIMESTAMP())
-ORDER BY CREATED_AT DESC, CONFIDENCE DESC;
+-- Most recent lifecycle decisions
+SELECT TREND_ID, EVALUATED_AT, NEW_STATUS, NEW_HEAT_SMOOTHED,
+       DECISION_PAYLOAD:reasoning::STRING AS reasoning
+FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+ORDER BY EVALUATED_AT DESC LIMIT 20;
 
--- Recently-enriched trends with naming audit
-SELECT TREND_NAME_B2B, TREND_NAME_B2C, CATEGORY, CATEGORY_CONFIDENCE,
-       NAME_REVIEWER:score_b2c::NUMBER AS reviewer_score,
-       NAME_REVIEWER:alternate_b2c::STRING AS reviewer_alt,
-       AGENT_TELEMETRY:cost_usd::FLOAT AS cost_usd
-FROM MCC_PRESENTATION.TREND_AGENT.DIM_TREND_ENRICHMENT
-WHERE ENRICHED_AT > DATEADD(day, -7, CURRENT_TIMESTAMP())
-ORDER BY ENRICHED_AT DESC LIMIT 20;
+-- Enrichment audit trail for one trend
+SELECT WRITTEN_AT, ENRICHMENT_KIND, WRITTEN_BY,
+       PAYLOAD:trend_name_b2c::STRING AS name_b2c,
+       PAYLOAD:summary_short::STRING AS summary
+FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+WHERE TREND_ID = '<uuid>'
+ORDER BY WRITTEN_AT DESC;
 
--- Distillation cost trajectory (one row per run)
-SELECT STARTED_AT, WORKFLOW_NAME, MODEL, TOOL_CALL_COUNT, COST_USD, STATUS
-FROM MCC_RAW.MARKETING_DEV.STG_AGENT_RUN_COSTS
-ORDER BY STARTED_AT DESC LIMIT 20;
+-- Recent promotion decisions with reasoning
+SELECT DECIDED_AT, DECISION, DECISION_CATEGORY, TARGET_TREND_ID,
+       MAX_NEIGHBOR_SIM, CLUSTER_SIZE, SOURCE_COUNT
+FROM MCC_PRESENTATION.TREND_AGENT.FCT_PROMOTION_LEDGER
+ORDER BY DECIDED_AT DESC LIMIT 20;
 ```
+
+### Per-workflow gotchas, deployment patterns, Snowflake quirks
+
+See [`CLAUDE.md`](CLAUDE.md).
