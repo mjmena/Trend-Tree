@@ -361,8 +361,8 @@ steps:
   runtime: nodejs20.x
   uses: "./run_enrichment_agent/entry.js"
   props:
-    anthropic:
-      authProvisionId: apn_Oghan1O
+    google_gemini:
+      authProvisionId: apn_EOhp9DY
     event: "{{steps.normalize_event.$return_value}}"
     metrics_rows: "{{steps.q_metrics.$return_value}}"
     signal_rows: "{{steps.q_signals.$return_value}}"
