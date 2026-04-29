@@ -193,6 +193,9 @@ async function fetchArticleMeta(rawUrl, opts = {}) {
     });
     const finalUrl = resp.url || rawUrl;
     const canonical = stripAndNormalize(finalUrl);
+    if (!canonical || canonical.length > 255 || canonical.includes('vertexaisearch.cloud.google.com')) {
+      return { canonical: null, http_status: 0, status_class: 'dead', error: 'url_too_long_or_redirect' };
+    }
     const status_class = classifyStatus(resp.status);
     if (!resp.ok) {
       // Body likely unavailable on non-2xx — return what we know, classify upstream.
@@ -232,8 +235,10 @@ async function fetchArticleMeta(rawUrl, opts = {}) {
   } catch (e) {
     // Network errors (DNS, timeout, conn reset) — treat as transient, soft-keep
     // with the original URL stripped/normalized so dedup still works.
+    const rawCanonical = stripAndNormalize(rawUrl);
     return {
-      canonical: stripAndNormalize(rawUrl),
+      canonical: (rawCanonical && rawCanonical.length <= 255 && !rawCanonical.includes('vertexaisearch.cloud.google.com'))
+        ? rawCanonical : null,
       http_status: 0,
       status_class: "transient",
       error: e.message,
