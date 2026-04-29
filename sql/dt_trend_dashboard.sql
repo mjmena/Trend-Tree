@@ -149,19 +149,13 @@ macro_tags AS (
     GROUP BY TREND_ID
 ),
 trend_vectors AS (
-    -- Prefer the enrichment ledger vector (richer narrative context); fall back
-    -- to the promotion-time FCT_TRENDS vector so every trend participates.
-    SELECT
-        t.TREND_ID,
-        COALESCE(e.TREND_VECTOR, t.TREND_VECTOR) AS TREND_VECTOR
-    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-    LEFT JOIN (
-        SELECT TREND_ID, TREND_VECTOR
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
-        WHERE TREND_VECTOR IS NOT NULL
-        QUALIFY ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) = 1
-    ) e ON e.TREND_ID = t.TREND_ID
-    WHERE COALESCE(e.TREND_VECTOR, t.TREND_VECTOR) IS NOT NULL
+    -- Latest enrichment vector per trend, scoped to FCT_TRENDS members so
+    -- RELATED_IDs always resolve to a valid dashboard row.
+    SELECT TREND_ID, TREND_VECTOR
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+    WHERE TREND_VECTOR IS NOT NULL
+      AND TREND_ID IN (SELECT TREND_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS)
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) = 1
 ),
 pairwise_similarity AS (
     -- Top-5 most similar neighbours per trend, threshold ≥ 0.65.
