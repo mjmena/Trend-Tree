@@ -131,7 +131,7 @@ These are the previous-generation columns the dashboard still reads. Each has a 
 | `SOCIAL_PROOF` | `GENERAL_EVIDENCE` | Old `social_proof` array. NULL on new-shape rows. |
 | `VOICE_OF_CUSTOMER` | `SOCIAL_EVIDENCE` (filter `quote IS NOT NULL`) | Old VoC quote array. NULL on new-shape rows. |
 | `VIBE_SHIFT` | `SUMMARY_SHORT` | Single-sentence narrative shift. Overlapped with summary. NULL on new-shape rows. |
-| `TOP_SIGNALS` | one of the typed evidence pools (TBD) | Top 5 raw signals from `STG_TREND_SIGNALS`. Currently NULL for all agent-promoted trends because that legacy table isn't populated by the agent pipeline. |
+| `TOP_SIGNALS` | derived from `EVIDENCE` | First 5 entries from the EVIDENCE pool with `type IN ('news','commerce','social')`, in the order the enrichment agent emitted them. Object shape: `{title, url, source}` — `title` falls back to the agent's `claim` summary if no raw `title` is present. |
 | `MACROTREND_TAGS` | TBD | Macrotrend tags from `MAP_TREND_MACROTRENDS`. To be replaced once the macrotrend story is rebuilt. |
 | `RELATED_TRENDS` | TBD | Trend IDs sharing macrotrend tags. Same — pending replacement. |
 

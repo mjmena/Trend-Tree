@@ -697,7 +697,7 @@ export default defineComponent({
 
     const metricsRow = (this.metrics_rows || [])[0];
     if (!metricsRow) {
-      throw new Error(`enrichment: no FCT_TREND_METRICS row for trend_id ${trend_id}`);
+      throw new Error(`enrichment: no FCT_TRENDS row for trend_id ${trend_id}`);
     }
 
     // ENRICHMENT_TYPE is no longer gating logic — promotion fires

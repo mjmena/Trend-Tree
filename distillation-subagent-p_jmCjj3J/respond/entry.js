@@ -15,7 +15,6 @@ export default defineComponent({
 
     const body = {
       tool: "distillation_subagent",
-      bucket: req.bucket,
       hypothesis: req.hypothesis,
       verdict: ar.verdict || "ERROR",
       candidates: ar.candidates || [],

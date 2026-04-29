@@ -278,7 +278,7 @@ export default defineComponent({
   props: {
     metrics_rows: {
       type: "any",
-      label: "FCT_TREND_METRICS rows (from query_metrics)",
+      label: "Trend metrics rows (from query_metrics)",
     },
     search_term_output: {
       type: "any",

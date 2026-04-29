@@ -83,7 +83,7 @@ OUTPUT — a single JSON object and nothing else:
       "title": string,
       "url": string,
       "source": string,
-      "via": "pagerank" | "llm_websearch",
+      "via": "recency" | "llm_websearch",
       "reason": string
     }
   ]
@@ -134,7 +134,7 @@ const verifyOneTrend = async (row, apiKey, target) => {
       title: String(s.title || "").slice(0, 300),
       url: String(s.url).trim(),
       source: String(s.source || "").slice(0, 120),
-      via: s.via === "llm_websearch" ? "llm_websearch" : "pagerank",
+      via: s.via === "llm_websearch" ? "llm_websearch" : "recency",
       reason: String(s.reason || "").slice(0, 300),
     }));
 
@@ -149,13 +149,13 @@ const verifyOneTrend = async (row, apiKey, target) => {
   };
 };
 
-const pagerankFallback = (row, target) => {
+const recencyFallback = (row, target) => {
   const alive = Array.isArray(row.alive_signals) ? row.alive_signals : [];
   return alive.slice(0, target).map((s) => ({
     title: s.title || "",
     url: s.final_url || s.url,
     source: s.source || "",
-    via: "pagerank",
+    via: "recency",
     reason: "fallback: LLM verify unavailable",
   }));
 };
@@ -195,9 +195,9 @@ export default defineComponent({
     const apiKey = this.google_gemini?.$auth?.api_key;
 
     if (!apiKey) {
-      console.log("No Gemini API key on google_gemini app; falling back to pagerank for all trends.");
+      console.log("No Gemini API key on google_gemini app; falling back to recency-ordered alive_signals for all trends.");
       for (const row of rows) {
-        row.final_sources = pagerankFallback(row, target);
+        row.final_sources = recencyFallback(row, target);
         row._llm_error = "no_api_key";
       }
       $.export("$summary", `Verified 0 via LLM / ${rows.length} fallback (no api key)`);
@@ -220,7 +220,7 @@ export default defineComponent({
             const r = await verifyOneTrend(row, apiKey, target);
             if (r.sources.length === 0) {
               // If LLM returned nothing usable, prefer fallback so the card isn't empty.
-              row.final_sources = pagerankFallback(row, target);
+              row.final_sources = recencyFallback(row, target);
               row._llm_error = "llm_returned_no_sources";
               llmFallback++;
             } else {
@@ -233,7 +233,7 @@ export default defineComponent({
           } catch (e) {
             const msg = e?.message || String(e);
             console.log(`verify_sources_llm: fallback ${row.TREND_ID}: ${msg}`);
-            row.final_sources = pagerankFallback(row, target);
+            row.final_sources = recencyFallback(row, target);
             row._llm_error = msg.slice(0, 500);
             llmFallback++;
           }

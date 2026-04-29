@@ -153,7 +153,7 @@ const QUERY_SCHEMAS = {
   query_signals_window: {
     name: "query_signals_window",
     description:
-      "Filter the pre-fetched signal window (recent unclustered/clustered signals from STG_EXTERNAL_SIGNALS) by source, domain, time window, or full-text match against title/body. Returns up to `limit` signal records with id, title, source, domain, detected_at, and a snippet. Use this to scan the firehose, find specific patterns, or look up a specific signal by id. Note: this tool reads from a context-provided pool, not live Snowflake.",
+      "Filter the pre-fetched signal window (recent unclustered/clustered signals from STG_EXTERNAL_SIGNALS) by source, domain, time window, full-text match, or cluster_id. Returns up to `limit` signal records with id, title, source, domain, detected_at, cluster_id, and a snippet. Use this to scan the firehose, find specific patterns, or zoom into one cluster. Note: this tool reads from a context-provided pool, not live Snowflake.",
     input_schema: {
       type: "object",
       properties: {
@@ -161,6 +161,7 @@ const QUERY_SCHEMAS = {
         domain_contains: { type: "string", description: "Optional substring match against signal domain (e.g. 'reddit.com', 'wsj')." },
         text_contains: { type: "string", description: "Optional case-insensitive substring match against signal title and body." },
         signal_ids: { type: "array", items: { type: "string" }, description: "Optional list of signal UUIDs to look up directly." },
+        cluster_id: { type: "integer", description: "Optional: filter pool to one k-means cluster id (see cluster summary at top of user message)." },
         limit: { type: "integer", description: "Max signals to return (default 25, hard cap 100)." },
       },
     },
@@ -302,7 +303,7 @@ const LEAD_ONLY_SCHEMAS = {
         verdict: { type: "string", enum: ["REAL_TREND", "DUPLICATE_OF"] },
         dedup_of_trend_id: { type: "string" },
         source_breakdown: { type: "object" },
-        evidence_added: { type: "array" },
+        evidence_added: { type: "array", items: { type: "string" } },
         reasoning: { type: "string", description: "≤500 char rationale." },
       },
       required: ["topic", "supporting_signal_ids", "confidence", "specificity_score", "verdict", "reasoning"],
@@ -377,15 +378,17 @@ function cryptoRandomId() {
 
 function lookupSignals(input, ctx) {
   const pool = ctx.signal_pool || [];
-  const { source, domain_contains, text_contains, signal_ids, limit = 25 } = input || {};
+  const { source, domain_contains, text_contains, signal_ids, cluster_id, limit = 25 } = input || {};
   const cap = Math.min(Number(limit) || 25, 100);
   const ids = signal_ids ? new Set(signal_ids) : null;
   const txt = text_contains ? text_contains.toLowerCase() : null;
+  const filterClusterId = (cluster_id === 0 || Number.isFinite(cluster_id)) ? Number(cluster_id) : null;
   const out = [];
   for (const s of pool) {
     if (out.length >= cap) break;
     if (ids && !ids.has(s.signal_id)) continue;
     if (source && s.source_name !== source) continue;
+    if (filterClusterId !== null && s.cluster_id !== filterClusterId) continue;
     if (domain_contains && !(s.domain || "").toLowerCase().includes(domain_contains.toLowerCase())) continue;
     if (txt) {
       const hay = `${s.title || ""} ${s.body || ""}`.toLowerCase();
@@ -394,6 +397,7 @@ function lookupSignals(input, ctx) {
     out.push({
       signal_id: s.signal_id, title: s.title, source: s.source_name, domain: s.domain,
       detected_at: s.detected_at, snippet: (s.body || s.title || "").slice(0, 240), url: s.url,
+      cluster_id: s.cluster_id ?? null,
     });
   }
   return { signals: out, total_in_pool: pool.length, returned: out.length };
@@ -557,37 +561,49 @@ async function dispatchTool(name, input, ctx) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Anthropic agent loop runtime (Sonnet 4.6 + interleaved thinking)
+// Gemini 3.1 Pro agent loop runtime
+// Mirrors lifecycle-subagent / promotion-subagent: function-calling with
+// thoughtSignature round-trip and sequential dispatch.
 // ─────────────────────────────────────────────────────────────────────
 
-const MODEL = "claude-sonnet-4-6";
-const RATES_PER_M = { input: 3.0, output: 15.0 };
-const ANTHROPIC_VERSION = "2023-06-01";
-const BETA_HEADERS = "interleaved-thinking-2025-05-14";
+const MODEL = "gemini-3.1-pro-preview";
+const RATES_PER_M = { input: 2.0, output: 12.0 };  // sub-200k context tier
 
 const LOOP_DEFAULTS = {
   max_iterations: 12,
   budget_usd: 5.0,
   per_call_max_tokens: 8192,
-  thinking_budget_tokens: 4000,
+  thinking_level: "medium",
   temperature: 1.0,
   request_timeout_ms: 180_000,
 };
 
+// Translate the shared tool schemas (Anthropic-shaped: input_schema) into
+// Gemini's functionDeclarations shape (parameters). The JSON Schema body
+// itself is compatible — only the wrapper field name differs.
+function toFunctionDeclarations(toolNames) {
+  return toolNames.map((n) => {
+    const s = ALL_SCHEMAS[n];
+    if (!s) throw new Error(`Unknown tool: ${n}`);
+    return { name: s.name, description: s.description, parameters: s.input_schema };
+  });
+}
+
 async function runAgentLoop({
-  anthropic, tool_names, system, user_message, context,
+  google_gemini, tool_names, system, user_message, context,
   max_iterations = LOOP_DEFAULTS.max_iterations,
   budget_usd = LOOP_DEFAULTS.budget_usd,
   per_call_max_tokens = LOOP_DEFAULTS.per_call_max_tokens,
-  thinking_budget_tokens = LOOP_DEFAULTS.thinking_budget_tokens,
+  thinking_level = LOOP_DEFAULTS.thinking_level,
 }) {
-  if (!anthropic?.$auth?.api_key) throw new Error("anthropic app prop missing $auth.api_key");
+  if (!google_gemini?.$auth?.api_key) throw new Error("google_gemini app prop missing $auth.api_key");
   if (!Array.isArray(tool_names) || tool_names.length === 0) throw new Error("tool_names is required");
+  const apiKey = google_gemini.$auth.api_key;
 
-  const tools = getToolSchemas(tool_names);
-  const messages = [{
+  const tools = [{ functionDeclarations: toFunctionDeclarations(tool_names) }];
+  const contents = [{
     role: "user",
-    content: typeof user_message === "string" ? [{ type: "text", text: user_message }] : user_message,
+    parts: typeof user_message === "string" ? [{ text: user_message }] : user_message,
   }];
 
   const tokens = { input: 0, output: 0, total: 0 };
@@ -607,85 +623,105 @@ async function runAgentLoop({
     }
 
     const reqBody = {
-      model: MODEL, max_tokens: per_call_max_tokens, system, messages, tools,
-      tool_choice: { type: "auto" }, temperature: LOOP_DEFAULTS.temperature,
-      thinking: { type: "enabled", budget_tokens: thinking_budget_tokens },
+      systemInstruction: { parts: [{ text: system }] },
+      contents,
+      tools,
+      toolConfig: { functionCallingConfig: { mode: "AUTO" } },
+      generationConfig: {
+        temperature: LOOP_DEFAULTS.temperature,
+        maxOutputTokens: per_call_max_tokens,
+        thinkingConfig: { thinkingLevel: thinking_level },
+      },
     };
 
     let resp;
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), LOOP_DEFAULTS.request_timeout_ms);
-      resp = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": anthropic.$auth.api_key,
-          "anthropic-version": ANTHROPIC_VERSION,
-          "anthropic-beta": BETA_HEADERS,
+      resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(reqBody),
+          signal: ctrl.signal,
         },
-        body: JSON.stringify(reqBody),
-        signal: ctrl.signal,
-      });
+      );
       clearTimeout(timer);
     } catch (e) {
-      // Operator-fixable: network/timeout to Anthropic. Throw so it lands on
+      // Operator-fixable: network/timeout to Gemini. Throw so it lands on
       // Pipedream's $errors/event_summaries endpoint rather than getting
       // buried as a "successful" run with stop_reason: fetch_error.
-      throw new Error(`Anthropic fetch failed (turn ${turn}): ${e.message}`);
+      throw new Error(`Gemini fetch failed (turn ${turn}): ${e.message}`);
     }
 
     if (!resp.ok) {
       const errText = await resp.text();
-      throw new Error(`Anthropic HTTP ${resp.status} (turn ${turn}): ${errText.slice(0, 600)}`);
+      throw new Error(`Gemini HTTP ${resp.status} (turn ${turn}): ${errText.slice(0, 600)}`);
     }
 
     const data = await resp.json();
-    const usage = data.usage || {};
-    const tin = usage.input_tokens || 0;
-    const tout = usage.output_tokens || 0;
+    const usage = data.usageMetadata || {};
+    const tin = usage.promptTokenCount || 0;
+    // candidatesTokenCount on the AI Studio API already includes thinking
+    // tokens — do NOT add thoughtsTokenCount on top.
+    const tout = usage.candidatesTokenCount || 0;
     tokens.input += tin;
     tokens.output += tout;
     tokens.total = tokens.input + tokens.output;
     cost_usd += (tin / 1_000_000) * RATES_PER_M.input + (tout / 1_000_000) * RATES_PER_M.output;
 
-    const content = Array.isArray(data.content) ? data.content : [];
-    for (const block of content) {
-      if (block.type === "thinking") {
-        reasoning_trace.push({ turn, kind: "thinking", text: block.thinking, signature: block.signature });
-      } else if (block.type === "text") {
-        reasoning_trace.push({ turn, kind: "text", text: block.text });
-        final_text = block.text;
-      } else if (block.type === "tool_use") {
-        reasoning_trace.push({ turn, kind: "tool_use", id: block.id, name: block.name, input: block.input });
-      }
-    }
-    messages.push({ role: "assistant", content });
+    const candidate = (data.candidates || [])[0] || {};
+    const parts = (candidate.content && candidate.content.parts) || [];
 
-    if (data.stop_reason === "tool_use") {
-      const toolUses = content.filter((b) => b.type === "tool_use");
-      const toolResults = [];
-      const dispatched = await Promise.all(toolUses.map(async (tu) => {
-        const started = Date.now();
-        const out = await dispatchTool(tu.name, tu.input, context);
-        const duration_ms = Date.now() - started;
-        tool_calls.push({ turn, name: tu.name, input: tu.input, output: out, duration_ms });
-        return { id: tu.id, name: tu.name, output: out };
-      }));
-      for (const d of dispatched) {
-        toolResults.push({
-          type: "tool_result", tool_use_id: d.id,
-          content: typeof d.output === "string" ? d.output : JSON.stringify(d.output),
-          is_error: !!(d.output && d.output.error),
+    const functionCallParts = [];
+    for (const p of parts) {
+      if (p.functionCall) {
+        functionCallParts.push(p);
+        reasoning_trace.push({
+          turn, kind: "tool_use",
+          name: p.functionCall.name,
+          input: p.functionCall.args || {},
+          has_signature: Boolean(p.thoughtSignature),
         });
-        reasoning_trace.push({ turn, kind: "tool_result", id: d.id, name: d.name, output_preview: previewOutput(d.output) });
+      } else if (p.thought === true) {
+        reasoning_trace.push({ turn, kind: "thinking", text: p.text || "" });
+      } else if (typeof p.text === "string") {
+        reasoning_trace.push({ turn, kind: "text", text: p.text });
+        final_text = p.text;
       }
-      messages.push({ role: "user", content: toolResults });
-      continue;
     }
 
-    stop_reason = data.stop_reason || "end_turn";
-    break;
+    // Push the assistant turn back VERBATIM. Gemini 3 enforces strict
+    // validation on thoughtSignature round-trip for function calling —
+    // reconstructing the parts array would drop signatures and cause 400.
+    contents.push({ role: "model", parts });
+
+    if (functionCallParts.length === 0) {
+      stop_reason = candidate.finishReason || "STOP";
+      break;
+    }
+
+    // Sequential dispatch (not Promise.all): Gemini matches functionResponse
+    // parts to functionCall parts by name with positional fallback when the
+    // same name is called twice in one turn. Preserving order is cheap insurance.
+    const responseParts = [];
+    for (const fcp of functionCallParts) {
+      const fc = fcp.functionCall;
+      const started = Date.now();
+      const out = await dispatchTool(fc.name, fc.args || {}, context);
+      const duration_ms = Date.now() - started;
+      tool_calls.push({ turn, name: fc.name, input: fc.args || {}, output: out, duration_ms });
+      reasoning_trace.push({ turn, kind: "tool_result", name: fc.name, output_preview: previewOutput(out) });
+      responseParts.push({
+        functionResponse: {
+          name: fc.name,
+          // Gemini requires `response` to be an object.
+          response: out && typeof out === "object" ? out : { result: out },
+        },
+      });
+    }
+    contents.push({ role: "user", parts: responseParts });
   }
 
   if (turn >= max_iterations && stop_reason === "max_iterations") {
@@ -714,6 +750,71 @@ function previewOutput(out) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Cluster helpers
+// ─────────────────────────────────────────────────────────────────────
+
+// PROC_CLUSTER_SIGNAL_SUBSET returns a VARIANT array; the registry action
+// wraps it in a single-row, single-column response. Pull the array out
+// however it arrives. If anything looks unexpected, return [] — the
+// agent then sees no cluster summary and behaves as it did pre-clustering.
+function parseClusterRows(input) {
+  if (!input) return [];
+  // Already an array of {signal_id, cluster_id, ...} entries.
+  if (Array.isArray(input) && input.length > 0 && typeof input[0] === "object" && "cluster_id" in input[0]) {
+    return input;
+  }
+  // Registry action shape: array of rows, each with one column whose value
+  // is the proc's VARIANT return. Keys vary by Snowflake; try common ones.
+  if (Array.isArray(input) && input.length === 1 && typeof input[0] === "object") {
+    const row = input[0];
+    for (const key of Object.keys(row)) {
+      const v = row[key];
+      if (Array.isArray(v) && v.length > 0 && "cluster_id" in (v[0] || {})) return v;
+      if (typeof v === "string") {
+        try {
+          const parsed = JSON.parse(v);
+          if (Array.isArray(parsed)) return parsed;
+        } catch {}
+      }
+    }
+  }
+  // String — JSON-stringified array.
+  if (typeof input === "string") {
+    try {
+      const parsed = JSON.parse(input);
+      if (Array.isArray(parsed)) return parsed;
+    } catch {}
+  }
+  return [];
+}
+
+// Compress cluster assignments into a per-cluster summary block:
+// { cluster_id, size, source_breakdown: "src1*N,src2*M", sample_titles: [top 3 by similarity] }.
+function buildClusterSummary(assignments) {
+  if (!Array.isArray(assignments) || assignments.length === 0) return [];
+  const byCluster = new Map();
+  for (const a of assignments) {
+    const cid = a.cluster_id;
+    if (!byCluster.has(cid)) byCluster.set(cid, []);
+    byCluster.get(cid).push(a);
+  }
+  const out = [];
+  for (const [cluster_id, members] of byCluster.entries()) {
+    members.sort((x, y) => (y.similarity_to_seed || 0) - (x.similarity_to_seed || 0));
+    const sources = {};
+    for (const m of members) sources[m.source_name] = (sources[m.source_name] || 0) + 1;
+    const source_breakdown = Object.entries(sources)
+      .sort((a, b) => b[1] - a[1])
+      .map(([s, n]) => `${s}*${n}`)
+      .join(", ");
+    const sample_titles = members.slice(0, 3).map((m) => (m.signal_title || "").slice(0, 100));
+    out.push({ cluster_id, size: members.length, source_breakdown, sample_titles });
+  }
+  out.sort((a, b) => b.size - a.size);
+  return out;
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Step entrypoint
 // ─────────────────────────────────────────────────────────────────────
 //
@@ -726,11 +827,12 @@ const PROMPT_KEY = "distillation.lead.system";
 
 export default defineComponent({
   props: {
-    anthropic: { type: "app", app: "anthropic" },
+    google_gemini: { type: "app", app: "google_gemini" },
     event: { type: "any" },
     cursor_rows: { type: "any", optional: true },
     signal_rows: { type: "any", optional: true },
     neighbor_rows: { type: "any", optional: true },
+    cluster_rows: { type: "any", optional: true },
     prompts_rows: {
       type: "any",
       label: "DIM_LLM_PROMPT rows",
@@ -755,15 +857,31 @@ export default defineComponent({
     const dryRun = evt.dry_run === true;
     const started = Date.now();
 
-    const signal_pool = (Array.isArray(this.signal_rows) ? this.signal_rows : []).map((r) => ({
-      signal_id: r.SIGNAL_ID,
-      source_name: r.SOURCE_NAME,
-      title: r.SIGNAL_TITLE,
-      body: r.SIGNAL_TEXT,
-      detected_at: r.SIGNAL_TIMESTAMP,
-      domain: tryParseMetadataDomain(r.METADATA),
-      url: tryParseMetadataUrl(r.METADATA),
-    }));
+    // PROC_CLUSTER_SIGNAL_SUBSET returns a VARIANT array; the registry
+    // action wraps it as a single row with one column. Extract defensively
+    // — if anything looks off, fall back to no clusters (graceful degrade).
+    const cluster_assignments = parseClusterRows(this.cluster_rows);
+    const cluster_lookup = new Map(
+      cluster_assignments.map((c) => [c.signal_id, c]),
+    );
+
+    const signal_pool = (Array.isArray(this.signal_rows) ? this.signal_rows : []).map((r) => {
+      const c = cluster_lookup.get(r.SIGNAL_ID);
+      return {
+        signal_id: r.SIGNAL_ID,
+        source_name: r.SOURCE_NAME,
+        title: r.SIGNAL_TITLE,
+        body: r.SIGNAL_TEXT,
+        detected_at: r.SIGNAL_TIMESTAMP,
+        domain: tryParseMetadataDomain(r.METADATA),
+        url: tryParseMetadataUrl(r.METADATA),
+        cluster_id: c ? c.cluster_id : null,
+      };
+    });
+
+    // Build the cluster summary block: per-cluster size + source mix +
+    // top-3 sample titles (ranked by similarity_to_seed desc).
+    const cluster_summary = buildClusterSummary(cluster_assignments);
     const trend_neighbor_pool = (Array.isArray(this.neighbor_rows) ? this.neighbor_rows : []).map((r) => ({
       trend_id: r.TREND_ID,
       trend_topic: r.TREND_TOPIC,
@@ -794,7 +912,14 @@ export default defineComponent({
       },
     };
 
-    const userMsg = `Window starts at ${this.cursor_rows?.[0]?.WINDOW_START_TS || "(none)"}.
+    const clusterBlock = cluster_summary.length > 0
+      ? `Pre-clustered into ${cluster_summary.length} groups (k-means over Snowflake Cortex arctic-embed-l-v2.0 vectors; HINT, not a partition — feel free to merge across clusters or split within):\n` +
+        cluster_summary.map((c) =>
+          `  cluster ${c.cluster_id}: ${c.size} signals, sources [${c.source_breakdown}], e.g. ${c.sample_titles.map((t) => JSON.stringify(t)).join(" / ")}`
+        ).join("\n") + "\n\n"
+      : "";
+
+    const userMsg = clusterBlock + `Window starts at ${this.cursor_rows?.[0]?.WINDOW_START_TS || "(none)"}.
 Pre-fetched pools available to your tools:
   - signal_pool: ${signal_pool.length} raw signals from STG_EXTERNAL_SIGNALS (agent-fetched evidence excluded)
   - trend_neighbor_pool: ${trend_neighbor_pool.length} active trends (last 30d) for dedup
@@ -836,7 +961,7 @@ Begin your scan. Be opinionated about specificity.`;
     let result;
     try {
       result = await runAgentLoop({
-        anthropic: this.anthropic,
+        google_gemini: this.google_gemini,
         tool_names: LEAD_TOOL_NAMES,
         system: renderedSystem,
         user_message: userMsg,
@@ -844,7 +969,7 @@ Begin your scan. Be opinionated about specificity.`;
         max_iterations: prompt.params.max_iterations ?? 15,
         budget_usd: evt.budget_remaining_usd ?? evt.budget_usd ?? prompt.params.budget_usd ?? 5.0,
         per_call_max_tokens: evt.per_call_max_tokens || prompt.params.per_call_max_tokens || 8192,
-        thinking_budget_tokens: evt.thinking_budget_tokens || prompt.params.thinking_budget_tokens || 5000,
+        thinking_level: evt.thinking_level || prompt.params.thinking_level || "medium",
       });
     } catch (e) {
       console.log(`lead loop error: ${e.message}`);

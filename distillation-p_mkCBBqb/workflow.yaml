@@ -160,6 +160,31 @@ steps:
         ORDER BY m.LAST_UPDATE_AT DESC NULLS LAST
         LIMIT 200
       params: []
+- namespace: serialize_window_signal_ids
+  runtime: nodejs20.x
+  uses: "./serialize_window_signal_ids/entry.js"
+  props:
+    rows: "{{steps.q_signals_window.$return_value}}"
+- namespace: q_cluster_signals
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        CALL MCC_RAW.MARKETING_DEV.PROC_CLUSTER_SIGNAL_SUBSET(
+          PARSE_JSON(:1)::ARRAY,
+          :2
+        )
+      query: |-
+        CALL MCC_RAW.MARKETING_DEV.PROC_CLUSTER_SIGNAL_SUBSET(
+          PARSE_JSON(:1)::ARRAY,
+          :2
+        )
+      params:
+      - "{{steps.serialize_window_signal_ids.$return_value.signal_ids_json}}"
+      - "{{steps.serialize_window_signal_ids.$return_value.k}}"
 - namespace: q_load_prompts
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -250,12 +275,13 @@ steps:
   runtime: nodejs20.x
   uses: "./run_lead_agent/entry.js"
   props:
-    anthropic:
-      authProvisionId: apn_Oghan1O
+    google_gemini:
+      authProvisionId: apn_EOhp9DY
     event: "{{steps.normalize_event.$return_value}}"
     cursor_rows: "{{steps.q_load_cursor.$return_value}}"
     signal_rows: "{{steps.q_signals_window.$return_value}}"
     neighbor_rows: "{{steps.q_neighbors.$return_value}}"
+    cluster_rows: "{{steps.q_cluster_signals.$return_value}}"
     prompts_rows: "{{steps.q_load_prompts.$return_value}}"
     examples_rows: "{{steps.q_load_examples.$return_value}}"
     subagent_url: https://eo5h5le4j2qu3tm.m.pipedream.net
@@ -348,11 +374,6 @@ steps:
         WHERE :1 != '[]'
       params:
       - "{{steps.run_lead_agent.$return_value.candidates_json}}"
-- namespace: serialize_window_signal_ids
-  runtime: nodejs20.x
-  uses: "./serialize_window_signal_ids/entry.js"
-  props:
-    rows: "{{steps.q_signals_window.$return_value}}"
 - namespace: claim_window_signals
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3

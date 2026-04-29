@@ -1,4 +1,18 @@
-# Snowflake Schema Reference
+# Snowflake Schema Reference (legacy — heavily out of date)
+
+> ⚠️ **This document is deprecated.** It still describes objects that
+> no longer exist (`DIM_TREND_ENRICHMENT`, `STG_ENRICHMENT_QUEUE`,
+> `DT_EXTERNAL_TREND_EMBEDDINGS`, `PROC_CLUSTER_TRENDS`,
+> `TASK_CLUSTER_TRENDS`) and a 4-LLM specialist+synthesizer enrichment
+> pattern that was retired 2026-04-27. Most of the column-level detail
+> below predates the agent-owned-ledgers refactor.
+>
+> **For the current data model (post-2026-04-28), see
+> [`docs/data_model.md`](docs/data_model.md).**
+>
+> Kept here only for historical reference / archaeology.
+
+---
 
 Account: `WVB49304-MCCLATCHY_EVAL`
 
@@ -131,45 +145,6 @@ Survey response data.
 
 Production presentation layer — authoritative output served to consumers.
 
-### STG_TREND_SIGNALS (766 rows)
-Granular signal-to-trend mapping with graph centrality scores.
-
-| Column | Type | Notes |
-|---|---|---|
-| TREND_ID | TEXT | FK to FCT_TREND_METRICS |
-| URL | TEXT | |
-| TITLE | TEXT | |
-| SIGNAL_NAME | TEXT | Source/publisher name |
-| DOMAIN | TEXT | Parsed host from URL |
-| DETECTED_AT | TIMESTAMP_NTZ | |
-| INGESTION_ID | TEXT | |
-| PAGERANK_SCORE | FLOAT | Graph centrality score |
-| ADDED_AT | TIMESTAMP_NTZ | DEFAULT CURRENT_TIMESTAMP |
-
-### FCT_TREND_METRICS
-One row per trend with aggregated metrics.
-
-| Column | Type | Notes |
-|---|---|---|
-| TREND_ID | TEXT | PK |
-| TREND_VECTOR | VECTOR | Weighted centroid of cluster signals |
-| TREND_TOPIC | TEXT | Leader signal title |
-| DETECTED_AT | TIMESTAMP_NTZ | |
-| LAST_UPDATE_AT | TIMESTAMP_NTZ | |
-| TREND_DURATION_HR | FLOAT | |
-| TOTAL_CLUSTER_SIZE | NUMBER | |
-| SIGNAL_CHANGE | FLOAT | % change vs prior snapshot |
-| DISTINCT_SOURCE_COUNT | NUMBER | |
-| AVG_SIMILARITY | FLOAT | |
-| VELOCITY_DIRECTION | TEXT | NEW / GROWING / STABLE / DECLINING / STAGNANT / SUPERSEDED |
-| SIGNALS_PER_SOURCE | FLOAT | |
-| TREND_HEAT_INDEX | FLOAT | Composite 0-100 score |
-| STATUS | TEXT | DEFAULT 'ACTIVE' (legacy, not actively used) |
-| CATEGORY | TEXT | Legacy — superseded by DIM_TREND_ENRICHMENT.CATEGORY |
-| CONFIDENCE | FLOAT | Legacy — superseded by DIM_TREND_ENRICHMENT.CONFIDENCE_SCORE |
-| SUMMARY | TEXT | Legacy — superseded by DIM_TREND_ENRICHMENT.SUMMARY |
-| PARENT_TREND_ID | TEXT | FK to self — set on child trends from PROC_SPLIT_TREND |
-
 ### FCT_TREND_DAILY_SNAPSHOTS (359 rows)
 Daily signal and source counts per trend.
 
@@ -228,7 +203,6 @@ Multi-LLM enriched trend metadata. Populated by enrichment workflow (specialist 
 
 ### Views
 
-- **V_TREND_DASHBOARD** — Unified analytical surface joining FCT_TREND_METRICS + DIM_TREND_ENRICHMENT + FCT_TREND_SOURCE_METRICS (aggregated via OBJECT_AGG into SOURCES object). Computed: ACTIONABILITY_SCORE, SOURCE_SIGNAL_STRENGTH, ENRICHMENT_FRESHNESS, ENRICHMENT_TIER. Access source data as `SOURCES:gdelt:article_count_7d`. SOURCE_NAMES array for discovery.
 - **V_TREND_LEADERBOARD** — Top trends ranked by TREND_COMMERCIAL_SCORE with CATEGORY_RANK, CONTENT_PIECE_COUNT, TOP_BRAND match. Valid + enriched trends only.
 - **V_TREND_BRAND_MATCHES** — LATERAL FLATTEN of BRAND_ASSOCIATIONS into one row per brand-trend pair. PARTNERSHIP_SCORE = (brand_fit + commercial_score) / 2. Valid trends only.
 - **V_TREND_AUDIENCE_OVERLAP** — Pairwise audience comparison across trends using demographics + psychographics + category. AUDIENCE_OVERLAP_SCORE (0-100) for ad package bundling.
@@ -240,7 +214,7 @@ Multi-LLM enriched trend metadata. Populated by enrichment workflow (specialist 
 ## Enrichment Pipeline Architecture
 
 ```
-Pipedream SQL trigger: source_trend_changes.sql (daily 11:45 UTC, polls FCT_TREND_METRICS + STG_ENRICHMENT_QUEUE)
+Pipedream SQL trigger: source_trend_changes.sql (legacy — pre-agent pipeline)
   ↓ emits trend events
   enrich_trend.mjs (orchestrator v0.0.7)
     ├── enrich_gdelt.mjs       ─┐

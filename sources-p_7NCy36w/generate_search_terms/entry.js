@@ -27,17 +27,17 @@ export default defineComponent({
     },
     metrics_rows: {
       type: "any",
-      label: "FCT_TREND_METRICS rows (from query_metrics)",
+      label: "Trend metrics rows (from query_metrics)",
     },
   },
   async run({ $ }) {
     const metrics = (this.metrics_rows || [])[0];
     if (!metrics) {
-      throw new Error(`Trend not found in FCT_TREND_METRICS: ${this.trend_id}`);
+      throw new Error(`Trend not found in FCT_TRENDS: ${this.trend_id}`);
     }
     const trendTopic = metrics.TREND_TOPIC;
     if (!trendTopic) {
-      throw new Error(`FCT_TREND_METRICS row for ${this.trend_id} has no TREND_TOPIC`);
+      throw new Error(`FCT_TRENDS row for ${this.trend_id} has no TREND_TOPIC`);
     }
 
     // Baseline supplement: n-grams + long single words from the trend topic.
