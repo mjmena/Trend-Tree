@@ -5,13 +5,18 @@
 //   2. HTTP POST (manual/smoke test): steps.trigger.event.body = { error, original_context }
 //   3. Fallback: treat trigger.event itself as the payload
 //
-// Only forward errors originating from the Trend Tree project (proj_x9sLmqO).
-
-const TREND_TREE_PROJECT_ID = "proj_x9sLmqO";
+// Only forward errors whose project matches this workflow's own project.
+// project_id prop overrides when deploying to a non-standard location.
 
 export default defineComponent({
   props: {
     trigger_event: { type: "any" },
+    project_id: {
+      type: "string",
+      label: "Project ID",
+      description: "Only forward errors from this project. Leave blank to use the project this workflow belongs to.",
+      optional: true,
+    },
   },
   async run({ $ }) {
     const ev = this.trigger_event || {};
@@ -26,9 +31,10 @@ export default defineComponent({
       payload = ev;
     }
 
-    const project_id = payload.original_context?.project_id;
-    if (project_id && project_id !== TREND_TREE_PROJECT_ID) {
-      return $.flow.exit(`Skipping error from project ${project_id}`);
+    const filter_project_id = this.project_id || ev.context?.project_id;
+    const error_project_id = payload.original_context?.project_id;
+    if (filter_project_id && error_project_id && error_project_id !== filter_project_id) {
+      return $.flow.exit(`Skipping error from project ${error_project_id}`);
     }
 
     const ctx = payload.original_context || {};
