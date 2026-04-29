@@ -6,8 +6,8 @@ settings:
   lambda_timeout: 600
   network: net_5Lnie3
 triggers:
-- id: dc_bPu6eGd   # gtrends-cron-24h (timer)
-- id: dc_MDu0yvR   # gtrends-poller-http (manual fire)
+- id: dc_bPu6eGd
+- id: hi_VOHl1aX
 steps:
 - namespace: normalize_event
   runtime: nodejs20.x
@@ -116,3 +116,4 @@ steps:
     event: "{{steps.normalize_event.$return_value}}"
     fetch_result: "{{steps.fetch_and_compute.$return_value}}"
     insert_result: "{{steps.q_insert_results.$return_value}}"
+

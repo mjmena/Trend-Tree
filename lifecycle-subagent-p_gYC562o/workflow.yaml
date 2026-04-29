@@ -6,7 +6,7 @@ settings:
   lambda_timeout: 600
   network: net_5Lnie3
 triggers:
-- id: dc_gzu74kR   # lifecycle-subagent-http (customResponse=true)
+- id: dc_gzu74kR
 steps:
 - namespace: handle_request
   runtime: nodejs20.x
@@ -399,3 +399,4 @@ steps:
     event: "{{steps.handle_request.$return_value}}"
     subagent_output: "{{steps.run_subagent.$return_value}}"
     commit_result: "{{steps.commit_decision.$return_value}}"
+
