@@ -34,7 +34,8 @@ export default defineComponent({
     const filter_project_id = this.project_id || ev.context?.project_id;
     const error_project_id = payload.original_context?.project_id;
     if (filter_project_id && error_project_id && error_project_id !== filter_project_id) {
-      return $.flow.exit(`Skipping error from project ${error_project_id}`);
+      const wf_name = payload.original_context?.workflow_name || payload.original_context?.workflow_id || "unknown workflow";
+      return $.flow.exit(`Skipping "${wf_name}" (${error_project_id}) — not in project ${filter_project_id}`);
     }
 
     const ctx = payload.original_context || {};
