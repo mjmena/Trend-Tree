@@ -14,6 +14,8 @@ const FANOUT_CONCURRENCY = 1;          // GTrends throttles concurrent requests 
 const PER_TREND_TIMEOUT_MS = 60_000;
 const RATE_LIMIT_BACKOFF_MS = 30_000;
 const INTER_TREND_SLEEP_MS = 3_000;    // back off between trends to avoid silent rate-limit empty responses
+const HTTP_ENDPOINT = "https://eo3powpxmgtoezi.m.pipedream.net";  // hi_VOHl1aX built-in trigger
+const CHUNK_SIZE = 8;                  // 8 × 63s worst-case = 504s < 600s Lambda budget
 
 function stripXssi(text) {
   const idx = text.indexOf("\n");
@@ -180,6 +182,45 @@ export default defineComponent({
     }
     if (trends.length > ev.max_trends) {
       trends = trends.slice(0, ev.max_trends);
+    }
+
+    // Dispatch mode: cron fires with no trend_ids_filter → chunk the list and fan out
+    // parallel HTTP workers. Each worker handles ≤CHUNK_SIZE trends in its own Lambda.
+    if (!ev.trend_ids_filter && trends.length > CHUNK_SIZE) {
+      const t0d = Date.now();
+      const chunks = [];
+      for (let i = 0; i < trends.length; i += CHUNK_SIZE)
+        chunks.push(trends.slice(i, i + CHUNK_SIZE).map((t) => t.trend_id));
+      console.log(`gtrends-poller: dispatch → ${chunks.length} workers × ≤${CHUNK_SIZE} trends`);
+      const fires = await Promise.all(
+        chunks.map((ids, i) =>
+          fetch(HTTP_ENDPOINT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chain_id: `${ev.chain_id}-c${i}`,
+              geo: ev.geo,
+              timeframe: ev.timeframe,
+              dry_run: ev.dry_run,
+              max_trends: CHUNK_SIZE,
+              trend_ids: ids,
+            }),
+          })
+            .then((r) => ({ chunk: i, status: r.status, ids: ids.length }))
+            .catch((e) => ({ chunk: i, error: e.message, ids: ids.length }))
+        )
+      );
+      console.log("gtrends-poller: fired", JSON.stringify(fires));
+      $.export("$summary", `dispatch: ${chunks.length} workers × ≤${CHUNK_SIZE}`);
+      return {
+        results_json: "[]",
+        ok_count: 0,
+        error_count: 0,
+        attempted: 0,
+        dispatched: chunks.length,
+        run_duration_ms: Date.now() - t0d,
+        mode: "dispatch",
+      };
     }
 
     if (ev.dry_run) {
