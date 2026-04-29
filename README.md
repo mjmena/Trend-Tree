@@ -19,7 +19,7 @@ The system runs end-to-end without human dispatch. A trend you saw yesterday may
   └──────────────┘    └─────────────┘    └─────────────┘    └──────────────┘
 ```
 
-Each layer is one or more LLM agents (Sonnet 4.6 + supporting models) deciding things, not pipelines moving rows. The decisions chain: discovery emits hypotheses, distillation accepts the worthy ones, promotion turns accepted candidates into named trends, enrichment writes the canonical narrative, lifecycle re-evaluates the portfolio every hour.
+Each layer is one or more LLM agents deciding things, not pipelines moving rows. The decisions chain: discovery emits hypotheses, distillation accepts the worthy ones, promotion turns accepted candidates into named trends, enrichment writes the canonical narrative, lifecycle re-evaluates the portfolio every hour. Discovery, distillation, promotion, and lifecycle run on **Gemini 3.1 Pro**; enrichment runs on **Claude Sonnet 4.6** (its 4-layer naming refinement is most coupled to Claude-specific behavior).
 
 ---
 
@@ -27,32 +27,52 @@ Each layer is one or more LLM agents (Sonnet 4.6 + supporting models) deciding t
 
 | | |
 |---|---|
-| Trends actively tracked | **34** (agent-promoted; 324 legacy frozen) |
-| Trends promoted just today | **3** (e.g. *Honey-Note Gourmand Fragrances*, *Tooth-Gem Revival*, *Body-Serum Skinification*) |
-| Lifecycle evaluations on record | **91** across 31 trends |
-| Average enrichment cost per trend | **~$0.45** |
-| Average promotion cost per batch | **~$0.08** for 15 candidates |
-| Average distillation cost per cycle | **~$0.32** for ~5 accepted candidates |
+| Trends actively tracked | **136** (agent-promoted; 324 legacy frozen) |
+| Lifecycle evaluations on record | **304** |
+| Promotion decisions on record | **357** |
+| Enrichment runs on record | **466** |
+| Embedded signals available for clustering / dedup | **4,227** (last 3 days, in `FCT_SIGNALS`) |
+| Average enrichment cost per trend | **~$0.45** (Sonnet 4.6) |
+| Average promotion cost per batch | **~$0.15** (Gemini 3.1 Pro) |
+| Average distillation cost per cycle | **~$0.20** (Gemini 3.1 Pro, with cluster hints) |
 | Time from raw signal → named trend on the dashboard | **~10–15 min** end-to-end |
-| Currently presented surface | `DT_TREND_DASHBOARD` (358 rows, joined into Steeple) |
+| Currently presented surface | `DT_TREND_DASHBOARD` (136 rows, joined into Steeple) |
 
 ---
 
 ## What each agent decides
 
-| Agent | Decides | Cadence | Output goes to |
-|---|---|---|---|
-| **Discovery** (3-LLM ensemble) | "Is anything new bubbling up in this vertical?" | Every 2h, per LLM, per vertical | Raw signals table |
-| **Distillation lead + investigators** | "Among today's signals, which clusters describe a real consumer behavior worth tracking?" | Every 2h, per cursor | Candidate table (verdict: REAL_TREND / NOISE / DUPLICATE) |
-| **Promotion agent** | "Should this candidate become its own tracked trend, or merge into an existing one?" | Every 3h | New row in `FCT_TRENDS` + immediate enrichment chain |
-| **Enrichment agent** (Sonnet 4.6) | "What is this trend, who's it for, what should we call it, what proof do we have?" | Triggered per new promotion | Names (B2B + B2C), category, narrative, social proof |
-| **Lifecycle agent + sub-evaluators** *(new today)* | "Is this trend still alive, growing, stagnant, or retired? Should we re-enrich the description?" | Every 1h, scans all due trends | Status updates, heat-index decay, retirement flags |
+| Agent | Model | Decides | Cadence | Output goes to |
+|---|---|---|---|---|
+| **Discovery** (3-LLM ensemble) | Gemini / Grok / ChatGPT | "Is anything new bubbling up in this vertical?" | Every 2h, per LLM, per vertical | `STG_EXTERNAL_SIGNALS` |
+| **Distillation lead + investigators** | Gemini 3.1 Pro | "Among today's signals, which clusters describe a real consumer behavior worth tracking?" | Every 2h, per cursor | `STG_TREND_CANDIDATES` (verdict: REAL_TREND / NOISE / DUPLICATE) |
+| **Promotion agent** | Gemini 3.1 Pro | "Should this candidate become its own tracked trend, or merge into an existing one?" | Every 3h | New row in `FCT_TRENDS` + immediate enrichment chain |
+| **Enrichment agent** | Sonnet 4.6 | "What is this trend, who's it for, what should we call it, what proof do we have?" | Triggered per new promotion | Names (B2B + B2C), category, narrative, social proof → `FCT_TREND_ENRICHMENT_LEDGER` |
+| **Lifecycle agent + sub-evaluators** | Gemini 3.1 Pro | "Is this trend still alive, growing, stagnant, or retired? Should we re-enrich the description?" | Every 1h, scans all due trends | Status updates, heat-index decay, retirement flags → `FCT_TREND_LIFECYCLE_LEDGER` |
 
 ---
 
 ## Today's headline updates (2026-04-28)
 
-### 1. Lifecycle agent shipped (Phase 4)
+### 1. LLM migration: agents move from Claude → Gemini 3.1 Pro
+
+Distillation lead + subagent, promotion subagent, and lifecycle subagent all migrated from Claude Sonnet 4.6 to Gemini 3.1 Pro. The protocol translation is identical across agents: function-calling via `systemInstruction` + `contents` + `tools.functionDeclarations`, `thoughtSignature` round-tripped verbatim on assistant turns, sequential tool dispatch (Gemini matches `functionResponse` to `functionCall` by position), `usageMetadata.candidatesTokenCount` already includes thinking tokens. Prompt registry rows (`DIM_LLM_PROMPT`) carry `MODEL=gemini-3.1-pro-preview` and `thinking_level: "medium"` (replaces Anthropic's `thinking_budget_tokens` integer).
+
+**Enrichment is the holdout.** Its 4-layer naming refinement (interleaved thinking → tool loop → in-prompt critique → post-emission reviewer) is most coupled to Claude-specific behavior; migrating it without quality regression needs a separate evaluation pass.
+
+### 2. Distillation gets cluster hints + presentation-tier embeddings
+
+Three intertwined changes:
+
+- **`FCT_SIGNALS`** — new presentation-tier table holding every signal plus a single 1024-dim `SIGNAL_VECTOR` (Snowflake Cortex `arctic-embed-l-v2.0` over title + first 512 chars of text). Maintained by `TASK_PROMOTE_SIGNALS_TO_FCT` (5-min cadence) reading from `STG_EXTERNAL_SIGNALS`. Replaces the legacy `DT_EXTERNAL_TREND_EMBEDDINGS` (which sat in `MCC_RAW`, forcing presentation consumers to reach cross-database). `STG_EXTERNAL_SIGNALS` keeps mutable claim state; `FCT_SIGNALS` is the canonical, immutable, embedded reference.
+
+- **`FCT_TREND_SIGNALS`** — new presentation-tier link table answering "what signals support trend X?". Carries `LINK_KIND` (operational origin: `'supporting'` from `STG_TREND_CANDIDATES.SUPPORTING_SIGNAL_IDS`, `'evidence'` reserved for enrichment citations) and `LINK_TYPE` (semantic role: `news` / `social` / `commerce` / `reference` / etc., source-derived for supporting links). Reverses an earlier-today retirement of `STG_TREND_SIGNALS` — once embeddings landed in presentation, every trend↔signal join was reaching cross-DB, so the link table earned its way back in.
+
+- **Cluster hints in distillation** — the lead now sees a "Pre-clustered into N groups" summary at the top of its user message and a `cluster_id` annotation on each signal in its in-memory pool. Backed by `PROC_CLUSTER_SIGNAL_SUBSET` (k-means++ over `FCT_SIGNALS.SIGNAL_VECTOR`, K = `ceil(N/20)` clamped to [4, 15]). Treated as a *hint*, not a partition — agent can still range across clusters or split within. Surfaces topical coherence quickly without forcing the LLM to do all the K-means in its head while reasoning about specificity. Reverses the design lesson from the (retired 2026-04-27) hard Louvain bucketing: full visibility + soft hints, not pre-bucketed slices.
+
+After this refactor, the entire trend-pipeline presentation surface lives in `MCC_PRESENTATION.TREND_AGENT` — no more cross-database reaches.
+
+### 3. Lifecycle agent shipped (Phase 4)
 
 The pipeline now closes the loop. After a trend is promoted and enriched, the **lifecycle agent** revisits it every hour with fresh evidence:
 - Re-checks Google Trends search interest (a daily poller writes `FCT_TREND_GTRENDS_DAILY`).
@@ -64,7 +84,7 @@ The agent **does not** split or supersede trends — those decisions are concent
 
 If new evidence has shifted the story (e.g. a wellness trend pivots from "powders" to "gummies"), lifecycle can request a **re-enrichment** so the description gets rewritten without touching the trend's identity.
 
-### 2. Storage architecture cleanup — agent-owned ledgers
+### 4. Storage architecture cleanup — agent-owned ledgers
 
 Each agent now owns a single **append-only ledger** of its decisions. No agent overwrites another's history. The `FCT_TRENDS` table was slimmed to identity-only (the trend's name, category, and origin metadata — set once and frozen). Everything mutable — heat, lifecycle status, enrichment payloads — lives in the ledger that produced it:
 
@@ -89,21 +109,22 @@ discovery agents (Gemini + Grok + ChatGPT, every 2h, sharded by vertical)
 raw signals table (~thousands of rows/day, deduplicated)
     │
     ▼
-distillation lead (Sonnet 4.6) reviews 24h of new signals,
+distillation lead (Gemini 3.1 Pro) reviews 24h of new signals,
+clustered into K groups via Cortex embeddings as hints,
 hands hypotheses to subagent investigators in parallel
     │ each investigator decides REAL_TREND / NOISE / DUPLICATE
     ▼
 candidates table (~5 accepted per cycle, with reasoning)
     │
     ▼
-promotion agent (Sonnet 4.6, every 3h) evaluates each candidate
+promotion agent (Gemini 3.1 Pro, every 3h) evaluates each candidate
 against existing trends — should this be its own trend, or merge?
     │ writes FCT_TRENDS + seeds the trend's lifecycle + enrichment ledgers
     ▼
 trend identity row (frozen: trend_id, topic, candidate origin)
     │ promotion fires the enrichment chain inline
     ▼
-sources workflow (Google Trends, Wikimedia, GDELT) → enrichment agent (Sonnet 4.6, ~3-5 min)
+sources workflow (Google Trends, Wikimedia, GDELT) → enrichment agent (Claude Sonnet 4.6, ~3-5 min)
     │ produces names, category, narrative, social proof
     ▼
 enrichment ledger row (named, categorized, vibe shift articulated)
@@ -173,14 +194,18 @@ A trend promoted **today** (still in the enrichment queue as you read this):
 
 | Object | Role |
 |---|---|
-| `MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS` | Trend identity (34 rows). Slim, immutable per-trend metadata. |
-| `MCC_PRESENTATION.TREND_AGENT.FCT_PROMOTION_LEDGER` | Every promote/reject decision the promotion agent has made (255 rows). |
-| `MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER` | Every enrichment run, full payload + 1024-dim vector (315 rows). |
-| `MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER` | Every lifecycle evaluation with status diff + heat (91 rows). |
-| `MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD` | Refresh-on-demand snapshot table joining the above for Steeple (358 rows). |
+| `MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS` | Trend identity (136 rows). Slim, immutable per-trend metadata. |
+| `MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS` | Canonical embedded signal record (4,227 rows). Single 1024-dim `SIGNAL_VECTOR` per signal via Cortex `arctic-embed-l-v2.0`. |
+| `MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS` | Trend↔signal link table (1,842 rows). `LINK_KIND` (`supporting`/`evidence`) + `LINK_TYPE` (`news`/`social`/`commerce`/etc.). |
+| `MCC_PRESENTATION.TREND_AGENT.FCT_PROMOTION_LEDGER` | Every promote/reject decision (357 rows). |
+| `MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER` | Every enrichment run, full payload + 1024-dim vector (466 rows). |
+| `MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER` | Every lifecycle evaluation with status diff + heat (304 rows). |
+| `MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD` | Dynamic table joining identity + latest enrichment + latest lifecycle for Steeple (136 rows, 15-min target lag). |
 | `MCC_PRESENTATION.TREND_AGENT.FCT_TREND_METRICS` | Frozen legacy table (324 rows from the retired SQL clustering era). |
-| `MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS` | Raw inbound signals from all discovery + ingestion sources. |
-| `MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES` | Distillation output, awaiting promotion review. |
+| `MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS` | Raw inbound signals from all discovery + ingestion sources. Mutable claim state via `AGENT_SESSION_ID`. |
+| `MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES` | Distillation output, awaiting promotion review (282 rows). |
+
+For per-column detail on every table above, see [`docs/data_model.md`](docs/data_model.md).
 
 ### Endpoints
 

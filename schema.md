@@ -1,4 +1,18 @@
-# Snowflake Schema Reference
+# Snowflake Schema Reference (legacy — heavily out of date)
+
+> ⚠️ **This document is deprecated.** It still describes objects that
+> no longer exist (`DIM_TREND_ENRICHMENT`, `STG_ENRICHMENT_QUEUE`,
+> `DT_EXTERNAL_TREND_EMBEDDINGS`, `PROC_CLUSTER_TRENDS`,
+> `TASK_CLUSTER_TRENDS`) and a 4-LLM specialist+synthesizer enrichment
+> pattern that was retired 2026-04-27. Most of the column-level detail
+> below predates the agent-owned-ledgers refactor.
+>
+> **For the current data model (post-2026-04-28), see
+> [`docs/data_model.md`](docs/data_model.md).**
+>
+> Kept here only for historical reference / archaeology.
+
+---
 
 Account: `WVB49304-MCCLATCHY_EVAL`
 
