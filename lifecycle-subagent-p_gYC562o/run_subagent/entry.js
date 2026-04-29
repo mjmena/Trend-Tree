@@ -99,7 +99,13 @@ const TOOL_SCHEMAS = {
           description: "Modifier in [-20, 20]; clamped at commit. Use sparingly — see decision rubric.",
         },
         heat_modifier_reason: { type: "string" },
-        retirement_reason: { type: "string", nullable: true, description: "Required if status='RETIRED'." },
+        // Optional via absence from `required`. We previously had
+        // `nullable: true` here (commit 9ffc7b7) but Gemini's protobuf
+        // schema parser tightened on 2026-04-28 evening — it now rejects
+        // `nullable: true` alongside `type: "string"` with a 400 at this
+        // exact path: "Unknown name 'type' at properties[3].value".
+        // Pure optionality (omit the field when not RETIRED) is enough.
+        retirement_reason: { type: "string", description: "Required if status='RETIRED'." },
         next_eval_in_hours: { type: "number", description: "Commit clamps to [1, 168]." },
         request_re_enrichment: {
           type: "boolean",
