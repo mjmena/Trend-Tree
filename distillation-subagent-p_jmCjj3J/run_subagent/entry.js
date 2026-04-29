@@ -168,7 +168,7 @@ const PROPOSE_SCHEMA = {
       type: "object",
       properties: {
         topic: { type: "string", description: "Specific noun-verb behavior, ≤80 chars." },
-        supporting_signal_ids: { type: "array", items: { type: "string" } },
+        supporting_signal_ids: { type: "array", items: { type: "string" }, minItems: 2 },
         confidence: { type: "number" },
         specificity_score: { type: "number" },
         verdict: { type: "string", enum: ["REAL_TREND", "DUPLICATE_OF"] },
@@ -380,6 +380,13 @@ async function ingestGrokLive(input, ctx) {
 }
 
 function proposeTrendCandidate(input, ctx) {
+  const ids = input.supporting_signal_ids || [];
+  if (ids.length < 2) {
+    return {
+      accepted: false,
+      reason: `supporting_signal_ids has ${ids.length} entry — need ≥2 distinct signals to propose a trend.`,
+    };
+  }
   ctx.proposed_candidates = ctx.proposed_candidates || [];
   ctx.proposed_candidates.push({
     ...input, candidate_id: cryptoRandomId(),
