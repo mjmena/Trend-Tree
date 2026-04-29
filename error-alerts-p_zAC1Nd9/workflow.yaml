@@ -3,7 +3,7 @@ name: Error Alerts
 settings:
   lambda_memory: 512
 triggers:
-- id: dc_zqug7mj
+- id: hi_mJHKNK5
 steps:
 - namespace: normalize_error
   runtime: nodejs20.x
