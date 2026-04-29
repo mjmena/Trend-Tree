@@ -41,7 +41,7 @@ function coerceNum(v, fallback) {
 export default defineComponent({
   name: "Promotion: normalize event",
   description: "Normalize HTTP body / scheduled event into a common payload shape",
-  version: "0.0.1",
+  version: "0.0.2",
   props: {
     trigger_event: {
       type: "any",
