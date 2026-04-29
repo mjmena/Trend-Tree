@@ -47,19 +47,26 @@ export default defineComponent({
     const code = err.code || "Error";
     const msg = (err.msg || err.message || "(no message)").slice(0, 600);
     const ts = err.ts || ctx.ts || new Date().toISOString();
-    const stack_head = (err.stack || "").split("\n").slice(0, 4).join("\n").slice(0, 800);
+
+    // Strip Pipedream runtime internals — show only frames from user/action code.
+    const INTERNAL = [
+      "node_modules/@lambda-v2",
+      "launch_worker.js",
+      "node:internal/",
+    ];
+    const stack_lines = (err.stack || "")
+      .split("\n")
+      .filter(l => !INTERNAL.some(p => l.includes(p)));
+    const stack_head = stack_lines.slice(0, 5).join("\n").slice(0, 800);
 
     console.log(`error-alerts: ${workflow_name} cell=${cell_id} code=${code}`);
 
-    // Pre-format the Slack message text. The registry Slack action
-    // (slack_v2-send-message-to-channel) only takes a single `text` field;
-    // markdown formatting works in Slack, but Block Kit needs the legacy
-    // chat.postMessage path. This is plain markdown.
+    const errorPrefix = code && code !== "Error" ? `\`${code}\` — ` : "";
     const stackBlock = stack_head ? "\n```" + stack_head + "```" : "";
     const slack_text =
       `🚨 *${workflow_name}* failed\n` +
-      `*Error:* \`${code}\` — ${msg}\n` +
-      `*Cell:* \`${cell_id}\`  ·  *Time:* ${ts}` +
+      `*Error:* ${errorPrefix}${msg}\n` +
+      `*Workflow:* \`${workflow_id}\`  ·  *Cell:* \`${cell_id}\`  ·  *Time:* ${ts}` +
       stackBlock;
 
     return {
