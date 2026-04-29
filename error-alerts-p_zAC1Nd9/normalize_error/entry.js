@@ -1,20 +1,35 @@
 // Error Alerts — normalize_error
 //
-// $errors subscription events have a fixed shape (per Pipedream):
-//   { original_event, original_context: {workflow_id, workflow_name, ts, ...},
-//     error: {code, msg, cellId, ts, stack} }
+// Three delivery shapes to handle:
+//   1. Built-in $errors trigger: steps.trigger.event = { context, event: { error, original_context, original_event } }
+//   2. HTTP POST (manual/smoke test): steps.trigger.event.body = { error, original_context }
+//   3. Fallback: treat trigger.event itself as the payload
 //
-// HTTP-triggered manual invocations (for testing) put the same shape under
-// trigger.event.body. Handle both.
+// Only forward errors originating from the Trend Tree project (proj_x9sLmqO).
+
+const TREND_TREE_PROJECT_ID = "proj_x9sLmqO";
 
 export default defineComponent({
   props: {
     trigger_event: { type: "any" },
   },
-  async run() {
+  async run({ $ }) {
     const ev = this.trigger_event || {};
-    // Subscriptions deliver the event directly; HTTP posts wrap it in body.
-    const payload = ev.body && (ev.body.error || ev.body.original_context) ? ev.body : ev;
+    let payload;
+    if (ev.event && (ev.event.error || ev.event.original_context)) {
+      // Built-in $errors trigger
+      payload = ev.event;
+    } else if (ev.body && (ev.body.error || ev.body.original_context)) {
+      // HTTP POST
+      payload = ev.body;
+    } else {
+      payload = ev;
+    }
+
+    const project_id = payload.original_context?.project_id;
+    if (project_id && project_id !== TREND_TREE_PROJECT_ID) {
+      return $.flow.exit(`Skipping error from project ${project_id}`);
+    }
 
     const ctx = payload.original_context || {};
     const err = payload.error || {};
