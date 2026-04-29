@@ -13,6 +13,11 @@
 -- used to live in V_TREND_LIFECYCLE_CURRENT, V_TREND_ENRICHMENT_CURRENT,
 -- and V_TREND_AGGREGATES. The taxonomy join also inlined from V_TREND_TAXONOMY.
 --
+-- 2026-04-29 (related trends): replaced deprecated MAP_TREND_MACROTRENDS join
+-- with pairwise VECTOR_COSINE_SIMILARITY on FCT_TREND_ENRICHMENT_LEDGER.TREND_VECTOR
+-- (falling back to FCT_TRENDS.TREND_VECTOR). RELATED_TRENDS is now an array of
+-- {trend_id, similarity_score} objects (top 5, threshold ≥ 0.65).
+--
 -- 2026-04-28 (STG_TREND_SIGNALS retirement): top_signals CTE now derives from
 -- the enrichment EVIDENCE pool (filtered to type IN news/commerce/social,
 -- first 5 in agent emit order) instead of reading the frozen STG_TREND_SIGNALS
@@ -143,15 +148,44 @@ macro_tags AS (
     FROM MCC_PRESENTATION.TREND_AGENT.MAP_TREND_MACROTRENDS
     GROUP BY TREND_ID
 ),
+trend_vectors AS (
+    -- Prefer the enrichment ledger vector (richer narrative context); fall back
+    -- to the promotion-time FCT_TRENDS vector so every trend participates.
+    SELECT
+        t.TREND_ID,
+        COALESCE(e.TREND_VECTOR, t.TREND_VECTOR) AS TREND_VECTOR
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+    LEFT JOIN (
+        SELECT TREND_ID, TREND_VECTOR
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+        WHERE TREND_VECTOR IS NOT NULL
+        QUALIFY ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) = 1
+    ) e ON e.TREND_ID = t.TREND_ID
+    WHERE COALESCE(e.TREND_VECTOR, t.TREND_VECTOR) IS NOT NULL
+),
+pairwise_similarity AS (
+    -- Top-5 most similar neighbours per trend, threshold ≥ 0.65.
+    SELECT
+        a.TREND_ID                                                                        AS TREND_ID,
+        b.TREND_ID                                                                        AS RELATED_ID,
+        ROUND(VECTOR_COSINE_SIMILARITY(a.TREND_VECTOR, b.TREND_VECTOR)::FLOAT, 4)         AS SCORE
+    FROM trend_vectors a
+    JOIN trend_vectors b
+      ON a.TREND_ID != b.TREND_ID
+     AND VECTOR_COSINE_SIMILARITY(a.TREND_VECTOR, b.TREND_VECTOR) >= 0.65
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY a.TREND_ID
+        ORDER BY VECTOR_COSINE_SIMILARITY(a.TREND_VECTOR, b.TREND_VECTOR) DESC
+    ) <= 5
+),
 related_trends AS (
-    -- Inlined from V_TREND_TAXONOMY: trends sharing macrotrend tags
-    SELECT a.TREND_ID,
-           ARRAY_AGG(DISTINCT b.TREND_ID) AS RELATED_TRENDS
-    FROM MCC_PRESENTATION.TREND_AGENT.MAP_TREND_MACROTRENDS a
-    JOIN MCC_PRESENTATION.TREND_AGENT.MAP_TREND_MACROTRENDS b
-      ON a.MACROTREND_NAME = b.MACROTREND_NAME
-     AND a.TREND_ID != b.TREND_ID
-    GROUP BY a.TREND_ID
+    SELECT
+        TREND_ID,
+        ARRAY_AGG(
+            OBJECT_CONSTRUCT('trend_id', RELATED_ID, 'similarity_score', SCORE)
+        ) WITHIN GROUP (ORDER BY SCORE DESC) AS RELATED_TRENDS
+    FROM pairwise_similarity
+    GROUP BY TREND_ID
 ),
 trend_base AS (
     -- Sourced from FCT_TRENDS only. Legacy FCT_TREND_METRICS union removed

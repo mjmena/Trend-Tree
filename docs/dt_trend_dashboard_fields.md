@@ -13,7 +13,7 @@ FCT_TRENDS                       (one row per agent-promoted trend)
   ├─ FCT_TREND_ENRICHMENT_LEDGER (latest enrichment-agent payload — typed evidence pool)
   ├─ FCT_TREND_SOURCE_METRICS    (per-source headline metrics)
   ├─ FCT_PROMOTION_LEDGER        (cluster + source counts at promotion / merge)
-  └─ MAP_TREND_MACROTRENDS       (macrotrend tags + neighbors — deprecated)
+  └─ MAP_TREND_MACROTRENDS       (macrotrend tags — deprecated; RELATED_TRENDS now uses pairwise cosine similarity)
 ```
 
 ---
@@ -133,7 +133,7 @@ These are the previous-generation columns the dashboard still reads. Each has a 
 | `VIBE_SHIFT` | `SUMMARY_SHORT` | Single-sentence narrative shift. Overlapped with summary. NULL on new-shape rows. |
 | `TOP_SIGNALS` | derived from `EVIDENCE` | First 5 entries from the EVIDENCE pool with `type IN ('news','commerce','social')`, in the order the enrichment agent emitted them. Object shape: `{title, url, source}` — `title` falls back to the agent's `claim` summary if no raw `title` is present. |
 | `MACROTREND_TAGS` | TBD | Macrotrend tags from `MAP_TREND_MACROTRENDS`. To be replaced once the macrotrend story is rebuilt. |
-| `RELATED_TRENDS` | TBD | Trend IDs sharing macrotrend tags. Same — pending replacement. |
+| `RELATED_TRENDS` | — | Top-5 semantically similar trends, ordered by cosine similarity descending. Array of `{trend_id: string, similarity_score: float}`. Threshold ≥ 0.65; trends below the threshold return an empty / NULL array. Computed via `VECTOR_COSINE_SIMILARITY` on `FCT_TREND_ENRICHMENT_LEDGER.TREND_VECTOR` (latest per trend, falling back to `FCT_TRENDS.TREND_VECTOR`). |
 
 ---
 
