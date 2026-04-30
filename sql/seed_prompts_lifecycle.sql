@@ -254,17 +254,17 @@ WHERE NOT EXISTS (
 --    - Explicit next_eval_in_hours guidance per status
 -- ════════════════════════════════════════════════════════════════════════
 
--- Deactivate v1 first (idempotent)
+-- Deactivate v2 (Gemini model-swap version, template unchanged from v1)
 UPDATE DIM_LLM_PROMPT
 SET IS_ACTIVE = FALSE
 WHERE PROMPT_KEY = 'lifecycle.subagent.decision_rubric'
-  AND VERSION = 1
+  AND VERSION = 2
   AND IS_ACTIVE = TRUE;
 
 INSERT INTO DIM_LLM_PROMPT (PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS, IS_ACTIVE, CONTENT_HASH, CREATED_BY, NOTES)
 SELECT
     'lifecycle.subagent.decision_rubric',
-    2,
+    3,
     'claude-sonnet-4-6',
     $$Branch on the trend's current LIFECYCLE_STATUS. For each, the default action and the override conditions.
 
@@ -392,9 +392,9 @@ Set `request_re_enrichment: true` ONLY when:
 Re-enrichment costs ~$0.40-0.50; don't request it for cosmetic narrative tweaks.$$,
     NULL,
     TRUE,
-    SHA2(CONCAT_WS(':', 'lifecycle.subagent.decision_rubric', 'v2'), 256),
+    SHA2(CONCAT_WS(':', 'lifecycle.subagent.decision_rubric', 'v3'), 256),
     'system_seed',
-    'v2 — 24h NEW lock; young-trend STABLE default (< 7d); STABLE/GROWING→DECLINING raised 30%→50%; signal floor (< 5 in 14d = no DECLINING); next_eval_in_hours guidance per status.'
+    'v3 — 24h NEW lock; young-trend STABLE default (< 7d); STABLE/GROWING→DECLINING raised 30%→50%; signal floor (< 5 in 14d = no DECLINING); next_eval_in_hours guidance per status.'
 WHERE NOT EXISTS (
-    SELECT 1 FROM DIM_LLM_PROMPT WHERE PROMPT_KEY = 'lifecycle.subagent.decision_rubric' AND VERSION = 2
+    SELECT 1 FROM DIM_LLM_PROMPT WHERE PROMPT_KEY = 'lifecycle.subagent.decision_rubric' AND VERSION = 3
 );
