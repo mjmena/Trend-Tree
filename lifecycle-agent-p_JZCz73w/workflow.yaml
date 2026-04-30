@@ -40,7 +40,7 @@ steps:
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
         LEFT JOIN latest_lifecycle lc ON lc.TREND_ID = t.TREND_ID
         WHERE COALESCE(lc.LIFECYCLE_STATUS, 'NEW') != 'RETIRED'
-          AND COALESCE(lc.NEXT_EVAL_AT, DATEADD(hour, 1, t.PROMOTED_AT)) <= CURRENT_TIMESTAMP()
+          AND COALESCE(lc.NEXT_EVAL_AT, DATEADD(hour, 24, t.PROMOTED_AT)) <= CURRENT_TIMESTAMP()
         ORDER BY HEAT DESC NULLS LAST
         LIMIT {{steps.normalize_event.$return_value.sweep_cap}}
       query: |-
@@ -62,7 +62,7 @@ steps:
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
         LEFT JOIN latest_lifecycle lc ON lc.TREND_ID = t.TREND_ID
         WHERE COALESCE(lc.LIFECYCLE_STATUS, 'NEW') != 'RETIRED'
-          AND COALESCE(lc.NEXT_EVAL_AT, DATEADD(hour, 1, t.PROMOTED_AT)) <= CURRENT_TIMESTAMP()
+          AND COALESCE(lc.NEXT_EVAL_AT, DATEADD(hour, 24, t.PROMOTED_AT)) <= CURRENT_TIMESTAMP()
         ORDER BY HEAT DESC NULLS LAST
         LIMIT {{steps.normalize_event.$return_value.sweep_cap}}
     params: []

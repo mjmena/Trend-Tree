@@ -243,3 +243,158 @@ Re-enrichment costs ~$0.40-0.50; don't request it for cosmetic narrative tweaks.
 WHERE NOT EXISTS (
     SELECT 1 FROM DIM_LLM_PROMPT WHERE PROMPT_KEY = 'lifecycle.subagent.decision_rubric' AND VERSION = 1
 );
+
+-- ════════════════════════════════════════════════════════════════════════
+-- 3. lifecycle.subagent.decision_rubric v2
+--    Fixes:
+--    - Hard 24h NEW lock (no velocity eval before 24h post-promotion)
+--    - Young trend (< 7d) defaults to STABLE when signals are quiet
+--    - STABLE/GROWING→DECLINING threshold raised 30% → 50%
+--    - Signal-count floor (< 5 signals in 14d = too thin to call decline)
+--    - Explicit next_eval_in_hours guidance per status
+-- ════════════════════════════════════════════════════════════════════════
+
+-- Deactivate v1 first (idempotent)
+UPDATE DIM_LLM_PROMPT
+SET IS_ACTIVE = FALSE
+WHERE PROMPT_KEY = 'lifecycle.subagent.decision_rubric'
+  AND VERSION = 1
+  AND IS_ACTIVE = TRUE;
+
+INSERT INTO DIM_LLM_PROMPT (PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS, IS_ACTIVE, CONTENT_HASH, CREATED_BY, NOTES)
+SELECT
+    'lifecycle.subagent.decision_rubric',
+    2,
+    'claude-sonnet-4-6',
+    $$Branch on the trend's current LIFECYCLE_STATUS. For each, the default action and the override conditions.
+
+═══ IMPORTANT: SIGNAL BASELINE FOR YOUNG PORTFOLIOS ═══
+
+The signal pipeline does NOT re-link new incoming signals to existing trends after promotion.
+A trend's signal set is frozen at promotion time. Therefore:
+- Zero post-promotion signals is the EXPECTED baseline, not evidence of decline.
+- Velocity measurement is only meaningful for trends ≥ 7 days old.
+- For trends < 7 days old, treat "no new signals" as neutral (STABLE), not negative.
+
+═══ If current status == 'NEW' ═══
+
+HARD GATE — CHECK FIRST:
+  If the trend was promoted less than 24 hours ago:
+    Status MUST remain NEW. Do not evaluate velocity — there is no baseline yet.
+    Return: status=NEW, heat_modifier_pct=0, next_eval_in_hours=12
+    Stop here. Do not apply any override below.
+
+DEFAULT (trend ≥ 24h old): classify from signals
+  Look at signal arrival pace in the last 24-72h vs the candidate's original supporting signals.
+  - Signals arriving faster than at promotion + breadth ≥ 2 source types  →  GROWING
+  - Signals arriving steadily, breadth held                                 →  STABLE
+  - No new signals since promotion (within margin)                          →  STABLE
+    (See above: absence of post-promotion signals is the expected state, not decay.)
+
+═══ If current status == 'GROWING' ═══
+
+DEFAULT: GROWING (sustaining)
+  Signal velocity EWMA is steady or rising; gtrends interest stable or rising.
+
+OVERRIDE: STABLE
+  Velocity has flattened in the last 2 cycles within ±15%.
+
+OVERRIDE: DECLINING
+  Velocity dropped ≥ 50% over the last 2 cycles  (raised from 30%)
+  AND the trend has ≥ 5 signals in the last 14d window.
+  If signals < 5 in 14d: default to STABLE (too thin to measure velocity).
+
+═══ If current status == 'STABLE' ═══
+
+DEFAULT: STABLE
+  Steady signal arrival; no major velocity shift.
+  For trends < 7 days old with zero post-promotion signals: ALWAYS default to STABLE.
+  Zero post-promotion signals on a young trend is the expected system state.
+
+OVERRIDE: GROWING
+  Signal velocity now > 1.5× the prior 7d average AND breadth held or grew.
+
+OVERRIDE: DECLINING — ALL THREE conditions required:
+  1. Velocity dropped ≥ 50% over the last 2 cycles  (raised from 30%)
+  2. Trend is ≥ 7 days old
+  3. Trend has ≥ 5 signals in the last 14d window
+  If any condition is not met: keep STABLE.
+
+═══ If current status == 'DECLINING' ═══
+
+DEFAULT: DECLINING (still cooling)
+  Velocity continuing to drop.
+
+OVERRIDE: DORMANT
+  Zero new signals in the last 14d AND `INTEREST_PEAK_PCT` < 5 in last 7d of gtrends.
+
+OVERRIDE: STABLE
+  Velocity has plateaued (not still dropping) AND breadth ≥ 2 source types.
+  NOTE: if this trend is < 7 days old and was misclassified as DECLINING,
+  returning STABLE is correct — absence of post-promotion signals is normal.
+
+═══ If current status == 'DORMANT' ═══
+
+DEFAULT: DORMANT (continue waiting)
+  No new signals; gtrends quiet.
+
+OVERRIDE: RESURGENT
+  Signals in last 24h after ≥ 7d quiet  OR  `INTEREST_PEAK_PCT` spike > 2× the prior 7d baseline.
+
+PROPOSE: RETIRED  (two-cycle confirm — see system prompt)
+  DORMANT for ≥ 30 days AND breadth ≤ 1 source type AND gtrends interest near-zero (last 7d).
+  First proposal: log it; second consecutive proposal: commit.
+
+═══ If current status == 'RESURGENT' ═══
+
+DEFAULT: GROWING (transition off RESURGENT once sustained)
+  After 1-2 cycles of confirmed activity, RESURGENT graduates to GROWING.
+
+OVERRIDE: DORMANT
+  The spike was a one-off; no follow-through; back to DORMANT.
+
+═══ If current status == 'RETIRED' ═══
+
+DEFAULT: do nothing — emit `status: RETIRED` and `next_eval_in_hours` is irrelevant (commit will set NEXT_LIFECYCLE_EVAL_AT to NULL).
+
+This branch should be unreachable — the sweeper filters out RETIRED rows. If you see it, something upstream is wrong; flag in `reasoning`.
+
+═══ Heat-modifier guidance per status ═══
+
+Use heat modifier sparingly:
+- GROWING / RESURGENT: 0 to +15 if cultural amplification is genuinely accelerating
+- STABLE: -5 to +5; usually 0
+- DECLINING / DORMANT: -10 to 0; rarely positive
+- NEW: 0; not enough history to justify modifier
+
+═══ Source-breadth callout ═══
+
+If `source_breakdown` shows the trend is dominated by a single source TYPE (e.g., all bluesky, no news, no gdelt, no amazon), the breadth_factor in heat is already low. Discount further by -5 to -10 in heat_modifier and call this out in `heat_modifier_reason`. McClatchy values cross-platform validation — a social-only trend is weaker than its raw signal count suggests.
+
+═══ next_eval_in_hours guidance ═══
+
+Set this to control how soon the sweeper re-evaluates this trend:
+- NEW (< 24h, locked by hard gate): 12
+- NEW (≥ 24h, normal eval): 6
+- GROWING: 4
+- STABLE: 6
+- DECLINING: 4  (more frequent — may transition to DORMANT)
+- DORMANT: 24
+- RESURGENT: 4
+
+═══ When to request re-enrichment ═══
+
+Set `request_re_enrichment: true` ONLY when:
+- description_update is non-null AND substantially different from the current narrative
+- New signal types have appeared since enrichment (e.g., trend started as Bluesky-only and now has news + ecommerce coverage that warrants fuller treatment)
+- Status flipped to RESURGENT after a long DORMANT period (the trend has "come back different")
+
+Re-enrichment costs ~$0.40-0.50; don't request it for cosmetic narrative tweaks.$$,
+    NULL,
+    TRUE,
+    SHA2(CONCAT_WS(':', 'lifecycle.subagent.decision_rubric', 'v2'), 256),
+    'system_seed',
+    'v2 — 24h NEW lock; young-trend STABLE default (< 7d); STABLE/GROWING→DECLINING raised 30%→50%; signal floor (< 5 in 14d = no DECLINING); next_eval_in_hours guidance per status.'
+WHERE NOT EXISTS (
+    SELECT 1 FROM DIM_LLM_PROMPT WHERE PROMPT_KEY = 'lifecycle.subagent.decision_rubric' AND VERSION = 2
+);
