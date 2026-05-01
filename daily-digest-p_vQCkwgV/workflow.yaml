@@ -86,18 +86,13 @@ steps:
           v.HEAT_INDEX DESC
         LIMIT 20
       params: []
-- namespace: check_links
-  runtime: nodejs20.x
-  uses: "./check_links/entry.js"
-  props:
-    dashboard_rows: "{{steps.query_dashboard.$return_value}}"
 - namespace: verify_sources_llm
   runtime: nodejs20.x
   uses: "./verify_sources_llm/entry.js"
   props:
     google_gemini:
       authProvisionId: apn_EOhp9DY
-    checked: "{{steps.check_links.$return_value}}"
+    dashboard_rows: "{{steps.query_dashboard.$return_value}}"
 - namespace: build_email
   runtime: nodejs20.x
   uses: "./build_email/entry.js"

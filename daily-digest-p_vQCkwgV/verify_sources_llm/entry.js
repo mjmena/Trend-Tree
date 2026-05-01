@@ -1,15 +1,14 @@
 // Pipedream Workflow Step: Verify Sources via LLM
 //
-// Takes the output of check_links and, for each trend, asks Gemini 3 Flash
-// (with Google Search grounding) to pick the best N on-topic sources —
-// filtering the PageRank candidates for relevance and web-searching for
-// replacements if too few candidates are on-topic.
+// For each trend, asks Gemini 3 Flash (with Google Search grounding) to pick
+// the best N on-topic sources — drawing from the trend's EVIDENCE pool and
+// web-searching for replacements if fewer than N are on-topic.
 //
 // Notes:
 //   - Gemini's responseMimeType: "application/json" is INCOMPATIBLE with
 //     tool use / grounding, so we ask for text and regex-extract the JSON.
-//   - On any error we fall back to the trend's alive_signals as-is, so the
-//     email still ships something for that trend.
+//   - On any error we fall back to the trend's EVIDENCE entries as-is, so
+//     the email still ships something for that trend.
 //   - One API call per trend, capped by per_trend_concurrency, to keep
 //     JSON extraction simple and isolate per-trend failures.
 
@@ -38,6 +37,23 @@ const makeSemaphore = (max) => {
       next();
     });
 };
+
+const parseVariant = (v) => {
+  if (v == null) return [];
+  if (typeof v === "string") { try { return JSON.parse(v); } catch { return []; } }
+  return Array.isArray(v) ? v : [];
+};
+
+// Convert EVIDENCE pool to the alive_signals shape buildPrompt + recencyFallback expect.
+const evidenceToAliveSignals = (evidence) =>
+  evidence
+    .map((ev) => ({
+      title: ev.claim || ev.source_name || ev.source || "",
+      url: ev.url || ev.source_url || "",
+      source: ev.source || ev.source_name || "",
+      final_url: ev.url || ev.source_url || "",
+    }))
+    .filter((s) => s.url && (s.url.startsWith("http://") || s.url.startsWith("https://")));
 
 const isRealHttpUrl = (raw) => {
   if (typeof raw !== "string") return false;
@@ -170,9 +186,9 @@ export default defineComponent({
       type: "app",
       app: "google_gemini",
     },
-    checked: {
+    dashboard_rows: {
       type: "any",
-      label: "Output from check_links",
+      label: "Dashboard rows from query_dashboard",
     },
     target_sources_per_trend: {
       type: "integer",
@@ -188,8 +204,10 @@ export default defineComponent({
     },
   },
   async run({ $ }) {
-    const checked = this.checked || {};
-    const rows = Array.isArray(checked.rows) ? checked.rows : [];
+    const rows = Array.isArray(this.dashboard_rows) ? this.dashboard_rows : [];
+    for (const row of rows) {
+      row.alive_signals = evidenceToAliveSignals(parseVariant(row.EVIDENCE));
+    }
     const target = this.target_sources_per_trend ?? 3;
     const concurrency = this.per_trend_concurrency ?? 3;
     const apiKey = this.google_gemini?.$auth?.api_key;
