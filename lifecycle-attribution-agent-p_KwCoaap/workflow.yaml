@@ -77,7 +77,7 @@ steps:
   props:
     event: "{{steps.normalize_event.$return_value}}"
     active_rows: "{{steps.q_select_active_trends.$return_value}}"
-    subagent_url: PLACEHOLDER
+    subagent_url: https://eozqgr1dhwf0akq.m.pipedream.net
 - namespace: respond
   runtime: nodejs20.x
   uses: "./respond/entry.js"
