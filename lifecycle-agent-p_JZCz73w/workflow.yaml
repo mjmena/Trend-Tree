@@ -6,8 +6,8 @@ settings:
   lambda_timeout: 750
   network: net_5Lnie3
 triggers:
-- id: dc_1gu0qyW   # lifecycle-cron-1h (timer)
-- id: dc_EYugZAZ   # lifecycle-sweeper-http (manual fire)
+- id: dc_1gu0qyW
+- id: dc_EYugZAZ
 steps:
 - namespace: normalize_event
   runtime: nodejs20.x
@@ -80,3 +80,4 @@ steps:
     event: "{{steps.normalize_event.$return_value}}"
     due_count: "{{steps.q_select_due_trends.$return_value.length}}"
     dispatch_result: "{{steps.dispatch_to_subagents.$return_value}}"
+

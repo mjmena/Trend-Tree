@@ -1,0 +1,7 @@
+schema: workflow/2022.04
+name: Lifecycle Attribution Agent
+settings:
+  error_notification: true
+triggers:
+- id: hi_xQHxdxX
+
