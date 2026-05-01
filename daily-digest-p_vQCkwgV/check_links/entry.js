@@ -1,14 +1,13 @@
 // Pipedream Workflow Step: Check Links
 //
-// Consumes dashboard rows (from query_dashboard) and bulk signals (from
-// query_signals_bulk), groups signals by TREND_ID, runs HTTP HEAD requests
-// in parallel to validate each URL, and attaches `alive_signals` +
-// `dead_signals` to each dashboard row.
+// Consumes dashboard rows (from query_dashboard). Extracts candidate URLs from
+// each row's EVIDENCE pool (the canonical typed source pool as of the
+// 2026-04-28 agent-owned-ledgers refactor), runs HTTP HEAD requests in
+// parallel to validate each URL, and attaches `alive_signals` + `dead_signals`
+// to each dashboard row.
 //
-// Pseudo-URLs (non-http(s) strings — e.g. Amazon aggregated SIGNAL_IDs that
-// leak into STG_EXTERNAL_SIGNALS.URL) are filtered BEFORE the HTTP check and
-// recorded as dead with reason "pseudo_url", so we never render them as
-// <a href> in the email and they're treated as needing replacement.
+// Pseudo-URLs (non-http(s) strings) are filtered BEFORE the HTTP check and
+// recorded as dead with reason "pseudo_url".
 
 const normalizeUrl = (raw) => {
   if (typeof raw !== "string") return null;
@@ -99,19 +98,21 @@ const checkOne = async (url, timeoutMs) => {
   }
 };
 
+const parseVariant = (v) => {
+  if (v == null) return [];
+  if (typeof v === "string") { try { return JSON.parse(v); } catch { return []; } }
+  return Array.isArray(v) ? v : [];
+};
+
 export default defineComponent({
   name: "Check Links",
   description:
-    "HTTP-validate source URLs for each dashboard row; filter pseudo-URLs.",
-  version: "0.0.1",
+    "HTTP-validate source URLs from EVIDENCE pool for each dashboard row; filter pseudo-URLs.",
+  version: "0.1.0",
   props: {
     dashboard_rows: {
       type: "any",
       label: "Dashboard rows from query_dashboard",
-    },
-    signal_rows: {
-      type: "any",
-      label: "Signal rows from query_signals_bulk",
     },
     http_timeout_ms: {
       type: "integer",
@@ -129,26 +130,30 @@ export default defineComponent({
   async run({ $ }) {
     const started = Date.now();
     const rows = Array.isArray(this.dashboard_rows) ? this.dashboard_rows : [];
-    const signals = Array.isArray(this.signal_rows) ? this.signal_rows : [];
 
-    // Group signals by TREND_ID, dedupe by normalized URL, preserve PageRank order.
+    // Build per-trend candidate list from EVIDENCE (canonical post-2026-04-28 source pool).
+    // Evidence items have new shape { url, type, source, claim } or legacy { source_url, source_name }.
     const byTrend = new Map();
-    for (const s of signals) {
-      const tid = s.TREND_ID;
-      if (!tid) continue;
-      if (!byTrend.has(tid)) byTrend.set(tid, { seen: new Set(), list: [] });
-      const bucket = byTrend.get(tid);
-      const rawUrl = s.URL;
-      const norm = normalizeUrl(rawUrl) || (typeof rawUrl === "string" ? rawUrl.trim() : null);
-      if (!norm) continue;
-      if (bucket.seen.has(norm)) continue;
-      bucket.seen.add(norm);
-      bucket.list.push({
-        title: s.TITLE || "",
-        url: norm,
-        source: s.SOURCE || "",
-        domain: s.DOMAIN || "",
-      });
+    for (const row of rows) {
+      const evidence = parseVariant(row.EVIDENCE);
+      const seen = new Set();
+      const list = [];
+      for (const ev of evidence) {
+        const rawUrl = ev.url || ev.source_url || "";
+        if (!rawUrl) continue;
+        const norm = normalizeUrl(rawUrl) || (typeof rawUrl === "string" ? rawUrl.trim() : null);
+        if (!norm || seen.has(norm)) continue;
+        seen.add(norm);
+        let domain = "";
+        try { domain = new URL(rawUrl).hostname.toLowerCase(); } catch {}
+        list.push({
+          title: ev.claim || ev.source_name || ev.source || "",
+          url: norm,
+          source: ev.source || ev.source_name || "",
+          domain,
+        });
+      }
+      byTrend.set(row.TREND_ID, { list });
     }
 
     // Partition: pseudo-URLs go straight to dead_signals; real URLs get HTTP-checked.

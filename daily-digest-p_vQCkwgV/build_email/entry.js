@@ -105,6 +105,14 @@ const renderCard = (row) => {
        </div>`
     : "";
 
+  const relatedNames = (parseVariant(row.RELATED_TRENDS) || [])
+    .slice(0, 2)
+    .map((r) => r.trend_name || r.TREND_NAME)
+    .filter(Boolean);
+  const relatedHtml = relatedNames.length
+    ? `<p style="margin:10px 0 0;font-size:12px;color:#9ca3af;line-height:1.5;">Related: ${relatedNames.map(esc).join(" · ")}</p>`
+    : "";
+
   const headlineBlock = `
       <div style="font-size:18px;font-weight:700;color:#111827;line-height:1.3;letter-spacing:-0.01em;">
         ${esc(headline)}
@@ -123,6 +131,7 @@ const renderCard = (row) => {
         ${summary}
       </div>
       ${sourcesHtml}
+      ${relatedHtml}
     </div>`;
 };
 

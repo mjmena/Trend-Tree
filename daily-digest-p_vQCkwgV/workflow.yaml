@@ -41,7 +41,9 @@ steps:
                v.TREND_NAME_B2B,
                v.CATEGORY, v.SUBCATEGORY, v.MACROTREND_TAGS,
                v.SUMMARY_SHORT, v.HEAT_INDEX, v.VELOCITY_DIRECTION,
-               v.TOTAL_CLUSTER_SIZE, v.TOP_SIGNALS
+               v.TOTAL_CLUSTER_SIZE, v.TOP_SIGNALS,
+               v.EVIDENCE,
+               v.RELATED_TRENDS
         FROM selected s
         JOIN MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD v USING (TREND_ID)
         ORDER BY
@@ -74,7 +76,9 @@ steps:
                v.TREND_NAME_B2B,
                v.CATEGORY, v.SUBCATEGORY, v.MACROTREND_TAGS,
                v.SUMMARY_SHORT, v.HEAT_INDEX, v.VELOCITY_DIRECTION,
-               v.TOTAL_CLUSTER_SIZE, v.TOP_SIGNALS
+               v.TOTAL_CLUSTER_SIZE, v.TOP_SIGNALS,
+               v.EVIDENCE,
+               v.RELATED_TRENDS
         FROM selected s
         JOIN MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD v USING (TREND_ID)
         ORDER BY
@@ -82,100 +86,11 @@ steps:
           v.HEAT_INDEX DESC
         LIMIT 20
       params: []
-- namespace: query_signals_bulk
-  runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
-  props:
-    snowflake:
-      authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        WITH rising AS (
-          SELECT v.TREND_ID
-          FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD v
-          WHERE v.VELOCITY_DIRECTION IN ('NEW','GROWING')
-            AND v.SUMMARY_SHORT IS NOT NULL
-        ),
-        filler AS (
-          SELECT v.TREND_ID,
-                 ROW_NUMBER() OVER (ORDER BY v.HEAT_INDEX DESC) AS FILL_RN
-          FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD v
-          WHERE v.VELOCITY_DIRECTION NOT IN ('NEW','GROWING','SUPERSEDED')
-            AND v.SUMMARY_SHORT IS NOT NULL
-            AND v.TREND_ID NOT IN (SELECT TREND_ID FROM rising)
-        ),
-        candidates AS (
-          SELECT TREND_ID FROM rising
-          UNION ALL
-          SELECT TREND_ID FROM filler WHERE FILL_RN <= 20
-        ),
-        ranked AS (
-          SELECT t.TREND_ID,
-                 es.SIGNAL_TITLE AS TITLE,
-                 es.URL,
-                 es.SOURCE_NAME AS SOURCE,
-                 PARSE_URL(es.URL):host::STRING AS DOMAIN,
-                 ROW_NUMBER() OVER (PARTITION BY t.TREND_ID ORDER BY es.SIGNAL_TIMESTAMP DESC NULLS LAST) AS RN
-          FROM candidates cd
-          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t ON t.TREND_ID = cd.TREND_ID
-          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
-            ON c.CANDIDATE_ID = t.CANDIDATE_ID OR c.DEDUP_OF_TREND_ID = t.TREND_ID
-          ,LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
-          JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS es
-            ON (es.SIGNAL_ID = f.value::STRING OR es.LEGACY_SIGNAL_ID = f.value::STRING)
-           AND es.URL IS NOT NULL
-        )
-        SELECT TREND_ID, TITLE, URL, SOURCE, DOMAIN
-        FROM ranked
-        WHERE RN <= 10
-        ORDER BY TREND_ID, RN
-      query: |-
-        WITH rising AS (
-          SELECT v.TREND_ID
-          FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD v
-          WHERE v.VELOCITY_DIRECTION IN ('NEW','GROWING')
-            AND v.SUMMARY_SHORT IS NOT NULL
-        ),
-        filler AS (
-          SELECT v.TREND_ID,
-                 ROW_NUMBER() OVER (ORDER BY v.HEAT_INDEX DESC) AS FILL_RN
-          FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD v
-          WHERE v.VELOCITY_DIRECTION NOT IN ('NEW','GROWING','SUPERSEDED')
-            AND v.SUMMARY_SHORT IS NOT NULL
-            AND v.TREND_ID NOT IN (SELECT TREND_ID FROM rising)
-        ),
-        candidates AS (
-          SELECT TREND_ID FROM rising
-          UNION ALL
-          SELECT TREND_ID FROM filler WHERE FILL_RN <= 20
-        ),
-        ranked AS (
-          SELECT t.TREND_ID,
-                 es.SIGNAL_TITLE AS TITLE,
-                 es.URL,
-                 es.SOURCE_NAME AS SOURCE,
-                 PARSE_URL(es.URL):host::STRING AS DOMAIN,
-                 ROW_NUMBER() OVER (PARTITION BY t.TREND_ID ORDER BY es.SIGNAL_TIMESTAMP DESC NULLS LAST) AS RN
-          FROM candidates cd
-          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t ON t.TREND_ID = cd.TREND_ID
-          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
-            ON c.CANDIDATE_ID = t.CANDIDATE_ID OR c.DEDUP_OF_TREND_ID = t.TREND_ID
-          ,LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
-          JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS es
-            ON (es.SIGNAL_ID = f.value::STRING OR es.LEGACY_SIGNAL_ID = f.value::STRING)
-           AND es.URL IS NOT NULL
-        )
-        SELECT TREND_ID, TITLE, URL, SOURCE, DOMAIN
-        FROM ranked
-        WHERE RN <= 10
-        ORDER BY TREND_ID, RN
-      params: []
 - namespace: check_links
   runtime: nodejs20.x
   uses: "./check_links/entry.js"
   props:
     dashboard_rows: "{{steps.query_dashboard.$return_value}}"
-    signal_rows: "{{steps.query_signals_bulk.$return_value}}"
 - namespace: verify_sources_llm
   runtime: nodejs20.x
   uses: "./verify_sources_llm/entry.js"
