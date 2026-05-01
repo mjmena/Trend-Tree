@@ -2,6 +2,8 @@ schema: workflow/2022.04
 name: Daily Digest
 settings:
   error_notification: true
+  lambda_memory: 1024
+  lambda_timeout: 420
   network: net_5Lnie3
 triggers:
 - id: ti_EoTEL6N
@@ -93,7 +95,8 @@ steps:
   runtime: nodejs20.x
   uses: "./verify_sources_llm/entry.js"
   props:
-    google_gemini: {}
+    google_gemini:
+      authProvisionId: apn_EOhp9DY
     checked: "{{steps.check_links.$return_value}}"
 - namespace: build_email
   runtime: nodejs20.x
