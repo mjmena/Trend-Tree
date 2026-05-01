@@ -181,24 +181,20 @@ steps:
       value: |-
         SELECT s.SIGNAL_ID, s.SOURCE_NAME, s.SIGNAL_TIMESTAMP,
                s.SIGNAL_TITLE, LEFT(s.SIGNAL_TEXT, 400) AS SIGNAL_TEXT
-        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
-             LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
-        JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
-          ON s.SIGNAL_ID = f.value::STRING
-        WHERE (c.PROMOTED_TO = '{{steps.handle_request.$return_value.trend_id}}'
-            OR c.DEDUP_OF_TREND_ID = '{{steps.handle_request.$return_value.trend_id}}')
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
+        JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS s
+          ON s.SIGNAL_ID = ts.SIGNAL_ID
+        WHERE ts.TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
           AND s.SIGNAL_TIMESTAMP > DATEADD(day, -14, CURRENT_TIMESTAMP())
         ORDER BY s.SIGNAL_TIMESTAMP DESC NULLS LAST
         LIMIT 30
       query: |-
         SELECT s.SIGNAL_ID, s.SOURCE_NAME, s.SIGNAL_TIMESTAMP,
                s.SIGNAL_TITLE, LEFT(s.SIGNAL_TEXT, 400) AS SIGNAL_TEXT
-        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
-             LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
-        JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
-          ON s.SIGNAL_ID = f.value::STRING
-        WHERE (c.PROMOTED_TO = '{{steps.handle_request.$return_value.trend_id}}'
-            OR c.DEDUP_OF_TREND_ID = '{{steps.handle_request.$return_value.trend_id}}')
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
+        JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS s
+          ON s.SIGNAL_ID = ts.SIGNAL_ID
+        WHERE ts.TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
           AND s.SIGNAL_TIMESTAMP > DATEADD(day, -14, CURRENT_TIMESTAMP())
         ORDER BY s.SIGNAL_TIMESTAMP DESC NULLS LAST
         LIMIT 30
