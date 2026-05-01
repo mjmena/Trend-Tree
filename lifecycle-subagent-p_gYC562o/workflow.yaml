@@ -199,6 +199,78 @@ steps:
         ORDER BY s.SIGNAL_TIMESTAMP DESC NULLS LAST
         LIMIT 30
     params: []
+- namespace: q_candidate_signals
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        WITH trend_vec AS (
+          SELECT TREND_VECTOR
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+          WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+            AND TREND_VECTOR IS NOT NULL
+          ORDER BY WRITTEN_AT DESC LIMIT 1
+        ),
+        new_signals AS (
+          SELECT s.SIGNAL_ID, s.SOURCE_NAME, s.SIGNAL_TIMESTAMP,
+                 s.SIGNAL_TITLE, LEFT(s.SIGNAL_TEXT, 300) AS SIGNAL_TEXT, s.SIGNAL_VECTOR
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS s
+          WHERE s.EMBEDDED_AT >= DATEADD(hour, -24, CURRENT_TIMESTAMP())
+            AND s.SIGNAL_VECTOR IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS x
+              WHERE x.SIGNAL_ID = s.SIGNAL_ID
+                AND x.TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+            )
+        ),
+        scored AS (
+          SELECT ns.SIGNAL_ID, ns.SOURCE_NAME, ns.SIGNAL_TIMESTAMP,
+                 ns.SIGNAL_TITLE, ns.SIGNAL_TEXT,
+                 VECTOR_COSINE_SIMILARITY(tv.TREND_VECTOR, ns.SIGNAL_VECTOR) AS SIMILARITY
+          FROM trend_vec tv
+          CROSS JOIN new_signals ns
+        )
+        SELECT SIGNAL_ID, SOURCE_NAME, SIGNAL_TIMESTAMP, SIGNAL_TITLE, SIGNAL_TEXT, SIMILARITY
+        FROM scored
+        WHERE SIMILARITY >= 0.72
+        ORDER BY SIMILARITY DESC
+        LIMIT 20
+      query: |-
+        WITH trend_vec AS (
+          SELECT TREND_VECTOR
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+          WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+            AND TREND_VECTOR IS NOT NULL
+          ORDER BY WRITTEN_AT DESC LIMIT 1
+        ),
+        new_signals AS (
+          SELECT s.SIGNAL_ID, s.SOURCE_NAME, s.SIGNAL_TIMESTAMP,
+                 s.SIGNAL_TITLE, LEFT(s.SIGNAL_TEXT, 300) AS SIGNAL_TEXT, s.SIGNAL_VECTOR
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS s
+          WHERE s.EMBEDDED_AT >= DATEADD(hour, -24, CURRENT_TIMESTAMP())
+            AND s.SIGNAL_VECTOR IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS x
+              WHERE x.SIGNAL_ID = s.SIGNAL_ID
+                AND x.TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+            )
+        ),
+        scored AS (
+          SELECT ns.SIGNAL_ID, ns.SOURCE_NAME, ns.SIGNAL_TIMESTAMP,
+                 ns.SIGNAL_TITLE, ns.SIGNAL_TEXT,
+                 VECTOR_COSINE_SIMILARITY(tv.TREND_VECTOR, ns.SIGNAL_VECTOR) AS SIMILARITY
+          FROM trend_vec tv
+          CROSS JOIN new_signals ns
+        )
+        SELECT SIGNAL_ID, SOURCE_NAME, SIGNAL_TIMESTAMP, SIGNAL_TITLE, SIGNAL_TEXT, SIMILARITY
+        FROM scored
+        WHERE SIMILARITY >= 0.72
+        ORDER BY SIMILARITY DESC
+        LIMIT 20
+    params: []
 - namespace: q_gtrends_history
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -364,6 +436,7 @@ steps:
     source_metrics_rows: "{{steps.q_source_metrics.$return_value}}"
     lifecycle_history_rows: "{{steps.q_lifecycle_history.$return_value}}"
     recent_signal_rows: "{{steps.q_recent_signals.$return_value}}"
+    candidate_signal_rows: "{{steps.q_candidate_signals.$return_value}}"
     gtrends_rows: "{{steps.q_gtrends_history.$return_value}}"
     neighbor_rows: "{{steps.q_neighbors.$return_value}}"
     prompts_rows: "{{steps.q_prompts.$return_value}}"

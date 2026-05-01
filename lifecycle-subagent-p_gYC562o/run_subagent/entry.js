@@ -472,6 +472,7 @@ export default defineComponent({
     source_metrics_rows: { type: "any", optional: true },
     lifecycle_history_rows: { type: "any", optional: true },
     recent_signal_rows: { type: "any", optional: true },
+    candidate_signal_rows: { type: "any", optional: true },
     gtrends_rows: { type: "any", optional: true },
     neighbor_rows: { type: "any", optional: true },
     prompts_rows: { type: "any" },
@@ -537,6 +538,15 @@ export default defineComponent({
       signal_timestamp: r.SIGNAL_TIMESTAMP,
       signal_title: r.SIGNAL_TITLE,
       signal_text: r.SIGNAL_TEXT,
+    }));
+
+    const candidate_signals = (this.candidate_signal_rows || []).map((r) => ({
+      signal_id: r.SIGNAL_ID,
+      source_name: r.SOURCE_NAME,
+      signal_timestamp: r.SIGNAL_TIMESTAMP,
+      signal_title: r.SIGNAL_TITLE,
+      signal_text: r.SIGNAL_TEXT,
+      similarity: Number(r.SIMILARITY || 0),
     }));
 
     const gtrends_history = (this.gtrends_rows || []).map((r) => ({
@@ -616,6 +626,12 @@ Specificity score: ${metrics.specificity_score}`;
         ).join("\n")
       : "(no neighbors in pool)";
 
+    const candidate_signals_block = candidate_signals.length
+      ? candidate_signals.map((s, i) =>
+          `${i + 1}. sim=${s.similarity.toFixed(2)} [${s.source_name}] ${s.signal_timestamp} — "${(s.signal_title || "").slice(0, 120)}"`
+        ).join("\n")
+      : "(no vector-similar signals in last 24h)";
+
     const heat_baseline_block = `heat_base = ${heat_base}
 components: ${fmtJson(components)}
 formula: 20*recency + 25*velocity + 25*breadth + 20*external + 10*confidence
@@ -632,6 +648,7 @@ Your modifier window: [-20, 20] %`;
       metrics_block,
       lifecycle_history_block,
       recent_signals_block,
+      candidate_signals_block,
       gtrends_block,
       neighbor_block,
       heat_baseline_block,
