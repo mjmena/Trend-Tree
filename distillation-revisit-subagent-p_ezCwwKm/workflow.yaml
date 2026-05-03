@@ -15,54 +15,17 @@ steps:
     trigger_event: "{{steps.trigger.event}}"
 - namespace: q_fetch_signals
   runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
+  uses: "./q_fetch_signals/entry.js"
   props:
     snowflake:
       authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        SELECT SIGNAL_ID, SOURCE_NAME, SIGNAL_TIMESTAMP,
-               SIGNAL_TITLE, LEFT(SIGNAL_TEXT, 1500) AS SIGNAL_TEXT,
-               METADATA, AGENT_SESSION_ID
-        FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
-        WHERE SIGNAL_ID IN ({{steps.handle_request.$return_value.signal_ids_sql_in}})
-        ORDER BY SIGNAL_TIMESTAMP DESC NULLS LAST
-        LIMIT 200
-      query: |-
-        SELECT SIGNAL_ID, SOURCE_NAME, SIGNAL_TIMESTAMP,
-               SIGNAL_TITLE, LEFT(SIGNAL_TEXT, 1500) AS SIGNAL_TEXT,
-               METADATA, AGENT_SESSION_ID
-        FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
-        WHERE SIGNAL_ID IN ({{steps.handle_request.$return_value.signal_ids_sql_in}})
-        ORDER BY SIGNAL_TIMESTAMP DESC NULLS LAST
-        LIMIT 200
-      params: []
+    signal_ids: "{{steps.handle_request.$return_value.signal_ids}}"
 - namespace: q_fetch_neighbors
   runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
+  uses: "./q_fetch_neighbors/entry.js"
   props:
     snowflake:
       authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        SELECT m.TREND_ID, m.TREND_TOPIC, m.TOTAL_CLUSTER_SIZE,
-               m.DISTINCT_SOURCE_COUNT, m.VELOCITY_DIRECTION,
-               COALESCE(m.TREND_HEAT_INDEX, 0) AS TREND_HEAT_INDEX, m.LAST_UPDATE_AT
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS m
-        WHERE COALESCE(m.VELOCITY_DIRECTION, '') != 'SUPERSEDED'
-          AND m.LAST_UPDATE_AT > DATEADD(day, -30, CURRENT_TIMESTAMP())
-        ORDER BY COALESCE(m.TREND_HEAT_INDEX, 0) DESC NULLS LAST
-        LIMIT 100
-      query: |-
-        SELECT m.TREND_ID, m.TREND_TOPIC, m.TOTAL_CLUSTER_SIZE,
-               m.DISTINCT_SOURCE_COUNT, m.VELOCITY_DIRECTION,
-               COALESCE(m.TREND_HEAT_INDEX, 0) AS TREND_HEAT_INDEX, m.LAST_UPDATE_AT
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS m
-        WHERE COALESCE(m.VELOCITY_DIRECTION, '') != 'SUPERSEDED'
-          AND m.LAST_UPDATE_AT > DATEADD(day, -30, CURRENT_TIMESTAMP())
-        ORDER BY COALESCE(m.TREND_HEAT_INDEX, 0) DESC NULLS LAST
-        LIMIT 100
-      params: []
 - namespace: q_load_prompts
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3

@@ -288,10 +288,10 @@ export default defineComponent({
       })),
       existing_trends: neighbors.map((n) => ({
         trend_id: n.TREND_ID,
-        topic: n.TREND_TOPIC,
+        topic: n.TREND_NAME,
         cluster_size: n.TOTAL_CLUSTER_SIZE,
         velocity: n.VELOCITY_DIRECTION,
-        heat: n.TREND_HEAT_INDEX,
+        heat: n.HEAT_INDEX,
       })),
     }, null, 2);
 
