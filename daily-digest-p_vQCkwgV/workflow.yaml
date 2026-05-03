@@ -2,7 +2,7 @@ schema: workflow/2022.04
 name: Daily Digest
 settings:
   error_notification: true
-  lambda_memory: 1024
+  lambda_memory: 3072
   lambda_timeout: 420
   network: net_5Lnie3
 triggers:
@@ -19,14 +19,14 @@ steps:
         WITH rising AS (
           SELECT v.TREND_ID
           FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD v
-          WHERE v.VELOCITY_DIRECTION IN ('NEW', 'GROWING')
+          WHERE v.VELOCITY_DIRECTION IN ('NEW', 'RESURGENT')
             AND v.SUMMARY_SHORT IS NOT NULL
         ),
         filler AS (
           SELECT v.TREND_ID,
                  ROW_NUMBER() OVER (ORDER BY v.HEAT_INDEX DESC) AS FILL_RN
           FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD v
-          WHERE v.VELOCITY_DIRECTION NOT IN ('NEW', 'GROWING', 'SUPERSEDED')
+          WHERE v.VELOCITY_DIRECTION NOT IN ('NEW', 'RESURGENT', 'SUPERSEDED')
             AND v.SUMMARY_SHORT IS NOT NULL
             AND v.TREND_ID NOT IN (SELECT TREND_ID FROM rising)
         ),
@@ -47,21 +47,21 @@ steps:
         FROM selected s
         JOIN MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD v USING (TREND_ID)
         ORDER BY
-          CASE WHEN v.VELOCITY_DIRECTION IN ('NEW','GROWING') THEN 0 ELSE 1 END,
+          CASE WHEN v.VELOCITY_DIRECTION IN ('NEW','RESURGENT') THEN 0 ELSE 1 END,
           v.HEAT_INDEX DESC
         LIMIT 20
       query: |-
         WITH rising AS (
           SELECT v.TREND_ID
           FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD v
-          WHERE v.VELOCITY_DIRECTION IN ('NEW', 'GROWING')
+          WHERE v.VELOCITY_DIRECTION IN ('NEW', 'RESURGENT')
             AND v.SUMMARY_SHORT IS NOT NULL
         ),
         filler AS (
           SELECT v.TREND_ID,
                  ROW_NUMBER() OVER (ORDER BY v.HEAT_INDEX DESC) AS FILL_RN
           FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD v
-          WHERE v.VELOCITY_DIRECTION NOT IN ('NEW', 'GROWING', 'SUPERSEDED')
+          WHERE v.VELOCITY_DIRECTION NOT IN ('NEW', 'RESURGENT', 'SUPERSEDED')
             AND v.SUMMARY_SHORT IS NOT NULL
             AND v.TREND_ID NOT IN (SELECT TREND_ID FROM rising)
         ),
@@ -82,7 +82,7 @@ steps:
         FROM selected s
         JOIN MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD v USING (TREND_ID)
         ORDER BY
-          CASE WHEN v.VELOCITY_DIRECTION IN ('NEW','GROWING') THEN 0 ELSE 1 END,
+          CASE WHEN v.VELOCITY_DIRECTION IN ('NEW','RESURGENT') THEN 0 ELSE 1 END,
           v.HEAT_INDEX DESC
         LIMIT 20
       params: []

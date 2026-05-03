@@ -167,24 +167,12 @@ steps:
     rows: "{{steps.q_signals_window.$return_value}}"
 - namespace: q_cluster_signals
   runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
+  uses: "./q_cluster_signals/entry.js"
   props:
     snowflake:
       authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        CALL MCC_RAW.MARKETING_DEV.PROC_CLUSTER_SIGNAL_SUBSET(
-          PARSE_JSON(:1)::ARRAY,
-          :2
-        )
-      query: |-
-        CALL MCC_RAW.MARKETING_DEV.PROC_CLUSTER_SIGNAL_SUBSET(
-          PARSE_JSON(:1)::ARRAY,
-          :2
-        )
-      params:
-      - "{{steps.serialize_window_signal_ids.$return_value.signal_ids_json}}"
-      - "{{steps.serialize_window_signal_ids.$return_value.k}}"
+    signal_ids_json: "{{steps.serialize_window_signal_ids.$return_value.signal_ids_json}}"
+    k: "{{steps.serialize_window_signal_ids.$return_value.k}}"
 - namespace: q_load_prompts
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3

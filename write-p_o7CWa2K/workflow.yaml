@@ -47,10 +47,10 @@ steps:
           NULL::VARCHAR,
           NULL::VARCHAR,
           'initial',
-          NULL::VARCHAR,
-          NULL::NUMBER,
-          NULL::NUMBER,
-          NULL::FLOAT
+          'claude-sonnet-4-6',
+          {{steps.trigger.event.body.llm_output.llm_token_usage.total.input}}::NUMBER,
+          {{steps.trigger.event.body.llm_output.llm_token_usage.total.output}}::NUMBER,
+          {{steps.compute_scores.$return_value.llm_cost_estimate}}::FLOAT
         )
       query: |-
         CALL MCC_RAW.MARKETING_DEV.PROC_ENRICHMENT_APPLY(
@@ -60,10 +60,10 @@ steps:
           NULL::VARCHAR,
           NULL::VARCHAR,
           'initial',
-          NULL::VARCHAR,
-          NULL::NUMBER,
-          NULL::NUMBER,
-          NULL::FLOAT
+          'claude-sonnet-4-6',
+          {{steps.trigger.event.body.llm_output.llm_token_usage.total.input}}::NUMBER,
+          {{steps.trigger.event.body.llm_output.llm_token_usage.total.output}}::NUMBER,
+          {{steps.compute_scores.$return_value.llm_cost_estimate}}::FLOAT
         )
       params: []
 - namespace: respond
