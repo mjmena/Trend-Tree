@@ -4,7 +4,6 @@ settings:
   error_notification: true
   lambda_memory: 1024
   lambda_timeout: 600
-  network: net_5Lnie3
 triggers:
 - id: ti_ooTA61l
 steps:

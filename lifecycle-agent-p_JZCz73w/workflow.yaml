@@ -4,7 +4,6 @@ settings:
   error_notification: true
   lambda_memory: 4096
   lambda_timeout: 750
-  network: net_5Lnie3
 triggers:
 - id: dc_1gu0qyW
 - id: dc_EYugZAZ
