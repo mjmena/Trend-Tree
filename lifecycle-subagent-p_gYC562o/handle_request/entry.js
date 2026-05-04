@@ -20,10 +20,17 @@ export default defineComponent({
   props: {
     trigger_event: { type: "any" },
   },
-  async run() {
+  async run({ $ }) {
     const body = this.trigger_event?.body || {};
 
+    const method = (this.trigger_event?.method || "").toUpperCase();
+    if (method !== "POST") {
+      $.flow.exit(`ignored: method=${method || "unknown"}`);
+    }
     const trend_id = String(body.trend_id || "").trim();
+    if (!trend_id) {
+      $.flow.exit("ignored: POST with no trend_id (health probe or test payload)");
+    }
     if (!TREND_ID_OK.test(trend_id)) {
       throw new Error(`invalid or missing 'trend_id' (got '${trend_id}')`);
     }
