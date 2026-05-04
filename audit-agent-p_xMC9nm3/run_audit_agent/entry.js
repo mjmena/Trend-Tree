@@ -423,10 +423,10 @@ export default defineComponent({
     const cost24hBlock = fmtJson(cost_24h);
     const pipedreamHealthBlock = fmtJson({
       summary: pipedream_health.summary,
+      note: "active flag is NOT surfaced — Pipedream REST has no GET endpoint for it. Do not infer 'workflow deactivated' from missing active field.",
       workflows: (pipedream_health.workflows || []).map((w) => ({
         workflow_name: w.workflow_name,
         workflow_id: w.workflow_id,
-        active: w.active,
         errors_24h_count: w.errors_24h_count,
         top_errors: (w.errors_24h || []).slice(0, 3).map((e) => ({
           ts_iso: e.ts_iso, code: e.code, msg: e.msg, cell_id: e.cell_id,

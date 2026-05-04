@@ -93,18 +93,18 @@ export default defineComponent({
       throw new Error("API_KEY_PIPEDREAM env var missing — set workspace-wide via Account Settings → Environment Variables");
     }
 
-    // Per-workflow: fetch the workflow record (for active flag) AND error
-    // summaries (last N events). Two requests per workflow, parallelized.
+    // Per-workflow: fetch error summaries only. The Pipedream REST API has
+    // no GET for the workflow's `active` flag — workflow_get returns
+    // structure only, and PUT /workflows/{id} writes active without a
+    // corresponding read. So we don't track active here; deactivated
+    // workflows surface indirectly via "0 emits + expected cron firing"
+    // which would be a future enhancement (one more emits API call per workflow).
     const since = Date.now() - 24 * 3600_000;
     const results = await pmap(WORKFLOW_REGISTRY, CONCURRENCY, async (w) => {
-      const [meta, errors] = await Promise.all([
-        fetchJson(`${API_BASE}/workflows/${w.id}?org_id=${ORG_ID}`, apiKey),
-        fetchJson(
-          `${API_BASE}/workflows/${w.id}/%24errors/event_summaries?org_id=${ORG_ID}&limit=${ERRORS_LIMIT}&expand=event`,
-          apiKey,
-        ),
-      ]);
-      const active = meta.ok ? Boolean(meta.data?.active) : null;
+      const errors = await fetchJson(
+        `${API_BASE}/workflows/${w.id}/%24errors/event_summaries?org_id=${ORG_ID}&limit=${ERRORS_LIMIT}&expand=event`,
+        apiKey,
+      );
 
       const errs = (errors.ok ? errors.data?.data || [] : [])
         .map((e) => {
@@ -126,26 +126,23 @@ export default defineComponent({
       return {
         workflow_id: w.id,
         workflow_name: w.name,
-        active,
         errors_24h_count: errs.length,
         errors_24h: errs,
         fetch_error: errors.ok ? null : (errors.error || `status ${errors.status || "?"}`),
-        meta_fetch_error: meta.ok ? null : (meta.error || `status ${meta.status || "?"}`),
       };
     });
 
     const summary = {
       org_id: ORG_ID,
       workflows_audited: results.length,
-      active_count: results.filter((r) => r.active === true).length,
       errored_24h_count: results.filter((r) => r.errors_24h_count > 0).length,
       total_errors_24h: results.reduce((s, r) => s + r.errors_24h_count, 0),
-      fetch_failures: results.filter((r) => r.fetch_error || r.meta_fetch_error).length,
+      fetch_failures: results.filter((r) => r.fetch_error).length,
     };
 
     console.log(
       `pipedream-errors: ${summary.workflows_audited} workflows, ` +
-      `${summary.active_count} active, ${summary.errored_24h_count} with errors, ` +
+      `${summary.errored_24h_count} with errors, ` +
       `${summary.total_errors_24h} total errors in 24h`
     );
 
