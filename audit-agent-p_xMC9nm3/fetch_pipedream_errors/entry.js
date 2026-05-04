@@ -98,7 +98,7 @@ export default defineComponent({
     const since = Date.now() - 24 * 3600_000;
     const results = await pmap(WORKFLOW_REGISTRY, CONCURRENCY, async (w) => {
       const [meta, errors] = await Promise.all([
-        fetchJson(`${API_BASE}/workflows/${w.id}`, apiKey),
+        fetchJson(`${API_BASE}/workflows/${w.id}?org_id=${ORG_ID}`, apiKey),
         fetchJson(
           `${API_BASE}/workflows/${w.id}/%24errors/event_summaries?org_id=${ORG_ID}&limit=${ERRORS_LIMIT}&expand=event`,
           apiKey,
