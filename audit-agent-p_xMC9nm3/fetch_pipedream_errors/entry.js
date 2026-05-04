@@ -57,7 +57,7 @@ export default defineComponent({
     event: { type: "object" },
   },
   async run() {
-    const apiKey = process.env.PIPEDREAM_API_KEY;
+    const apiKey = process.env.API_KEY_PIPEDREAM;
     if (!apiKey) {
       throw new Error("PIPEDREAM_API_KEY env var missing — set on workflow Settings → Environment");
     }
