@@ -22,6 +22,10 @@ steps:
       authProvisionId: apn_yghdQYJ
     sql:
       value: |-
+        -- All age values are precomputed in SQL as MINUTES_SINCE_LAST so the
+        -- agent's JS layer doesn't have to parse Snowflake TIMESTAMP_NTZ
+        -- strings (which serialize without TZ markers and were being
+        -- mis-interpreted as UTC instead of America/New_York session TZ).
         WITH signal_24h AS (
           SELECT SOURCE_NAME, COUNT(*) AS CNT
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS
@@ -39,7 +43,7 @@ steps:
                  COALESCE(s24.SOURCE_NAME, s7.SOURCE_NAME) AS KEY,
                  COALESCE(s24.CNT, 0)              AS COUNT_24H,
                  COALESCE(s7.DAILY_AVG, 0)         AS BASELINE_7D_DAILY_AVG,
-                 NULL::TIMESTAMP_NTZ               AS LAST_TS
+                 NULL::NUMBER                      AS MINUTES_SINCE_LAST
           FROM signal_24h s24
           FULL OUTER JOIN signal_7d s7
             ON s24.SOURCE_NAME = s7.SOURCE_NAME
@@ -47,21 +51,21 @@ steps:
         promotion AS (
           SELECT 'promotion' AS AREA, 'all' AS KEY,
                  COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
-                 MAX(DECIDED_AT) AS LAST_TS
+                 TIMESTAMPDIFF(MINUTE, MAX(DECIDED_AT), CURRENT_TIMESTAMP()) AS MINUTES_SINCE_LAST
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_PROMOTION_LEDGER
           WHERE DECIDED_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
         ),
         enrichment_all AS (
           SELECT 'enrichment' AS AREA, 'all' AS KEY,
                  COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
-                 MAX(WRITTEN_AT) AS LAST_TS
+                 TIMESTAMPDIFF(MINUTE, MAX(WRITTEN_AT), CURRENT_TIMESTAMP()) AS MINUTES_SINCE_LAST
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
           WHERE WRITTEN_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
         ),
         enrichment_initial AS (
           SELECT 'enrichment' AS AREA, 'initial_only' AS KEY,
                  COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
-                 MAX(WRITTEN_AT) AS LAST_TS
+                 TIMESTAMPDIFF(MINUTE, MAX(WRITTEN_AT), CURRENT_TIMESTAMP()) AS MINUTES_SINCE_LAST
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
           WHERE WRITTEN_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
             AND ENRICHMENT_KIND = 'initial'
@@ -69,21 +73,22 @@ steps:
         lifecycle_24h AS (
           SELECT 'lifecycle' AS AREA, 'all_24h' AS KEY,
                  COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
-                 MAX(EVALUATED_AT) AS LAST_TS
+                 TIMESTAMPDIFF(MINUTE, MAX(EVALUATED_AT), CURRENT_TIMESTAMP()) AS MINUTES_SINCE_LAST
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
           WHERE EVALUATED_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
         ),
         lifecycle_1h AS (
           SELECT 'lifecycle' AS AREA, 'last_1h' AS KEY,
                  COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
-                 MAX(EVALUATED_AT) AS LAST_TS
+                 TIMESTAMPDIFF(MINUTE, MAX(EVALUATED_AT), CURRENT_TIMESTAMP()) AS MINUTES_SINCE_LAST
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
           WHERE EVALUATED_AT > DATEADD(hour, -1, CURRENT_TIMESTAMP())
         ),
         distillation_pending AS (
+          -- MINUTES_SINCE_LAST = age of the oldest pending candidate
           SELECT 'distillation' AS AREA, 'pending_oldest_hours' AS KEY,
                  COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
-                 MIN(CREATED_AT) AS LAST_TS
+                 TIMESTAMPDIFF(MINUTE, MIN(CREATED_AT), CURRENT_TIMESTAMP()) AS MINUTES_SINCE_LAST
           FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
           WHERE PROMOTED_AT IS NULL
             AND REJECTED_AT IS NULL
@@ -92,7 +97,7 @@ steps:
         distillation_processed AS (
           SELECT 'distillation' AS AREA, 'processed_24h' AS KEY,
                  COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
-                 NULL::TIMESTAMP_NTZ AS LAST_TS
+                 NULL::NUMBER AS MINUTES_SINCE_LAST
           FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
           WHERE PROMOTED_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
              OR REJECTED_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
@@ -106,6 +111,10 @@ steps:
         UNION ALL SELECT * FROM distillation_pending
         UNION ALL SELECT * FROM distillation_processed
       query: |-
+        -- All age values are precomputed in SQL as MINUTES_SINCE_LAST so the
+        -- agent's JS layer doesn't have to parse Snowflake TIMESTAMP_NTZ
+        -- strings (which serialize without TZ markers and were being
+        -- mis-interpreted as UTC instead of America/New_York session TZ).
         WITH signal_24h AS (
           SELECT SOURCE_NAME, COUNT(*) AS CNT
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS
@@ -123,7 +132,7 @@ steps:
                  COALESCE(s24.SOURCE_NAME, s7.SOURCE_NAME) AS KEY,
                  COALESCE(s24.CNT, 0)              AS COUNT_24H,
                  COALESCE(s7.DAILY_AVG, 0)         AS BASELINE_7D_DAILY_AVG,
-                 NULL::TIMESTAMP_NTZ               AS LAST_TS
+                 NULL::NUMBER                      AS MINUTES_SINCE_LAST
           FROM signal_24h s24
           FULL OUTER JOIN signal_7d s7
             ON s24.SOURCE_NAME = s7.SOURCE_NAME
@@ -131,21 +140,21 @@ steps:
         promotion AS (
           SELECT 'promotion' AS AREA, 'all' AS KEY,
                  COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
-                 MAX(DECIDED_AT) AS LAST_TS
+                 TIMESTAMPDIFF(MINUTE, MAX(DECIDED_AT), CURRENT_TIMESTAMP()) AS MINUTES_SINCE_LAST
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_PROMOTION_LEDGER
           WHERE DECIDED_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
         ),
         enrichment_all AS (
           SELECT 'enrichment' AS AREA, 'all' AS KEY,
                  COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
-                 MAX(WRITTEN_AT) AS LAST_TS
+                 TIMESTAMPDIFF(MINUTE, MAX(WRITTEN_AT), CURRENT_TIMESTAMP()) AS MINUTES_SINCE_LAST
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
           WHERE WRITTEN_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
         ),
         enrichment_initial AS (
           SELECT 'enrichment' AS AREA, 'initial_only' AS KEY,
                  COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
-                 MAX(WRITTEN_AT) AS LAST_TS
+                 TIMESTAMPDIFF(MINUTE, MAX(WRITTEN_AT), CURRENT_TIMESTAMP()) AS MINUTES_SINCE_LAST
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
           WHERE WRITTEN_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
             AND ENRICHMENT_KIND = 'initial'
@@ -153,21 +162,22 @@ steps:
         lifecycle_24h AS (
           SELECT 'lifecycle' AS AREA, 'all_24h' AS KEY,
                  COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
-                 MAX(EVALUATED_AT) AS LAST_TS
+                 TIMESTAMPDIFF(MINUTE, MAX(EVALUATED_AT), CURRENT_TIMESTAMP()) AS MINUTES_SINCE_LAST
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
           WHERE EVALUATED_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
         ),
         lifecycle_1h AS (
           SELECT 'lifecycle' AS AREA, 'last_1h' AS KEY,
                  COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
-                 MAX(EVALUATED_AT) AS LAST_TS
+                 TIMESTAMPDIFF(MINUTE, MAX(EVALUATED_AT), CURRENT_TIMESTAMP()) AS MINUTES_SINCE_LAST
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
           WHERE EVALUATED_AT > DATEADD(hour, -1, CURRENT_TIMESTAMP())
         ),
         distillation_pending AS (
+          -- MINUTES_SINCE_LAST = age of the oldest pending candidate
           SELECT 'distillation' AS AREA, 'pending_oldest_hours' AS KEY,
                  COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
-                 MIN(CREATED_AT) AS LAST_TS
+                 TIMESTAMPDIFF(MINUTE, MIN(CREATED_AT), CURRENT_TIMESTAMP()) AS MINUTES_SINCE_LAST
           FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
           WHERE PROMOTED_AT IS NULL
             AND REJECTED_AT IS NULL
@@ -176,7 +186,7 @@ steps:
         distillation_processed AS (
           SELECT 'distillation' AS AREA, 'processed_24h' AS KEY,
                  COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
-                 NULL::TIMESTAMP_NTZ AS LAST_TS
+                 NULL::NUMBER AS MINUTES_SINCE_LAST
           FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
           WHERE PROMOTED_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
              OR REJECTED_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP())
