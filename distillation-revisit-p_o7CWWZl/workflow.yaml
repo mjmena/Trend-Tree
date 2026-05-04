@@ -74,7 +74,7 @@ steps:
   runtime: nodejs20.x
   uses: "./dispatch_to_cluster_agent/entry.js"
   props:
-    cluster_agent_url: PLACEHOLDER_CLUSTER_AGENT_URL
+    cluster_agent_url: https://eoo8hdm25do049f.m.pipedream.net
     batches: "{{steps.batch_clusters.$return_value.batches}}"
     agent_session_id: "{{steps.normalize_event.$return_value.agent_session_id}}"
     chain_id: "{{steps.normalize_event.$return_value.chain_id}}"

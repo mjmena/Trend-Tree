@@ -4,6 +4,134 @@ settings:
   error_notification: true
   lambda_memory: 8192
   lambda_timeout: 750
+  network: net_5Lnie3
 triggers:
 - id: hi_NQHPyRW
-
+steps:
+- namespace: handle_request
+  runtime: nodejs20.x
+  uses: "./handle_request/entry.js"
+  props:
+    trigger_event: "{{steps.trigger.event}}"
+- namespace: q_fetch_signals
+  runtime: nodejs20.x
+  uses: "./q_fetch_signals/entry.js"
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    signal_ids: "{{steps.handle_request.$return_value.signal_ids}}"
+- namespace: q_fetch_neighbors
+  runtime: nodejs20.x
+  uses: "./q_fetch_neighbors/entry.js"
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+- namespace: q_load_prompts
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        SELECT PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS
+        FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
+        WHERE IS_ACTIVE = TRUE
+          AND PROMPT_KEY = 'distillation.lead.system'
+      query: |-
+        SELECT PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS
+        FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
+        WHERE IS_ACTIVE = TRUE
+          AND PROMPT_KEY = 'distillation.lead.system'
+      params: []
+- namespace: q_load_examples
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        WITH latest_lifecycle AS (
+          SELECT TREND_ID,
+                 NEW_STATUS         AS LIFECYCLE_STATUS,
+                 NEW_HEAT_SMOOTHED  AS HEAT_SMOOTHED,
+                 NEW_HEAT           AS HEAT
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          ) WHERE rn = 1
+        ),
+        latest_enrichment AS (
+          SELECT TREND_ID,
+                 PAYLOAD:summary_short::STRING AS SUMMARY_SHORT
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+          ) WHERE rn = 1
+        )
+        SELECT t.TREND_NAME_B2B, t.TREND_NAME_B2C, t.CATEGORY, t.SUBCATEGORY,
+               e.SUMMARY_SHORT,
+               COALESCE(lc.HEAT_SMOOTHED, lc.HEAT, 0) AS TREND_HEAT_INDEX
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+        JOIN latest_enrichment e ON e.TREND_ID = t.TREND_ID
+        LEFT JOIN latest_lifecycle lc ON lc.TREND_ID = t.TREND_ID
+        WHERE t.TREND_NAME_B2B IS NOT NULL
+          AND COALESCE(lc.LIFECYCLE_STATUS, 'NEW') != 'RETIRED'
+          AND t.LAST_UPDATE_AT > DATEADD(day, -30, CURRENT_TIMESTAMP())
+        ORDER BY TREND_HEAT_INDEX DESC NULLS LAST
+        LIMIT 20
+      query: |-
+        WITH latest_lifecycle AS (
+          SELECT TREND_ID,
+                 NEW_STATUS         AS LIFECYCLE_STATUS,
+                 NEW_HEAT_SMOOTHED  AS HEAT_SMOOTHED,
+                 NEW_HEAT           AS HEAT
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+          ) WHERE rn = 1
+        ),
+        latest_enrichment AS (
+          SELECT TREND_ID,
+                 PAYLOAD:summary_short::STRING AS SUMMARY_SHORT
+          FROM (
+            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+          ) WHERE rn = 1
+        )
+        SELECT t.TREND_NAME_B2B, t.TREND_NAME_B2C, t.CATEGORY, t.SUBCATEGORY,
+               e.SUMMARY_SHORT,
+               COALESCE(lc.HEAT_SMOOTHED, lc.HEAT, 0) AS TREND_HEAT_INDEX
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+        JOIN latest_enrichment e ON e.TREND_ID = t.TREND_ID
+        LEFT JOIN latest_lifecycle lc ON lc.TREND_ID = t.TREND_ID
+        WHERE t.TREND_NAME_B2B IS NOT NULL
+          AND COALESCE(lc.LIFECYCLE_STATUS, 'NEW') != 'RETIRED'
+          AND t.LAST_UPDATE_AT > DATEADD(day, -30, CURRENT_TIMESTAMP())
+        ORDER BY TREND_HEAT_INDEX DESC NULLS LAST
+        LIMIT 20
+      params: []
+- namespace: run_lead_agent
+  runtime: nodejs20.x
+  uses: "./run_lead_agent/entry.js"
+  props:
+    google_gemini:
+      authProvisionId: apn_EOhp9DY
+    event: "{{steps.handle_request.$return_value}}"
+    signal_rows: "{{steps.q_fetch_signals.$return_value}}"
+    neighbor_rows: "{{steps.q_fetch_neighbors.$return_value}}"
+    cluster_rows: "{{steps.handle_request.$return_value.cluster_rows}}"
+    prompts_rows: "{{steps.q_load_prompts.$return_value}}"
+    examples_rows: "{{steps.q_load_examples.$return_value}}"
+    subagent_url: https://eo5h5le4j2qu3tm.m.pipedream.net
+    bluesky_url: https://eoydyalz1dslfre.m.pipedream.net
+    gdelt_url: https://eoovhehfk229jrg.m.pipedream.net
+    gtrends_url: https://eov9u8rngcgi2z6.m.pipedream.net
+    grok_url: https://eovzc5ljf76h3h6.m.pipedream.net
+- namespace: respond
+  runtime: nodejs20.x
+  uses: "./respond/entry.js"
+  props:
+    request: "{{steps.handle_request.$return_value}}"
+    agent_result: "{{steps.run_lead_agent.$return_value}}"

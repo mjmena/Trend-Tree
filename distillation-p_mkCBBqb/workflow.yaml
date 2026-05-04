@@ -82,7 +82,7 @@ steps:
   runtime: nodejs20.x
   uses: "./dispatch_to_cluster_agent/entry.js"
   props:
-    cluster_agent_url: PLACEHOLDER_CLUSTER_AGENT_URL
+    cluster_agent_url: https://eoo8hdm25do049f.m.pipedream.net
     cluster_rows: "{{steps.q_cluster_signals.$return_value}}"
     signal_ids_json: "{{steps.acquire_signal_ids.$return_value.signal_ids_json}}"
     agent_session_id: "{{steps.normalize_event.$return_value.agent_session_id}}"
