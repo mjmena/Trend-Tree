@@ -22,11 +22,9 @@ steps:
       authProvisionId: apn_yghdQYJ
     sql:
       value: |-
-        SELECT s.SIGNAL_ID, s.SOURCE_NAME, s.SIGNAL_TIMESTAMP,
-               s.SIGNAL_TITLE, LEFT(s.SIGNAL_TEXT, 600) AS SIGNAL_TEXT,
-               s.AGENT_SESSION_ID
+        SELECT s.SIGNAL_ID
         FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
-        WHERE s.SIGNAL_TIMESTAMP > DATEADD(hour, -24, CURRENT_TIMESTAMP())
+        WHERE s.SIGNAL_TIMESTAMP > DATEADD(hour, -48, CURRENT_TIMESTAMP())
           AND s.AGENT_SESSION_ID LIKE 'sess-%'
           AND COALESCE(s.METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
           AND NOT EXISTS (
@@ -37,13 +35,11 @@ steps:
               AND c.PROMOTED_TO IS NOT NULL
           )
         ORDER BY s.SIGNAL_TIMESTAMP DESC NULLS LAST
-        LIMIT 400
+        LIMIT 1600
       query: |-
-        SELECT s.SIGNAL_ID, s.SOURCE_NAME, s.SIGNAL_TIMESTAMP,
-               s.SIGNAL_TITLE, LEFT(s.SIGNAL_TEXT, 600) AS SIGNAL_TEXT,
-               s.AGENT_SESSION_ID
+        SELECT s.SIGNAL_ID
         FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
-        WHERE s.SIGNAL_TIMESTAMP > DATEADD(hour, -24, CURRENT_TIMESTAMP())
+        WHERE s.SIGNAL_TIMESTAMP > DATEADD(hour, -48, CURRENT_TIMESTAMP())
           AND s.AGENT_SESSION_ID LIKE 'sess-%'
           AND COALESCE(s.METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
           AND NOT EXISTS (
@@ -54,7 +50,7 @@ steps:
               AND c.PROMOTED_TO IS NOT NULL
           )
         ORDER BY s.SIGNAL_TIMESTAMP DESC NULLS LAST
-        LIMIT 400
+        LIMIT 1600
       params: []
 - namespace: serialize_pool_signal_ids
   runtime: nodejs20.x
@@ -63,30 +59,25 @@ steps:
     rows: "{{steps.q_load_pool.$return_value}}"
 - namespace: q_cluster_signals
   runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
+  uses: "./q_cluster_signals/entry.js"
   props:
     snowflake:
       authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        CALL MCC_RAW.MARKETING_DEV.PROC_CLUSTER_SIGNAL_SUBSET(
-          PARSE_JSON(:1)::ARRAY,
-          {{steps.normalize_event.$return_value.cluster_count}}::NUMBER
-        )
-      query: |-
-        CALL MCC_RAW.MARKETING_DEV.PROC_CLUSTER_SIGNAL_SUBSET(
-          PARSE_JSON(:1)::ARRAY,
-          {{steps.normalize_event.$return_value.cluster_count}}::NUMBER
-        )
-      params:
-      - "{{steps.serialize_pool_signal_ids.$return_value.signal_ids_json}}"
-- namespace: dispatch_to_subagents
+    signal_ids_json: "{{steps.serialize_pool_signal_ids.$return_value.signal_ids_json}}"
+- namespace: batch_clusters
   runtime: nodejs20.x
-  uses: "./dispatch_to_subagents/entry.js"
+  uses: "./batch_clusters/entry.js"
   props:
-    event: "{{steps.normalize_event.$return_value}}"
     cluster_rows: "{{steps.q_cluster_signals.$return_value}}"
-    subagent_url: https://40f1843b3006b0f5d1556eff5101ae0d.m.pipedream.net
+    signal_ids_json: "{{steps.serialize_pool_signal_ids.$return_value.signal_ids_json}}"
+- namespace: dispatch_to_cluster_agent
+  runtime: nodejs20.x
+  uses: "./dispatch_to_cluster_agent/entry.js"
+  props:
+    cluster_agent_url: PLACEHOLDER_CLUSTER_AGENT_URL
+    batches: "{{steps.batch_clusters.$return_value.batches}}"
+    agent_session_id: "{{steps.normalize_event.$return_value.agent_session_id}}"
+    chain_id: "{{steps.normalize_event.$return_value.chain_id}}"
 - namespace: commit_candidates
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -171,7 +162,7 @@ steps:
         FROM cand LEFT JOIN sb ON sb.candidate_id = cand.j:candidate_id::STRING
         WHERE :1 != '[]'
       params:
-      - "{{steps.dispatch_to_subagents.$return_value.candidates_json}}"
+      - "{{steps.dispatch_to_cluster_agent.$return_value.candidates_json}}"
 - namespace: claim_revisit_signals
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -207,10 +198,10 @@ steps:
             'distillation_revisit'::STRING                                AS CURSOR_NAME,
             CURRENT_TIMESTAMP()::TIMESTAMP_NTZ                            AS LAST_RUN_AT,
             CURRENT_TIMESTAMP()::TIMESTAMP_NTZ                            AS LAST_SIGNAL_TS,
-            {{steps.dispatch_to_subagents.$return_value.run_duration_ms}}::NUMBER AS RUN_DURATION_MS,
-            {{steps.dispatch_to_subagents.$return_value.signals_seen}}::NUMBER    AS SIGNAL_COUNT,
-            {{steps.dispatch_to_subagents.$return_value.candidates_count}}::NUMBER AS CANDIDATE_COUNT,
-            {{steps.dispatch_to_subagents.$return_value.cost_usd}}::FLOAT          AS COST_USD
+            {{steps.dispatch_to_cluster_agent.$return_value.run_duration_ms}}::NUMBER AS RUN_DURATION_MS,
+            {{steps.dispatch_to_cluster_agent.$return_value.signals_seen}}::NUMBER    AS SIGNAL_COUNT,
+            {{steps.dispatch_to_cluster_agent.$return_value.candidates_count}}::NUMBER AS CANDIDATE_COUNT,
+            {{steps.dispatch_to_cluster_agent.$return_value.cost_usd}}::FLOAT          AS COST_USD
         ) source
         ON target.CURSOR_NAME = source.CURSOR_NAME
         WHEN MATCHED THEN UPDATE SET
@@ -233,10 +224,10 @@ steps:
             'distillation_revisit'::STRING                                AS CURSOR_NAME,
             CURRENT_TIMESTAMP()::TIMESTAMP_NTZ                            AS LAST_RUN_AT,
             CURRENT_TIMESTAMP()::TIMESTAMP_NTZ                            AS LAST_SIGNAL_TS,
-            {{steps.dispatch_to_subagents.$return_value.run_duration_ms}}::NUMBER AS RUN_DURATION_MS,
-            {{steps.dispatch_to_subagents.$return_value.signals_seen}}::NUMBER    AS SIGNAL_COUNT,
-            {{steps.dispatch_to_subagents.$return_value.candidates_count}}::NUMBER AS CANDIDATE_COUNT,
-            {{steps.dispatch_to_subagents.$return_value.cost_usd}}::FLOAT          AS COST_USD
+            {{steps.dispatch_to_cluster_agent.$return_value.run_duration_ms}}::NUMBER AS RUN_DURATION_MS,
+            {{steps.dispatch_to_cluster_agent.$return_value.signals_seen}}::NUMBER    AS SIGNAL_COUNT,
+            {{steps.dispatch_to_cluster_agent.$return_value.candidates_count}}::NUMBER AS CANDIDATE_COUNT,
+            {{steps.dispatch_to_cluster_agent.$return_value.cost_usd}}::FLOAT          AS COST_USD
         ) source
         ON target.CURSOR_NAME = source.CURSOR_NAME
         WHEN MATCHED THEN UPDATE SET
@@ -259,7 +250,6 @@ steps:
   props:
     event: "{{steps.normalize_event.$return_value}}"
     pool_size: "{{steps.serialize_pool_signal_ids.$return_value.count}}"
-    dispatch_result: "{{steps.dispatch_to_subagents.$return_value}}"
+    dispatch_result: "{{steps.dispatch_to_cluster_agent.$return_value}}"
     commit_result: "{{steps.commit_candidates.$return_value}}"
     claim_result: "{{steps.claim_revisit_signals.$return_value}}"
-

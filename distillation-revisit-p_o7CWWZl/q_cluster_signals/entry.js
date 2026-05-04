@@ -1,10 +1,9 @@
-// Distillation — q_cluster_signals (direct TCP connector)
+// Distillation Revisit — q_cluster_signals (direct TCP connector)
 //
-// Calls PROC_CLUSTER_SIGNAL_SUBSET (Louvain, resolution=0.8) via the
-// snowflake-sdk TCP connector. Bypasses the HTTP proxy's size/timeout limits.
-//
-// Returns a flat array of { signal_id, cluster_id, signal_title,
-// source_name, similarity_to_seed } objects.
+// Calls PROC_CLUSTER_SIGNAL_SUBSET (Louvain, resolution=0.8) across the
+// full 48h claimed-but-unpromotable signal pool. Runs across the full pool
+// so signals from different days can cluster together — that's the whole
+// point of the revisit pass. Uses TCP to bypass proxy size/timeout limits.
 
 import snowflake from "snowflake-sdk";
 
@@ -53,7 +52,7 @@ export default defineComponent({
     });
 
     try {
-      console.log(`Louvain clustering ${ids.length} signals (resolution=0.8)`);
+      console.log(`Louvain clustering ${ids.length} revisit signals (resolution=0.8)`);
       const rows = await execute(
         conn,
         "CALL MCC_RAW.MARKETING_DEV.PROC_CLUSTER_SIGNAL_SUBSET(PARSE_JSON(?)::ARRAY, 0.8::FLOAT)",
@@ -64,7 +63,7 @@ export default defineComponent({
       const result = typeof raw === "string" ? JSON.parse(raw) : (raw ?? []);
       const clusters = Array.isArray(result) ? result : [];
       const k = new Set(clusters.map((c) => c.cluster_id)).size;
-      console.log(`Louvain: ${clusters.length} signals → ${k} communities`);
+      console.log(`Louvain revisit: ${clusters.length} signals → ${k} communities`);
       $.export("$summary", `${clusters.length} signals → ${k} communities`);
       return clusters;
     } finally {
