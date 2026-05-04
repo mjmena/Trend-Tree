@@ -26,10 +26,12 @@ export default defineComponent({
     const method = (this.trigger_event?.method || "").toUpperCase();
     if (method !== "POST") {
       $.flow.exit(`ignored: method=${method || "unknown"}`);
+      return;
     }
     const trend_id = String(body.trend_id || "").trim();
     if (!trend_id) {
       $.flow.exit("ignored: POST with no trend_id (health probe or test payload)");
+      return;
     }
     if (!TREND_ID_OK.test(trend_id)) {
       throw new Error(`invalid or missing 'trend_id' (got '${trend_id}')`);
