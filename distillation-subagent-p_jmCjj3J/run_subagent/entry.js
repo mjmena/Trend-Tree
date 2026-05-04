@@ -120,44 +120,8 @@ const QUERY_SCHEMAS = {
   },
 };
 
-const INGEST_SCHEMAS = {
-  ingest_search_bluesky: {
-    name: "ingest_search_bluesky",
-    description: "Search Bluesky. ~6-8s. Persists to STG_EXTERNAL_SIGNALS tagged with agent_session_id.",
-    input_schema: {
-      type: "object",
-      properties: { query: { type: "string" }, limit: { type: "integer" }, sort: { type: "string", enum: ["latest", "top"] } },
-      required: ["query"],
-    },
-  },
-  ingest_search_gdelt: {
-    name: "ingest_search_gdelt",
-    description: "Search GDELT. ~20-30s. Persists to STG_EXTERNAL_SIGNALS tagged with agent_session_id.",
-    input_schema: {
-      type: "object",
-      properties: { topic: { type: "string" }, window_days: { type: "integer" }, mode: { type: "string", enum: ["ArtList", "ArtRecent"] } },
-      required: ["topic"],
-    },
-  },
-  ingest_search_google_trends: {
-    name: "ingest_search_google_trends",
-    description: "Google Trends interest + related queries. ~30-50s. Use sparingly.",
-    input_schema: {
-      type: "object",
-      properties: { keyword: { type: "string" }, geo: { type: "string" }, timeframe: { type: "string" } },
-      required: ["keyword"],
-    },
-  },
-  ingest_grok_live_search: {
-    name: "ingest_grok_live_search",
-    description: "Grok 3 live web/X search. Fastest (~3-5s). Use FIRST.",
-    input_schema: {
-      type: "object",
-      properties: { query: { type: "string" }, mode: { type: "string", enum: ["web", "x", "both"] } },
-      required: ["query"],
-    },
-  },
-};
+// Ingest tools removed: the cluster agent's Gemini lead loop handles live
+// grounding before dispatching. The subagent works from pre-fetched context.
 
 const PROPOSE_SCHEMA = {
   propose_trend_candidate: {
@@ -202,24 +166,12 @@ const SUBAGENT_TOOL_NAMES = [
   "validate_url_canonical",
   "discover_external_tools",
   "propose_trend_candidate",
-  // Ingest tools — typically loaded via discover_external_tools but we expose
-  // them eagerly so the subagent can call them directly without a meta-tool round-trip.
-  "ingest_search_bluesky",
-  "ingest_search_gdelt",
-  "ingest_search_google_trends",
-  "ingest_grok_live_search",
 ];
 
-const DEFERRED_BY_NEED = {
-  social: ["ingest_search_bluesky"],
-  web: ["ingest_grok_live_search", "ingest_search_google_trends"],
-  search: ["ingest_search_gdelt", "ingest_grok_live_search", "ingest_search_google_trends"],
-  cultural: ["ingest_search_bluesky", "ingest_grok_live_search"],
-  competitive: ["ingest_grok_live_search", "ingest_search_gdelt"],
-  all: ["ingest_search_bluesky", "ingest_search_gdelt", "ingest_search_google_trends", "ingest_grok_live_search"],
-};
+// discover_external_tools returns empty — ingest tools no longer available in subagent.
+const DEFERRED_BY_NEED = {};
 
-const ALL_SCHEMAS = { ...QUERY_SCHEMAS, ...INGEST_SCHEMAS, ...PROPOSE_SCHEMA, ...META_SCHEMAS };
+const ALL_SCHEMAS = { ...QUERY_SCHEMAS, ...PROPOSE_SCHEMA, ...META_SCHEMAS };
 
 function getToolSchemas(names) {
   return names.map((n) => {
@@ -322,62 +274,13 @@ async function validateUrlCanonical(input) {
   return { results };
 }
 
-function discoverExternalTools(input) {
-  const need = (input.need || "all").toLowerCase();
-  const wanted = DEFERRED_BY_NEED[need] || DEFERRED_BY_NEED.all;
+function discoverExternalTools(_input) {
   return {
-    tools: wanted.map((n) => ALL_SCHEMAS[n]),
-    note: `Loaded ${wanted.length} tool(s) for need='${need}'.`,
+    tools: [],
+    note: "No external ingest tools available in subagent. The cluster agent's lead loop handles live grounding.",
   };
 }
 
-async function postJson(url, body, { timeoutMs = 90_000 } = {}) {
-  if (!url || /PLACEHOLDER/i.test(url)) return { error: `tool endpoint not configured (got '${url}')` };
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const resp = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      signal: ctrl.signal,
-    });
-    const text = await resp.text();
-    let parsed = null;
-    try { parsed = JSON.parse(text); } catch { /* not json */ }
-    if (!resp.ok) return { error: `HTTP ${resp.status}: ${text.slice(0, 400)}` };
-    return parsed ?? { _raw: text };
-  } catch (e) {
-    return { error: e.message };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function ingestBluesky(input, ctx) {
-  return postJson(ctx.endpoints?.ingest_search_bluesky, {
-    query: input.query, limit: input.limit ?? 25, sort: input.sort ?? "latest",
-    agent_session_id: ctx.agent_session_id,
-  }, { timeoutMs: 30_000 });
-}
-async function ingestGdelt(input, ctx) {
-  return postJson(ctx.endpoints?.ingest_search_gdelt, {
-    topic: input.topic, window_days: input.window_days ?? 7, mode: input.mode ?? "ArtList",
-    agent_session_id: ctx.agent_session_id,
-  }, { timeoutMs: 60_000 });
-}
-async function ingestGoogleTrends(input, ctx) {
-  return postJson(ctx.endpoints?.ingest_search_google_trends, {
-    keyword: input.keyword, geo: input.geo ?? "US", timeframe: input.timeframe ?? "now 7-d",
-    agent_session_id: ctx.agent_session_id,
-  }, { timeoutMs: 90_000 });
-}
-async function ingestGrokLive(input, ctx) {
-  return postJson(ctx.endpoints?.ingest_grok_live_search, {
-    query: input.query, mode: input.mode ?? "both",
-    agent_session_id: ctx.agent_session_id,
-  }, { timeoutMs: 30_000 });
-}
 
 function proposeTrendCandidate(input, ctx) {
   const ids = input.supporting_signal_ids || [];
@@ -405,10 +308,6 @@ const DISPATCHERS = {
   validate_dedupe_pair: (input, ctx) => validateDedupePair(input, ctx),
   validate_url_canonical: (input) => validateUrlCanonical(input),
   discover_external_tools: (input) => discoverExternalTools(input),
-  ingest_search_bluesky: (input, ctx) => ingestBluesky(input, ctx),
-  ingest_search_gdelt: (input, ctx) => ingestGdelt(input, ctx),
-  ingest_search_google_trends: (input, ctx) => ingestGoogleTrends(input, ctx),
-  ingest_grok_live_search: (input, ctx) => ingestGrokLive(input, ctx),
   propose_trend_candidate: (input, ctx) => proposeTrendCandidate(input, ctx),
 };
 
@@ -627,18 +526,6 @@ export default defineComponent({
       label: "DIM_LLM_PROMPT rows",
       description: "Output of the q_load_prompts step",
     },
-    examples_rows: {
-      type: "any",
-      label: "V_VALUABLE_TREND_EXAMPLES rows",
-      description: "Output of the q_load_examples step — few-shot grounding for the specificity rubric",
-      optional: true,
-    },
-    // Endpoint URLs — wired in workflow.yaml so the targets are visible there
-    // instead of buried in code. Required: throws if missing or PLACEHOLDER.
-    bluesky_url: { type: "string", label: "Search Bluesky tool endpoint" },
-    gdelt_url: { type: "string", label: "Search GDELT tool endpoint" },
-    gtrends_url: { type: "string", label: "Search Google Trends tool endpoint" },
-    grok_url: { type: "string", label: "Grok Live Search tool endpoint" },
   },
   async run({ $ }) {
     const req = this.request || {};
@@ -656,12 +543,12 @@ export default defineComponent({
     }));
     const trend_neighbor_pool = (Array.isArray(this.neighbor_rows) ? this.neighbor_rows : []).map((r) => ({
       trend_id: r.TREND_ID,
-      trend_topic: r.TREND_TOPIC,
+      trend_topic: r.TREND_NAME,
       total_cluster_size: r.TOTAL_CLUSTER_SIZE,
       distinct_source_count: r.DISTINCT_SOURCE_COUNT,
       velocity_direction: r.VELOCITY_DIRECTION,
-      trend_heat_index: r.TREND_HEAT_INDEX,
-      last_update_at: r.LAST_UPDATE_AT,
+      trend_heat_index: r.HEAT_INDEX,
+      last_update_at: r.LAST_LIFECYCLE_EVAL_AT,
     }));
 
     const context = {
@@ -670,35 +557,13 @@ export default defineComponent({
       agent_session_id: req.agent_session_id || "",
       chain_id: req.chain_id || "",
       iteration: 1,
-      endpoints: {
-        ingest_search_bluesky: this.bluesky_url,
-        ingest_search_gdelt: this.gdelt_url,
-        ingest_search_google_trends: this.gtrends_url,
-        ingest_grok_live_search: this.grok_url,
-      },
     };
 
     const loaded = loadPrompts(this.prompts_rows);
     const sysPrompt = mustGet(loaded, PROMPT_KEY_SYSTEM);
 
-    // Few-shot block from V_VALUABLE_TREND_EXAMPLES — pre-flatten to a
-    // numbered list so the prompt template's {{valuable_examples}} placeholder
-    // gets a single multi-line string.
-    const valuable_examples = (Array.isArray(this.examples_rows) ? this.examples_rows : [])
-      .map((r, i) => {
-        const b2b = r.TREND_NAME_B2B || "";
-        const b2c = r.TREND_NAME_B2C || "";
-        const cat = `${r.CATEGORY || "?"}/${r.SUBCATEGORY || "?"}`;
-        const summary = (r.SUMMARY_SHORT || "").replace(/\s+/g, " ").trim().slice(0, 240);
-        return `${i + 1}. "${b2b}" / "${b2c}" — ${cat}: ${summary}`;
-      })
-      .join("\n") || "(no examples available)";
-
-    const system = render(sysPrompt.template, { valuable_examples });
-    console.log(
-      `Subagent prompts: ${PROMPT_KEY_SYSTEM} v${sysPrompt.version} ` +
-      `(${this.examples_rows?.length ?? 0} few-shot examples)`,
-    );
+    const system = render(sysPrompt.template, {});
+    console.log(`Subagent prompts: ${PROMPT_KEY_SYSTEM} v${sysPrompt.version}`);
 
     const userMsg = `HYPOTHESIS: ${req.hypothesis}
 
