@@ -1,0 +1,8 @@
+schema: workflow/2022.04
+name: Audit Agent
+settings:
+  error_notification: true
+triggers:
+- id: ti_A6T29Do
+- id: hi_dyHErEx
+
