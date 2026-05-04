@@ -9,8 +9,9 @@
 // api.pipedream.com from inside a step. Pattern documented in
 // scripts/test_distillation.sh:117.
 //
-// Bearer token from PIPEDREAM_API_KEY env var (set on the deployed workflow
-// via Pipedream UI → Settings → Environment).
+// Bearer token from API_KEY_PIPEDREAM env var (set workspace-wide via
+// Pipedream UI → Account Settings → Environment Variables. The
+// `PIPEDREAM_*` prefix is reserved by Pipedream, hence the inverted name).
 
 const ORG_ID = "o_qOIvyEa";
 const PROJECT_ID = "proj_x9sLmqO";
@@ -59,7 +60,7 @@ export default defineComponent({
   async run() {
     const apiKey = process.env.API_KEY_PIPEDREAM;
     if (!apiKey) {
-      throw new Error("PIPEDREAM_API_KEY env var missing — set on workflow Settings → Environment");
+      throw new Error("API_KEY_PIPEDREAM env var missing — set workspace-wide via Account Settings → Environment Variables");
     }
 
     // 1. List workflows in the project.
