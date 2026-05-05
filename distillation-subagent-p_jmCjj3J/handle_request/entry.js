@@ -22,11 +22,20 @@ export default defineComponent({
   props: {
     trigger_event: { type: "any" },
   },
-  async run() {
+  async run({ $ }) {
     const body = this.trigger_event?.body || {};
 
+    const method = (this.trigger_event?.method || "").toUpperCase();
+    if (method !== "POST") {
+      $.flow.exit(`ignored: method=${method || "unknown"}`);
+      return;
+    }
+
     const hypothesis = String(body.hypothesis || "").trim();
-    if (!hypothesis) throw new Error("missing 'hypothesis' in request body");
+    if (!hypothesis) {
+      $.flow.exit("ignored: POST with no hypothesis (health probe or test payload)");
+      return;
+    }
     if (hypothesis.length > HYPOTHESIS_MAX) throw new Error(`hypothesis too long (max ${HYPOTHESIS_MAX} chars)`);
 
     const rawSignalIds = Array.isArray(body.signal_ids) ? body.signal_ids : [];

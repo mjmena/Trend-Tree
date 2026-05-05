@@ -16,8 +16,14 @@ export default defineComponent({
   props: {
     trigger_event: { type: "any" },
   },
-  async run() {
+  async run({ $ }) {
     const body = this.trigger_event?.body || {};
+
+    const method = (this.trigger_event?.method || "").toUpperCase();
+    if (method !== "POST") {
+      $.flow.exit(`ignored: method=${method || "unknown"}`);
+      return;
+    }
 
     const cluster_rows = Array.isArray(body.cluster_rows) ? body.cluster_rows : [];
     const signal_ids_json = String(body.signal_ids_json || "[]");
@@ -31,7 +37,8 @@ export default defineComponent({
     }
 
     if (signal_ids.length === 0) {
-      throw new Error("signal_ids_json parsed to empty array — nothing to process");
+      $.flow.exit("ignored: POST with no signal_ids_json (health probe or test payload)");
+      return;
     }
 
     const agent_session_id = sanitizeId(body.agent_session_id) || `sess-ca-${Date.now().toString(36)}`;
