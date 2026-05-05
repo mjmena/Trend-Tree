@@ -588,6 +588,26 @@ export default defineComponent({
       metrics, source_metrics, recent_signals: merged_signals, gtrends_history,
     });
 
+    // Velocity + trajectory metrics for the agent's heat context block.
+    const _now = Date.now();
+    const _7d = 7 * 24 * 3600 * 1000;
+    const _24h = 24 * 3600 * 1000;
+    const last7dSignals = merged_signals.filter(s => {
+      const ts = s.signal_timestamp ? new Date(s.signal_timestamp).getTime() : 0;
+      return ts > 0 && (_now - ts) <= _7d;
+    });
+    const last24hCount = merged_signals.filter(s => {
+      const ts = s.signal_timestamp ? new Date(s.signal_timestamp).getTime() : 0;
+      return ts > 0 && (_now - ts) <= _24h;
+    }).length;
+    const dailyVelocityAvg = (last7dSignals.length / 7).toFixed(1);
+    // lifecycle_history is sorted newest-first by the SQL query
+    const priorHeat = lifecycle_history.length ? Number(lifecycle_history[0].new_heat) : null;
+    const heatDelta = priorHeat !== null ? (heat_base - priorHeat).toFixed(1) : null;
+    const heatTrajectory = lifecycle_history.length
+      ? lifecycle_history.slice(0, 5).map(h => `${h.evaluated_at}: ${h.new_heat}`).join(" → ")
+      : null;
+
     const context = {
       neighbor_pool,
       recent_signals: merged_signals,
@@ -644,11 +664,15 @@ Specificity score: ${metrics.specificity_score}`;
       ? candidate_signals.map((s, i) =>
           `${i + 1}. sim=${s.similarity.toFixed(2)} [${s.source_name}] ${s.signal_timestamp} — "${(s.signal_title || "").slice(0, 120)}"`
         ).join("\n")
-      : "(no vector-similar signals in last 24h)";
+      : "(no vector-similar signals in last 7d)";
 
     const heat_baseline_block = `heat_base = ${heat_base}
 components: ${fmtJson(components)}
 formula: 20*recency + 25*velocity + 25*breadth + 20*external + 10*confidence
+heat_delta (vs prior eval): ${heatDelta !== null ? heatDelta : "(first eval)"}
+heat_trajectory (recent evals, newest first): ${heatTrajectory || "(first eval)"}
+signals last 7d: ${last7dSignals.length} (avg ${dailyVelocityAvg}/day)
+signals last 24h: ${last24hCount}
 Your modifier window: [-20, 20] %`;
 
     // Load + render prompts
