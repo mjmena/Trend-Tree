@@ -569,14 +569,28 @@ export default defineComponent({
       similarity: Number(r.SIMILARITY || 0),
     }));
 
+    // Merge promotion-time signals with vector-similar recent signals so
+    // recency + velocity reflect ongoing topic activity, not just the frozen
+    // promotion-time link set. Dedup by signal_id; sort newest-first so
+    // computeHeatBase sees the most recent signal at index 0.
+    const signalById = new Map();
+    for (const s of [...recent_signals, ...candidate_signals]) {
+      if (!signalById.has(s.signal_id)) signalById.set(s.signal_id, s);
+    }
+    const merged_signals = [...signalById.values()].sort((a, b) => {
+      const ta = a.signal_timestamp ? new Date(a.signal_timestamp).getTime() : 0;
+      const tb = b.signal_timestamp ? new Date(b.signal_timestamp).getTime() : 0;
+      return tb - ta;
+    });
+
     // Compute heat baseline
     const { heat_base, components } = computeHeatBase({
-      metrics, source_metrics, recent_signals, gtrends_history,
+      metrics, source_metrics, recent_signals: merged_signals, gtrends_history,
     });
 
     const context = {
       neighbor_pool,
-      recent_signals,
+      recent_signals: merged_signals,
       lifecycle_history,
       proposed_decision: null,
       agent_session_id: ev.agent_session_id,
