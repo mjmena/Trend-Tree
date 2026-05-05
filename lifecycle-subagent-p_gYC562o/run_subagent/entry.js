@@ -222,21 +222,22 @@ function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
 function computeHeatBase({ metrics, source_metrics, recent_signals, gtrends_history }) {
   const now = Date.now();
 
-  // recency_factor: half-life 72h on hours_since_last_signal
+  // recency_factor: half-life 120h — a signal from a week ago still scores ~25%
   const lastSignalTs = recent_signals[0]?.signal_timestamp
     ? new Date(recent_signals[0].signal_timestamp).getTime()
     : metrics?.last_update_at ? new Date(metrics.last_update_at).getTime() : now;
   const hoursSince = Math.max(0, (now - lastSignalTs) / (3600 * 1000));
-  const recency_factor = Math.exp(-hoursSince / 72);
+  const recency_factor = Math.exp(-hoursSince / 120);
 
-  // velocity_factor: simple 7-day count, sigmoid-normalized
+  // velocity_factor: 7-day merged count, sigmoid centered at 2 signals/week.
+  // Floor (0 signals): sigmoid(-0.67) ≈ 0.34 → 8.5 pts.
+  // Neutral (2 signals): sigmoid(0) = 0.5 → 12.5 pts.
   const sevenD = 7 * 24 * 3600 * 1000;
   const last7dCount = recent_signals.filter((s) => {
     const ts = s.signal_timestamp ? new Date(s.signal_timestamp).getTime() : 0;
     return ts > 0 && (now - ts) <= sevenD;
   }).length;
-  // Center sigmoid at 5 signals/week; growing trends pull toward 1
-  const velocity_factor = sigmoid((last7dCount - 5) / 3);
+  const velocity_factor = sigmoid((last7dCount - 2) / 3);
 
   // breadth_factor: shannon entropy of source_breakdown
   const sourceCounts = {};
@@ -248,12 +249,12 @@ function computeHeatBase({ metrics, source_metrics, recent_signals, gtrends_hist
   const breadth_factor = shannonEntropyNormalized(sourceCounts);
 
   // external_factor: latest gtrends INTEREST_PEAK_PCT normalized to [0,1].
-  // Default 0.5 (neutral) when no gtrends data yet — never penalize for
-  // poller not having run yet.
+  // Default 0.65 when no gtrends data yet — assumes moderate external presence
+  // for any trend that made it through promotion; never penalizes for poller lag.
   const latestGt = gtrends_history[0];
   const external_factor = latestGt && Number.isFinite(Number(latestGt.interest_peak_pct))
     ? Math.min(1, Math.max(0, Number(latestGt.interest_peak_pct) / 100))
-    : 0.5;
+    : 0.65;
 
   // confidence: from FCT_TRENDS.CONFIDENCE (0-1)
   const confidence = Number(metrics?.confidence || 0.5);
