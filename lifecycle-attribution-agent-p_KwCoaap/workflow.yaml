@@ -6,6 +6,7 @@ settings:
   lambda_timeout: 180
 triggers:
 - id: hi_xQHxdxX
+- id: dc_lVupvbe
 steps:
 - namespace: normalize_event
   runtime: nodejs20.x
