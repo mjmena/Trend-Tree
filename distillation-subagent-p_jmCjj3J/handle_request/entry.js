@@ -32,10 +32,7 @@ export default defineComponent({
     }
 
     const hypothesis = String(body.hypothesis || "").trim();
-    if (!hypothesis) {
-      $.flow.exit("ignored: POST with no hypothesis (health probe or test payload)");
-      return;
-    }
+    if (!hypothesis) throw new Error("missing 'hypothesis' in request body");
     if (hypothesis.length > HYPOTHESIS_MAX) throw new Error(`hypothesis too long (max ${HYPOTHESIS_MAX} chars)`);
 
     const rawSignalIds = Array.isArray(body.signal_ids) ? body.signal_ids : [];

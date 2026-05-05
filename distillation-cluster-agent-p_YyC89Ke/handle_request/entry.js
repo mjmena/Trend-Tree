@@ -37,8 +37,7 @@ export default defineComponent({
     }
 
     if (signal_ids.length === 0) {
-      $.flow.exit("ignored: POST with no signal_ids_json (health probe or test payload)");
-      return;
+      throw new Error("signal_ids_json parsed to empty array — nothing to process");
     }
 
     const agent_session_id = sanitizeId(body.agent_session_id) || `sess-ca-${Date.now().toString(36)}`;
