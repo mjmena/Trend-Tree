@@ -61,20 +61,6 @@ Verticals are configurable and tuned per-model, so coverage can be reweighted as
 
 ---
 
-## Operational scale
-
-| | |
-|---|---|
-| Trends actively tracked | **136** |
-| Lifecycle evaluations on record | **304** |
-| Promotion decisions on record | **357** |
-| Enrichment runs on record | **466** |
-| Signals available for clustering | **4,227** (last 3 days) |
-| Average enrichment cost | **~$0.45** per trend |
-| Time from raw signal → named trend | **~10–15 min** end-to-end |
-
----
-
 ## For technical readers
 
 - **[`docs/schema.md`](docs/schema.md)** — Snowflake table reference, starting with `DT_TREND_DASHBOARD` (the surface Steeple reads). Quick-start queries included.
