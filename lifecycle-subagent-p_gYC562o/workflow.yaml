@@ -132,7 +132,7 @@ steps:
         LEFT JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c ON c.CANDIDATE_ID = t.CANDIDATE_ID
         WHERE t.TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
     params: []
-- namespace: q_source_metrics
+- namespace: q_signal_domains
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
   props:
@@ -140,13 +140,73 @@ steps:
       authProvisionId: apn_yghdQYJ
     sql:
       value: |-
-        SELECT SOURCE_NAME, HEADLINE_METRIC, HEADLINE_METRIC_NAME, METRICS, ENRICHED_AT
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCE_METRICS
-        WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+        WITH signal_domains AS (
+          SELECT
+            s.SIGNAL_ID,
+            CASE
+              WHEN s.SOURCE_NAME = 'wikimedia'             THEN 'wikipedia.org'
+              WHEN s.SOURCE_NAME = 'amazon_trends'         THEN 'amazon.com'
+              WHEN s.SOURCE_NAME = 'tiktok'                THEN 'tiktok.com'
+              WHEN s.SOURCE_NAME = 'pinterest'             THEN 'pinterest.com'
+              WHEN s.SOURCE_NAME = 'bluesky'               THEN 'bsky.app'
+              WHEN s.SOURCE_NAME = 'google_trends_explore' THEN 'trends.google.com'
+              WHEN s.SOURCE_NAME = 'grok_live'             THEN 'x.com'
+              WHEN s.SOURCE_NAME = 'gdelt'
+                THEN LOWER(REGEXP_REPLACE(s.METADATA:domain::STRING, '^www\\.', ''))
+              WHEN s.SOURCE_NAME LIKE 'gemini\\_%' ESCAPE '\\'
+                THEN LOWER(s.METADATA:source_name::STRING)
+              WHEN s.SOURCE_NAME LIKE 'agent\\_%\\_discovery' ESCAPE '\\' THEN
+                CASE
+                  WHEN s.METADATA:canonical_url::STRING LIKE '%vertexaisearch.cloud.google.com%'
+                    THEN NULL
+                  ELSE LOWER(REGEXP_REPLACE(
+                    REGEXP_SUBSTR(s.METADATA:canonical_url::STRING, 'https?://([^/]+)', 1, 1, 'e', 1),
+                    '^www\\.', ''))
+                END
+              ELSE NULL
+            END AS DOMAIN
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS s
+        )
+        SELECT sd.DOMAIN, COUNT(*) AS SIGNAL_COUNT
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
+        JOIN signal_domains sd ON sd.SIGNAL_ID = ts.SIGNAL_ID
+        WHERE ts.TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+          AND sd.DOMAIN IS NOT NULL
+        GROUP BY sd.DOMAIN
       query: |-
-        SELECT SOURCE_NAME, HEADLINE_METRIC, HEADLINE_METRIC_NAME, METRICS, ENRICHED_AT
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCE_METRICS
-        WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+        WITH signal_domains AS (
+          SELECT
+            s.SIGNAL_ID,
+            CASE
+              WHEN s.SOURCE_NAME = 'wikimedia'             THEN 'wikipedia.org'
+              WHEN s.SOURCE_NAME = 'amazon_trends'         THEN 'amazon.com'
+              WHEN s.SOURCE_NAME = 'tiktok'                THEN 'tiktok.com'
+              WHEN s.SOURCE_NAME = 'pinterest'             THEN 'pinterest.com'
+              WHEN s.SOURCE_NAME = 'bluesky'               THEN 'bsky.app'
+              WHEN s.SOURCE_NAME = 'google_trends_explore' THEN 'trends.google.com'
+              WHEN s.SOURCE_NAME = 'grok_live'             THEN 'x.com'
+              WHEN s.SOURCE_NAME = 'gdelt'
+                THEN LOWER(REGEXP_REPLACE(s.METADATA:domain::STRING, '^www\\.', ''))
+              WHEN s.SOURCE_NAME LIKE 'gemini\\_%' ESCAPE '\\'
+                THEN LOWER(s.METADATA:source_name::STRING)
+              WHEN s.SOURCE_NAME LIKE 'agent\\_%\\_discovery' ESCAPE '\\' THEN
+                CASE
+                  WHEN s.METADATA:canonical_url::STRING LIKE '%vertexaisearch.cloud.google.com%'
+                    THEN NULL
+                  ELSE LOWER(REGEXP_REPLACE(
+                    REGEXP_SUBSTR(s.METADATA:canonical_url::STRING, 'https?://([^/]+)', 1, 1, 'e', 1),
+                    '^www\\.', ''))
+                END
+              ELSE NULL
+            END AS DOMAIN
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS s
+        )
+        SELECT sd.DOMAIN, COUNT(*) AS SIGNAL_COUNT
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
+        JOIN signal_domains sd ON sd.SIGNAL_ID = ts.SIGNAL_ID
+        WHERE ts.TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
+          AND sd.DOMAIN IS NOT NULL
+        GROUP BY sd.DOMAIN
     params: []
 - namespace: q_lifecycle_history
   runtime: nodejs20.x
@@ -432,7 +492,7 @@ steps:
       authProvisionId: apn_EOhp9DY
     event: "{{steps.handle_request.$return_value}}"
     metrics_rows: "{{steps.q_metrics.$return_value}}"
-    source_metrics_rows: "{{steps.q_source_metrics.$return_value}}"
+    signal_domain_rows: "{{steps.q_signal_domains.$return_value}}"
     lifecycle_history_rows: "{{steps.q_lifecycle_history.$return_value}}"
     recent_signal_rows: "{{steps.q_recent_signals.$return_value}}"
     candidate_signal_rows: "{{steps.q_candidate_signals.$return_value}}"

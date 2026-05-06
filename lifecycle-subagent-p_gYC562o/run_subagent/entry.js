@@ -219,7 +219,7 @@ function shannonEntropyNormalized(counts) {
 
 function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
 
-function computeHeatBase({ metrics, source_metrics, recent_signals, gtrends_history }) {
+function computeHeatBase({ metrics, signal_domain_counts, recent_signals, gtrends_history }) {
   const now = Date.now();
 
   // recency_factor: half-life 120h — a signal from a week ago still scores ~25%
@@ -239,14 +239,11 @@ function computeHeatBase({ metrics, source_metrics, recent_signals, gtrends_hist
   }).length;
   const velocity_factor = sigmoid((last7dCount - 2) / 3);
 
-  // breadth_factor: shannon entropy of source_breakdown
-  const sourceCounts = {};
-  for (const sm of source_metrics) {
-    if (Number(sm.headline_metric || 0) > 0) {
-      sourceCounts[sm.source_name] = Number(sm.headline_metric || 1);
-    }
-  }
-  const breadth_factor = shannonEntropyNormalized(sourceCounts);
+  // breadth_factor: shannon entropy across distinct attached domains.
+  // 0 or 1 distinct domains → entropy = 0 → 0 pts (special-cased in
+  // shannonEntropyNormalized). Domain extraction mirrors sql/dt_trend_dashboard.sql's
+  // signal_domains CTE — keep them in sync.
+  const breadth_factor = shannonEntropyNormalized(signal_domain_counts);
 
   // external_factor: latest gtrends INTEREST_PEAK_PCT normalized to [0,1].
   // Default 0.65 when no gtrends data yet — assumes moderate external presence
@@ -470,7 +467,7 @@ export default defineComponent({
     google_gemini: { type: "app", app: "google_gemini" },
     event: { type: "any" },
     metrics_rows: { type: "any" },
-    source_metrics_rows: { type: "any", optional: true },
+    signal_domain_rows: { type: "any", optional: true },
     lifecycle_history_rows: { type: "any", optional: true },
     recent_signal_rows: { type: "any", optional: true },
     candidate_signal_rows: { type: "any", optional: true },
@@ -513,13 +510,15 @@ export default defineComponent({
       enrichment_version: metricsRow.ENRICHMENT_VERSION,
     };
 
-    const source_metrics = (this.source_metrics_rows || []).map((r) => ({
-      source_name: r.SOURCE_NAME,
-      headline_metric: r.HEADLINE_METRIC,
-      headline_metric_name: r.HEADLINE_METRIC_NAME,
-      metrics: parseVariant(r.METRICS),
-      enriched_at: r.ENRICHED_AT,
-    }));
+    // Per-domain signal counts attached to this trend (from q_signal_domains).
+    // Drives breadth_factor via Shannon entropy in computeHeatBase. Counts come
+    // from FCT_TREND_SIGNALS (both 'supporting' and 'attributed' LINK_KINDs)
+    // with each signal mapped to a canonical publisher domain.
+    const signal_domain_counts = Object.fromEntries(
+      (this.signal_domain_rows || [])
+        .filter((r) => r.DOMAIN && Number(r.SIGNAL_COUNT) > 0)
+        .map((r) => [r.DOMAIN, Number(r.SIGNAL_COUNT)])
+    );
 
     const lifecycle_history = (this.lifecycle_history_rows || []).map((r) => ({
       evaluated_at: r.EVALUATED_AT,
@@ -586,7 +585,7 @@ export default defineComponent({
 
     // Compute heat baseline
     const { heat_base, components } = computeHeatBase({
-      metrics, source_metrics, recent_signals: merged_signals, gtrends_history,
+      metrics, signal_domain_counts, recent_signals: merged_signals, gtrends_history,
     });
 
     // Velocity + trajectory metrics for the agent's heat context block.
