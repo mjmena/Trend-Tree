@@ -1,27 +1,32 @@
 # Trend Tree
 
-Trend Tree watches the public consumer-culture firehose — news, social media, search, and marketplace signals — and decides what's worth calling a trend. It runs end-to-end without human dispatch: naming each trend for two audiences, scoring its heat index, and retiring it when the conversation fades.
+**McClatchy's always-on consumer-trend intelligence system.**
+
+Trend Tree watches the public conversation across news, social, search, and commerce — decides what's worth calling a trend — and delivers each one as a named, scored, evidence-backed record. Fast enough for editorial to publish on. Sharp enough for sponsorship to sell on.
+
+A new trend is detected, named, and on the dashboard in **~10–15 minutes** end-to-end. Every active trend is re-evaluated hourly, so the heat scores never go stale.
 
 ---
 
-## How it works
+## Five agents, one pipeline
 
-```mermaid
-flowchart LR
-    A["📡 News · Social\nSearch · Commerce"] -->|"every 2h"| B["🔍 Discovery\n3 AI models scan\n6 consumer verticals"]
-    B --> C["🧪 Distillation\nwhich clusters are\nreal trends?"]
-    C --> D["✍️ Enrichment\nname it · describe it\ncite the evidence"]
-    D --> E["🔄 Lifecycle\nhourly re-check:\nstill alive?"]
-    E -->|"heat score + status"| F["📊 Trend Dashboard\n136 live trends"]
-```
+Trend Tree is a coordinated system of five specialized AI agents. Each owns exactly one kind of decision, runs continuously, and writes its reasoning to an immutable ledger — every promotion, naming, and lifecycle call is on record and auditable.
 
-A fresh trend takes **~10–15 minutes** from first signal to named and on the dashboard. The lifecycle agent then re-evaluates every trend hourly — updating its heat index, flagging narrative drift, and retiring trends that have faded.
+**Discovery** — Three frontier models (Gemini, Grok, ChatGPT) independently scan consumer culture every two hours, sharded across configurable verticals. Running them in parallel — different prompts, different cadences, different signal pools — surfaces angles any single model would miss.
+
+**Distillation** — A Gemini 3.1 Pro lead with a clustering subagent reads the last 24 hours of signals and proposes candidate trends. It enforces a specificity rubric — *"consumers choosing X over Y because Z"* — so candidates describe real behavior, not categories.
+
+**Promotion** — A second Gemini agent evaluates each candidate against the live portfolio and decides: new standalone trend, duplicate of one already tracked, or noise. Approved candidates fire the enrichment chain immediately.
+
+**Enrichment** — A Claude Sonnet 4.6 agent loop produces the canonical trend record: B2C name (editorial), B2B name (sponsorship pitch), summary, audience profiles, and cited evidence. A four-layer naming pass — interleaved thinking, live grounding (Bluesky, GDELT, Grok search), in-prompt anti-cliché review, and a post-emission reviewer — keeps names sharp, specific, and brand-safe.
+
+**Lifecycle** — A Gemini sweeper runs hourly. For each active trend it recomputes the heat index from signal velocity, classifies the trajectory (NEW / GROWING / STABLE / PEAK / STAGNANT / DECLINING), flags meaningful narrative drift, and retires trends that have gone quiet.
 
 ---
 
 ## What you get
 
-Each trend on the dashboard includes:
+Each trend on the dashboard is a complete, ready-to-use intelligence record:
 
 | Field | Example |
 |---|---|
@@ -40,7 +45,23 @@ A trend promoted today:
 
 ---
 
-## Current snapshot
+## Coverage
+
+Three frontier AI scanners (Gemini, Grok, ChatGPT) sweep consumer culture every two hours. Each is web-search enabled, so they're free to surface anything publicly indexable — coverage is not capped at our structured sources.
+
+That said, our structured ingestion runs continuously across five source families and feeds the same signal pool:
+
+- **News** — GDELT global event stream
+- **Social** — Bluesky
+- **Search** — Google Trends
+- **Commerce** — Amazon Movers & Shakers
+- **Video / Other** — TikTok, Pinterest
+
+Verticals are configurable and tuned per-model, so coverage can be reweighted as editorial and sponsorship priorities shift.
+
+---
+
+## Operational scale
 
 | | |
 |---|---|
@@ -51,42 +72,6 @@ A trend promoted today:
 | Signals available for clustering | **4,227** (last 3 days) |
 | Average enrichment cost | **~$0.45** per trend |
 | Time from raw signal → named trend | **~10–15 min** end-to-end |
-
----
-
-## The agents
-
-Five agents run continuously. Each makes one kind of decision:
-
-| Agent | Model | Decides |
-|---|---|---|
-| **Discovery** | Gemini · Grok · ChatGPT | "Is anything new bubbling up in this vertical?" |
-| **Distillation** | Gemini 3.1 Pro | "Among today's signals, which clusters describe a real consumer behavior?" |
-| **Promotion** | Gemini 3.1 Pro | "Should this candidate become its own tracked trend, or merge into an existing one?" |
-| **Enrichment** | Claude Sonnet 4.6 | "What is this trend, who's it for, what should we call it, what proof do we have?" |
-| **Lifecycle** | Gemini 3.1 Pro | "Is this trend still alive, growing, stagnant, or ready to retire?" |
-
-No agent overwrites another's history. Every decision — promote, name, evaluate — is appended to its own ledger with full reasoning preserved.
-
----
-
-## Data sources
-
-Discovery monitors **six consumer verticals** (wellness, food & beverage, beauty, fashion, home & lifestyle, commerce/retail) across five source families:
-
-- **News** — GDELT (global news event stream)
-- **Social** — Bluesky
-- **Search** — Google Trends (daily interest curves)
-- **Commerce** — Amazon Movers & Shakers
-- **Video / Other** — TikTok, Pinterest
-
----
-
-## What's next
-
-- **Re-enrichment on narrative drift.** When the lifecycle agent detects a trend's story has shifted (a wellness trend pivots from powders to gummies, say), it can request a description rewrite without touching the trend's identity.
-- **Operational dashboards.** Cost-per-day, promotion health, and agent-leaderboard panels are planned as Steeple views once that team picks them up.
-- **Lifecycle triage of the legacy 324.** The old SQL-clustered trend table is frozen pending a one-shot lifecycle pass to retire stale rows or migrate live ones into the active portfolio.
 
 ---
 
