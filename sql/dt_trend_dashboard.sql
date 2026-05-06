@@ -16,7 +16,7 @@
 -- 2026-04-29 (related trends): replaced deprecated MAP_TREND_MACROTRENDS join
 -- with pairwise VECTOR_COSINE_SIMILARITY on FCT_TREND_ENRICHMENT_LEDGER.TREND_VECTOR
 -- (falling back to FCT_TRENDS.TREND_VECTOR). RELATED_TRENDS is now an array of
--- {trend_id, similarity_score} objects (top 5, threshold ≥ 0.65).
+-- {trend_id, trend_name, category, similarity} objects (top 5, threshold ≥ 0.65).
 --
 -- 2026-04-28 (STG_TREND_SIGNALS retirement): top_signals CTE now derives from
 -- the enrichment EVIDENCE pool (filtered to type IN news/commerce/social,
@@ -26,6 +26,20 @@
 -- same data through a different pipe. Stays inside MCC_PRESENTATION;
 -- no cross-DB grant on MCC_RAW needed.
 -- TOP_SIGNALS object shape: pagerank_score field removed; rest preserved.
+--
+-- 2026-05-06 (FCT_TREND_SOURCE_METRICS removed as a dashboard input):
+--   * trend_aggregates: TOTAL_CLUSTER_SIZE / DISTINCT_SOURCE_COUNT now derive
+--     from FCT_TREND_SIGNALS (live, includes both LINK_KIND='supporting' and
+--     'attributed') instead of summing the frozen FCT_PROMOTION_LEDGER
+--     CLUSTER_SIZE / SOURCE_COUNT. This unblocks growth from
+--     lifecycle-attribution-agent-p_KwCoaap. New signal_domains CTE maps each
+--     FCT_SIGNALS row to a canonical domain via best-effort METADATA
+--     extraction; DISTINCT_SOURCE_COUNT becomes COUNT(DISTINCT domain) — so
+--     four GDELT articles from four publishers count as 4, not 1.
+--   * KEY_DATA_POINTS now reads FCT_TREND_GTRENDS_DAILY (latest pull's peak +
+--     avg interest) instead of FCT_TREND_SOURCE_METRICS. Same array shape;
+--     entries shift from "platform headline metrics" to gtrends scalars.
+-- FCT_TREND_SOURCE_METRICS no longer read by this dynamic table.
 --
 -- Output column shape preserved for Steeple consumers (minus the two dropped
 -- promotion-* columns and TOP_SIGNALS.pagerank_score).
@@ -81,6 +95,17 @@ latest_enrichment AS (
       FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
     ) r WHERE r.rn = 1
 ),
+latest_gtrends AS (
+    -- Most recent gtrends-poller pull per trend. Feeds KEY_DATA_POINTS.
+    SELECT TREND_ID,
+           INTEREST_PEAK_PCT,
+           INTEREST_AVG_PCT,
+           PULLED_AT
+    FROM (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY PULLED_AT DESC) AS rn
+      FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_GTRENDS_DAILY
+    ) WHERE rn = 1
+),
 evidence_split AS (
     -- Pre-bucket the typed pool for the dashboard.
     -- COALESCE on `type` (new schema) and `source_type` (legacy social_proof rows)
@@ -103,20 +128,61 @@ evidence_split AS (
     FROM latest_enrichment le, LATERAL FLATTEN(input => le.EVIDENCE, OUTER => TRUE) f
     GROUP BY le.TREND_ID
 ),
+signal_domains AS (
+    -- Best-effort canonical domain per FCT_SIGNALS row, lowercased + 'www.'
+    -- stripped. Self-domain platforms hard-code; news + discovery sources
+    -- extract from METADATA. Vertex grounding-redirect URLs from
+    -- agent_gemini_discovery resolve to NULL — the redirect host isn't a
+    -- meaningful publisher, so it drops out of COUNT(DISTINCT) without
+    -- removing the signal from cluster_size.
+    SELECT
+        SIGNAL_ID,
+        CASE
+            -- Self-domain platforms (signal == one platform's domain)
+            WHEN SOURCE_NAME = 'wikimedia'             THEN 'wikipedia.org'
+            WHEN SOURCE_NAME = 'amazon_trends'         THEN 'amazon.com'
+            WHEN SOURCE_NAME = 'tiktok'                THEN 'tiktok.com'
+            WHEN SOURCE_NAME = 'pinterest'             THEN 'pinterest.com'
+            WHEN SOURCE_NAME = 'bluesky'               THEN 'bsky.app'
+            WHEN SOURCE_NAME = 'google_trends_explore' THEN 'trends.google.com'
+            WHEN SOURCE_NAME = 'grok_live'             THEN 'x.com'
+            -- News + discovery sources (extract from METADATA)
+            WHEN SOURCE_NAME = 'gdelt'
+                THEN LOWER(REGEXP_REPLACE(METADATA:domain::STRING, '^www\\.', ''))
+            WHEN SOURCE_NAME LIKE 'gemini\\_%' ESCAPE '\\'
+                -- gemini_food_drink / gemini_other / gemini_travel / gemini_wellness
+                -- (vertical-sharded discovery) emit metadata.source_name as the publisher.
+                THEN LOWER(METADATA:source_name::STRING)
+            WHEN SOURCE_NAME LIKE 'agent\\_%\\_discovery' ESCAPE '\\' THEN
+                CASE
+                    -- Vertex grounding-redirect URLs aren't meaningful publishers.
+                    WHEN METADATA:canonical_url::STRING LIKE '%vertexaisearch.cloud.google.com%'
+                        THEN NULL
+                    ELSE LOWER(REGEXP_REPLACE(
+                        REGEXP_SUBSTR(METADATA:canonical_url::STRING, 'https?://([^/]+)', 1, 1, 'e', 1),
+                        '^www\\.', ''))
+                END
+            -- google_trends_rss has METADATA:news_items as an array of multiple
+            -- sources; would need LATERAL FLATTEN. Currently attached to 0 trends,
+            -- so omitted; revisit if it starts attaching.
+            ELSE NULL
+        END AS DOMAIN
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS
+),
 trend_aggregates AS (
-    -- Sums per-candidate counts across all PROMOTE_NEW + MERGE_INTO_EXISTING
-    -- ledger rows for each trend. Signals are partitioned across candidates
-    -- (claim semantics in distillation), so SUM(CLUSTER_SIZE) is exact.
-    -- SOURCE_COUNT can over-count if two merged candidates pulled from the
-    -- same source — acceptable; sources rarely overlap across distinct
-    -- candidates in practice.
-    SELECT TARGET_TREND_ID                AS TREND_ID,
-           COALESCE(SUM(CLUSTER_SIZE), 0) AS TOTAL_CLUSTER_SIZE,
-           COALESCE(SUM(SOURCE_COUNT), 0) AS DISTINCT_SOURCE_COUNT
-    FROM MCC_PRESENTATION.TREND_AGENT.FCT_PROMOTION_LEDGER
-    WHERE DECISION IN ('PROMOTE_NEW', 'MERGE_INTO_EXISTING')
-      AND TARGET_TREND_ID IS NOT NULL
-    GROUP BY TARGET_TREND_ID
+    -- Live counts derived from FCT_TREND_SIGNALS (both LINK_KIND='supporting'
+    -- from MARKETING_TASK_PROMOTE_TREND_SIGNALS and 'attributed' from
+    -- lifecycle-attribution-agent-p_KwCoaap). Replaces the prior
+    -- FCT_PROMOTION_LEDGER SUM, which never grew post-promotion (no
+    -- MERGE_INTO_EXISTING decisions have ever fired). DISTINCT_SOURCE_COUNT
+    -- counts unique domains, not source-name vocabulary, so cross-publisher
+    -- breadth is reflected accurately.
+    SELECT ts.TREND_ID,
+           COUNT(DISTINCT ts.SIGNAL_ID) AS TOTAL_CLUSTER_SIZE,
+           COUNT(DISTINCT sd.DOMAIN)    AS DISTINCT_SOURCE_COUNT
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
+    LEFT JOIN signal_domains sd ON sd.SIGNAL_ID = ts.SIGNAL_ID
+    GROUP BY ts.TREND_ID
 ),
 top_signals AS (
     -- First 5 EVIDENCE entries per trend with type IN news/commerce/social,
@@ -174,12 +240,19 @@ pairwise_similarity AS (
 ),
 related_trends AS (
     SELECT
-        TREND_ID,
+        ps.TREND_ID,
         ARRAY_AGG(
-            OBJECT_CONSTRUCT('trend_id', RELATED_ID, 'similarity_score', SCORE)
-        ) WITHIN GROUP (ORDER BY SCORE DESC) AS RELATED_TRENDS
-    FROM pairwise_similarity
-    GROUP BY TREND_ID
+            OBJECT_CONSTRUCT(
+                'trend_id',   ps.RELATED_ID,
+                'trend_name', COALESCE(ft.TREND_NAME_B2C, ft.TREND_NAME_B2B, re.TREND_NAME_B2C, re.TREND_NAME_B2B, ft.TREND_TOPIC),
+                'category',   COALESCE(ft.CATEGORY, re.CATEGORY),
+                'similarity', ps.SCORE
+            )
+        ) WITHIN GROUP (ORDER BY ps.SCORE DESC) AS RELATED_TRENDS
+    FROM pairwise_similarity ps
+    LEFT JOIN latest_enrichment re ON re.TREND_ID = ps.RELATED_ID
+    LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS ft ON ft.TREND_ID = ps.RELATED_ID
+    GROUP BY ps.TREND_ID
 ),
 trend_base AS (
     -- Sourced from FCT_TRENDS only. Legacy FCT_TREND_METRICS union removed
@@ -220,16 +293,25 @@ SELECT
     tb.TREND_SOURCE,
     COALESCE(e.ORIGINALLY_SURFACED_AT, tb.DETECTED_AT)                     AS ORIGINALLY_SURFACED_AT,
 
-    (SELECT ARRAY_AGG(
-         OBJECT_CONSTRUCT(
-             'source', sm.SOURCE_NAME,
-             'metric_name', sm.HEADLINE_METRIC_NAME,
-             'metric_value', sm.HEADLINE_METRIC
-         )
-     ) FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCE_METRICS sm
-       WHERE sm.TREND_ID = tb.TREND_ID
-         AND sm.HEADLINE_METRIC IS NOT NULL
-         AND sm.HEADLINE_METRIC > 0
+    -- KEY_DATA_POINTS is the latest gtrends-poller pull's interest scalars.
+    -- ARRAY_CONSTRUCT_COMPACT drops null entries, so a trend with no gtrends
+    -- row yields an empty array (same shape as the prior "no source_metrics
+    -- rows" case).
+    ARRAY_CONSTRUCT_COMPACT(
+        CASE WHEN lg.INTEREST_PEAK_PCT IS NOT NULL THEN
+            OBJECT_CONSTRUCT(
+                'source',       'google_trends',
+                'metric_name',  'interest_peak_pct',
+                'metric_value', lg.INTEREST_PEAK_PCT
+            )
+        END,
+        CASE WHEN lg.INTEREST_AVG_PCT IS NOT NULL THEN
+            OBJECT_CONSTRUCT(
+                'source',       'google_trends',
+                'metric_name',  'interest_avg_pct',
+                'metric_value', lg.INTEREST_AVG_PCT
+            )
+        END
     )                                                                     AS KEY_DATA_POINTS,
 
     e.SOCIAL_NARRATIVE,
@@ -256,6 +338,7 @@ SELECT
 FROM trend_base tb
 LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t  ON tb.TREND_ID = t.TREND_ID
 LEFT JOIN latest_enrichment e                         ON tb.TREND_ID = e.TREND_ID
+LEFT JOIN latest_gtrends lg                           ON tb.TREND_ID = lg.TREND_ID
 LEFT JOIN evidence_split es                           ON tb.TREND_ID = es.TREND_ID
 LEFT JOIN top_signals ts                              ON tb.TREND_ID = ts.TREND_ID
 LEFT JOIN macro_tags mt                               ON tb.TREND_ID = mt.TREND_ID
