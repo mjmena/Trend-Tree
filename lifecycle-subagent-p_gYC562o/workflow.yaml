@@ -135,6 +135,11 @@ steps:
 - namespace: q_signal_domains
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
+  # Functionally identical to sql/dt_trend_dashboard.sql's signal_domains CTE,
+  # but uses STARTSWITH/ENDSWITH + '[.]' char-class instead of LIKE..ESCAPE
+  # '\\' + '\\.' regex. Pipedream's SQL proxy collapses '\\' -> '\' before
+  # forwarding, which breaks Snowflake string-literal escapes; the dashboard
+  # SQL is fine because it deploys via direct snowsql.
   props:
     snowflake:
       authProvisionId: apn_yghdQYJ
@@ -152,16 +157,16 @@ steps:
               WHEN s.SOURCE_NAME = 'google_trends_explore' THEN 'trends.google.com'
               WHEN s.SOURCE_NAME = 'grok_live'             THEN 'x.com'
               WHEN s.SOURCE_NAME = 'gdelt'
-                THEN LOWER(REGEXP_REPLACE(s.METADATA:domain::STRING, '^www\\.', ''))
-              WHEN s.SOURCE_NAME LIKE 'gemini\\_%' ESCAPE '\\'
+                THEN LOWER(REGEXP_REPLACE(s.METADATA:domain::STRING, '^www[.]', ''))
+              WHEN STARTSWITH(s.SOURCE_NAME, 'gemini_')
                 THEN LOWER(s.METADATA:source_name::STRING)
-              WHEN s.SOURCE_NAME LIKE 'agent\\_%\\_discovery' ESCAPE '\\' THEN
+              WHEN STARTSWITH(s.SOURCE_NAME, 'agent_') AND ENDSWITH(s.SOURCE_NAME, '_discovery') THEN
                 CASE
                   WHEN s.METADATA:canonical_url::STRING LIKE '%vertexaisearch.cloud.google.com%'
                     THEN NULL
                   ELSE LOWER(REGEXP_REPLACE(
                     REGEXP_SUBSTR(s.METADATA:canonical_url::STRING, 'https?://([^/]+)', 1, 1, 'e', 1),
-                    '^www\\.', ''))
+                    '^www[.]', ''))
                 END
               ELSE NULL
             END AS DOMAIN
@@ -186,16 +191,16 @@ steps:
               WHEN s.SOURCE_NAME = 'google_trends_explore' THEN 'trends.google.com'
               WHEN s.SOURCE_NAME = 'grok_live'             THEN 'x.com'
               WHEN s.SOURCE_NAME = 'gdelt'
-                THEN LOWER(REGEXP_REPLACE(s.METADATA:domain::STRING, '^www\\.', ''))
-              WHEN s.SOURCE_NAME LIKE 'gemini\\_%' ESCAPE '\\'
+                THEN LOWER(REGEXP_REPLACE(s.METADATA:domain::STRING, '^www[.]', ''))
+              WHEN STARTSWITH(s.SOURCE_NAME, 'gemini_')
                 THEN LOWER(s.METADATA:source_name::STRING)
-              WHEN s.SOURCE_NAME LIKE 'agent\\_%\\_discovery' ESCAPE '\\' THEN
+              WHEN STARTSWITH(s.SOURCE_NAME, 'agent_') AND ENDSWITH(s.SOURCE_NAME, '_discovery') THEN
                 CASE
                   WHEN s.METADATA:canonical_url::STRING LIKE '%vertexaisearch.cloud.google.com%'
                     THEN NULL
                   ELSE LOWER(REGEXP_REPLACE(
                     REGEXP_SUBSTR(s.METADATA:canonical_url::STRING, 'https?://([^/]+)', 1, 1, 'e', 1),
-                    '^www\\.', ''))
+                    '^www[.]', ''))
                 END
               ELSE NULL
             END AS DOMAIN
