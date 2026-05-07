@@ -25,6 +25,9 @@ export default defineComponent({
       agent_session_id: req.agent_session_id,
       chain_id: req.chain_id,
       error: ar.error || null,
+      final_text: ar.final_text || "",
+      reasoning_trace: ar.reasoning_trace || [],
+      tool_calls_summary: ar.tool_calls_summary || [],
     };
 
     await $.respond({

@@ -763,6 +763,11 @@ Begin your scan. Be opinionated about specificity.`;
       cost_usd: result.cost_usd, tokens: result.tokens,
       turns: result.turns, stop_reason: result.stop_reason,
       final_text: result.final_text,
+      reasoning_trace: capTrace(result.reasoning_trace, 30_000),
+      tool_calls_summary: (result.tool_calls || []).map((c) => ({
+        turn: c.turn, name: c.name, duration_ms: c.duration_ms,
+        input_preview: previewOutput(c.input), output_preview: previewOutput(c.output),
+      })),
     };
   },
 });
