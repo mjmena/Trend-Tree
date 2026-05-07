@@ -5,6 +5,14 @@
 // $.flow.exit() is a clean non-error termination, no cursor update, and the
 // next cron poll will retry. Once 150+ are available the run proceeds.
 //
+// Window: 7 days. ORDER BY DESC means freshest-200 are claimed first;
+// older unclaimed signals get picked up only when fresh ingestion is below
+// 200/run, naturally draining backlog from any prior gate-trip or workflow-
+// failure window. Originally hardcoded to 24h, which stranded ~940 signals
+// during the 2026-05-04→05-07 cluster-agent silent-drop incident — they
+// got auto-released by PROC_RELEASE_STALE_SIGNAL_CLAIMS but were past the
+// 24h window before any subsequent run could pick them up.
+//
 // Floor lowered from 400 to 150 on 2026-05-07: the original sizing assumed
 // agent-derived grok_live citations would contribute ~190/day, but those
 // only land when the agent runs — creating a self-gating spiral when
@@ -55,7 +63,7 @@ export default defineComponent({
         conn,
         `SELECT SIGNAL_ID
          FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
-         WHERE SIGNAL_TIMESTAMP > DATEADD(hour, -24, CURRENT_TIMESTAMP())
+         WHERE SIGNAL_TIMESTAMP > DATEADD(hour, -168, CURRENT_TIMESTAMP())
            AND COALESCE(AGENT_SESSION_ID, '') = ''
            AND COALESCE(METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
          ORDER BY SIGNAL_TIMESTAMP DESC NULLS LAST
