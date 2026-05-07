@@ -13,6 +13,11 @@ steps:
   uses: "./normalize_event/entry.js"
   props:
     trigger_event: "{{steps.trigger.event}}"
+- namespace: respond_accepted
+  runtime: nodejs20.x
+  uses: "./respond_accepted/entry.mjs"
+  props:
+    event: "{{steps.normalize_event.$return_value}}"
 - namespace: q_load_cursor
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -77,11 +82,6 @@ steps:
           )
       params:
       - "{{steps.acquire_signal_ids.$return_value.signal_ids_json}}"
-- namespace: respond_accepted
-  runtime: nodejs20.x
-  uses: "./respond_accepted/entry.mjs"
-  props:
-    event: "{{steps.normalize_event.$return_value}}"
 - namespace: dispatch_to_cluster_agent
   runtime: nodejs20.x
   uses: "./dispatch_to_cluster_agent/entry.js"
