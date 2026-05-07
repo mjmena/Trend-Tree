@@ -1,127 +1,105 @@
-// Distillation Revisit — dispatch_to_cluster_agent
+// Distillation Revisit Lead — dispatch_to_cluster_agent
 //
-// Fans out each Louvain batch to the cluster agent HTTP trigger in parallel
-// (concurrency 4). Each batch is an independent synchronous call; the cluster
-// agent runs one Gemini 3.1 Pro lead loop per batch and returns candidates.
-// Aggregates proposed_candidates from all batch responses.
+// Single-batch suspend pattern (mirrors distillation-p_mkCBBqb). Suspend
+// before the outbound POST so resume_url is available to embed in the
+// payload; the cluster agent acks 202 and POSTs back to resume_url when
+// its agent loop completes (typically 5-10 min).
+//
+// If select_next_batch reported is_done (no PENDING work, e.g. last
+// batch already drained or empty pool on start), this step returns
+// without suspending so finalize_or_continue runs in the same execution.
+//
+// Why suspend: a synchronous fetch of the cluster agent fails at
+// Pipedream's HTTP-trigger sync-response cap (~5.5 min) regardless of
+// our own AbortController, which is why the previous 4-way parallel
+// fanout was timing out consistently.
 
-const FANOUT_CONCURRENCY = 4;
-const PER_CALL_TIMEOUT_MS = 700_000;
+const SUSPEND_TIMEOUT_MS = 20 * 60 * 1000;
+const POST_TIMEOUT_MS = 30_000;
 
 export default defineComponent({
   props: {
     cluster_agent_url: { type: "string", label: "Cluster Agent HTTP trigger URL" },
-    batches: { type: "any" },
-    agent_session_id: { type: "string" },
-    chain_id: { type: "string" },
+    next_batch: { type: "any" },
   },
   async run({ $ }) {
-    const url = this.cluster_agent_url;
-    if (!url || /PLACEHOLDER/i.test(url)) {
-      throw new Error("cluster_agent_url is not configured — set it in workflow.yaml after creating the Distillation Cluster Agent workflow");
-    }
+    const nb = this.next_batch || {};
 
-    const batches = Array.isArray(this.batches) ? this.batches : [];
-    if (batches.length === 0) {
-      console.log("dispatch_to_cluster_agent: no batches; pool was empty");
-      $.export("$summary", "0 batches dispatched");
+    if (nb.is_done === true) {
+      console.log("dispatch_to_cluster_agent: chain done — skipping suspend");
+      $.export("$summary", "chain done (no dispatch)");
       return {
-        candidates_json: "[]",
-        candidates_count: 0,
-        signals_seen: 0,
-        batches_dispatched: 0,
-        cost_usd: 0,
-        run_duration_ms: 0,
-        batch_results: [],
+        skipped: true,
+        chain_id: nb.chain_id,
+        agent_session_id: nb.agent_session_id,
+        total_batches: nb.total_batches ?? 0,
       };
     }
 
-    console.log(`dispatch_to_cluster_agent: dispatching ${batches.length} batches to ${url}`);
-
-    const t0 = Date.now();
-    const results = new Array(batches.length);
-    let cursor = 0;
-
-    const agent_session_id = this.agent_session_id;
-    const chain_id = this.chain_id;
-
-    async function worker() {
-      while (cursor < batches.length) {
-        const idx = cursor++;
-        const batch = batches[idx];
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), PER_CALL_TIMEOUT_MS);
-        const tStart = Date.now();
-        try {
-          const resp = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              cluster_rows: batch.cluster_rows,
-              signal_ids_json: batch.signal_ids_json,
-              agent_session_id,
-              chain_id,
-            }),
-            signal: ctrl.signal,
-          });
-          const text = await resp.text();
-          let data;
-          try { data = JSON.parse(text); } catch { data = { _raw: text.slice(0, 500) }; }
-          results[idx] = {
-            batch_index: idx,
-            signal_count: batch.signal_count,
-            ok: resp.ok,
-            status: resp.status,
-            duration_ms: Date.now() - tStart,
-            data,
-          };
-          if (!resp.ok) console.log(`dispatch batch ${idx} → HTTP ${resp.status}`);
-        } catch (e) {
-          const msg = e.name === "AbortError" ? `timeout after ${PER_CALL_TIMEOUT_MS}ms` : e.message;
-          results[idx] = {
-            batch_index: idx,
-            signal_count: batch.signal_count,
-            ok: false,
-            error: msg,
-            duration_ms: Date.now() - tStart,
-          };
-          console.log(`dispatch batch ${idx} → error: ${msg}`);
-        } finally {
-          clearTimeout(timer);
-        }
-      }
+    const url = this.cluster_agent_url;
+    if (!url || /PLACEHOLDER/i.test(url)) {
+      throw new Error("cluster_agent_url is not configured");
     }
 
-    const workerCount = Math.min(FANOUT_CONCURRENCY, batches.length);
-    await Promise.all(Array.from({ length: workerCount }, () => worker()));
-    const run_duration_ms = Date.now() - t0;
+    const { resume_url, cancel_url } = $.flow.suspend(SUSPEND_TIMEOUT_MS);
 
-    const candidates = [];
-    let totalCost = 0;
-    let totalSignals = 0;
-    for (const r of results) {
-      const proposed = r.data?.proposed_candidates;
-      if (Array.isArray(proposed)) candidates.push(...proposed);
-      if (Number.isFinite(r.data?.cost_usd)) totalCost += r.data.cost_usd;
-      totalSignals += r.signal_count || 0;
-    }
+    const payload = {
+      cluster_rows: Array.isArray(nb.cluster_rows) ? nb.cluster_rows : [],
+      signal_ids_json: nb.signal_ids_json,
+      agent_session_id: nb.agent_session_id,
+      chain_id: nb.chain_id,
+      resume_url,
+    };
 
-    const ok = results.filter((r) => r.ok).length;
-    const errors = results.filter((r) => !r.ok).length;
     console.log(
-      `dispatch_to_cluster_agent: ${candidates.length} candidates from ${results.length} batches ` +
-      `(${ok} ok, ${errors} errors) in ${run_duration_ms}ms; cost=$${totalCost.toFixed(4)}`,
+      `dispatch_to_cluster_agent: chain=${nb.chain_id} batch=${nb.batch_index}/${nb.total_batches} ` +
+      `signals=${nb.signal_count} suspend=${SUSPEND_TIMEOUT_MS / 60000}min`,
     );
-    $.export("$summary", `${candidates.length} candidates / ${batches.length} batches`);
+
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), POST_TIMEOUT_MS);
+    let resp;
+    try {
+      resp = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: ctrl.signal,
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      try { await fetch(cancel_url, { method: "POST" }); } catch {}
+      throw new Error(`dispatch_to_cluster_agent fetch failed: ${e.message}`);
+    }
+    clearTimeout(timer);
+
+    const text = await resp.text();
+    if (!resp.ok) {
+      try { await fetch(cancel_url, { method: "POST" }); } catch {}
+      throw new Error(`Cluster agent HTTP ${resp.status}: ${text.slice(0, 400)}`);
+    }
+
+    let ackBody = null;
+    try { ackBody = JSON.parse(text); } catch {}
+
+    console.log(
+      `dispatch_to_cluster_agent: ack ${resp.status} mode=${ackBody?.mode || "unknown"} ` +
+      `chain=${ackBody?.chain_id || nb.chain_id}`,
+    );
+    $.export("$summary", "suspended for cluster agent callback");
 
     return {
-      candidates_json: JSON.stringify(candidates),
-      candidates_count: candidates.length,
-      signals_seen: totalSignals,
-      batches_dispatched: batches.length,
-      cost_usd: totalCost,
-      run_duration_ms,
-      batch_results: results,
+      skipped: false,
+      suspended: true,
+      cluster_agent_acknowledged: true,
+      resume_url,
+      cancel_url,
+      chain_id: nb.chain_id,
+      agent_session_id: nb.agent_session_id,
+      batch_index: nb.batch_index,
+      total_batches: nb.total_batches,
+      signals_seen: nb.signal_count,
+      run_started_at: Date.now(),
     };
   },
 });
