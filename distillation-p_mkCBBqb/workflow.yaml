@@ -77,6 +77,11 @@ steps:
           )
       params:
       - "{{steps.acquire_signal_ids.$return_value.signal_ids_json}}"
+- namespace: respond_accepted
+  runtime: nodejs20.x
+  uses: "./respond_accepted/entry.mjs"
+  props:
+    event: "{{steps.normalize_event.$return_value}}"
 - namespace: dispatch_to_cluster_agent
   runtime: nodejs20.x
   uses: "./dispatch_to_cluster_agent/entry.js"
@@ -86,6 +91,12 @@ steps:
     signal_ids_json: "{{steps.acquire_signal_ids.$return_value.signal_ids_json}}"
     agent_session_id: "{{steps.normalize_event.$return_value.agent_session_id}}"
     chain_id: "{{steps.normalize_event.$return_value.chain_id}}"
+- namespace: parse_cluster_result
+  runtime: nodejs20.x
+  uses: "./parse_cluster_result/entry.mjs"
+  props:
+    resume_payload: "{{steps.dispatch_to_cluster_agent.$resume_data}}"
+    dispatch_meta: "{{steps.dispatch_to_cluster_agent.$return_value}}"
 - namespace: commit_candidates
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -170,7 +181,7 @@ steps:
         FROM cand LEFT JOIN sb ON sb.candidate_id = cand.j:candidate_id::STRING
         WHERE :1 != '[]'
       params:
-      - "{{steps.dispatch_to_cluster_agent.$return_value.candidates_json}}"
+      - "{{steps.parse_cluster_result.$return_value.candidates_json}}"
 - namespace: update_cursor
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -184,11 +195,11 @@ steps:
           SELECT
             '{{steps.normalize_event.$return_value.cursor_name}}'::STRING AS CURSOR_NAME,
             CURRENT_TIMESTAMP()::TIMESTAMP_NTZ                            AS LAST_RUN_AT,
-            TRY_TO_TIMESTAMP_NTZ('{{steps.dispatch_to_cluster_agent.$return_value.max_signal_ts}}') AS LAST_SIGNAL_TS,
-            {{steps.dispatch_to_cluster_agent.$return_value.run_duration_ms}}::NUMBER AS RUN_DURATION_MS,
-            {{steps.dispatch_to_cluster_agent.$return_value.signals_seen}}::NUMBER    AS SIGNAL_COUNT,
-            {{steps.dispatch_to_cluster_agent.$return_value.candidates_count}}::NUMBER AS CANDIDATE_COUNT,
-            {{steps.dispatch_to_cluster_agent.$return_value.cost_usd}}::FLOAT          AS COST_USD
+            TRY_TO_TIMESTAMP_NTZ('{{steps.parse_cluster_result.$return_value.max_signal_ts}}') AS LAST_SIGNAL_TS,
+            {{steps.parse_cluster_result.$return_value.run_duration_ms}}::NUMBER AS RUN_DURATION_MS,
+            {{steps.parse_cluster_result.$return_value.signals_seen}}::NUMBER    AS SIGNAL_COUNT,
+            {{steps.parse_cluster_result.$return_value.candidates_count}}::NUMBER AS CANDIDATE_COUNT,
+            {{steps.parse_cluster_result.$return_value.cost_usd}}::FLOAT          AS COST_USD
         ) source
         ON target.CURSOR_NAME = source.CURSOR_NAME
         WHEN MATCHED THEN UPDATE SET
@@ -210,11 +221,11 @@ steps:
           SELECT
             '{{steps.normalize_event.$return_value.cursor_name}}'::STRING AS CURSOR_NAME,
             CURRENT_TIMESTAMP()::TIMESTAMP_NTZ                            AS LAST_RUN_AT,
-            TRY_TO_TIMESTAMP_NTZ('{{steps.dispatch_to_cluster_agent.$return_value.max_signal_ts}}') AS LAST_SIGNAL_TS,
-            {{steps.dispatch_to_cluster_agent.$return_value.run_duration_ms}}::NUMBER AS RUN_DURATION_MS,
-            {{steps.dispatch_to_cluster_agent.$return_value.signals_seen}}::NUMBER    AS SIGNAL_COUNT,
-            {{steps.dispatch_to_cluster_agent.$return_value.candidates_count}}::NUMBER AS CANDIDATE_COUNT,
-            {{steps.dispatch_to_cluster_agent.$return_value.cost_usd}}::FLOAT          AS COST_USD
+            TRY_TO_TIMESTAMP_NTZ('{{steps.parse_cluster_result.$return_value.max_signal_ts}}') AS LAST_SIGNAL_TS,
+            {{steps.parse_cluster_result.$return_value.run_duration_ms}}::NUMBER AS RUN_DURATION_MS,
+            {{steps.parse_cluster_result.$return_value.signals_seen}}::NUMBER    AS SIGNAL_COUNT,
+            {{steps.parse_cluster_result.$return_value.candidates_count}}::NUMBER AS CANDIDATE_COUNT,
+            {{steps.parse_cluster_result.$return_value.cost_usd}}::FLOAT          AS COST_USD
         ) source
         ON target.CURSOR_NAME = source.CURSOR_NAME
         WHEN MATCHED THEN UPDATE SET
@@ -236,7 +247,7 @@ steps:
   uses: "./respond/entry.js"
   props:
     event: "{{steps.normalize_event.$return_value}}"
-    agent_result: "{{steps.dispatch_to_cluster_agent.$return_value}}"
+    agent_result: "{{steps.parse_cluster_result.$return_value}}"
     commit_result: "{{steps.commit_candidates.$return_value}}"
     claim_signals_result: "{{steps.claim_window_signals.$return_value}}"
 

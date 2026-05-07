@@ -1,12 +1,10 @@
 // Distillation Lead — respond
 //
-// Returns a run summary via $.respond(). Useful for manual debug runs
-// (POST to the HTTP endpoint and inspect the response). Cron firings
-// also produce this body but Pipedream doesn't surface it anywhere
-// other than the run history.
-//
-// Requires the trigger's "Return a custom response" toggle to be ON
-// (custom_response: true). See CLAUDE.md gotcha #6.
+// Run-history summary only. The HTTP caller already received a 202 from
+// respond_accepted (which runs before the suspend in dispatch_to_cluster_agent),
+// and Pipedream allows one $.respond per execution — this step deliberately
+// does NOT call $.respond. The returned body shows up in the run UI for
+// debugging.
 
 // Snowflake INSERT/UPDATE actions return an array shaped like
 // [{ 'number of rows inserted': N }] or [{ 'number of rows updated': N }]
@@ -61,12 +59,6 @@ export default defineComponent({
       final_text: ar.final_text || "",
       error: ar.error || null,
     };
-
-    await $.respond({
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-      body,
-    });
 
     return body;
   },
