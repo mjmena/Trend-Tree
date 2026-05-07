@@ -114,15 +114,27 @@ steps:
         WITH cand AS (
           SELECT c.value AS j FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) c
         ),
-        sig_counts AS (
-          SELECT cand.j:candidate_id::STRING AS candidate_id, s.SOURCE_NAME, COUNT(*) AS n
+        valid_pairs AS (
+          SELECT DISTINCT
+            cand.j:candidate_id::STRING AS candidate_id,
+            f.SIGNAL_ID,
+            f.SOURCE_NAME
           FROM cand, LATERAL FLATTEN(INPUT => cand.j:supporting_signal_ids) sid
-          JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s ON s.SIGNAL_ID = sid.value::STRING
-          GROUP BY 1, 2
+          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f
+            ON f.SIGNAL_ID = sid.value::STRING
+        ),
+        vs AS (
+          SELECT candidate_id,
+                 ARRAY_AGG(SIGNAL_ID) WITHIN GROUP (ORDER BY SIGNAL_ID) AS supporting_signal_ids
+          FROM valid_pairs GROUP BY 1
+        ),
+        src_counts AS (
+          SELECT candidate_id, SOURCE_NAME, COUNT(*) AS n
+          FROM valid_pairs GROUP BY 1, 2
         ),
         sb AS (
           SELECT candidate_id, OBJECT_AGG(SOURCE_NAME, n::VARIANT) AS source_breakdown
-          FROM sig_counts GROUP BY 1
+          FROM src_counts GROUP BY 1
         )
         SELECT
           cand.j:candidate_id::STRING,
@@ -130,7 +142,7 @@ steps:
           cand.j:chain_id::STRING,
           cand.j:iteration::NUMBER,
           cand.j:topic::STRING,
-          cand.j:supporting_signal_ids,
+          COALESCE(vs.supporting_signal_ids, ARRAY_CONSTRUCT()),
           cand.j:confidence::FLOAT,
           cand.j:specificity_score::FLOAT,
           COALESCE(sb.source_breakdown, OBJECT_CONSTRUCT()),
@@ -140,7 +152,9 @@ steps:
           cand.j:reasoning::STRING,
           cand.j:reasoning_trace,
           cand.j:dedup_of_trend_id::STRING
-        FROM cand LEFT JOIN sb ON sb.candidate_id = cand.j:candidate_id::STRING
+        FROM cand
+        LEFT JOIN vs ON vs.candidate_id = cand.j:candidate_id::STRING
+        LEFT JOIN sb ON sb.candidate_id = cand.j:candidate_id::STRING
         WHERE :1 != '[]'
       query: |-
         INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES (
@@ -152,15 +166,27 @@ steps:
         WITH cand AS (
           SELECT c.value AS j FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) c
         ),
-        sig_counts AS (
-          SELECT cand.j:candidate_id::STRING AS candidate_id, s.SOURCE_NAME, COUNT(*) AS n
+        valid_pairs AS (
+          SELECT DISTINCT
+            cand.j:candidate_id::STRING AS candidate_id,
+            f.SIGNAL_ID,
+            f.SOURCE_NAME
           FROM cand, LATERAL FLATTEN(INPUT => cand.j:supporting_signal_ids) sid
-          JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s ON s.SIGNAL_ID = sid.value::STRING
-          GROUP BY 1, 2
+          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f
+            ON f.SIGNAL_ID = sid.value::STRING
+        ),
+        vs AS (
+          SELECT candidate_id,
+                 ARRAY_AGG(SIGNAL_ID) WITHIN GROUP (ORDER BY SIGNAL_ID) AS supporting_signal_ids
+          FROM valid_pairs GROUP BY 1
+        ),
+        src_counts AS (
+          SELECT candidate_id, SOURCE_NAME, COUNT(*) AS n
+          FROM valid_pairs GROUP BY 1, 2
         ),
         sb AS (
           SELECT candidate_id, OBJECT_AGG(SOURCE_NAME, n::VARIANT) AS source_breakdown
-          FROM sig_counts GROUP BY 1
+          FROM src_counts GROUP BY 1
         )
         SELECT
           cand.j:candidate_id::STRING,
@@ -168,7 +194,7 @@ steps:
           cand.j:chain_id::STRING,
           cand.j:iteration::NUMBER,
           cand.j:topic::STRING,
-          cand.j:supporting_signal_ids,
+          COALESCE(vs.supporting_signal_ids, ARRAY_CONSTRUCT()),
           cand.j:confidence::FLOAT,
           cand.j:specificity_score::FLOAT,
           COALESCE(sb.source_breakdown, OBJECT_CONSTRUCT()),
@@ -178,7 +204,9 @@ steps:
           cand.j:reasoning::STRING,
           cand.j:reasoning_trace,
           cand.j:dedup_of_trend_id::STRING
-        FROM cand LEFT JOIN sb ON sb.candidate_id = cand.j:candidate_id::STRING
+        FROM cand
+        LEFT JOIN vs ON vs.candidate_id = cand.j:candidate_id::STRING
+        LEFT JOIN sb ON sb.candidate_id = cand.j:candidate_id::STRING
         WHERE :1 != '[]'
       params:
       - "{{steps.parse_cluster_result.$return_value.candidates_json}}"
