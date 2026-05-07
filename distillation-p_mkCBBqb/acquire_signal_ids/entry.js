@@ -1,9 +1,15 @@
 // Distillation — acquire_signal_ids
 //
 // Threshold-gated unclaimed signal ID fetch. Polls every 30-60 min; exits
-// early if fewer than 400 unclaimed discovery signals are available —
+// early if fewer than 150 unclaimed discovery signals are available —
 // $.flow.exit() is a clean non-error termination, no cursor update, and the
-// next cron poll will retry. Once 400+ are available the run proceeds.
+// next cron poll will retry. Once 150+ are available the run proceeds.
+//
+// Floor lowered from 400 to 150 on 2026-05-07: the original sizing assumed
+// agent-derived grok_live citations would contribute ~190/day, but those
+// only land when the agent runs — creating a self-gating spiral when
+// discovery throughput dips. 150 reflects the realistic external-pull
+// floor (bluesky + google_trends + amazon + gemini verticals).
 
 import snowflake from "snowflake-sdk";
 
@@ -53,13 +59,13 @@ export default defineComponent({
            AND COALESCE(AGENT_SESSION_ID, '') = ''
            AND COALESCE(METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
          ORDER BY SIGNAL_TIMESTAMP DESC NULLS LAST
-         LIMIT 450`,
+         LIMIT 200`,
         [],
       );
       const ids = (Array.isArray(rows) ? rows : []).map((r) => r.SIGNAL_ID).filter(Boolean);
 
-      if (ids.length < 400) {
-        $.flow.exit(`Only ${ids.length} unclaimed signals available — waiting for 400`);
+      if (ids.length < 150) {
+        $.flow.exit(`Only ${ids.length} unclaimed signals available — waiting for 150`);
       }
 
       console.log(`acquire_signal_ids: ${ids.length} unclaimed signals ready`);
