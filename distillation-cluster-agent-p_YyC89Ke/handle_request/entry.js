@@ -3,13 +3,30 @@
 // Validates and normalizes the inbound batch from either dispatcher.
 // The cluster agent is source-agnostic: it doesn't know or care whether
 // cluster_rows came from the 24h main pool or the 48h revisit pool.
+//
+// Async-callback mode: when the caller passes body.resume_url, this step
+// $.respond()s 202 immediately so the caller's outbound fetch can return
+// (and the caller's lambda can suspend cleanly). The terminal `respond`
+// step then POSTs the result body to that resume_url instead of $.respond.
+// Synchronous mode (no resume_url): legacy path, terminal step $.respond's.
+// Pipedream allows one $.respond per execution; the two branches never
+// fire together.
 
 const SHORT_ID_OK = /^[A-Za-z0-9_\-]{1,64}$/;
+const RESUME_URL_MAX = 4096;
 
 function sanitizeId(s) {
   if (!s) return "";
   const v = String(s).trim();
   return SHORT_ID_OK.test(v) ? v : "";
+}
+
+function sanitizeResumeUrl(s) {
+  if (typeof s !== "string") return null;
+  const v = s.trim();
+  if (!v || v.length > RESUME_URL_MAX) return null;
+  if (!/^https:\/\//i.test(v)) return null;
+  return v;
 }
 
 export default defineComponent({
@@ -44,11 +61,21 @@ export default defineComponent({
     const chain_id = sanitizeId(body.chain_id) || `chain-${Date.now().toString(36)}`;
     const dry_run = body.dry_run === true || body.dry_run === "true";
     const budget_usd = Math.min(Math.max(1.0, Number(body.budget_usd) || 5.0), 20.0);
+    const resume_url = sanitizeResumeUrl(body.resume_url);
 
     console.log(
       `cluster-agent: signal_ids=${signal_ids.length} cluster_rows=${cluster_rows.length} ` +
-      `session=${agent_session_id} chain=${chain_id} dry_run=${dry_run}`,
+      `session=${agent_session_id} chain=${chain_id} dry_run=${dry_run} ` +
+      `resume_url=${resume_url ? "present" : "none"}`,
     );
+
+    if (resume_url) {
+      await $.respond({
+        status: 202,
+        headers: { "Content-Type": "application/json" },
+        body: { accepted: true, agent_session_id, chain_id, mode: "async_callback" },
+      });
+    }
 
     return {
       cluster_rows,
@@ -58,6 +85,7 @@ export default defineComponent({
       chain_id,
       dry_run,
       budget_usd,
+      resume_url,
       iteration: 1,
     };
   },

@@ -1,13 +1,22 @@
 // Distillation Cluster Agent — respond
 //
-// Returns the run result to the caller (dispatcher) via $.respond().
-// The caller is either the main dispatcher or the revisit dispatcher;
-// both expect the same shape: proposed_candidates, cost_usd, run_duration_ms.
+// Two modes:
+//   1. Async callback (request.resume_url is set): handle_request already
+//      sent a 202 to the caller. POST the result body to resume_url so a
+//      $.flow.suspend()ed caller can resume. Do NOT call $.respond again
+//      (Pipedream allows one per execution).
+//   2. Synchronous (no resume_url): legacy path used by revisit and curl
+//      debug. $.respond the result with status 200.
+//
+// Both branches return the same body for run-history visibility.
+
+const RESUME_POST_TIMEOUT_MS = 30_000;
 
 export default defineComponent({
   props: {
     request: { type: "any" },
     agent_result: { type: "any" },
+    resume_url: { type: "string", optional: true },
   },
   async run({ $ }) {
     const req = this.request || {};
@@ -30,11 +39,37 @@ export default defineComponent({
       tool_calls_summary: ar.tool_calls_summary || [],
     };
 
-    await $.respond({
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-      body,
-    });
+    if (this.resume_url) {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), RESUME_POST_TIMEOUT_MS);
+      try {
+        const resp = await fetch(this.resume_url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+          signal: ctrl.signal,
+        });
+        if (!resp.ok) {
+          const text = await resp.text().catch(() => "");
+          // Don't throw: handle_request already $.respond()ed 202, and a
+          // throw here marks the run as failed even though the work is
+          // done. The caller will hit suspend timeout and degrade gracefully.
+          console.log(`resume_url POST returned HTTP ${resp.status}: ${text.slice(0, 240)}`);
+        } else {
+          console.log(`resume_url POST ok (${body.candidates_count} candidates)`);
+        }
+      } catch (e) {
+        console.log(`resume_url POST failed: ${e.message}`);
+      } finally {
+        clearTimeout(timer);
+      }
+    } else {
+      await $.respond({
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+        body,
+      });
+    }
 
     return body;
   },
