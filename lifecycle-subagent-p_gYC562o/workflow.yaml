@@ -135,11 +135,6 @@ steps:
 - namespace: q_signal_domains
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
-  # Functionally identical to sql/dt_trend_dashboard.sql's signal_domains CTE,
-  # but uses STARTSWITH/ENDSWITH + '[.]' char-class instead of LIKE..ESCAPE
-  # '\\' + '\\.' regex. Pipedream's SQL proxy collapses '\\' -> '\' before
-  # forwarding, which breaks Snowflake string-literal escapes; the dashboard
-  # SQL is fine because it deploys via direct snowsql.
   props:
     snowflake:
       authProvisionId: apn_yghdQYJ
