@@ -2,6 +2,19 @@ schema: workflow/2022.04
 name: Ingest Google Trends Explore
 settings:
   error_notification: true
+  lambda_memory: 1024
+  lambda_timeout: 600
 triggers:
 - id: ti_rrTo5wj
+steps:
+- namespace: fetch_source
+  runtime: nodejs20.x
+  uses: "./fetch_source/entry.js"
+- namespace: upsert_signals
+  runtime: nodejs20.x
+  uses: "./upsert_signals/entry.js"
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    target_table: STG_EXTERNAL_SIGNALS
 
