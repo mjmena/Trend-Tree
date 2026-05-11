@@ -147,7 +147,7 @@ const LOOP_DEFAULTS = {
   per_call_max_tokens: 2048,
   thinking_level: "medium",
   temperature: 1.0,
-  request_timeout_ms: 120_000,
+  request_timeout_ms: 240_000,
 };
 
 function toFunctionDeclarations(toolNames) {
