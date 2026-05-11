@@ -1,0 +1,7 @@
+schema: workflow/2022.04
+name: Ingest Google Trends Explore
+settings:
+  error_notification: true
+triggers:
+- id: ti_rrTo5wj
+
