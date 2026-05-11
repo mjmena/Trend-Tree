@@ -9,7 +9,11 @@
 // llm-enrichment uses).
 
 const MODEL = "grok-4-latest";
-const REQUEST_TIMEOUT_MS = 60_000;
+const REQUEST_TIMEOUT_MS = 45_000; // Pipedream kills steps at ~60s; fire AbortController first
+
+function softFail(query, error) {
+  return { query, summary: "", citations: [], signals: [], signals_json: "[]", tokens: { input: 0, output: 0 }, model: MODEL, error };
+}
 
 function buildTools(mode) {
   if (mode === "web") return [{ type: "web_search" }];
@@ -86,9 +90,9 @@ export default defineComponent({
     };
 
     let resp;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
     try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
       resp = await fetch("https://api.x.ai/v1/responses", {
         method: "POST",
         headers: {
@@ -98,14 +102,19 @@ export default defineComponent({
         body: JSON.stringify(body),
         signal: ctrl.signal,
       });
-      clearTimeout(timer);
     } catch (e) {
-      throw new Error(`grok-live-search fetch failed: ${e.message}`);
+      clearTimeout(timer);
+      console.warn(`grok-live-search: fetch failed (${e.message}) — returning empty results`);
+      $.export("$summary", "soft-fail: timeout");
+      return softFail(this.query, "timeout");
     }
+    clearTimeout(timer);
 
     if (!resp.ok) {
       const text = await resp.text();
-      throw new Error(`grok-live-search HTTP ${resp.status}: ${text.slice(0, 240)}`);
+      console.warn(`grok-live-search: HTTP ${resp.status} — returning empty results. body: ${text.slice(0, 240)}`);
+      $.export("$summary", `soft-fail: HTTP ${resp.status}`);
+      return softFail(this.query, `HTTP ${resp.status}`);
     }
 
     const data = await resp.json();
