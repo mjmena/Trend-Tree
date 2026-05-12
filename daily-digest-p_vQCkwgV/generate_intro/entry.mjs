@@ -1,18 +1,33 @@
 // Pipedream Workflow Step: Generate Intro
 //
-// One Gemini call that writes the daily digest's editorial intro line.
+// One Gemini 3.1 Pro call that writes the daily digest's editorial intro line.
 // Surfaces emerging themes across today's selected trends — categories that
-// recur, clusters that are heating up — in 1-2 sentences for the email header.
+// recur, clusters that are heating up, cultural drivers shared across trends —
+// in 1-2 sentences for the email header.
+//
+// Feeds the model the full enrichment context per trend (summary, vibe shift,
+// social narrative, cultural drivers, seasonal/geographic signals, key data
+// points), not just the short summary, so the editorial voice has more than
+// just the headline to riff on.
 //
 // Soft-fails: on any error or empty output, returns intro: "" and lets the
 // email render without the intro block.
 
-const GEMINI_MODEL = "gemini-3-flash-preview";
+const GEMINI_MODEL = "gemini-3.1-pro-preview";
+
+// Pro pricing (per 1M tokens). Update if Google's rates change.
+const INPUT_PER_M = 1.25;
+const OUTPUT_PER_M = 10.0;
 
 const parseVariant = (v) => {
-  if (v == null) return [];
-  if (typeof v === "string") { try { return JSON.parse(v); } catch { return []; } }
-  return Array.isArray(v) ? v : [];
+  if (v == null) return null;
+  if (typeof v === "string") { try { return JSON.parse(v); } catch { return null; } }
+  return v;
+};
+
+const asArray = (v) => {
+  const p = parseVariant(v);
+  return Array.isArray(p) ? p : [];
 };
 
 const prettifyToken = (s) => String(s ?? "")
@@ -28,32 +43,76 @@ const isRising = (v) => {
   return u === "NEW" || u === "GROWING" || u === "RESURGENT";
 };
 
+const renderTrend = (r, idx) => {
+  const name = r.TREND_NAME ?? "(untitled)";
+  const b2b = r.TREND_NAME_B2B && r.TREND_NAME_B2B !== name ? ` (B2B: ${r.TREND_NAME_B2B})` : "";
+  const cat = prettifyToken(r.CATEGORY ?? "");
+  const sub = r.SUBCATEGORY ? ` / ${prettifyToken(r.SUBCATEGORY)}` : "";
+  const status = String(r.VELOCITY_DIRECTION ?? "").toLowerCase();
+  const heat = Number(r.HEAT_INDEX ?? 0).toFixed(1);
+  const cluster = r.TOTAL_CLUSTER_SIZE ?? 0;
+  const sources = r.DISTINCT_SOURCE_COUNT ?? 0;
+  const macros = asArray(r.MACROTREND_TAGS);
+
+  const summary = String(r.SUMMARY_LONG || r.SUMMARY_SHORT || "").trim();
+  const vibe = String(r.VIBE_SHIFT ?? "").trim();
+
+  const socialNarrative = asArray(r.SOCIAL_NARRATIVE)
+    .map((n) => `    - ${n.point || n}`)
+    .join("\n");
+
+  const culturalDrivers = asArray(r.CULTURAL_DRIVERS)
+    .map((d) => `    - ${d.driver || d}${d.influence_level ? ` (${d.influence_level})` : ""}`)
+    .join("\n");
+
+  const seasonal = parseVariant(r.SEASONAL_RELEVANCE);
+  const seasonalLine = seasonal && seasonal.is_seasonal
+    ? `  Seasonality: peaks ${(seasonal.peak_months || []).join(", ") || "(unspecified)"}`
+    : "";
+
+  const geo = asArray(r.GEOGRAPHIC_HOTSPOTS)
+    .map((g) => `${g.region}${g.intensity ? ` (${g.intensity})` : ""}`)
+    .join(", ");
+  const geoLine = geo ? `  Geographic hotspots: ${geo}` : "";
+
+  const keyData = asArray(r.KEY_DATA_POINTS)
+    .map((k) => `${k.source}: ${k.metric_name}=${k.metric_value}`)
+    .join("; ");
+  const keyDataLine = keyData ? `  Key metrics: ${keyData}` : "";
+
+  return `[${idx + 1}] ${name}${b2b}
+  Category: ${cat}${sub}
+  Status: ${status} · heat ${heat} · cluster ${cluster} signals across ${sources} source families
+  Macro tags: ${macros.join(", ") || "(none)"}
+  Summary: ${summary || "(none)"}
+${vibe ? `  Vibe shift: ${vibe}\n` : ""}${socialNarrative ? `  Why now:\n${socialNarrative}\n` : ""}${culturalDrivers ? `  Cultural drivers:\n${culturalDrivers}\n` : ""}${seasonalLine ? `${seasonalLine}\n` : ""}${geoLine ? `${geoLine}\n` : ""}${keyDataLine ? `${keyDataLine}\n` : ""}`;
+};
+
 const buildPrompt = (rows) => {
   const risingRows = rows.filter((r) => isRising(r.VELOCITY_DIRECTION));
   const fillerRows = rows.filter((r) => !isRising(r.VELOCITY_DIRECTION));
+  const allRows = [...risingRows, ...fillerRows];
 
-  const renderRow = (r) => {
-    const macros = parseVariant(r.MACROTREND_TAGS).slice(0, 2).join(", ");
-    return `- ${r.TREND_NAME ?? "(untitled)"} [${prettifyToken(r.CATEGORY ?? "")}${r.SUBCATEGORY ? " / " + prettifyToken(r.SUBCATEGORY) : ""}] heat ${Number(r.HEAT_INDEX ?? 0).toFixed(1)} · ${String(r.VELOCITY_DIRECTION ?? "").toLowerCase()}${macros ? ` · macro: ${macros}` : ""}
-  ${(r.SUMMARY_SHORT ?? "").trim()}`;
-  };
+  return `You are writing the editorial intro line for McClatchy's daily trend-intelligence newsletter ("Trend Insights Daily"), read by B2B marketing and sales teams across McClatchy's news properties.
 
-  return `You are writing the editorial intro line for McClatchy's daily trend-intelligence newsletter ("Trend Insights Daily").
+TODAY'S DIGEST — ${risingRows.length} rising trend(s), ${fillerRows.length} top-heat filler trend(s).
 
-TODAY'S RISING TRENDS (${risingRows.length}):
-${risingRows.map(renderRow).join("\n") || "(none — see top-heat trends below)"}
+=== RISING TRENDS (lifecycle: NEW / GROWING / RESURGENT) ===
+${risingRows.length ? risingRows.map((r, i) => renderTrend(r, i)).join("\n") : "(no rising trends today — digest is a top-heat snapshot)"}
 
-TOP-HEAT FILLER (${fillerRows.length}):
-${fillerRows.map(renderRow).join("\n") || "(none)"}
+=== TOP-HEAT FILLER (STABLE / DORMANT) ===
+${fillerRows.length ? fillerRows.map((r, i) => renderTrend(r, risingRows.length + i)).join("\n") : "(none)"}
 
 TASK
-Write 1-2 sentences (≤280 chars total) describing the day's emerging themes across these trends. Call out clusters or recurring categories where you see them ("three of today's risers cluster around X"; "wellness and beauty share a Y throughline"). If there's nothing rising, frame the digest as a top-heat snapshot.
+Write the 1-2 sentence editorial intro line that opens the newsletter. ≤320 chars total. Synthesize the SHAPE of the day across these ${allRows.length} trends — recurring categories, shared cultural drivers, clusters of momentum, throughlines across seemingly unrelated trends. The reader sees the full trend cards below; your job is to give them the editorial frame.
 
 STYLE
 - Confident, concise, B2B-appropriate (sales/marketing teams read this).
 - No bullets, no emoji, no hedging ("it seems", "perhaps").
-- Don't list every trend by name — synthesize the shape of the day.
+- Don't recite the trend list — synthesize the throughline. If three risers share a vibe, name it.
+- Reference cultural drivers or vibe shifts where they cluster across multiple trends.
 - Do not include the date.
+- If there's nothing rising, frame the digest as a top-heat snapshot ("Today's snapshot leans into...").
 
 OUTPUT — a single JSON object and nothing else:
 { "intro": "..." }`;
@@ -66,6 +125,7 @@ const callGemini = async (apiKey, prompt) => {
     generationConfig: {
       temperature: 0.5,
       responseMimeType: "application/json",
+      maxOutputTokens: 512,
     },
   };
   const resp = await fetch(url, {
@@ -89,9 +149,9 @@ const extractIntro = (data) => {
 };
 
 export default defineComponent({
-  name: "Generate Intro (Gemini)",
-  description: "Writes the 1-2 sentence editorial intro for the daily digest email.",
-  version: "0.0.1",
+  name: "Generate Intro (Gemini Pro)",
+  description: "Writes the 1-2 sentence editorial intro for the daily digest email using Gemini 3.1 Pro with full enrichment context.",
+  version: "0.1.0",
   props: {
     google_gemini: {
       type: "app",
@@ -122,8 +182,8 @@ export default defineComponent({
       const usage = data?.usageMetadata || {};
       const input = usage.promptTokenCount || 0;
       const output = usage.candidatesTokenCount || 0;
-      const cost = (input / 1_000_000) * 0.3 + (output / 1_000_000) * 2.5;
-      $.export("$summary", `Intro generated (${intro.length} chars) — $${cost.toFixed(4)}`);
+      const cost = (input / 1_000_000) * INPUT_PER_M + (output / 1_000_000) * OUTPUT_PER_M;
+      $.export("$summary", `Intro generated (${intro.length} chars, ${input}/${output} tok) — $${cost.toFixed(4)}`);
       return {
         intro,
         _usage: { input, output, model: GEMINI_MODEL, cost_estimate_usd: cost },
