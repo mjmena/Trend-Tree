@@ -12,7 +12,7 @@ import { axios } from "@pipedream/platform";
 const SEGMENT_ID = "e06ba0cc-b339-44ae-bb1b-a3c0a404d820";
 const BRAZE_APP_ID = "3f5340d5-1868-4fc0-b783-b36dd6185ab6";
 const FROM_EMAIL = "trends@content.mcclatchymedia.com";
-const FROM_NAME = "Trend Insights Daily";
+const FROM_NAME = "Trend Digest";
 
 export default defineComponent({
   props: {
