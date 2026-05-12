@@ -37,6 +37,13 @@ const fmtDate = (d) => new Intl.DateTimeFormat("en-US", {
   timeZone: TIMEZONE,
 }).format(d);
 
+const fmtDateShort = (d) => new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  timeZone: TIMEZONE,
+}).format(d);
+
 // snake_case → Title Case (e.g. "mineral_sunscreen" → "Mineral Sunscreen").
 const prettifyToken = (s) => String(s ?? "")
   .replace(/[_-]+/g, " ")
@@ -190,7 +197,7 @@ export default defineComponent({
     const introText = String(this.intro ?? "").trim();
 
     const dateStr = fmtDate(new Date());
-    const subject = `Trend Insights Daily — ${dateStr}`;
+    const subject = `Trend Digest - ${fmtDateShort(new Date())}`;
 
     const risingCount = rows.filter((r) => {
       const v = String(r.VELOCITY_DIRECTION ?? "").toUpperCase();
