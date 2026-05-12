@@ -1,6 +1,6 @@
 // Pipedream Workflow Step: Generate Intro
 //
-// One Gemini 3.1 Pro call that writes the daily digest's editorial intro line.
+// One Gemini 3 Flash call that writes the daily digest's editorial intro line.
 // Surfaces emerging themes across today's selected trends — categories that
 // recur, clusters that are heating up, cultural drivers shared across trends —
 // in 1-2 sentences for the email header.
@@ -10,14 +10,22 @@
 // points), not just the short summary, so the editorial voice has more than
 // just the headline to riff on.
 //
+// Why Flash: Pro 3.1 with thinking on this prompt (~20KB) regularly takes
+// 60-180s and exceeded the workflow timeout. Flash returns in 3-5s, has
+// plenty of capability for 1-2 sentences of editorial synthesis, and is
+// ~10x cheaper. The FETCH_TIMEOUT_MS guard prevents indefinite hangs.
+//
 // Soft-fails: on any error or empty output, returns intro: "" and lets the
 // email render without the intro block.
 
-const GEMINI_MODEL = "gemini-3.1-pro-preview";
+const GEMINI_MODEL = "gemini-3-flash-preview";
 
-// Pro pricing (per 1M tokens). Update if Google's rates change.
-const INPUT_PER_M = 1.25;
-const OUTPUT_PER_M = 10.0;
+// Flash pricing (per 1M tokens). Update if Google's rates change.
+const INPUT_PER_M = 0.3;
+const OUTPUT_PER_M = 2.5;
+
+// Hard ceiling on the Gemini call so the step can't block the workflow.
+const FETCH_TIMEOUT_MS = 60_000;
 
 const parseVariant = (v) => {
   if (v == null) return null;
@@ -93,7 +101,7 @@ const buildPrompt = (rows) => {
   const fillerRows = rows.filter((r) => !isRising(r.VELOCITY_DIRECTION));
   const allRows = [...risingRows, ...fillerRows];
 
-  return `You are writing the editorial intro line for McClatchy's daily trend-intelligence newsletter ("Trend Insights Daily"), read by B2B marketing and sales teams across McClatchy's news properties.
+  return `You're writing the opening line of a daily trend-intelligence newsletter. McClatchy publishes it — sales and marketing folks read it over coffee. Your job: give them the vibe of the day in 1-2 sentences. Witty if it lands, never forced. The trend cards do the heavy lifting; you're just the cold open.
 
 TODAY'S DIGEST — ${risingRows.length} rising trend(s), ${fillerRows.length} top-heat filler trend(s).
 
@@ -104,15 +112,20 @@ ${risingRows.length ? risingRows.map((r, i) => renderTrend(r, i)).join("\n") : "
 ${fillerRows.length ? fillerRows.map((r, i) => renderTrend(r, risingRows.length + i)).join("\n") : "(none)"}
 
 TASK
-Write the 1-2 sentence editorial intro line that opens the newsletter. ≤320 chars total. Synthesize the SHAPE of the day across these ${allRows.length} trends — recurring categories, shared cultural drivers, clusters of momentum, throughlines across seemingly unrelated trends. The reader sees the full trend cards below; your job is to give them the editorial frame.
+Open the newsletter in 1-2 sentences. ≤280 chars total. Find the through-line — what are people actually doing today? If two or three risers share a mood, name it in plain English.
 
-STYLE
-- Confident, concise, B2B-appropriate (sales/marketing teams read this).
-- No bullets, no emoji, no hedging ("it seems", "perhaps").
-- Don't recite the trend list — synthesize the throughline. If three risers share a vibe, name it.
-- Reference cultural drivers or vibe shifts where they cluster across multiple trends.
-- Do not include the date.
-- If there's nothing rising, frame the digest as a top-heat snapshot ("Today's snapshot leans into...").
+VOICE
+- Talk like a smart friend who reads too much, not a McKinsey deck.
+- Plain verbs, concrete nouns. "People are doing X" beats "consumers are driving demand for X."
+- A little wit is fine. A wry observation is fine. No puns, no emoji, no hedging, no exclamation points.
+- BANNED phrases: "Today's intelligence", "consumer pivot", "driving demand", "simultaneously", "moreover", "leveraging", "the rise of", "ushering in", "signals a shift", "underscores", "increasingly". If you wrote one, rewrite.
+- No proper-noun trend names — synthesize, don't recite.
+- Keep it newsroom-safe (no crude or insulting language); McClatchy is corporate media.
+
+EXAMPLES OF THE RIGHT VOICE (style only, ignore content)
+- "Burnout's losing its grip on the wellness aisle — people are shaking, breathing, and napping their way through 2026."
+- "Three of today's risers all want the same thing: stop optimizing, start feeling. The wearables industry is going to feel that."
+- "Quiet day on the fashion side; beauty is doing all the heavy lifting, mostly from the scalp up."
 
 OUTPUT — a single JSON object and nothing else:
 { "intro": "..." }`;
@@ -125,22 +138,31 @@ const callGemini = async (apiKey, prompt) => {
     generationConfig: {
       temperature: 0.5,
       responseMimeType: "application/json",
-      // Pro 3.1 burns tokens on thinking before emitting; budget needs to
-      // cover thinking + the small JSON payload. 4096 matches the other
-      // Pro-using agents in this repo (audit-agent, gemini_loop).
-      maxOutputTokens: 4096,
-      thinkingConfig: { thinkingLevel: "low" },
+      maxOutputTokens: 1024,
     },
   };
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!resp.ok) {
-    throw new Error(`Gemini HTTP ${resp.status}: ${await resp.text()}`);
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!resp.ok) {
+      throw new Error(`Gemini HTTP ${resp.status}: ${await resp.text()}`);
+    }
+    return await resp.json();
+  } catch (e) {
+    if (e.name === "AbortError") {
+      throw new Error(`Gemini call exceeded ${FETCH_TIMEOUT_MS}ms timeout`);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-  return resp.json();
 };
 
 const extractIntro = (data) => {
@@ -170,9 +192,9 @@ const extractIntro = (data) => {
 };
 
 export default defineComponent({
-  name: "Generate Intro (Gemini Pro)",
-  description: "Writes the 1-2 sentence editorial intro for the daily digest email using Gemini 3.1 Pro with full enrichment context.",
-  version: "0.1.0",
+  name: "Generate Intro (Gemini Flash)",
+  description: "Writes the 1-2 sentence editorial intro for the daily digest email using Gemini 3 Flash with full enrichment context.",
+  version: "0.2.0",
   props: {
     google_gemini: {
       type: "app",
