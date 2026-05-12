@@ -200,13 +200,22 @@ export default defineComponent({
     const introText = String(this.intro ?? "").trim();
 
     const dateStr = fmtDate(new Date());
-    const subject = `Trend Digest - ${fmtDateShort(new Date())}`;
+    const shortDate = fmtDateShort(new Date());
 
     const risingCount = rows.filter((r) => {
       const v = String(r.VELOCITY_DIRECTION ?? "").toUpperCase();
       return v === "NEW" || v === "GROWING" || v === "RESURGENT";
     }).length;
     const fillerCount = rows.length - risingCount;
+
+    // Count-led subject; friendly-from already says "Trend Digest" so the
+    // subject is just "what's in this issue · date". On filler-only days
+    // (no risers), fall back to "N top trends".
+    const subject = rows.length === 0
+      ? `Trend Digest · ${shortDate}`
+      : risingCount > 0
+        ? `${risingCount} new ${risingCount === 1 ? "trend" : "trends"} · ${shortDate}`
+        : `${rows.length} top ${rows.length === 1 ? "trend" : "trends"} · ${shortDate}`;
 
     const countBlurb = risingCount === 0
       ? `${rows.length} top ${rows.length === 1 ? "trend" : "trends"} by heat`
