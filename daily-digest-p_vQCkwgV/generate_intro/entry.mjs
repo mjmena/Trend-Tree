@@ -27,9 +27,10 @@ const INPUT_PER_M = 1.25;
 const OUTPUT_PER_M = 10.0;
 
 // Hard ceiling on the Gemini call so the step can't block the workflow.
-// Pro at thinkingLevel "low" typically returns in 10-30s on this prompt;
-// 120s gives plenty of headroom for slow Google days.
-const FETCH_TIMEOUT_MS = 120_000;
+// Pro at thinkingLevel "medium" with a 16384 token budget returns in
+// 20-60s on this prompt; 180s gives generous headroom for slow Google
+// days. Workflow lambda_timeout (600s) still has plenty of room left.
+const FETCH_TIMEOUT_MS = 180_000;
 
 const parseVariant = (v) => {
   if (v == null) return null;
@@ -152,10 +153,11 @@ const callGemini = async (apiKey, prompt) => {
     generationConfig: {
       temperature: 0.5,
       responseMimeType: "application/json",
-      // Pro 3.1 burns tokens on thinking before emitting. 4096 matches
-      // the other Pro-using agents in this repo (audit-agent, gemini_loop).
-      maxOutputTokens: 4096,
-      thinkingConfig: { thinkingLevel: "low" },
+      // Generous budget so thinking + JSON wrapper + content all fit
+      // with room to spare. The model won't pad output to fill space —
+      // the actual emit is ~300-500 tokens; the rest is thinking budget.
+      maxOutputTokens: 16384,
+      thinkingConfig: { thinkingLevel: "medium" },
     },
   };
 
