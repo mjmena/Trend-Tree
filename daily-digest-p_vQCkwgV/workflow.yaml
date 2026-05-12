@@ -111,6 +111,7 @@ steps:
   props:
     dashboard_rows: "{{steps.query_dashboard.$return_value}}"
     intro: "{{steps.generate_intro.$return_value.intro}}"
+    preheader: "{{steps.generate_intro.$return_value.preheader}}"
 - namespace: braze_send
   runtime: nodejs20.x
   uses: "./braze_send/entry.js"

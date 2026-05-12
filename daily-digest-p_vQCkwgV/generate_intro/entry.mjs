@@ -112,9 +112,13 @@ ${risingRows.length ? risingRows.map((r, i) => renderTrend(r, i)).join("\n") : "
 ${fillerRows.length ? fillerRows.map((r, i) => renderTrend(r, risingRows.length + i)).join("\n") : "(none)"}
 
 TASK
-Open the newsletter in 1-2 sentences. ≤280 chars total. Find the through-line — what are people actually doing today? If two or three risers share a mood, name it in plain English.
+Write TWO layered editorial lines:
 
-VOICE
+1. "preheader" — ONE complete sentence, ≤85 chars. This is the inbox-preview teaser that shows next to the subject line. Make it a hook: a single observation that makes a reader want to open. Must end with a period.
+
+2. "intro" — 1-2 complete sentences, ≤280 chars total. This is the visible editorial opener inside the email — the elaboration on the preheader. Find the through-line across today's trends. If two or three risers share a mood, name it in plain English. Both sentences MUST end with terminal punctuation; do not start a sentence you don't finish.
+
+VOICE (applies to both)
 - Talk like a smart friend who reads too much, not a McKinsey deck.
 - Plain verbs, concrete nouns. "People are doing X" beats "consumers are driving demand for X."
 - A little wit is fine. A wry observation is fine. No puns, no emoji, no hedging, no exclamation points.
@@ -123,12 +127,18 @@ VOICE
 - Keep it newsroom-safe (no crude or insulting language); McClatchy is corporate media.
 
 EXAMPLES OF THE RIGHT VOICE (style only, ignore content)
-- "Burnout's losing its grip on the wellness aisle — people are shaking, breathing, and napping their way through 2026."
-- "Three of today's risers all want the same thing: stop optimizing, start feeling. The wearables industry is going to feel that."
-- "Quiet day on the fashion side; beauty is doing all the heavy lifting, mostly from the scalp up."
+Example A:
+  preheader: "Burnout's losing its grip on the wellness aisle."
+  intro: "Burnout's losing its grip on the wellness aisle — people are shaking, breathing, and napping their way through 2026."
+Example B:
+  preheader: "Three risers, one shared instinct: stop optimizing."
+  intro: "Three of today's risers all want the same thing: stop optimizing, start feeling. The wearables industry is going to feel that."
+Example C:
+  preheader: "Beauty's doing the heavy lifting today."
+  intro: "Quiet day on the fashion side; beauty is doing all the heavy lifting, mostly from the scalp up."
 
 OUTPUT — a single JSON object and nothing else:
-{ "intro": "..." }`;
+{ "preheader": "...", "intro": "..." }`;
 };
 
 const callGemini = async (apiKey, prompt) => {
@@ -180,7 +190,7 @@ const trimDangling = (text) => {
   return tail ? t.slice(0, endPos) : t;
 };
 
-const extractIntro = (data) => {
+const extractOutput = (data) => {
   const parts = data?.candidates?.[0]?.content?.parts || [];
   const text = parts.map((p) => p.text || "").join("");
   const finishReason = data?.candidates?.[0]?.finishReason;
@@ -189,21 +199,27 @@ const extractIntro = (data) => {
   try {
     parsed = JSON.parse(text);
   } catch (e) {
-    // Fall back to grabbing the intro field via regex in case the model
-    // wrapped JSON in prose or truncated mid-string.
-    const m = text.match(/"intro"\s*:\s*"((?:[^"\\]|\\.)*)/);
-    if (m && m[1]) {
-      const intro = trimDangling(m[1].replace(/\\"/g, '"').replace(/\\n/g, " "));
-      if (intro) return intro;
-    }
+    // Fall back to regex extraction so a malformed JSON wrapper still
+    // yields something usable. Intro is the required field; preheader
+    // is optional and can be empty.
+    const introMatch = text.match(/"intro"\s*:\s*"((?:[^"\\]|\\.)*)/);
+    const preheaderMatch = text.match(/"preheader"\s*:\s*"((?:[^"\\]|\\.)*)/);
+    const intro = introMatch
+      ? trimDangling(introMatch[1].replace(/\\"/g, '"').replace(/\\n/g, " "))
+      : "";
+    const preheader = preheaderMatch
+      ? trimDangling(preheaderMatch[1].replace(/\\"/g, '"').replace(/\\n/g, " "))
+      : "";
+    if (intro) return { intro, preheader };
     throw new Error(
       `JSON.parse failed (${e.message}); finishReason=${finishReason}; raw="${text.slice(0, 200)}"`,
     );
   }
 
   const intro = trimDangling(String(parsed?.intro ?? ""));
+  const preheader = trimDangling(String(parsed?.preheader ?? ""));
   if (!intro) throw new Error(`Gemini returned empty intro; finishReason=${finishReason}`);
-  return intro;
+  return { intro, preheader };
 };
 
 export default defineComponent({
@@ -217,40 +233,41 @@ export default defineComponent({
     },
     dashboard_rows: {
       type: "any",
-      label: "Verified dashboard rows from verify_sources_llm",
+      label: "Dashboard rows from query_dashboard",
     },
   },
   async run({ $ }) {
     const rows = Array.isArray(this.dashboard_rows) ? this.dashboard_rows : [];
     if (rows.length === 0) {
       $.export("$summary", "No trends — skipping intro");
-      return { intro: "" };
+      return { intro: "", preheader: "" };
     }
 
     const apiKey = this.google_gemini?.$auth?.api_key;
     if (!apiKey) {
       console.log("generate_intro: no Gemini api key, skipping");
       $.export("$summary", "No api key — skipping intro");
-      return { intro: "" };
+      return { intro: "", preheader: "" };
     }
 
     try {
       const data = await callGemini(apiKey, buildPrompt(rows));
-      const intro = extractIntro(data);
+      const { intro, preheader } = extractOutput(data);
       const usage = data?.usageMetadata || {};
       const input = usage.promptTokenCount || 0;
       const output = usage.candidatesTokenCount || 0;
       const cost = (input / 1_000_000) * INPUT_PER_M + (output / 1_000_000) * OUTPUT_PER_M;
-      $.export("$summary", `Intro generated (${intro.length} chars, ${input}/${output} tok) — $${cost.toFixed(4)}`);
+      $.export("$summary", `Intro generated (intro ${intro.length}c, preheader ${preheader.length}c, ${input}/${output} tok) — $${cost.toFixed(4)}`);
       return {
         intro,
+        preheader,
         _usage: { input, output, model: GEMINI_MODEL, cost_estimate_usd: cost },
       };
     } catch (e) {
       const msg = e?.message || String(e);
       console.log(`generate_intro: soft-fail — ${msg}`);
       $.export("$summary", `Intro skipped (${msg.slice(0, 80)})`);
-      return { intro: "", _error: msg.slice(0, 500) };
+      return { intro: "", preheader: "", _error: msg.slice(0, 500) };
     }
   },
 });

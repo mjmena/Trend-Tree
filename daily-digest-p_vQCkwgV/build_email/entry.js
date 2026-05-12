@@ -194,10 +194,16 @@ export default defineComponent({
       label: "AI-generated editorial intro (1-2 sentences)",
       optional: true,
     },
+    preheader: {
+      type: "string",
+      label: "AI-generated short editorial preheader (≤85 chars)",
+      optional: true,
+    },
   },
   async run({ $ }) {
     const rows = Array.isArray(this.dashboard_rows) ? this.dashboard_rows : [];
     const introText = String(this.intro ?? "").trim();
+    const preheaderEditorial = String(this.preheader ?? "").trim();
 
     const dateStr = fmtDate(new Date());
     const shortDate = fmtDateShort(new Date());
@@ -247,10 +253,9 @@ export default defineComponent({
       : "";
 
     // Hidden preheader — the short inbox-preview line shown after the
-    // subject in Gmail/Outlook/Apple Mail. Uses the count blurb (factual,
-    // brief) so the AI intro reads fresh when the recipient opens the
-    // email rather than being previewed twice.
-    const preheaderText = countBlurb;
+    // subject in Gmail/Outlook/Apple Mail. Prefers the AI-generated
+    // editorial teaser; falls back to the count blurb if Gemini failed.
+    const preheaderText = preheaderEditorial || countBlurb;
     const preheaderHtml = `<div style="display:none;font-size:1px;color:#fafafa;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">${esc(preheaderText)}</div>`;
 
     const header = `
