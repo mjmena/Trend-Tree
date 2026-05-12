@@ -37,6 +37,15 @@ const fmtDate = (d) => new Intl.DateTimeFormat("en-US", {
   timeZone: TIMEZONE,
 }).format(d);
 
+// snake_case → Title Case (e.g. "mineral_sunscreen" → "Mineral Sunscreen").
+const prettifyToken = (s) => String(s ?? "")
+  .replace(/[_-]+/g, " ")
+  .trim()
+  .replace(/\s+/g, " ")
+  .split(" ")
+  .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+  .join(" ");
+
 // ---------- HTML fragments ----------
 
 const chip = (label, { bg = "#f3f4f6", fg = "#374151", border = "#e5e7eb" } = {}) =>
@@ -49,14 +58,37 @@ const velocityChip = (velocity) => {
     return chip("New", { bg: "#eff6ff", fg: "#1d4ed8", border: "#bfdbfe" });
   }
   if (v === "GROWING") {
-    return chip("Rising", { bg: "#ecfdf5", fg: "#047857", border: "#a7f3d0" });
+    return chip("Growing", { bg: "#ecfdf5", fg: "#047857", border: "#a7f3d0" });
+  }
+  if (v === "RESURGENT") {
+    return chip("Resurgent", { bg: "#fefce8", fg: "#a16207", border: "#fde68a" });
   }
   if (v === "STABLE") return chip("Stable");
+  if (v === "DORMANT") {
+    return chip("Dormant", { bg: "#f3f4f6", fg: "#6b7280", border: "#e5e7eb" });
+  }
+  if (v === "RETIRED") {
+    return chip("Retired", { bg: "#fef2f2", fg: "#b91c1c", border: "#fecaca" });
+  }
+  // Legacy values still present in older lifecycle rows.
   if (v === "STAGNANT") return chip("Stagnant");
   if (v === "DECLINING") {
     return chip("Declining", { bg: "#fef2f2", fg: "#b91c1c", border: "#fecaca" });
   }
-  return chip(v.toLowerCase());
+  return chip(prettifyToken(v));
+};
+
+const heatChip = (heat) => {
+  if (heat == null || Number.isNaN(Number(heat))) return "";
+  const h = Number(heat);
+  const label = `Heat ${h.toFixed(1)}`;
+  if (h >= 75) {
+    return chip(label, { bg: "#fff7ed", fg: "#c2410c", border: "#fed7aa" });
+  }
+  if (h >= 50) {
+    return chip(label, { bg: "#fefce8", fg: "#a16207", border: "#fde68a" });
+  }
+  return chip(label);
 };
 
 // A source row: title on top (as link), full URL underneath in muted.
@@ -86,10 +118,14 @@ const renderCard = (row) => {
   const subtitle = b2b && b2b !== headline ? b2b : null;
 
   const summary = esc(row.SUMMARY_SHORT ?? "");
-  const category = row.CATEGORY ? chip(row.CATEGORY) : "";
+  const category = row.CATEGORY ? chip(prettifyToken(row.CATEGORY)) : "";
+  const subcategory = row.SUBCATEGORY ? chip(prettifyToken(row.SUBCATEGORY)) : "";
   const macroTags = parseVariant(row.MACROTREND_TAGS) || [];
-  const firstMacro = Array.isArray(macroTags) && macroTags.length > 0 ? chip(macroTags[0]) : "";
+  const firstMacro = Array.isArray(macroTags) && macroTags.length > 0
+    ? chip(prettifyToken(macroTags[0]))
+    : "";
   const velocity = velocityChip(row.VELOCITY_DIRECTION);
+  const heat = heatChip(row.HEAT_INDEX);
 
   // Prefer LLM-verified final_sources; fall back to raw TOP_SIGNALS only if the
   // verify step never ran.
@@ -125,7 +161,7 @@ const renderCard = (row) => {
     <div style="padding:22px 24px;margin-bottom:14px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;">
       ${headlineBlock}
       <div style="margin-bottom:12px;">
-        ${velocity}${category}${firstMacro}
+        ${velocity}${heat}${category}${subcategory}${firstMacro}
       </div>
       <div style="font-size:14px;color:#4b5563;line-height:1.6;">
         ${summary}
@@ -152,7 +188,7 @@ export default defineComponent({
 
     const risingCount = rows.filter((r) => {
       const v = String(r.VELOCITY_DIRECTION ?? "").toUpperCase();
-      return v === "NEW" || v === "GROWING";
+      return v === "NEW" || v === "GROWING" || v === "RESURGENT";
     }).length;
     const fillerCount = rows.length - risingCount;
 
@@ -204,7 +240,7 @@ export default defineComponent({
     // within each bucket, sort by heat desc.
     const isRising = (r) => {
       const v = String(r.VELOCITY_DIRECTION ?? "").toUpperCase();
-      return v === "NEW" || v === "GROWING";
+      return v === "NEW" || v === "GROWING" || v === "RESURGENT";
     };
     const cards = rows
       .slice()
