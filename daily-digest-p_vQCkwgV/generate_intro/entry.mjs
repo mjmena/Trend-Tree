@@ -27,10 +27,10 @@ const INPUT_PER_M = 1.25;
 const OUTPUT_PER_M = 10.0;
 
 // Hard ceiling on the Gemini call so the step can't block the workflow.
-// Pro at thinkingLevel "medium" with a 16384 token budget returns in
-// 20-60s on this prompt; 180s gives generous headroom for slow Google
-// days. Workflow lambda_timeout (600s) still has plenty of room left.
-const FETCH_TIMEOUT_MS = 180_000;
+// Pro 3.1 at thinkingLevel "medium" on this ~5K-token prompt can take
+// 2-5 minutes during slow Google windows. 480s (8 min) leaves the
+// workflow lambda_timeout (600s) ~2 min for the other steps.
+const FETCH_TIMEOUT_MS = 480_000;
 
 const parseVariant = (v) => {
   if (v == null) return null;
