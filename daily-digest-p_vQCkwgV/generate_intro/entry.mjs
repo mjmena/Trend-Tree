@@ -125,7 +125,11 @@ const callGemini = async (apiKey, prompt) => {
     generationConfig: {
       temperature: 0.5,
       responseMimeType: "application/json",
-      maxOutputTokens: 512,
+      // Pro 3.1 burns tokens on thinking before emitting; budget needs to
+      // cover thinking + the small JSON payload. 4096 matches the other
+      // Pro-using agents in this repo (audit-agent, gemini_loop).
+      maxOutputTokens: 4096,
+      thinkingConfig: { thinkingLevel: "low" },
     },
   };
   const resp = await fetch(url, {
@@ -142,9 +146,26 @@ const callGemini = async (apiKey, prompt) => {
 const extractIntro = (data) => {
   const parts = data?.candidates?.[0]?.content?.parts || [];
   const text = parts.map((p) => p.text || "").join("");
-  const parsed = JSON.parse(text);
+  const finishReason = data?.candidates?.[0]?.finishReason;
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch (e) {
+    // Fall back to grabbing the intro field via regex in case the model
+    // wrapped JSON in prose or truncated mid-string.
+    const m = text.match(/"intro"\s*:\s*"((?:[^"\\]|\\.)*)/);
+    if (m && m[1]) {
+      const intro = m[1].replace(/\\"/g, '"').replace(/\\n/g, " ").trim();
+      if (intro) return intro;
+    }
+    throw new Error(
+      `JSON.parse failed (${e.message}); finishReason=${finishReason}; raw="${text.slice(0, 200)}"`,
+    );
+  }
+
   const intro = String(parsed?.intro ?? "").trim();
-  if (!intro) throw new Error("Gemini returned empty intro");
+  if (!intro) throw new Error(`Gemini returned empty intro; finishReason=${finishReason}`);
   return intro;
 };
 
