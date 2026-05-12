@@ -1,31 +1,35 @@
 // Pipedream Workflow Step: Generate Intro
 //
-// One Gemini 3 Flash call that writes the daily digest's editorial intro line.
-// Surfaces emerging themes across today's selected trends — categories that
-// recur, clusters that are heating up, cultural drivers shared across trends —
-// in 1-2 sentences for the email header.
+// One Gemini 3.1 Pro call that writes two layered editorial outputs for
+// the daily digest email: a short preheader (≤85 chars, the inbox-preview
+// teaser) and a 1-2 sentence intro (≤280 chars, the visible body opener).
+// Both surface themes across today's trends — recurring categories,
+// clusters of momentum, shared cultural drivers.
 //
-// Feeds the model the full enrichment context per trend (summary, vibe shift,
-// social narrative, cultural drivers, seasonal/geographic signals, key data
-// points), not just the short summary, so the editorial voice has more than
-// just the headline to riff on.
+// Feeds the model the full enrichment context per trend (summary, vibe
+// shift, social narrative, cultural drivers, seasonal/geographic signals,
+// key data points) so the editorial voice has more than the headline to
+// riff on.
 //
-// Why Flash: Pro 3.1 with thinking on this prompt (~20KB) regularly takes
-// 60-180s and exceeded the workflow timeout. Flash returns in 3-5s, has
-// plenty of capability for 1-2 sentences of editorial synthesis, and is
-// ~10x cheaper. The FETCH_TIMEOUT_MS guard prevents indefinite hangs.
+// Why Pro (not Flash): Flash repeatedly truncated multi-field JSON output,
+// emitting 4-word intro strings before closing. Pro 3.1 at thinkingLevel
+// "low" produces consistent, complete output in 10-30s on this prompt.
+// FETCH_TIMEOUT_MS (120s) caps the call so the step can never block
+// the workflow.
 //
-// Soft-fails: on any error or empty output, returns intro: "" and lets the
-// email render without the intro block.
+// Soft-fails: on any error or empty output, returns blank intro/preheader
+// and lets the email render without the editorial block.
 
-const GEMINI_MODEL = "gemini-3-flash-preview";
+const GEMINI_MODEL = "gemini-3.1-pro-preview";
 
-// Flash pricing (per 1M tokens). Update if Google's rates change.
-const INPUT_PER_M = 0.3;
-const OUTPUT_PER_M = 2.5;
+// Pro pricing (per 1M tokens). Update if Google's rates change.
+const INPUT_PER_M = 1.25;
+const OUTPUT_PER_M = 10.0;
 
 // Hard ceiling on the Gemini call so the step can't block the workflow.
-const FETCH_TIMEOUT_MS = 60_000;
+// Pro at thinkingLevel "low" typically returns in 10-30s on this prompt;
+// 120s gives plenty of headroom for slow Google days.
+const FETCH_TIMEOUT_MS = 120_000;
 
 const parseVariant = (v) => {
   if (v == null) return null;
@@ -148,7 +152,10 @@ const callGemini = async (apiKey, prompt) => {
     generationConfig: {
       temperature: 0.5,
       responseMimeType: "application/json",
-      maxOutputTokens: 1024,
+      // Pro 3.1 burns tokens on thinking before emitting. 4096 matches
+      // the other Pro-using agents in this repo (audit-agent, gemini_loop).
+      maxOutputTokens: 4096,
+      thinkingConfig: { thinkingLevel: "low" },
     },
   };
 
@@ -223,9 +230,9 @@ const extractOutput = (data) => {
 };
 
 export default defineComponent({
-  name: "Generate Intro (Gemini Flash)",
-  description: "Writes the 1-2 sentence editorial intro for the daily digest email using Gemini 3 Flash with full enrichment context.",
-  version: "0.2.0",
+  name: "Generate Intro (Gemini Pro)",
+  description: "Writes the editorial preheader + intro for the daily digest email using Gemini 3.1 Pro with full enrichment context.",
+  version: "0.3.0",
   props: {
     google_gemini: {
       type: "app",
