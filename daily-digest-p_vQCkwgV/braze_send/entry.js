@@ -1,8 +1,7 @@
 // Pipedream Workflow Step: Braze Send
 //
-// POSTs the rendered HTML digest to Braze /messages/send. Day-1 config is
-// hardcoded below: single test recipient, McClatchy content sender, same
-// Braze app id used by CRM-Proof-Pipeline/braze-render-p_vQCkbQW.
+// POSTs the rendered HTML digest to Braze /messages/send, targeting a Braze
+// segment. Same Braze app id as CRM-Proof-Pipeline/braze-render-p_vQCkbQW.
 //
 // Auth comes from the Pipedream `braze` app prop; credentials are read from
 // this.braze.$auth (api_key, instance_domain, region) — same pattern used by
@@ -10,8 +9,7 @@
 
 import { axios } from "@pipedream/platform";
 
-// Hardcoded day-1 values. Move to env vars when we broaden the audience.
-const EXTERNAL_USER_ID = "88bc3b24acdbce2ea86d17c8e72a1a893d65b7824e43651db59d0a1b2d90c9a1";
+const SEGMENT_ID = "e06ba0cc-b339-44ae-bb1b-a3c0a404d820";
 const BRAZE_APP_ID = "3f5340d5-1868-4fc0-b783-b36dd6185ab6";
 const FROM_EMAIL = "test@content.mcclatchymedia.com";
 const FROM_NAME = "Trend Insights Daily";
@@ -33,7 +31,8 @@ export default defineComponent({
   },
   async run({ $ }) {
     const payload = {
-      external_user_ids: [EXTERNAL_USER_ID],
+      broadcast: true,
+      segment_id: SEGMENT_ID,
       messages: {
         email: {
           app_id: BRAZE_APP_ID,
@@ -58,7 +57,7 @@ export default defineComponent({
 
     $.export(
       "$summary",
-      `Sent "${this.subject}" → dispatch_id=${response.dispatch_id ?? "N/A"}`,
+      `Sent "${this.subject}" → segment=${SEGMENT_ID} dispatch_id=${response.dispatch_id ?? "N/A"}`,
     );
 
     return response;
