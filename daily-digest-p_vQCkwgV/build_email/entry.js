@@ -202,20 +202,37 @@ export default defineComponent({
     const dateStr = fmtDate(new Date());
     const shortDate = fmtDateShort(new Date());
 
-    const risingCount = rows.filter((r) => {
-      const v = String(r.VELOCITY_DIRECTION ?? "").toUpperCase();
-      return v === "NEW" || v === "GROWING" || v === "RESURGENT";
-    }).length;
+    const isRisingStatus = (v) => {
+      const u = String(v ?? "").toUpperCase();
+      return u === "NEW" || u === "GROWING" || u === "RESURGENT";
+    };
+
+    const risingCount = rows.filter((r) => isRisingStatus(r.VELOCITY_DIRECTION)).length;
     const fillerCount = rows.length - risingCount;
 
-    // Count-led subject; friendly-from already says "Trend Digest" so the
-    // subject is just "what's in this issue · date". On filler-only days
-    // (no risers), fall back to "N top trends".
+    // Pick the top 3 names for the subject in the same order the cards
+    // render: rising-first bucket, then heat desc within each bucket.
+    const topNames = rows
+      .slice()
+      .sort((a, b) => {
+        const ra = isRisingStatus(a.VELOCITY_DIRECTION) ? 0 : 1;
+        const rb = isRisingStatus(b.VELOCITY_DIRECTION) ? 0 : 1;
+        if (ra !== rb) return ra - rb;
+        return (b.HEAT_INDEX ?? 0) - (a.HEAT_INDEX ?? 0);
+      })
+      .slice(0, 3)
+      .map((r) => r.TREND_NAME)
+      .filter(Boolean)
+      .join(", ");
+
+    // Subject is "<count> new and rising trends: <top 3>" so the inbox
+    // line names what's in this issue. Friendly-from already says
+    // "Trend Digest" so the wordmark isn't repeated.
     const subject = rows.length === 0
       ? `Trend Digest · ${shortDate}`
       : risingCount > 0
-        ? `${risingCount} new ${risingCount === 1 ? "trend" : "trends"} · ${shortDate}`
-        : `${rows.length} top ${rows.length === 1 ? "trend" : "trends"} · ${shortDate}`;
+        ? `${risingCount} new and rising ${risingCount === 1 ? "trend" : "trends"}: ${topNames}`
+        : `${rows.length} top ${rows.length === 1 ? "trend" : "trends"}: ${topNames}`;
 
     const countBlurb = risingCount === 0
       ? `${rows.length} top ${rows.length === 1 ? "trend" : "trends"} by heat`
@@ -228,6 +245,13 @@ export default defineComponent({
            ${esc(introText)}
          </div>`
       : "";
+
+    // Hidden preheader — the short inbox-preview line shown after the
+    // subject in Gmail/Outlook/Apple Mail. Uses the count blurb (factual,
+    // brief) so the AI intro reads fresh when the recipient opens the
+    // email rather than being previewed twice.
+    const preheaderText = countBlurb;
+    const preheaderHtml = `<div style="display:none;font-size:1px;color:#fafafa;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">${esc(preheaderText)}</div>`;
 
     const header = `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom:28px;">
@@ -255,6 +279,7 @@ export default defineComponent({
     if (rows.length === 0) {
       const emptyHtml = `<!DOCTYPE html>
 <html><body style="margin:0;padding:48px 20px;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+  ${preheaderHtml}
   <div style="max-width:600px;margin:0 auto;">
     ${header}
     <div style="padding:32px 24px;background:#ffffff;border:1px solid #e5e7eb;border-radius:10px;text-align:center;">
@@ -292,6 +317,7 @@ export default defineComponent({
   <title>${esc(subject)}</title>
 </head>
 <body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#111827;">
+  ${preheaderHtml}
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fafafa;">
     <tr>
       <td align="center" style="padding:40px 16px;">

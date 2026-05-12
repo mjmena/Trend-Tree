@@ -165,6 +165,21 @@ const callGemini = async (apiKey, prompt) => {
   }
 };
 
+// Trim a dangling incomplete trailing sentence — Gemini sometimes starts
+// a second/third sentence that doesn't finish ("…skincare. From").
+// If the last text after the final terminal punctuation isn't empty,
+// it's a fragment; drop it.
+const trimDangling = (text) => {
+  const t = (text || "").trim();
+  if (!t) return "";
+  const matches = [...t.matchAll(/[.!?][")\]”’]?/g)];
+  if (matches.length === 0) return t;
+  const last = matches[matches.length - 1];
+  const endPos = last.index + last[0].length;
+  const tail = t.slice(endPos).trim();
+  return tail ? t.slice(0, endPos) : t;
+};
+
 const extractIntro = (data) => {
   const parts = data?.candidates?.[0]?.content?.parts || [];
   const text = parts.map((p) => p.text || "").join("");
@@ -178,7 +193,7 @@ const extractIntro = (data) => {
     // wrapped JSON in prose or truncated mid-string.
     const m = text.match(/"intro"\s*:\s*"((?:[^"\\]|\\.)*)/);
     if (m && m[1]) {
-      const intro = m[1].replace(/\\"/g, '"').replace(/\\n/g, " ").trim();
+      const intro = trimDangling(m[1].replace(/\\"/g, '"').replace(/\\n/g, " "));
       if (intro) return intro;
     }
     throw new Error(
@@ -186,7 +201,7 @@ const extractIntro = (data) => {
     );
   }
 
-  const intro = String(parsed?.intro ?? "").trim();
+  const intro = trimDangling(String(parsed?.intro ?? ""));
   if (!intro) throw new Error(`Gemini returned empty intro; finishReason=${finishReason}`);
   return intro;
 };
