@@ -3,7 +3,7 @@ name: Daily Digest
 settings:
   error_notification: true
   lambda_memory: 3072
-  lambda_timeout: 420
+  lambda_timeout: 600
   network: net_5Lnie3
 triggers:
 - id: ti_EoTEL6N
