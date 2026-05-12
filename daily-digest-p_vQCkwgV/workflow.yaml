@@ -95,11 +95,19 @@ steps:
     google_gemini:
       authProvisionId: apn_EOhp9DY
     dashboard_rows: "{{steps.query_dashboard.$return_value}}"
+- namespace: generate_intro
+  runtime: nodejs20.x
+  uses: "./generate_intro/entry.mjs"
+  props:
+    google_gemini:
+      authProvisionId: apn_EOhp9DY
+    dashboard_rows: "{{steps.verify_sources_llm.$return_value.rows}}"
 - namespace: build_email
   runtime: nodejs20.x
   uses: "./build_email/entry.js"
   props:
     dashboard_rows: "{{steps.verify_sources_llm.$return_value.rows}}"
+    intro: "{{steps.generate_intro.$return_value.intro}}"
 - namespace: braze_send
   runtime: nodejs20.x
   uses: "./braze_send/entry.js"
