@@ -134,11 +134,14 @@ const renderCard = (row) => {
   const velocity = velocityChip(row.VELOCITY_DIRECTION);
   const heat = heatChip(row.HEAT_INDEX);
 
-  // Prefer LLM-verified final_sources; fall back to raw TOP_SIGNALS only if the
-  // verify step never ran.
-  const topSignals = Array.isArray(row.final_sources) && row.final_sources.length > 0
-    ? row.final_sources.slice(0, 3)
-    : (parseVariant(row.TOP_SIGNALS) || []).slice(0, 3);
+  // TOP_SIGNALS is the enrichment agent's curated source list for the card.
+  // Top up from EVIDENCE (deduped by URL) when fewer than 3 are available.
+  const topRaw = (parseVariant(row.TOP_SIGNALS) || []).filter((s) => s && (s.url || s.URL));
+  const seenUrls = new Set(topRaw.map((s) => s.url || s.URL));
+  const evidenceTopUp = (parseVariant(row.EVIDENCE) || [])
+    .filter((ev) => ev && ev.url && !seenUrls.has(ev.url))
+    .map((ev) => ({ url: ev.url, title: ev.claim || ev.source, source: ev.source }));
+  const topSignals = [...topRaw, ...evidenceTopUp].slice(0, 3);
   const sourcesHtml = topSignals.length > 0
     ? `<div style="margin-top:14px;">
          <div style="font-size:10px;font-weight:700;color:#9ca3af;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Sources</div>
