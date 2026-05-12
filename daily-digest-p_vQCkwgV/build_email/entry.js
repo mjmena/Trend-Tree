@@ -8,7 +8,7 @@
 //   - Single list of trend cards, sorted by heat desc
 //   - Each card: name, category + velocity chips, summary, sources list (title → URL)
 
-const DASHBOARD_URL = "#"; // TODO: replace with real public dashboard URL when available
+const DASHBOARD_URL = "https://staging-insights-agent.trendhunteragents.ai/trends";
 const TIMEZONE = "America/Los_Angeles";
 
 // ---------- helpers ----------
