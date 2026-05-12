@@ -147,7 +147,8 @@ const LOOP_DEFAULTS = {
   per_call_max_tokens: 2048,
   thinking_level: "medium",
   temperature: 1.0,
-  request_timeout_ms: 240_000,
+  request_timeout_ms: 540_000,
+  max_retries_5xx: 1,
 };
 
 function toFunctionDeclarations(toolNames) {
@@ -203,26 +204,32 @@ async function runAgentLoop({
     };
 
     let resp;
-    try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), LOOP_DEFAULTS.request_timeout_ms);
-      resp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(reqBody),
-          signal: ctrl.signal,
-        },
-      );
-      clearTimeout(timer);
-    } catch (e) {
-      throw new Error(`Gemini fetch failed (turn ${turn}): ${e.message}`);
-    }
-
-    if (!resp.ok) {
+    let attempt = 0;
+    while (true) {
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), LOOP_DEFAULTS.request_timeout_ms);
+        resp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(reqBody),
+            signal: ctrl.signal,
+          },
+        );
+        clearTimeout(timer);
+      } catch (e) {
+        throw new Error(`Gemini fetch failed (turn ${turn}): ${e.message}`);
+      }
+      if (resp.ok) break;
+      if (resp.status >= 500 && resp.status < 600 && attempt < LOOP_DEFAULTS.max_retries_5xx) {
+        attempt += 1;
+        await new Promise((r) => setTimeout(r, 2000));
+        continue;
+      }
       const errText = await resp.text();
-      throw new Error(`Gemini HTTP ${resp.status} (turn ${turn}): ${errText.slice(0, 600)}`);
+      throw new Error(`Gemini HTTP ${resp.status} (turn ${turn}, attempt ${attempt + 1}): ${errText.slice(0, 600)}`);
     }
 
     const data = await resp.json();
