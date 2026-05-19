@@ -1,0 +1,7 @@
+schema: workflow/2022.04
+name: Prediction Agent
+settings:
+  error_notification: true
+triggers:
+- id: hi_a1H4aWR
+
