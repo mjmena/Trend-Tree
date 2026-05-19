@@ -62,6 +62,19 @@ WITH latest_lifecycle AS (
       FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
     ) WHERE rn = 1
 ),
+latest_prediction AS (
+    -- Latest prediction-agent row per trend. Additive columns for the
+    -- Predictions Queue UI. ISOLATED from HEAT_INDEX / LIFECYCLE_STATUS —
+    -- not read by any scoring path, only surfaced for the frontend.
+    SELECT TREND_ID,
+           PREDICTION_SCORE,
+           PREDICTION_FLAG,
+           PREDICTION_ELIGIBLE
+    FROM (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
+      FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_PREDICTION_LEDGER
+    ) WHERE rn = 1
+),
 latest_enrichment AS (
     SELECT r.TREND_ID, r.WRITTEN_AT AS ENRICHED_AT,
            r.PAYLOAD:trend_name_b2b::STRING       AS TREND_NAME_B2B,
@@ -284,6 +297,11 @@ SELECT
     e.SUMMARY_SHORT,
     e.SUMMARY_LONG,
     ROUND(COALESCE(tb.TREND_HEAT_INDEX, 0), 1)                            AS HEAT_INDEX,
+    -- Prediction-agent additive columns. Isolated from HEAT_INDEX by design;
+    -- read by the Insights Agent Predictions Queue only.
+    pred.PREDICTION_SCORE,
+    pred.PREDICTION_FLAG,
+    COALESCE(pred.PREDICTION_ELIGIBLE, FALSE)                              AS PREDICTION_ELIGIBLE,
     tb.TOTAL_CLUSTER_SIZE,
     tb.DISTINCT_SOURCE_COUNT,
     tb.LIFECYCLE_STATUS,
@@ -342,4 +360,5 @@ LEFT JOIN latest_gtrends lg                           ON tb.TREND_ID = lg.TREND_
 LEFT JOIN evidence_split es                           ON tb.TREND_ID = es.TREND_ID
 LEFT JOIN top_signals ts                              ON tb.TREND_ID = ts.TREND_ID
 LEFT JOIN macro_tags mt                               ON tb.TREND_ID = mt.TREND_ID
-LEFT JOIN related_trends r                            ON tb.TREND_ID = r.TREND_ID;
+LEFT JOIN related_trends r                            ON tb.TREND_ID = r.TREND_ID
+LEFT JOIN latest_prediction pred                      ON tb.TREND_ID = pred.TREND_ID;
