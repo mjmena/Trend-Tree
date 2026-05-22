@@ -2,7 +2,7 @@
 
 **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`
 
-Start with `DT_TREND_DASHBOARD` — it's the single surface Steeple reads and the right starting point for almost any consumer of this data. The supporting tables below explain what it draws from.
+Start with `DT_TREND_DASHBOARD` (the Trend Dashboard) — it's the right starting point for almost any consumer of this data. The supporting tables below explain what it draws from.
 
 ---
 
@@ -54,14 +54,15 @@ LIMIT 20;
 | `LIFECYCLE_STATUS` | VARCHAR | Current status. Updated hourly by the lifecycle agent. See enum below. |
 | `VELOCITY_DIRECTION` | VARCHAR | Alias for `LIFECYCLE_STATUS` — kept for legacy compatibility. |
 
-**Lifecycle status enum:**
+**Lifecycle stage enum** (expected progression is roughly linear; skipping multiple stages in one evaluation is unexpected):
 
-| Status | Meaning |
+| Stage | Meaning |
 |---|---|
 | `NEW` | Just promoted; first 24–48h, heat ≥ 60 |
 | `GROWING` | Heat increasing; signal volume trending up |
 | `STABLE` | Consistent heat; not accelerating or decelerating |
-| `DORMANT` | Heat declining; signal volume thin |
+| `DECLINING` | Heat falling; signal volume tapering |
+| `DORMANT` | Heat low and flat; signal volume thin |
 | `RESURGENT` | Previously dormant; heat spiking again |
 | `RETIRED` | Two consecutive lifecycle proposals to retire; signal volume flatlined |
 

@@ -11,3 +11,6 @@ node_modules/
 
 # Environment secrets
 .envrc.local
+
+# Claude Code local settings
+.claude/
