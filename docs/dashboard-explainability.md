@@ -99,14 +99,11 @@ Every score in this table is on a **0–100 scale unless otherwise noted**. The 
 
 ## How a trend gets to your ATLAS card
 
-```mermaid
-flowchart LR
-    L[1. Listen<br/>~14 sources stream signals] --> I[2. Identify<br/>AI clusters signals into trends]
-    I --> P[3. Profile<br/>each trend gets a name + description]
-    P --> T[4. Track<br/>hourly heat + lifecycle status]
-    T --> Pr[5. Predict<br/>daily emergence scoring]
-    Pr --> D[6. Display<br/>ATLAS refreshes every 15 minutes]
-```
+![How a trend gets to your ATLAS card — 6-stage pipeline flow](images/atlas-flow.svg)
+
+<!-- Diagram source: docs/images/atlas-flow.mmd. To regenerate after a pipeline change,
+     edit the .mmd file and render via mermaid.live (paste, export SVG) or `mmdc -i atlas-flow.mmd -o atlas-flow.svg` -->
+
 
 ### 1. Listen — we ingest signals from many sources
 
