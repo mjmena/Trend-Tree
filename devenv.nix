@@ -6,6 +6,7 @@
     pkgs.unzip
     pkgs.curl
     pkgs.google-cloud-sdk
+    pkgs.mark
   ];
 
   languages.javascript = {
