@@ -1,3 +1,6 @@
+<!-- Title: Category -->
+<!-- Parent: ATLAS Dashboard -->
+
 # CATEGORY / SUBCATEGORY / CATEGORY_CONFIDENCE / LOW_CONFIDENCE_FLAG
 
 **At a glance** — The trend's vertical (e.g., "Food & Drink") and a more specific sub-classification within it, plus the agent's confidence in the categorization.

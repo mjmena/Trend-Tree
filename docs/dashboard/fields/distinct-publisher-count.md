@@ -1,3 +1,6 @@
+<!-- Title: Distinct Publisher Count -->
+<!-- Parent: ATLAS Dashboard -->
+
 # DISTINCT_PUBLISHER_COUNT
 
 **At a glance** — Number of unique publishers that have contributed at least one signal to this trend.

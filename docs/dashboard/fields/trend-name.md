@@ -1,3 +1,6 @@
+<!-- Title: Trend Name (B2C and B2B) -->
+<!-- Parent: ATLAS Dashboard -->
+
 # TREND_NAME (and TREND_NAME_B2B)
 
 **At a glance** — Every trend has up to two names: a **B2C** "creative" name (e.g., "Plush Architecture") and a **B2B** "descriptive" name (e.g., "Tactile Maximalism"). ATLAS surfaces the B2C name by default. The B2B name is available as a separate field.

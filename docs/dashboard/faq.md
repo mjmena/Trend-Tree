@@ -1,3 +1,6 @@
+<!-- Title: FAQ -->
+<!-- Parent: ATLAS Dashboard -->
+
 # FAQ
 
 #### How do I read the scores on a card? What's the scale?

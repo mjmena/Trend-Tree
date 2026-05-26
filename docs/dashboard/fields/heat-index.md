@@ -1,3 +1,6 @@
+<!-- Title: Heat Index -->
+<!-- Parent: ATLAS Dashboard -->
+
 # HEAT_INDEX
 
 **At a glance** — How hot the trend is right now. Goes up when signals are recent and coming from many publishers; goes down when the trend cools off. Smoothed hour-to-hour so the number doesn't jump around.

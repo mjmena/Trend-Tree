@@ -1,3 +1,6 @@
+<!-- Title: Lifecycle Status -->
+<!-- Parent: ATLAS Dashboard -->
+
 # LIFECYCLE_STATUS
 
 **At a glance** — A label for the trend's overall trajectory. Updated every hour by the lifecycle agent.

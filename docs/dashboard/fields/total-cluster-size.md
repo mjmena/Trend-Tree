@@ -1,3 +1,6 @@
+<!-- Title: Total Cluster Size -->
+<!-- Parent: ATLAS Dashboard -->
+
 # TOTAL_CLUSTER_SIZE
 
 **At a glance** — Total number of signals linked to this trend, across all publishers and sources.

@@ -1,3 +1,6 @@
+<!-- Title: Where the Signals Come From -->
+<!-- Parent: ATLAS Dashboard -->
+
 # Where the signals come from
 
 The pipeline knows about 15 sources today, of which roughly 10 are actively ingesting at any moment (a few are paused or intermittent — flagged per-source below). The sources fall into two functional buckets:

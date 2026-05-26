@@ -1,3 +1,6 @@
+<!-- Title: Glossary -->
+<!-- Parent: ATLAS Dashboard -->
+
 # Glossary
 
 The terms below are the ones a reader needs to make sense of this documentation. The canonical glossary for the project (for engineers / Claude) lives in [`CONTEXT.md`](../../CONTEXT.md) at the repo root.

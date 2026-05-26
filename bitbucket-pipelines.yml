@@ -1,0 +1,40 @@
+image: atlassian/default-image:4
+
+# Publish docs/dashboard/ to Confluence via mark (kovetskiy/mark).
+# Triggered on every push to `production` when files under docs/dashboard/** changed.
+#
+# Required Bitbucket repository variables (Settings → Repository variables, mark as Secured):
+#   - CONFLUENCE_USER        Atlassian account email (e.g. mmena@mcclatchy.com)
+#   - CONFLUENCE_API_TOKEN   Atlassian API token (id.atlassian.com → API tokens)
+#   - CONFLUENCE_SPACE_KEY   Space key for the McClatchy team / Insights Agent space
+#
+# To activate: enable Pipelines in Bitbucket repo settings, set the three
+# variables above, then push a change under docs/dashboard/.
+#
+# Per-file destination is declared via HTML comment metadata in each .md
+# (`<!-- Title: ... -->` / `<!-- Parent: ... -->`). Space comes from the
+# --space CLI flag below so the same source tree can target different spaces.
+
+pipelines:
+  branches:
+    production:
+      - step:
+          name: Publish docs/dashboard/ to Confluence
+          condition:
+            changesets:
+              includePaths:
+                - "docs/dashboard/**"
+          services:
+            - docker
+          script:
+            - >-
+              docker run --rm
+              -v "$BITBUCKET_CLONE_DIR:/work"
+              -w /work
+              kovetskiy/mark:latest
+              mark
+              --user "$CONFLUENCE_USER"
+              --password "$CONFLUENCE_API_TOKEN"
+              --base-url "https://mcclatchy.atlassian.net/wiki"
+              --space "$CONFLUENCE_SPACE_KEY"
+              --files "docs/dashboard/**/*.md"

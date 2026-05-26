@@ -1,3 +1,6 @@
+<!-- Title: Related Trends -->
+<!-- Parent: ATLAS Dashboard -->
+
 # RELATED_TRENDS
 
 **At a glance** — Up to 5 other trends most similar to this one.

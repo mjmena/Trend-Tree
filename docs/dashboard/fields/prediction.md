@@ -1,3 +1,6 @@
+<!-- Title: Prediction (Score / Flag / Eligible) -->
+<!-- Parent: ATLAS Dashboard -->
+
 # PREDICTION_SCORE / PREDICTION_FLAG / PREDICTION_ELIGIBLE
 
 **At a glance** — These three fields together describe how likely a trend is to **grow** in the near term. They are computed once a day by a deterministic SQL pass over every live trend.

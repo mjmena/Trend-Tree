@@ -1,3 +1,6 @@
+<!-- Title: 🟡 Migrating Fields -->
+<!-- Parent: ATLAS Dashboard -->
+
 # 🟡 Migrating from the Insights Agent backend
 
 The fields below currently render on ATLAS cards but are computed by the Insights Agent backend (Marcelo's side). They will be migrated into the McClatchy pipeline. Until migration completes, these sections are placeholders with what we know from the May 22, 2026 sync.

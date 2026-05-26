@@ -1,3 +1,5 @@
+<!-- Title: ATLAS Dashboard -->
+
 # ATLAS Dashboard — Field Reference
 
 **Audience:** Insights Agent users (strategy, content, leadership).

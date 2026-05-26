@@ -1,3 +1,6 @@
+<!-- Title: Macrotrend Tags -->
+<!-- Parent: ATLAS Dashboard -->
+
 # MACROTREND_TAGS
 
 **At a glance** — Higher-level theme labels the trend rolls up into (e.g., "Sustainability," "Hyper-Local," "Post-Pandemic Indoor"). Used for cross-trend grouping in dashboards and reports.

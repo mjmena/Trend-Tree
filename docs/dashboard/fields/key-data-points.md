@@ -1,3 +1,6 @@
+<!-- Title: Key Data Points -->
+<!-- Parent: ATLAS Dashboard -->
+
 # KEY_DATA_POINTS
 
 **At a glance** — Google Trends interest scalars for the trend, from the most recent daily poll.

@@ -1,3 +1,6 @@
+<!-- Title: Narrative Fields -->
+<!-- Parent: ATLAS Dashboard -->
+
 # Narrative fields
 
 `SUMMARY_SHORT`, `SUMMARY_LONG`, `SOCIAL_NARRATIVE`, `CULTURAL_DRIVERS`, `SEASONAL_RELEVANCE`, `GEOGRAPHIC_HOTSPOTS`, `VIBE_SHIFT`
