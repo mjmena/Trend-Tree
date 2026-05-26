@@ -5,7 +5,7 @@ McClatchy's data pipeline that ingests cultural signals, identifies trends, and 
 ## Language
 
 **ATLAS**:
-The main trend dashboard UI in the Insights Agent — the trend list / trend cards view. The audience for `docs/dashboard-explainability.md`.
+The main trend dashboard UI in the Insights Agent — the trend list / trend cards view. The audience for `docs/dashboard/`.
 _Avoid_: "trend dashboard" (ambiguous with `DT_TREND_DASHBOARD`), "Insights Agent dashboard" (the Insights Agent has multiple UI surfaces — Predictions Queue, Collections, Decision Page — not all of them are ATLAS).
 
 **DT_TREND_DASHBOARD**:
