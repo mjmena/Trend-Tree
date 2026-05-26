@@ -74,6 +74,16 @@ LIMIT 20;
 | `DISTINCT_SOURCE_COUNT` | NUMBER | Distinct source families that contributed (e.g. 3 = news + social + commerce). Higher = more credible. |
 | `ORIGINALLY_SURFACED_AT` | TIMESTAMP | When the trend first appeared in the distillation pipeline. |
 
+### Prediction (emergence) columns
+
+Written daily by `prediction-agent-p_QPCkLP1`. **Additive and isolated** — never read by HEAT_INDEX, LIFECYCLE_STATUS, or any other trend-scoring path. See [`prediction-flow.md`](prediction-flow.md) for the scoring formula and eligibility logic.
+
+| Column | Type | Notes |
+|---|---|---|
+| `PREDICTION_SCORE` | NUMBER(5,1) | 0–100 emergence signal. Equal-weighted blend of velocity acceleration, low base volume, source diversity expansion, and cluster formation deltas (all week-over-week). `NULL` for trends < 14 days old. |
+| `PREDICTION_FLAG` | VARCHAR | One of `Emerging` (40–65), `Watchlist` (65–80), `High Potential` (80+). `NULL` when `PREDICTION_SCORE` is below 40 or NULL. Static bands per the product spec. |
+| `PREDICTION_ELIGIBLE` | BOOLEAN | TRUE when the trend qualifies for the Insights Agent Predictions Queue: `HEAT_INDEX < 60` AND all four positive deltas AND age ≥ 14d AND score in top 30% by percentile. Can legitimately be all-FALSE on days when the trend population is broadly decelerating. |
+
 ### Source metrics
 
 | Column | Type | Notes |
@@ -215,6 +225,7 @@ FCT_TRENDS                       (one row per agent-promoted trend)
   ├─ FCT_TREND_LIFECYCLE_LEDGER  (latest lifecycle status + heat)
   ├─ FCT_TREND_ENRICHMENT_LEDGER (latest enrichment payload — typed evidence pool)
   ├─ FCT_TREND_SOURCE_METRICS    (per-source headline metrics)
+  ├─ FCT_TREND_PREDICTION_LEDGER (latest emergence score + flag + eligibility)
   └─ FCT_PROMOTION_LEDGER        (cluster + source counts at promotion)
 ```
 
@@ -270,6 +281,30 @@ Every status evaluation with before/after diff. Append-only. **Current state = l
 | `HEAT_MODIFIER_PCT` | Agent-emitted adjustment in [−20, 20] |
 | `REASONING` | Agent rationale (≤500 chars) |
 | `REQUESTED_RE_ENRICHMENT` | BOOLEAN — TRUE if this eval triggered a description rewrite |
+
+### FCT_TREND_PREDICTION_LEDGER — emergence scoring runs
+
+Every prediction-agent run, one row per (trend, eval). Append-only. **Current state = latest row by `EVALUATED_AT` per trend.** All scoring inputs preserved per row for auditability and future weight tuning over Approve/Dismiss decision history.
+
+| Column | Notes |
+|---|---|
+| `PREDICTION_EVAL_ID` | PK (UUID) |
+| `TREND_ID` | Join key |
+| `EVALUATED_AT` | Timestamp of this run |
+| `CHAIN_ID` | `pred-chain-{random}` — groups all rows from one workflow run |
+| `PREDICTION_SCORE` | 0–100 emergence score (NULL when trend < 14d old) |
+| `PREDICTION_FLAG` | `Emerging` / `Watchlist` / `High Potential` / NULL |
+| `PREDICTION_ELIGIBLE` | BOOLEAN — qualifies for the Predictions Queue |
+| `INPUT_HEAT_NOW` / `INPUT_HEAT_7D` / `INPUT_HEAT_14D` | EWMA-smoothed heat values at three time anchors, from the lifecycle ledger |
+| `INPUT_ACCELERATION` | `(heat_now − heat_7d) − (heat_7d − heat_14d)` — rate of acceleration, not just direction |
+| `INPUT_INVERSE_HEAT` | `100 − heat_now` — the "low base volume" signal (predictions favor trends that have not peaked) |
+| `INPUT_SOURCES_LAST_7D` / `INPUT_SOURCES_PRIOR_7D` | Distinct domains contributing signals in each window |
+| `INPUT_SOURCE_DELTA` | Source diversity expansion last-7d vs prior-7d |
+| `INPUT_SIGNALS_LAST_7D` / `INPUT_SIGNALS_PRIOR_7D` | Signal counts in each window |
+| `INPUT_SIGNAL_DELTA` | Cluster formation proxy: signals last-7d − signals prior-7d |
+| `INPUT_SCORE_PERCENTILE` | `PERCENT_RANK()` of this trend's score across the scored population at this eval |
+| `DAYS_SINCE_PROMOTION` | `DATEDIFF(day, FCT_TRENDS.PROMOTED_AT, NOW)` — gates the young-trend NULL rule |
+| `COMPUTATION_VERSION` | Bumped when the scoring formula changes; maintains auditable lineage |
 
 ### FCT_TREND_SOURCE_METRICS — per-source headline metrics
 
@@ -338,7 +373,7 @@ For raw/staging column detail, see git history for the retired `docs/data_model.
 
 3. **`SIGNAL_ID` is the universal signal key.** Same value across `STG_EXTERNAL_SIGNALS`, `FCT_SIGNALS`, and `FCT_TREND_SIGNALS`. For URL-shaped sources, `SIGNAL_ID` *is* the canonical URL.
 
-4. **Each agent owns one ledger.** Promotion → `FCT_PROMOTION_LEDGER`. Enrichment → `FCT_TREND_ENRICHMENT_LEDGER`. Lifecycle → `FCT_TREND_LIFECYCLE_LEDGER`. No agent overwrites another's history.
+4. **Each agent owns one ledger.** Promotion → `FCT_PROMOTION_LEDGER`. Enrichment → `FCT_TREND_ENRICHMENT_LEDGER`. Lifecycle → `FCT_TREND_LIFECYCLE_LEDGER`. Prediction → `FCT_TREND_PREDICTION_LEDGER`. No agent overwrites another's history.
 
 5. **No cross-database reads at refresh time.** All objects `DT_TREND_DASHBOARD` references live in `MCC_PRESENTATION.TREND_AGENT`. The 5-min TASKs are the only bridge from `MCC_RAW`.
 
@@ -348,3 +383,4 @@ For raw/staging column detail, see git history for the retired `docs/data_model.
 
 - [`README.md`](../README.md) — narrative overview and pipeline flow.
 - [`architecture.md`](architecture.md) — Pipedream workflow inventory and debugging guide.
+- [`prediction-flow.md`](prediction-flow.md) — emergence scoring formula, eligibility logic, and the Insights Agent handoff.

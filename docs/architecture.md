@@ -39,7 +39,9 @@ flowchart TD
     H3 -->|INSERT| I["FCT_TREND_ENRICHMENT_LEDGER"]
     J["lifecycle-agent-p_JZCz73w\nGemini 3.1 Pro @ 1h"] -->|"HTTP fanout"| J2["lifecycle-subagent-p_gYC562o"]
     J2 -->|INSERT| K["FCT_TREND_LIFECYCLE_LEDGER"]
-    G & I & K -->|"15-min dynamic table"| L["DT_TREND_DASHBOARD"]
+    P["prediction-agent-p_QPCkLP1\ndeterministic SQL @ daily"] -->|"PROC_PREDICTION_APPLY"| P2["FCT_TREND_PREDICTION_LEDGER"]
+    K --> P
+    G & I & K & P2 -->|"15-min dynamic table"| L["DT_TREND_DASHBOARD"]
 ```
 
 ---
@@ -66,6 +68,7 @@ All workflows share network `net_5Lnie3` (required for Snowflake egress allowlis
 | `p_gYC562o` | `lifecycle-subagent-p_gYC562o` | HTTP | Per-trend status + heat evaluation (Gemini 3.1 Pro) | 4096 MB · 600s |
 | `p_KwCoaap` | `lifecycle-attribution-agent-p_KwCoaap` | HTTP | Attribution lifecycle agent | 4096 MB · 600s |
 | `p_PACe77B` | `lifecycle-attribution-subagent-p_PACe77B` | HTTP | Attribution lifecycle subagent | 4096 MB · 600s |
+| `p_QPCkLP1` | `prediction-agent-p_QPCkLP1` | HTTP (+ daily cron TBD) | Deterministic emergence scorer over all live trends → FCT_TREND_PREDICTION_LEDGER | 4096 MB · 600s |
 | `p_13CN9KG` | `gtrends-poller-p_13CN9KG` | cron daily | Google Trends interest curves → FCT_TREND_GTRENDS_DAILY | 2048 MB · 600s |
 | `p_vQCkwgV` | `daily-digest-p_vQCkwgV` | cron daily | Assembles + sends trend digest via Braze | 2048 MB · 300s |
 | `p_zAC1Nd9` | `error-alerts-p_zAC1Nd9` | HTTP | Slack error notifications when a workflow errors | — |
@@ -142,6 +145,22 @@ Each subagent evaluates one trend:
 - Emits `propose_lifecycle_decision` (new status + `HEAT_MODIFIER_PCT` in [-20, 20])
 - Commits via `PROC_LIFECYCLE_APPLY` → inserts into `FCT_TREND_LIFECYCLE_LEDGER`
 - Two-cycle retirement confirm: both this eval AND prior eval must propose RETIRE before status changes to RETIRED
+
+### prediction-agent-p_QPCkLP1
+
+Deterministic emergence scorer. Single batch SQL run scores every live (non-RETIRED) trend in one pass. **No LLM in the path** — the 4 inputs the spec calls out are all quantitative and queryable from existing time-series tables, so the scoring is pure CTE chain. See [`prediction-flow.md`](prediction-flow.md) for the full formula + design rationale.
+
+Steps:
+
+1. `normalize_event` — generates `chain_id` per run; accepts `{ chain_id, dry_run }` override on manual POST.
+2. `q_score_trends` — one SQL query that JOINs `FCT_TREND_LIFECYCLE_LEDGER` (heat now / 7d / 14d), `FCT_TREND_SIGNALS` (signal flow last-7d vs prior-7d), and a `signal_domains` CTE (source diversity last-7d vs prior-7d), then computes the score + percentile + flag + eligibility in nested CTEs. Output: one row per live trend ready for the ledger.
+3. `serialize_decisions` — wraps the row array into the JSON-string payload `PROC_PREDICTION_APPLY` consumes.
+4. `commit_to_ledger` — `CALL MCC_RAW.MARKETING_DEV.PROC_PREDICTION_APPLY(PARSE_JSON(:1)::ARRAY, chain_id)`. Atomic batch INSERT.
+5. `respond` — returns `{ chain_id, total_rows, scored_count, eligible_count, null_count, committed }`.
+
+The dashboard's `latest_prediction` CTE picks up the most recent row per trend by `EVALUATED_AT` and surfaces 3 additive columns (`PREDICTION_SCORE`, `PREDICTION_FLAG`, `PREDICTION_ELIGIBLE`). **Strict isolation: prediction columns are never read by HEAT_INDEX or LIFECYCLE_STATUS** (a product constraint from Jason Smith).
+
+Trends with fewer than 14 days of post-promotion history emit `PREDICTION_SCORE = NULL` — avoids garbage from missing WoW comparison windows.
 
 ---
 
@@ -289,6 +308,7 @@ All LLM prompts live in `DIM_LLM_PROMPT` (keyed by `PROMPT_KEY`, versioned by `V
 | Fire promotion manually | `POST https://eot66usfdph5i7h.m.pipedream.net {}` |
 | Fire lifecycle for one trend | `POST https://53536769d8379ab44edb7179328e9fd3.m.pipedream.net {"trend_id":"<uuid>"}` |
 | Fire lifecycle sweeper | `POST https://23f3a2c4e5fbd681c1531592137719be.m.pipedream.net {"sweep_cap":25,"write_live":true}` |
+| Fire prediction scoring run | `POST https://eoj1i9r5pdvyugj.m.pipedream.net {}` (empty body is fine; pass `{"chain_id":"..."}` to override) |
 
 All endpoints accept JSON, require `Content-Type: application/json`, and support `--max-time 600` (enrichment can take 3–5 min).
 

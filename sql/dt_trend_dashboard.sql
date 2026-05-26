@@ -304,6 +304,7 @@ SELECT
     COALESCE(pred.PREDICTION_ELIGIBLE, FALSE)                              AS PREDICTION_ELIGIBLE,
     tb.TOTAL_CLUSTER_SIZE,
     tb.DISTINCT_SOURCE_COUNT,
+    tb.DISTINCT_SOURCE_COUNT                                               AS DISTINCT_PUBLISHER_COUNT,
     tb.LIFECYCLE_STATUS,
     tb.LIFECYCLE_STATUS                                                    AS VELOCITY_DIRECTION,
     tb.LAST_LIFECYCLE_EVAL_AT,
