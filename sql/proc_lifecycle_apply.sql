@@ -177,7 +177,7 @@ def run(session, DECISIONS, CHAIN_ID, WRITE_LIVE):
             new_heat_smoothed = None
             if new_heat is not None:
                 ps = float(prior_heat_smoothed) if prior_heat_smoothed is not None else float(new_heat)
-                new_heat_smoothed = round(0.7 * ps + 0.3 * float(new_heat), 1)
+                new_heat_smoothed = round(0.5 * ps + 0.5 * float(new_heat), 1)
 
             # Two-cycle retire confirm
             retirement_proposal = None
