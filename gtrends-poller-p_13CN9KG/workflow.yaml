@@ -1,9 +1,12 @@
 schema: workflow/2022.04
 name: GTrends Poller
 settings:
+  concurrency: 1
   error_notification: true
-  lambda_memory: 2048
-  lambda_timeout: 600
+  lambda_timeout: 120
+  max_event_queue_size: 10000
+  rate_limit: 1
+  rate_limit_bucket_size_seconds: 60
 triggers:
 - id: dc_bPu6eGd
 - id: hi_VOHl1aX
