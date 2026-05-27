@@ -211,6 +211,7 @@ steps:
                t.LAST_UPDATE_AT,
                COALESCE(t.CATEGORY, e.E_CATEGORY)             AS CATEGORY,
                COALESCE(t.SUBCATEGORY, e.E_SUBCATEGORY)       AS SUBCATEGORY,
+               COALESCE(t.TREND_NAME, t.TREND_NAME_B2C, e.E_TREND_NAME_B2C) AS TREND_NAME,
                COALESCE(t.TREND_NAME_B2C, e.E_TREND_NAME_B2C) AS TREND_NAME_B2C,
                e.SUMMARY_SHORT
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
@@ -270,6 +271,7 @@ steps:
                t.LAST_UPDATE_AT,
                COALESCE(t.CATEGORY, e.E_CATEGORY)             AS CATEGORY,
                COALESCE(t.SUBCATEGORY, e.E_SUBCATEGORY)       AS SUBCATEGORY,
+               COALESCE(t.TREND_NAME, t.TREND_NAME_B2C, e.E_TREND_NAME_B2C) AS TREND_NAME,
                COALESCE(t.TREND_NAME_B2C, e.E_TREND_NAME_B2C) AS TREND_NAME_B2C,
                e.SUMMARY_SHORT
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
@@ -293,68 +295,12 @@ steps:
         SELECT PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS
         FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
         WHERE IS_ACTIVE = TRUE
-          AND PROMPT_KEY IN ('enrichment.agent.system', 'enrichment.agent.naming_guidance', 'enrichment.agent.user', 'enrichment.reviewer.system')
+          AND PROMPT_KEY IN ('enrichment.agent.system', 'enrichment.agent.naming_guidance', 'enrichment.agent.user', 'enrichment.reviewer.decoder', 'enrichment.reviewer.verifier')
       query: |-
         SELECT PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS
         FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
         WHERE IS_ACTIVE = TRUE
-          AND PROMPT_KEY IN ('enrichment.agent.system', 'enrichment.agent.naming_guidance', 'enrichment.agent.user', 'enrichment.reviewer.system')
-    params: []
-- namespace: q_valuable_examples
-  runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
-  props:
-    snowflake:
-      authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        WITH latest_enrichment AS (
-          SELECT TREND_ID,
-                 PAYLOAD:summary_short::STRING  AS SUMMARY_SHORT
-          FROM (
-            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
-            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
-          ) WHERE rn = 1
-        ),
-        latest_lifecycle AS (
-          SELECT TREND_ID, NEW_HEAT_SMOOTHED AS HEAT_SMOOTHED, NEW_HEAT AS HEAT
-          FROM (
-            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
-            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
-          ) WHERE rn = 1
-        )
-        SELECT t.TREND_NAME_B2B, t.TREND_NAME_B2C, t.CATEGORY, t.SUBCATEGORY,
-               e.SUMMARY_SHORT
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-        JOIN latest_enrichment e ON e.TREND_ID = t.TREND_ID
-        LEFT JOIN latest_lifecycle lc ON lc.TREND_ID = t.TREND_ID
-        WHERE t.TREND_NAME_B2B IS NOT NULL
-        ORDER BY COALESCE(lc.HEAT_SMOOTHED, lc.HEAT, 0) DESC NULLS LAST
-        LIMIT 8
-      query: |-
-        WITH latest_enrichment AS (
-          SELECT TREND_ID,
-                 PAYLOAD:summary_short::STRING  AS SUMMARY_SHORT
-          FROM (
-            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
-            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
-          ) WHERE rn = 1
-        ),
-        latest_lifecycle AS (
-          SELECT TREND_ID, NEW_HEAT_SMOOTHED AS HEAT_SMOOTHED, NEW_HEAT AS HEAT
-          FROM (
-            SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
-            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
-          ) WHERE rn = 1
-        )
-        SELECT t.TREND_NAME_B2B, t.TREND_NAME_B2C, t.CATEGORY, t.SUBCATEGORY,
-               e.SUMMARY_SHORT
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-        JOIN latest_enrichment e ON e.TREND_ID = t.TREND_ID
-        LEFT JOIN latest_lifecycle lc ON lc.TREND_ID = t.TREND_ID
-        WHERE t.TREND_NAME_B2B IS NOT NULL
-        ORDER BY COALESCE(lc.HEAT_SMOOTHED, lc.HEAT, 0) DESC NULLS LAST
-        LIMIT 8
+          AND PROMPT_KEY IN ('enrichment.agent.system', 'enrichment.agent.naming_guidance', 'enrichment.agent.user', 'enrichment.reviewer.decoder', 'enrichment.reviewer.verifier')
     params: []
 - namespace: run_enrichment_agent
   runtime: nodejs20.x
@@ -368,7 +314,6 @@ steps:
     source_metrics_rows: "{{steps.q_source_metrics.$return_value}}"
     neighbor_rows: "{{steps.q_neighbors.$return_value}}"
     prompts_rows: "{{steps.q_prompts.$return_value}}"
-    examples_rows: "{{steps.q_valuable_examples.$return_value}}"
     bluesky_url: https://eoydyalz1dslfre.m.pipedream.net
     gdelt_url: https://eoovhehfk229jrg.m.pipedream.net
     gtrends_url: https://eov9u8rngcgi2z6.m.pipedream.net
@@ -411,7 +356,6 @@ steps:
       authProvisionId: apn_Oghan1O
     agent_output: "{{steps.run_enrichment_agent.$return_value}}"
     metrics_rows: "{{steps.q_metrics.$return_value}}"
-    signal_rows: "{{steps.q_signals.$return_value}}"
     prompts_rows: "{{steps.q_prompts.$return_value}}"
 - namespace: respond
   runtime: nodejs20.x

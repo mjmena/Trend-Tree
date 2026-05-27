@@ -55,7 +55,7 @@ const QUERY_SCHEMAS = {
   query_trend_neighbors: {
     name: "query_trend_neighbors",
     description:
-      "Find trends near (in topic-overlap) the trend currently being enriched. Use BEFORE finalizing category/subcategory to sanity-check that you're not categorizing this trend differently from highly-similar neighbors without specific reason. Returns trend_id, trend_topic, total_cluster_size, velocity_direction, trend_heat_index, similarity_score, plus the neighbor's existing category + subcategory + b2c name when available. Operates on a pre-fetched pool of recent active trends; uses Jaccard token overlap for similarity (Phase 1 — no live embeddings).",
+      "Find trends near (in topic-overlap) the trend currently being enriched. Use BEFORE finalizing category/subcategory to sanity-check that you're not categorizing this trend differently from highly-similar neighbors without specific reason. Returns trend_id, trend_topic, total_cluster_size, velocity_direction, trend_heat_index, similarity_score, plus the neighbor's existing category + subcategory + trend_name (the canonical singular name post-2026-05-27 cutover, falls back to legacy B2C if not yet re-enriched). Use the returned trend_name list to enforce neighbor_non_overlap — your new name must not be interchangeable with any neighbor's. Operates on a pre-fetched pool of recent active trends; uses Jaccard token overlap for similarity (Phase 1 — no live embeddings).",
     input_schema: {
       type: "object",
       properties: {
@@ -69,7 +69,7 @@ const QUERY_SCHEMAS = {
   query_trend_metrics: {
     name: "query_trend_metrics",
     description:
-      "Look up full metadata for one or more existing trend ids returned by query_trend_neighbors. Returns TREND_TOPIC, TOTAL_CLUSTER_SIZE, DISTINCT_SOURCE_COUNT, VELOCITY_DIRECTION, TREND_HEAT_INDEX, LAST_UPDATE_AT, plus existing CATEGORY/SUBCATEGORY/SUMMARY_SHORT/TREND_NAME_B2C if enriched.",
+      "Look up full metadata for one or more existing trend ids returned by query_trend_neighbors. Returns TREND_TOPIC, TOTAL_CLUSTER_SIZE, DISTINCT_SOURCE_COUNT, VELOCITY_DIRECTION, TREND_HEAT_INDEX, LAST_UPDATE_AT, plus existing CATEGORY/SUBCATEGORY/SUMMARY_SHORT/TREND_NAME if enriched.",
     input_schema: {
       type: "object",
       properties: {
@@ -170,8 +170,7 @@ const ENRICHMENT_SCHEMAS = {
     input_schema: {
       type: "object",
       properties: {
-        trend_name_b2b: { type: "string", description: "2-5 words, professional/industry register, evocative not generic. AVOID 'ritual', 'daily', 'moment', 'movement', 'era', 'vibe', 'wave', 'trend' unless paired with something specific and unexpected." },
-        trend_name_b2c: { type: "string", description: "2-5 words, consumer-facing, distinctive, has texture. Same anti-cliché rule applies." },
+        trend_name: { type: "string", description: "2-8 words preferred (no hard cap). Singular human-facing name. Must pass decode_pass — a strategist seeing only this name (no topic, no context) must be able to identify the trend's core subject. First-beat noun MUST NOT be a category-of-change word (architecture, maximalism, minimalism, wellness, modernism, movement, era, wave, mode, aesthetic, vibe, paradigm, philosophy). See the NAMING GUIDANCE block in the system prompt for the full rule." },
         summary_short: { type: "string", description: "1-2 sentences, action-oriented." },
         summary_long: { type: "string", description: "1 paragraph (≤500 chars), action-oriented." },
         category: { type: "string", enum: ["wellness", "food_beverage", "beauty", "fitness", "fashion", "home_living", "sustainability", "consumer_tech", "personal_care", "social_lifestyle", "entertainment", "travel", "parenting", "other"] },
@@ -248,24 +247,23 @@ const ENRICHMENT_SCHEMAS = {
           items: {
             type: "object",
             properties: {
-              audience: { type: "string", enum: ["b2b", "b2c"] },
               name: { type: "string" },
               scores: {
                 type: "object",
                 properties: {
-                  distinctiveness: { type: "number" },
-                  whimsy: { type: "number" },
-                  specificity: { type: "number" },
+                  distinctiveness: { type: "number", description: "0-10, would this stand out next to 5 other trends in the same category?" },
+                  specificity:     { type: "number", description: "0-10, is it specific to THIS trend (not generic to the category)?" },
+                  decode_score:    { type: "number", description: "0-10, if a strategist saw ONLY this name (no topic, no context), would they correctly identify the trend's core subject? Floor: 7." },
                 },
               },
             },
-            required: ["audience", "name", "scores"],
+            required: ["name", "scores"],
           },
-          description: "All 10 candidates (5 b2b + 5 b2c) with per-axis 0-10 scores. Required for naming-quality audit.",
+          description: "All 10 single-audience candidates with per-axis 0-10 scores. Required for naming-quality audit. Drop the legacy audience field — singular name per trend post-2026-05-27 cutover.",
         },
-        reasoning: { type: "string", description: "≤500 chars on why these names + categorization fit." },
+        reasoning: { type: "string", description: "≤500 chars on why this name + categorization fit." },
       },
-      required: ["trend_name_b2b", "trend_name_b2c", "summary_short", "summary_long", "category", "subcategory", "category_confidence", "evidence", "name_candidates_considered", "reasoning"],
+      required: ["trend_name", "summary_short", "summary_long", "category", "subcategory", "category_confidence", "evidence", "name_candidates_considered", "reasoning"],
     },
   },
 };
@@ -362,7 +360,7 @@ function lookupTrendNeighbors(input, ctx) {
     last_update_at: t.last_update_at,
     category: t.category,
     subcategory: t.subcategory,
-    trend_name_b2c: t.trend_name_b2c,
+    trend_name: t.trend_name,
     summary_short: t.summary_short,
     similarity_score: jaccard(queryTokens, tokenize(t.trend_topic)),
   }));
@@ -717,7 +715,6 @@ export default defineComponent({
     source_metrics_rows: { type: "any", optional: true },
     neighbor_rows: { type: "any", optional: true },
     prompts_rows: { type: "any" },
-    examples_rows: { type: "any", optional: true },
     bluesky_url: { type: "string", label: "Search Bluesky tool endpoint" },
     gdelt_url: { type: "string", label: "Search GDELT tool endpoint" },
     gtrends_url: { type: "string", label: "Search Google Trends tool endpoint" },
@@ -756,7 +753,7 @@ export default defineComponent({
       last_update_at: r.LAST_UPDATE_AT,
       category: r.CATEGORY,
       subcategory: r.SUBCATEGORY,
-      trend_name_b2c: r.TREND_NAME_B2C,
+      trend_name: r.TREND_NAME || r.TREND_NAME_B2C, // q_neighbors already COALESCEs; fallback for legacy rows
       summary_short: r.SUMMARY_SHORT,
     }));
 
@@ -813,7 +810,7 @@ export default defineComponent({
     }).join("\n") || "(no metadata)";
 
     const neighbors_formatted = trend_neighbor_pool.slice(0, 10).map((n, i) =>
-      `${i + 1}. "${n.trend_name_b2c || n.trend_topic}" — ${n.category || "?"}/${n.subcategory || "?"} (heat ${n.trend_heat_index ?? "?"})`
+      `${i + 1}. "${n.trend_name || n.trend_topic}" — ${n.category || "?"}/${n.subcategory || "?"} (heat ${n.trend_heat_index ?? "?"})`
     ).join("\n") || "(no neighbors in window)";
 
     const trend_summary_block = `TREND_TOPIC: ${metricsRow.TREND_TOPIC}
@@ -821,22 +818,15 @@ TREND_ID: ${trend_id}
 HEAT_INDEX: ${metricsRow.TREND_HEAT_INDEX} | CLUSTER_SIZE: ${metricsRow.TOTAL_CLUSTER_SIZE} | VELOCITY: ${metricsRow.VELOCITY_DIRECTION}
 DETECTED_AT (originally surfaced): ${metricsRow.DETECTED_AT}`;
 
-    // Few-shot examples (optional).
-    const valuable_examples = (this.examples_rows || []).map((r, i) => {
-      const b2b = r.TREND_NAME_B2B || "";
-      const b2c = r.TREND_NAME_B2C || "";
-      const cat = `${r.CATEGORY || "?"}/${r.SUBCATEGORY || "?"}`;
-      const summary = (r.SUMMARY_SHORT || "").replace(/\s+/g, " ").trim().slice(0, 240);
-      return `${i + 1}. "${b2b}" / "${b2c}" — ${cat}: ${summary}`;
-    }).join("\n") || "(no examples available)";
-
-    // Load + render prompts.
+    // Load + render prompts. Per ADR-0001 the system prompt drops the
+    // {{valuable_examples}} interpolation — declarative rules only, no
+    // static one-shot seeding.
     const loaded = loadPrompts(this.prompts_rows);
     const systemPrompt = mustGet(loaded, SYSTEM_PROMPT_KEY);
     const namingGuidance = mustGet(loaded, NAMING_GUIDANCE_KEY);
     const userPrompt = mustGet(loaded, USER_PROMPT_KEY);
 
-    const renderedSystem = render(systemPrompt.template, { valuable_examples, trend_summary_block }) +
+    const renderedSystem = render(systemPrompt.template, { trend_summary_block }) +
       "\n\n" + render(namingGuidance.template, {});
 
     const renderedUser = render(userPrompt.template, {

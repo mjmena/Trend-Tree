@@ -150,8 +150,24 @@ export default defineComponent({
       const category = normalizeCategory(e.category);
       const subcategory = normalizeSubcategory(e.subcategory);
 
+      // Post-2026-05-27 cutover: agent emits singular `trend_name`. If the
+      // reviewer's decode_pass came back false AND it proposed an
+      // alternate, prefer the alternate as the canonical name. trend_name_b2b
+      // / trend_name_b2c remain in the payload (NULL going forward) for
+      // back-compat with legacy ledger consumers + dt_trend_dashboard
+      // COALESCE fallback chains.
+      const reviewer = e.name_reviewer || null;
+      const reviewerSwap = reviewer
+        && reviewer.tier1_pass !== false
+        && reviewer.decode_pass === false
+        && typeof reviewer.alternate === "string"
+        && reviewer.alternate.length > 0;
+      const finalTrendName = reviewerSwap ? reviewer.alternate : (e.trend_name ?? null);
+
       payload = {
         trend_id: trendId,
+        trend_name: finalTrendName,
+        trend_name_source: reviewerSwap ? "reviewer_alternate" : (e.trend_name ? "agent_primary" : null),
         trend_name_b2b: e.trend_name_b2b ?? null,
         trend_name_b2c: e.trend_name_b2c ?? null,
         summary_short: e.summary_short ?? null,
@@ -166,10 +182,15 @@ export default defineComponent({
         evidence: e.evidence ?? null,
         originally_surfaced_at: e.originally_surfaced_at ?? null,
         name_candidates_considered: e.name_candidates_considered ?? null,
-        name_reviewer: e.name_reviewer ?? null,
+        name_reviewer: reviewer,
+        // Decode telemetry hoisted for easy ledger querying without
+        // unpacking name_reviewer.
+        decode_pass: reviewer?.decode_pass ?? null,
+        tier1_pass: reviewer?.tier1_pass ?? null,
+        decode_score: reviewer?.score ?? null,
         agent_telemetry: llmOutput.agent_telemetry ?? null,
         llm_responses: { agent: stripMeta(e) },
-        models_used: llmOutput.models_used ?? ["claude-sonnet-4-6"],
+        models_used: llmOutput.models_used ?? ["gemini-3.1-pro-preview", "claude-sonnet-4-6"],
         llm_token_usage: llmOutput.llm_token_usage ?? null,
         llm_total_tokens: llmOutput.llm_total_tokens ?? 0,
         llm_cost_estimate: llmOutput.llm_cost_estimate ?? 0,
@@ -223,12 +244,15 @@ export default defineComponent({
 
     console.log(`Tokens: ${payload.llm_total_tokens}, cost: $${payload.llm_cost_estimate}`);
     const lowConf = typeof payload.category_confidence === "number" && payload.category_confidence < 0.6;
-    console.log(`Tier: ${tier}, Trend: B2B="${payload.trend_name_b2b}" / B2C="${payload.trend_name_b2c}" (${payload.category}/${payload.subcategory})${lowConf ? " [LOW CONF]" : ""}`);
+    const nameLabel = payload.trend_name ?? payload.trend_name_b2c ?? "(no name)";
+    const nameSource = payload.trend_name_source || (payload.trend_name_b2c ? "legacy_b2c" : "none");
+    console.log(`Tier: ${tier}, Trend: "${nameLabel}" [${nameSource}] (${payload.category}/${payload.subcategory})${lowConf ? " [LOW CONF]" : ""}`);
     if (payload.name_reviewer) {
-      console.log(`Reviewer: b2b=${payload.name_reviewer.score_b2b} b2c=${payload.name_reviewer.score_b2c}${payload.name_reviewer.alternate_b2c ? ` alt='${payload.name_reviewer.alternate_b2c}'` : ""}`);
+      const r = payload.name_reviewer;
+      console.log(`Reviewer: tier1_pass=${r.tier1_pass} decode_pass=${r.decode_pass} score=${r.score ?? "?"}${r.alternate ? ` alt='${r.alternate}'` : ""}`);
     }
 
-    $.export("$summary", `${tier}: ${payload.trend_name_b2c} (${payload.category})`);
+    $.export("$summary", `${tier}: ${nameLabel} (${payload.category})`);
 
     return {
       trend_id: trendId,

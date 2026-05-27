@@ -291,7 +291,11 @@ trend_base AS (
 )
 SELECT
     tb.TREND_ID,
-    COALESCE(t.TREND_NAME_B2C, t.TREND_NAME_B2B, e.TREND_NAME_B2C, e.TREND_NAME_B2B, tb.TREND_TOPIC) AS TREND_NAME,
+    -- Prefer the new singular TREND_NAME (post-2026-05-27 cutover); fall
+    -- back through legacy B2C/B2B columns for trends not yet re-enriched
+    -- under the singular-name agent, then through the latest enrichment
+    -- ledger's B2C/B2B (covers in-flight migration), then trend topic.
+    COALESCE(t.TREND_NAME, t.TREND_NAME_B2C, t.TREND_NAME_B2B, e.TREND_NAME_B2C, e.TREND_NAME_B2B, tb.TREND_TOPIC) AS TREND_NAME,
     COALESCE(t.TREND_NAME_B2B, e.TREND_NAME_B2B)                          AS TREND_NAME_B2B,
     COALESCE(t.CATEGORY,       e.CATEGORY)                                AS CATEGORY,
     COALESCE(t.SUBCATEGORY,    e.SUBCATEGORY)                             AS SUBCATEGORY,
