@@ -383,6 +383,7 @@ export default defineComponent({
     pipeline_freshness_rows: { type: "any" },
     dashboard_freshness_rows: { type: "any" },
     stuck_trends_rows: { type: "any" },
+    orphan_trends_rows: { type: "any", optional: true },
     cost_24h_rows: { type: "any" },
     pipedream_errors: { type: "any" },
     prompts_rows: { type: "any" },
@@ -404,6 +405,7 @@ export default defineComponent({
     };
     const dashboard_freshness = (this.dashboard_freshness_rows || [])[0] || null;
     const stuck_trends = this.stuck_trends_rows || [];
+    const orphan_trends_count = Number((this.orphan_trends_rows || [])[0]?.ACTIVE_ORPHAN_TRENDS || 0);
     const cost_24h = this.cost_24h_rows || [];
     const pipedream_health = this.pipedream_errors || { summary: {}, workflows: [] };
 
@@ -420,6 +422,9 @@ export default defineComponent({
     const stuckTrendsBlock = stuck_trends.length === 0
       ? "(no stuck trends)"
       : fmtJson(stuck_trends.slice(0, 50));
+    const orphanTrendsBlock = `active_orphan_trends: ${orphan_trends_count}\n` +
+      `(live trends whose FCT_TREND_SIGNALS all point at SIGNAL_IDs not in FCT_SIGNALS — ` +
+      `distillation-agent leak. Migration backlog was purged 2026-05-26; this should stay near 0.)`;
     const cost24hBlock = fmtJson(cost_24h);
     const pipedreamHealthBlock = fmtJson({
       summary: pipedream_health.summary,
@@ -440,6 +445,7 @@ export default defineComponent({
       pipeline_freshness_block: pipelineFreshnessBlock,
       dashboard_freshness_block: dashboardFreshnessBlock,
       stuck_trends_block: stuckTrendsBlock,
+      orphan_trends_block: orphanTrendsBlock,
       cost_24h_block: cost24hBlock,
       pipedream_health_block: pipedreamHealthBlock,
     });
