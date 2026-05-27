@@ -299,7 +299,7 @@ async function runAgentLoop({
 
 const SYSTEM_PROMPT_KEY = "signal.attribution.system";
 const RUBRIC_PROMPT_KEY = "signal.attribution.rubric";
-const SIMILARITY_THRESHOLD = "0.45";
+const SIMILARITY_THRESHOLD = "0.35";
 
 function parseVariant(v) {
   if (v == null) return null;
