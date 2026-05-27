@@ -252,12 +252,16 @@ function computeHeatBase({ metrics, signal_domain_counts, recent_signals, gtrend
   const entropy = shannonEntropyNormalized(signal_domain_counts);
   const breadth_factor = log_score * entropy;
 
-  // external_factor: latest gtrends INTEREST_PEAK_PCT normalized to [0,1].
+  // external_factor: latest gtrends INTEREST_AVG_PCT normalized to [0,1].
+  // Avg, not peak: GT normalizes single-keyword timeseries so peak is
+  // always 100 when any data exists — peak/100 collapses to a binary
+  // {0,1} signal. Avg captures sustained interest vs single spike, which
+  // is what the formula assumed peak would be.
   // Default 0 when no gtrends data — validation strength means "earned
   // evidence," not "assumed."
   const latestGt = gtrends_history[0];
-  const external_factor = latestGt && Number.isFinite(Number(latestGt.interest_peak_pct))
-    ? Math.min(1, Math.max(0, Number(latestGt.interest_peak_pct) / 100))
+  const external_factor = latestGt && Number.isFinite(Number(latestGt.interest_avg_pct))
+    ? Math.min(1, Math.max(0, Number(latestGt.interest_avg_pct) / 100))
     : 0;
 
   // confidence: from FCT_TRENDS.CONFIDENCE (0-1)
