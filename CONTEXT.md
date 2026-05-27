@@ -36,7 +36,11 @@ _Avoid_: "trend name" (the dashboard column is `TREND_TOPIC`; "name" is also ove
 
 **Gtrends search keyword**:
 The 2–4 word query the gtrends-poller submits to Google Trends to compute a trend's `INTEREST_PEAK_PCT`. Lives in `FCT_TRENDS.GTRENDS_KEYWORD`. **Mutable lookup helper** — not identity. Set at promotion via Cortex `mistral-large2` for cost reasons, but may be re-derived later if it's returning empty timeseries. Audience is the Google Trends API, not humans.
-_Avoid_: conflating with [trend topic] — they share an origin column at promotion time but are conceptually distinct. The trend topic is descriptive prose for marketers; the search keyword is a consumer-vernacular query string for a machine.
+_Avoid_: conflating with [trend topic] — they share an origin column at promotion time but are conceptually distinct. The trend topic is descriptive prose for marketers; the search keyword is a consumer-vernacular query string for a machine. Also distinct from [gtrends trending query].
+
+**Gtrends trending query**:
+The 1–3 word search query (e.g., `kali uchis`, `nba finals`) that anchored a batch of related news articles in the Google Trends RSS feed at ingest time. After the 2026-05-27 flatten, lives in `FCT_SIGNALS.METADATA.gt_trending_query` on every `google_trends_rss` row. **Provenance tag, not identity** — flattened articles are first-class signals; the trending query is recoverable metadata, not a row in any table. Relationship to [trend topic] is **many-to-many**: one trending query's articles can attach to several trends if headlines diverge, and one trend can be underwritten by articles from multiple trending queries.
+_Avoid_: conflating with [gtrends search keyword] — both are short query strings but they live in different tables for different audiences. The search keyword is on `FCT_TRENDS`, written at promotion, polled against the GT Explore API. The trending query is on `FCT_SIGNALS.METADATA`, copied from the RSS feed at ingest, never re-derived.
 
 ## Flagged ambiguities
 

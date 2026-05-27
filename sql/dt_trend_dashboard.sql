@@ -175,9 +175,12 @@ signal_domains AS (
                         REGEXP_SUBSTR(METADATA:canonical_url::STRING, 'https?://([^/]+)', 1, 1, 'e', 1),
                         '^www\\.', ''))
                 END
-            -- google_trends_rss has METADATA:news_items as an array of multiple
-            -- sources; would need LATERAL FLATTEN. Currently attached to 0 trends,
-            -- so omitted; revisit if it starts attaching.
+            WHEN SOURCE_NAME = 'google_trends_rss'
+                -- Post-2026-05-27 flatten: one row per article, publisher
+                -- normalized at ingest. Old-shape rows (pre-flatten + the
+                -- 95k legacy unbackfilled) lack METADATA:publisher and yield
+                -- NULL — same as today's behavior.
+                THEN LOWER(METADATA:publisher::STRING)
             ELSE NULL
         END AS DOMAIN
     FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS
