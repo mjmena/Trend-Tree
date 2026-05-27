@@ -19,6 +19,7 @@ export default defineComponent({
       chain_id: this.event?.chain_id,
       attempted: fr.attempted || 0,
       ok_count: fr.ok_count || 0,
+      empty_count: fr.empty_count || 0,
       error_count: fr.error_count || 0,
       persisted: !!insertOk,
       run_duration_ms: fr.run_duration_ms || 0,
