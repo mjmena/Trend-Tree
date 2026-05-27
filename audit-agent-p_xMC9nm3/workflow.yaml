@@ -271,6 +271,47 @@ steps:
         ORDER BY t.PROMOTED_AT ASC
         LIMIT 100
     params: []
+- namespace: q_orphan_trends
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        -- Active orphan trends: live (non-RETIRED) trends whose FCT_TREND_SIGNALS
+        -- rows all point at SIGNAL_IDs that don't exist in FCT_SIGNALS. The
+        -- migration-era backlog was purged 2026-05-26; this query is a tripwire
+        -- to catch any new orphan accumulation from the distillation agent
+        -- (which still emits hallucinated / legacy-format SIGNAL_IDs at ~1/week).
+        SELECT COUNT(*) AS ACTIVE_ORPHAN_TRENDS
+        FROM (
+          SELECT ts.TREND_ID
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
+          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS s
+            ON s.SIGNAL_ID = ts.SIGNAL_ID
+          GROUP BY ts.TREND_ID
+          HAVING COUNT(*) > 0 AND COUNT(s.SIGNAL_ID) = 0
+        ) orphans
+        WHERE orphans.TREND_ID IN (
+          SELECT TREND_ID FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD
+          WHERE LIFECYCLE_STATUS != 'RETIRED'
+        )
+      query: |-
+        SELECT COUNT(*) AS ACTIVE_ORPHAN_TRENDS
+        FROM (
+          SELECT ts.TREND_ID
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
+          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS s
+            ON s.SIGNAL_ID = ts.SIGNAL_ID
+          GROUP BY ts.TREND_ID
+          HAVING COUNT(*) > 0 AND COUNT(s.SIGNAL_ID) = 0
+        ) orphans
+        WHERE orphans.TREND_ID IN (
+          SELECT TREND_ID FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD
+          WHERE LIFECYCLE_STATUS != 'RETIRED'
+        )
+    params: []
 - namespace: q_cost_24h
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -360,6 +401,7 @@ steps:
     pipeline_freshness_rows: "{{steps.q_pipeline_freshness.$return_value}}"
     dashboard_freshness_rows: "{{steps.q_dashboard_freshness.$return_value}}"
     stuck_trends_rows: "{{steps.q_stuck_trends.$return_value}}"
+    orphan_trends_rows: "{{steps.q_orphan_trends.$return_value}}"
     cost_24h_rows: "{{steps.q_cost_24h.$return_value}}"
     pipedream_errors: "{{steps.fetch_pipedream_errors.$return_value}}"
     prompts_rows: "{{steps.q_audit_prompts.$return_value}}"

@@ -63,5 +63,5 @@ Verticals are configurable and tuned per-model, so coverage can be reweighted as
 
 ## For technical readers
 
-- **[`docs/schema.md`](docs/schema.md)** — Snowflake table reference, starting with `DT_TREND_DASHBOARD` (the surface Steeple reads). Quick-start queries included.
+- **[`docs/schema.md`](docs/schema.md)** — Snowflake table reference, starting with `DT_TREND_DASHBOARD` (the Trend Dashboard). Quick-start queries included.
 - **[`docs/architecture.md`](docs/architecture.md)** — Pipedream workflow inventory, inter-workflow HTTP call map, shared library, design patterns, and debugging guide.

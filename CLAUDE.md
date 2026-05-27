@@ -24,7 +24,8 @@ A GitHub-synced Pipedream project. Each top-level directory is one Pipedream wor
 | `sources-p_7NCy36w` | Per-trend source-metrics fetcher — populates `FCT_TREND_SOURCE_METRICS` |
 | `enrichment-p_xMC995w` | Single Claude Sonnet 4.6 agent loop — produces the canonical enrichment record (the lone Anthropic holdout post-Gemini migration) |
 | `write-p_o7CWa2K` | Persists enrichment to `FCT_TREND_ENRICHMENT_LEDGER` (append-only ledger; the legacy `DIM_TREND_ENRICHMENT` was retired in the 2026-04-28 agent-owned-ledgers refactor) |
-| `lifecycle-agent-p_JZCz73w` + `lifecycle-subagent-p_gYC562o` | Gemini 3.1 Pro lifecycle agent. Sweeps every hour, re-evaluates trend status (NEW/STABLE/STAGNANT/DECLINING/RETIRED) → `FCT_TREND_LIFECYCLE_LEDGER` |
+| `lifecycle-agent-p_JZCz73w` + `lifecycle-subagent-p_gYC562o` | Gemini 3.1 Pro lifecycle agent. Sweeps every hour, re-evaluates trend status (NEW/GROWING/STABLE/DECLINING/DORMANT/RESURGENT/RETIRED) → `FCT_TREND_LIFECYCLE_LEDGER` |
+| `prediction-agent-p_QPCkLP1` | Deterministic emergence scorer (no LLM). Computes `PREDICTION_SCORE` (0–100), `PREDICTION_FLAG` (Emerging / Watchlist / High Potential), `PREDICTION_ELIGIBLE` across all live trends in one batch SQL run → `FCT_TREND_PREDICTION_LEDGER`. Feeds the Insights Agent Predictions Queue. Cron TBD; manual via HTTP. |
 | `daily-digest-p_vQCkwgV` | Email digest of recently-promoted trends |
 | `audit-agent-p_xMC9nm3` | Gemini 3.1 Pro health auditor. Daily 13:00 UTC + HTTP. Prefetches Snowflake freshness/cost/stuck-trends + Pipedream errors per workflow, emits GREEN/YELLOW/RED report → `FCT_AUDIT_LEDGER` + Slack DM (gated on non-GREEN). Aggregate view; `error-alerts-p_zAC1Nd9` owns realtime per-error alerting |
 | `error-alerts-p_zAC1Nd9` | Subscribes to account-wide `$errors` event; DMs Marty per error in real time. Counterpart to audit-agent's periodic aggregate |
@@ -68,6 +69,13 @@ discovery agents (every 2h) → STG_EXTERNAL_SIGNALS
                           FCT_TREND_LIFECYCLE_LEDGER
                                   ↓
                           DT_TREND_DASHBOARD reads latest status
+
+                          prediction agent (deterministic SQL, daily)
+                                  ↓ PROC_PREDICTION_APPLY
+                          FCT_TREND_PREDICTION_LEDGER
+                                  ↓
+                          DT_TREND_DASHBOARD adds PREDICTION_SCORE / FLAG / ELIGIBLE
+                          (additive, isolated from HEAT_INDEX)
 ```
 
 **FCT_TRENDS is the canonical trend identity table** (post-2026-04-27 agent-owned-ledgers refactor — slim, immutable). All mutable state (heat, lifecycle status, enrichment payload, supporting signals) lives in dedicated append-only ledgers / link tables. The legacy `FCT_TREND_METRICS` is frozen — 324 historical rows from the suspended SQL Louvain clustering job; don't write new code that reads it.

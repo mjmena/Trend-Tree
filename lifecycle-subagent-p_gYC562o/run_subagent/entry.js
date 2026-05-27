@@ -239,19 +239,26 @@ function computeHeatBase({ metrics, signal_domain_counts, recent_signals, gtrend
   }).length;
   const velocity_factor = sigmoid((last7dCount - 2) / 3);
 
-  // breadth_factor: shannon entropy across distinct attached domains.
-  // 0 or 1 distinct domains → entropy = 0 → 0 pts (special-cased in
-  // shannonEntropyNormalized). Domain extraction mirrors sql/dt_trend_dashboard.sql's
-  // signal_domains CTE — keep them in sync.
-  const breadth_factor = shannonEntropyNormalized(signal_domain_counts);
+  // breadth_factor: log-publishers × shannon entropy across distinct attached
+  // publisher domains. Anchored so 10 publishers (even distribution) = 1.0.
+  // 1 publisher → 0; 2 → ~0.16; 5 → ~0.62; 10+ → 1.0. Penalizes both narrowness
+  // AND lopsided distributions (e.g., 8/10 signals from one publisher).
+  // Publisher extraction mirrors sql/dt_trend_dashboard.sql's signal_domains
+  // CTE — keep them in sync.
+  const distinct = Object.values(signal_domain_counts).filter(v => v > 0).length;
+  const log_score = distinct === 0
+    ? 0
+    : Math.min(1, Math.max(0, Math.log2(distinct) - 0.5) / (Math.log2(10) - 0.5));
+  const entropy = shannonEntropyNormalized(signal_domain_counts);
+  const breadth_factor = log_score * entropy;
 
   // external_factor: latest gtrends INTEREST_PEAK_PCT normalized to [0,1].
-  // Default 0.65 when no gtrends data yet — assumes moderate external presence
-  // for any trend that made it through promotion; never penalizes for poller lag.
+  // Default 0 when no gtrends data — validation strength means "earned
+  // evidence," not "assumed."
   const latestGt = gtrends_history[0];
   const external_factor = latestGt && Number.isFinite(Number(latestGt.interest_peak_pct))
     ? Math.min(1, Math.max(0, Number(latestGt.interest_peak_pct) / 100))
-    : 0.65;
+    : 0;
 
   // confidence: from FCT_TRENDS.CONFIDENCE (0-1)
   const confidence = Number(metrics?.confidence || 0.5);

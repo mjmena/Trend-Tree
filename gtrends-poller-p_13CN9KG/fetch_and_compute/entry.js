@@ -253,6 +253,7 @@ export default defineComponent({
     const t0 = Date.now();
     const results = [];
     const errors = [];
+    const empties = [];
     let cursor = 0;
 
     async function worker() {
@@ -268,6 +269,13 @@ export default defineComponent({
           ]);
           if (out.error) {
             errors.push({ trend_id: t.trend_id, error: out.error });
+          } else if (!Array.isArray(out.interest_over_time) || out.interest_over_time.length === 0) {
+            // Google returned an empty time-series — usually a real low-volume
+            // keyword (LLM-coined trend names below GTrends' minimum threshold),
+            // occasionally a silent rate-limit. Either way, don't write a row:
+            // "no row" lets the lifecycle agent's external_factor default kick in,
+            // instead of falsely recording interest_peak_pct=0 as earned evidence.
+            empties.push({ trend_id: t.trend_id, keyword: out.keyword });
           } else {
             results.push(out);
           }
@@ -289,17 +297,22 @@ export default defineComponent({
     const run_duration_ms = Date.now() - t0;
 
     console.log(
-      `gtrends-poller: done — ${results.length} ok / ${errors.length} errors in ${run_duration_ms}ms`
+      `gtrends-poller: done — ${results.length} ok / ${empties.length} empty / ${errors.length} errors in ${run_duration_ms}ms`
     );
+    if (empties.length > 0) {
+      console.log("gtrends-poller empties:", JSON.stringify(empties.slice(0, 10)));
+    }
     if (errors.length > 0) {
       console.log("gtrends-poller errors:", JSON.stringify(errors.slice(0, 10)));
     }
 
-    $.export("$summary", `${results.length}/${trends.length} trends, ${run_duration_ms}ms`);
+    $.export("$summary", `${results.length}/${trends.length} ok, ${empties.length} empty, ${run_duration_ms}ms`);
 
     return {
       results_json: JSON.stringify(results),
       ok_count: results.length,
+      empty_count: empties.length,
+      empties: empties.slice(0, 20),
       error_count: errors.length,
       errors: errors.slice(0, 20),
       attempted: trends.length,
