@@ -137,7 +137,7 @@ export default defineComponent({
     for (const c of citations) {
       const url = c.url ? String(c.url).trim() : "";
       if (!url || !/^https?:\/\//i.test(url)) continue;
-      const title = (c.title || "").trim() || deriveTitleFromUrl(url);
+      const title = usableTitle(c.title) || deriveTitleFromUrl(url);
       signals.push({
         SIGNAL_ID: url,
         SOURCE_NAME: "grok_live",
@@ -167,16 +167,26 @@ export default defineComponent({
         output: usage.output_tokens || usage.completion_tokens || 0,
       },
       model: MODEL,
-      _debug_root_citations: rawCitations, // TEMP — remove after shape confirmed
     };
   },
 });
 
+// xAI's /v1/responses returns citations as {url, title} where `title` is the
+// inline reference index ("1", "2", ...), not a page title. Reject those (and
+// other too-short fragments) so the URL-derived fallback fires instead.
+function usableTitle(t) {
+  const s = (t || "").trim();
+  return s.length >= 4 && !/^\d+$/.test(s) ? s : "";
+}
+
 function deriveTitleFromUrl(url) {
   try {
     const u = new URL(url);
-    const path = u.pathname.replace(/\/$/, "").split("/").filter(Boolean).pop() || u.hostname;
-    return decodeURIComponent(path).replace(/[-_]/g, " ").slice(0, 100);
+    const segs = u.pathname.replace(/\/$/, "").split("/").filter(Boolean);
+    const isStub = (s) => /^\d+$/.test(s) || /^(index|story|home|default)(\.\w+)?$/i.test(s);
+    let seg = segs.pop() || u.hostname;
+    if (isStub(seg) && segs.length) seg = segs.pop(); // skip trailing id/stub
+    return decodeURIComponent(seg).replace(/[-_]/g, " ").slice(0, 100);
   } catch {
     return url.slice(0, 100);
   }
