@@ -1,7 +1,8 @@
 // Lifecycle Attribution Subagent — handle_request
 //
 // Sweeper POSTs: { trend_id, chain_id, budget_usd }
-// Manual POSTs (testing) follow the same shape.
+// Manual/backfill POSTs may add { lookback_hours } to widen the candidate
+// window (default 24h matches the hourly sweeper; backfill uses ~720h).
 
 const SHORT_ID_OK = /^[A-Za-z0-9_\-]{1,64}$/;
 const TREND_ID_OK = /^[A-Za-z0-9_\-]{1,64}$/;
@@ -31,12 +32,13 @@ export default defineComponent({
     const session_id = `attr-sess-${uuid()}`;
     const dry_run = body.dry_run === true || body.dry_run === "true";
     const budget_usd = clamp(body.budget_usd, 0.01, 0.20) ?? 0.04;
+    const lookback_hours = clamp(body.lookback_hours, 1, 2160) ?? 24;
 
     console.log(
       `attr-sub: trend=${trend_id} session=${session_id} chain=${chain_id} ` +
-      `budget=$${budget_usd} dry_run=${dry_run}`
+      `budget=$${budget_usd} lookback=${lookback_hours}h dry_run=${dry_run}`
     );
 
-    return { trend_id, chain_id, session_id, dry_run, budget_usd };
+    return { trend_id, chain_id, session_id, dry_run, budget_usd, lookback_hours };
   },
 });
