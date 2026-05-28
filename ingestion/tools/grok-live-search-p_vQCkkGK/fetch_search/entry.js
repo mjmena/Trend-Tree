@@ -167,6 +167,7 @@ export default defineComponent({
         output: usage.output_tokens || usage.completion_tokens || 0,
       },
       model: MODEL,
+      _debug_root_citations: rawCitations, // TEMP — remove after shape confirmed
     };
   },
 });
