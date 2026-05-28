@@ -236,12 +236,11 @@ const INGEST_SCHEMAS = {
   ingest_grok_live_search: {
     name: "ingest_grok_live_search",
     description:
-      "Ask Grok 3 to search the live web + X for what's currently being said about a query, returning a digested summary plus citations. Fastest of the ingest tools (~3-5s). Use as the FIRST corroboration call for emerging hypotheses before spending GDELT/Google Trends latency. Returns {summary, citations: [{url, title, snippet}]}.",
+      "Search X (Twitter) for live posts about a query via Grok's x_search. Returns a 2-3 sentence digest summary plus 3-8 cited real X posts, each with the post URL (x.com/<handle>/status) and a one-sentence context of what that post says. This is the X/social corroboration tool — use it for voice-of-customer and what named accounts are saying on X. (For web/news use ingest_search_gdelt; for search demand use ingest_search_google_trends.) Each cited post is persisted as a grok_live signal.",
     input_schema: {
       type: "object",
       properties: {
-        query: { type: "string", description: "What to search for. Be specific." },
-        mode: { type: "string", enum: ["web", "x", "both"], description: "Source (default 'both')." },
+        query: { type: "string", description: "What to search X for. Be specific." },
       },
       required: ["query"],
     },
@@ -442,7 +441,7 @@ const META_SCHEMAS = {
           type: "string",
           enum: ["social", "web", "search", "cultural", "competitive", "all"],
           description:
-            "social → Bluesky; search → GDELT/Google Trends/Grok web; web → Grok live search + Google Trends; all → return everything. Be specific to keep your context light.",
+            "social → Bluesky + Grok/X live search; cultural → Bluesky + Grok/X; web → Google Trends + GDELT; search → GDELT + Google Trends; competitive → GDELT + Google Trends; all → everything. Be specific to keep your context light.",
         },
       },
       required: ["need"],
@@ -488,11 +487,11 @@ export const ENRICHMENT_TOOL_NAMES = [
 ];
 
 const DEFERRED_BY_NEED = {
-  social: ["ingest_search_bluesky"],
-  web: ["ingest_grok_live_search", "ingest_search_google_trends"],
-  search: ["ingest_search_gdelt", "ingest_grok_live_search", "ingest_search_google_trends"],
+  social: ["ingest_search_bluesky", "ingest_grok_live_search"],
+  web: ["ingest_search_google_trends", "ingest_search_gdelt"],
+  search: ["ingest_search_gdelt", "ingest_search_google_trends"],
   cultural: ["ingest_search_bluesky", "ingest_grok_live_search"],
-  competitive: ["ingest_grok_live_search", "ingest_search_gdelt"],
+  competitive: ["ingest_search_gdelt", "ingest_search_google_trends"],
   all: [
     "ingest_search_bluesky",
     "ingest_search_gdelt",

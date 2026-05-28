@@ -150,12 +150,11 @@ const INGEST_SCHEMAS = {
   ingest_grok_live_search: {
     name: "ingest_grok_live_search",
     description:
-      "Ask Grok 3 to search the live web + X for what's currently being said. Returns {summary, citations: [{url, title, snippet}]}. Fastest of the ingest tools (~3-5s). Call FIRST for cultural grounding before naming.",
+      "Search X (Twitter) for live posts about a query via Grok's x_search. Returns {summary, citations: [{url, context, handle}]} — 3-8 real X posts (x.com/<handle>/status) with a one-sentence context each. The X/social grounding tool for voice-of-customer and what named accounts are saying. For web/news use ingest_search_gdelt.",
     input_schema: {
       type: "object",
       properties: {
         query: { type: "string" },
-        mode: { type: "string", enum: ["web", "x", "both"], description: "Default 'both'." },
       },
       required: ["query"],
     },
@@ -309,11 +308,11 @@ const EAGER_TOOL_NAMES = [
 
 const DEFERRED_BY_NEED = {
   social: ["ingest_search_bluesky", "ingest_grok_live_search"],
-  web: ["ingest_grok_live_search", "ingest_search_google_trends"],
-  search: ["ingest_grok_live_search", "ingest_search_google_trends"],
+  web: ["ingest_search_google_trends", "ingest_search_gdelt"],
+  search: ["ingest_search_gdelt", "ingest_search_google_trends"],
   cultural: ["ingest_search_bluesky", "ingest_grok_live_search"],
-  competitive: ["ingest_grok_live_search"],
-  all: ["ingest_search_bluesky", "ingest_search_google_trends", "ingest_grok_live_search"],
+  competitive: ["ingest_search_gdelt", "ingest_search_google_trends"],
+  all: ["ingest_search_bluesky", "ingest_search_gdelt", "ingest_search_google_trends", "ingest_grok_live_search"],
 };
 
 function getToolSchemas(names) {

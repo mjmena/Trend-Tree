@@ -192,8 +192,8 @@ const INGEST_SCHEMAS = {
   },
   ingest_grok_live_search: {
     name: "ingest_grok_live_search",
-    description: "Grok 3 live web/X search. Fastest (~3-5s). Use as FIRST corroboration before GDELT/Google Trends.",
-    input_schema: { type: "object", properties: { query: { type: "string" }, mode: { type: "string", enum: ["web", "x", "both"] } }, required: ["query"] },
+    description: "Search X (Twitter) for live posts about a query via Grok x_search. Returns a digest summary + 3-8 cited X posts (x.com/<handle>/status + one-sentence context). The X/social corroboration tool. For web/news use GDELT; for demand use Google Trends.",
+    input_schema: { type: "object", properties: { query: { type: "string" } }, required: ["query"] },
   },
 };
 
@@ -249,11 +249,11 @@ const EAGER_TOOL_NAMES = ["query_signals_window", "query_trend_neighbors", "quer
 const LEAD_TOOL_NAMES = [...EAGER_TOOL_NAMES, "dispatch_subagent", "propose_trend_candidate"];
 
 const DEFERRED_BY_NEED = {
-  social: ["ingest_search_bluesky"],
-  web: ["ingest_grok_live_search", "ingest_search_google_trends"],
-  search: ["ingest_search_gdelt", "ingest_grok_live_search", "ingest_search_google_trends"],
+  social: ["ingest_search_bluesky", "ingest_grok_live_search"],
+  web: ["ingest_search_google_trends", "ingest_search_gdelt"],
+  search: ["ingest_search_gdelt", "ingest_search_google_trends"],
   cultural: ["ingest_search_bluesky", "ingest_grok_live_search"],
-  competitive: ["ingest_grok_live_search", "ingest_search_gdelt"],
+  competitive: ["ingest_search_gdelt", "ingest_search_google_trends"],
   all: ["ingest_search_bluesky", "ingest_search_gdelt", "ingest_search_google_trends", "ingest_grok_live_search"],
 };
 
