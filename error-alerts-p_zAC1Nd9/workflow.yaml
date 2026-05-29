@@ -1,5 +1,6 @@
 schema: workflow/2022.04
 name: Error Alerts
+inactive: true
 settings:
   lambda_memory: 512
 triggers:
