@@ -1,12 +1,29 @@
 // Distillation — q_cluster_signals (direct TCP connector)
 //
-// Calls PROC_CLUSTER_SIGNAL_SUBSET (Louvain, resolution=0.8) via the
-// snowflake-sdk TCP connector. Bypasses the HTTP proxy's size/timeout limits.
+// Calls PROC_CLUSTER_SIGNAL_SUBSET (Louvain) via the snowflake-sdk TCP
+// connector. Bypasses the HTTP proxy's size/timeout limits.
+//
+// RESOLUTION raised 0.8 → 3.0 (2026-06-01): at 0.8 the proc's permissive
+// 0.3-cosine edges collapsed the pool into a few incoherent megaclusters
+// (e.g. Dirty Soda + Beef Liver + ear seeding in one community), so the
+// agent sub-selected thin single-source slices that failed the promotion
+// 2-source-family gate. 3.0 (tuned empirically on the 1600-signal pool —
+// bigger pools need higher resolution) yields ~17 multi-family clusters of
+// 20-30 coherent signals; ephemeral gtrss news self-segregates into a few
+// big single-family blobs that simply don't promote.
+//
+// NB: the proc's EDGE_THRESHOLD stays 0.3 — raising it (tested 0.45) cuts
+// the *cross-source* edges first (an LLM-authored sentence vs a news
+// headline about the same topic only score ~0.3-0.4 cosine), which
+// destroys exactly the multi-family corroboration we want. Resolution, not
+// threshold, is the lever.
 //
 // Returns a flat array of { signal_id, cluster_id, signal_title,
 // source_name, similarity_to_seed } objects.
 
 import snowflake from "snowflake-sdk";
+
+const RESOLUTION = 3.0;
 
 function connect(opts) {
   return new Promise((resolve, reject) => {
@@ -53,10 +70,10 @@ export default defineComponent({
     });
 
     try {
-      console.log(`Louvain clustering ${ids.length} signals (resolution=0.8)`);
+      console.log(`Louvain clustering ${ids.length} signals (resolution=${RESOLUTION})`);
       const rows = await execute(
         conn,
-        "CALL MCC_RAW.MARKETING_DEV.PROC_CLUSTER_SIGNAL_SUBSET(PARSE_JSON(?)::ARRAY, 0.8::FLOAT)",
+        `CALL MCC_RAW.MARKETING_DEV.PROC_CLUSTER_SIGNAL_SUBSET(PARSE_JSON(?)::ARRAY, ${RESOLUTION}::FLOAT)`,
         [this.signal_ids_json],
       );
       const row = Array.isArray(rows) ? rows[0] : rows;

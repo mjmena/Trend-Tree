@@ -5,13 +5,24 @@
 // $.flow.exit() is a clean non-error termination, no cursor update, and the
 // next cron poll will retry. Once 150+ are available the run proceeds.
 //
-// Window: 7 days. ORDER BY DESC means freshest-200 are claimed first;
-// older unclaimed signals get picked up only when fresh ingestion is below
-// 200/run, naturally draining backlog from any prior gate-trip or workflow-
-// failure window. Originally hardcoded to 24h, which stranded ~940 signals
-// during the 2026-05-04→05-07 cluster-agent silent-drop incident — they
-// got auto-released by PROC_RELEASE_STALE_SIGNAL_CLAIMS but were past the
-// 24h window before any subsequent run could pick them up.
+// Window: 7 days on INGESTED_AT (the staging load time), NOT SIGNAL_TIMESTAMP.
+// SIGNAL_TIMESTAMP is source-dated — discovery agents stamp it with the
+// evidence article's publish date (weeks old), and gtrss with the trending
+// query's pubDate — so windowing on it silently strands freshly-ingested
+// signals whose source-date is older than 7d. Audit 2026-06-01: 184 of 354
+// freshly-ingested discovery signals (all agent_chatgpt/grok/gemini — the
+// cross-source corroboration material) were invisible to distillation for
+// exactly this reason, starving candidates of a 2nd source family and
+// collapsing the promotion rate. ORDER BY INGESTED_AT DESC so freshest-loaded
+// are claimed first; older unclaimed drain when fresh ingestion is light.
+// (Originally 24h, which stranded ~940 signals during the 2026-05-04→05-07
+// cluster-agent silent-drop incident.)
+//
+// PER_SOURCE_CAP: no single source may occupy more than this many slots of
+// the pool. Without it the gtrss flatten flood (~61% of the pool, audit
+// 2026-06-01) crowds out every other source, leaving nothing to corroborate
+// a topic across families. Capping guarantees the clustering proc sees the
+// thin-but-diverse discovery signals it needs to build multi-family clusters.
 //
 // Floor lowered from 400 to 150 on 2026-05-07: the original sizing assumed
 // agent-derived grok_live citations would contribute ~190/day, but those
@@ -20,6 +31,14 @@
 // floor (bluesky + google_trends + amazon + gemini verticals).
 
 import snowflake from "snowflake-sdk";
+
+const WINDOW_HOURS = 168; // 7 days
+const POOL_LIMIT = 1600; // grouping pool (raised from 200 — clustering is ~8s
+                         // at this size, O(N²) cosine graph; matches the
+                         // nightly revisit pool so both passes see the same
+                         // cross-source density needed for multi-family clusters)
+const PER_SOURCE_CAP = 320; // max slots any one SOURCE_NAME may take (~20% of pool)
+const MIN_POOL = 150; // gate: wait for this many before running
 
 function connect(opts) {
   return new Promise((resolve, reject) => {
@@ -61,19 +80,28 @@ export default defineComponent({
     try {
       const rows = await execute(
         conn,
-        `SELECT SIGNAL_ID
-         FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
-         WHERE SIGNAL_TIMESTAMP > DATEADD(hour, -168, CURRENT_TIMESTAMP())
-           AND COALESCE(AGENT_SESSION_ID, '') = ''
-           AND COALESCE(METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
-         ORDER BY SIGNAL_TIMESTAMP DESC NULLS LAST
-         LIMIT 200`,
+        `WITH unclaimed AS (
+           SELECT SIGNAL_ID,
+                  INGESTED_AT,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY SOURCE_NAME ORDER BY INGESTED_AT DESC
+                  ) AS rn_in_source
+           FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
+           WHERE INGESTED_AT > DATEADD(hour, -${WINDOW_HOURS}, CURRENT_TIMESTAMP())
+             AND COALESCE(AGENT_SESSION_ID, '') = ''
+             AND COALESCE(METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
+         )
+         SELECT SIGNAL_ID
+         FROM unclaimed
+         WHERE rn_in_source <= ${PER_SOURCE_CAP}
+         ORDER BY INGESTED_AT DESC
+         LIMIT ${POOL_LIMIT}`,
         [],
       );
       const ids = (Array.isArray(rows) ? rows : []).map((r) => r.SIGNAL_ID).filter(Boolean);
 
-      if (ids.length < 150) {
-        $.flow.exit(`Only ${ids.length} unclaimed signals available — waiting for 150`);
+      if (ids.length < MIN_POOL) {
+        $.flow.exit(`Only ${ids.length} unclaimed signals available — waiting for ${MIN_POOL}`);
       }
 
       console.log(`acquire_signal_ids: ${ids.length} unclaimed signals ready`);

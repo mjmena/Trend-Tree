@@ -40,7 +40,12 @@ export default defineComponent({
     // step's run() returns successfully.
     const { resume_url, cancel_url } = $.flow.suspend(SUSPEND_TIMEOUT_MS);
 
-    const cluster_rows_arr = Array.isArray(this.cluster_rows) ? this.cluster_rows : [];
+    // Slim cluster_rows to the join essentials before POSTing — signal_title /
+    // source_name are redundant (the cluster-agent re-fetches them in
+    // signal_rows and looks them up by signal_id). Keeps the POST + the agent's
+    // handle_request bundle small at a 1600-signal pool.
+    const cluster_rows_arr = (Array.isArray(this.cluster_rows) ? this.cluster_rows : [])
+      .map((c) => ({ signal_id: c.signal_id, cluster_id: c.cluster_id, similarity_to_seed: c.similarity_to_seed }));
     const payload = {
       cluster_rows: cluster_rows_arr,
       signal_ids_json: this.signal_ids_json,

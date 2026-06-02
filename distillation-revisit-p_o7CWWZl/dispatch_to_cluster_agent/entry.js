@@ -44,7 +44,10 @@ export default defineComponent({
     const { resume_url, cancel_url } = $.flow.suspend(SUSPEND_TIMEOUT_MS);
 
     const payload = {
-      cluster_rows: Array.isArray(nb.cluster_rows) ? nb.cluster_rows : [],
+      // Slim to join essentials — the shared cluster-agent looks up
+      // title/source from its own signal_pool by signal_id (see run_lead_agent).
+      cluster_rows: (Array.isArray(nb.cluster_rows) ? nb.cluster_rows : [])
+        .map((c) => ({ signal_id: c.signal_id, cluster_id: c.cluster_id, similarity_to_seed: c.similarity_to_seed })),
       signal_ids_json: nb.signal_ids_json,
       agent_session_id: nb.agent_session_id,
       chain_id: nb.chain_id,

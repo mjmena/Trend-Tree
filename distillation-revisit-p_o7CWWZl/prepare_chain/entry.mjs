@@ -2,8 +2,9 @@
 //
 // Start mode (mode === "start"): one TCP-connected Snowflake session does
 // all the start-only setup atomically:
-//   1. SELECT the 48h discovery-signal pool (≤1600 rows).
-//   2. CALL PROC_CLUSTER_SIGNAL_SUBSET(pool, 0.8) — Louvain communities.
+//   1. SELECT the 48h discovery-signal pool (≤1600 rows), windowed on
+//      INGESTED_AT (load time), per-source-capped for cross-source diversity.
+//   2. CALL PROC_CLUSTER_SIGNAL_SUBSET(pool, 3.0) — Louvain communities.
 //   3. Bin-pack communities into batches of ≤400 signals (greedy).
 //   4. INSERT N PENDING rows into STG_REVISIT_BATCH_QUEUE.
 //   5. UPDATE STG_EXTERNAL_SIGNALS to stamp this revisit session_id
@@ -22,8 +23,10 @@
 import snowflake from "snowflake-sdk";
 
 const POOL_LIMIT = 1600;
+const PER_SOURCE_CAP = 320; // ~20% of pool; stop one loud source (gtrss) dominating
 const MAX_BATCH_SIZE = 400;
 const POOL_LOOKBACK_HOURS = 48;
+const RESOLUTION = 3.0; // raised from 0.8 — see q_cluster_signals for rationale
 
 function connect(opts) {
   return new Promise((resolve, reject) => {
@@ -109,21 +112,34 @@ export default defineComponent({
     try {
       const t0 = Date.now();
 
+      // Window + order on INGESTED_AT (load time), NOT SIGNAL_TIMESTAMP:
+      // discovery agents stamp SIGNAL_TIMESTAMP with the evidence article's
+      // publish date (weeks old), so windowing on it stranded freshly-claimed
+      // discovery signals — the exact cross-source corroboration material.
+      // Per-source ROW_NUMBER cap keeps the gtrss flood from dominating.
       const poolRows = await execute(
         conn,
-        `SELECT s.SIGNAL_ID
-         FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
-         WHERE s.SIGNAL_TIMESTAMP > DATEADD(hour, -${POOL_LOOKBACK_HOURS}, CURRENT_TIMESTAMP())
-           AND s.AGENT_SESSION_ID LIKE 'sess-%'
-           AND COALESCE(s.METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
-           AND NOT EXISTS (
-             SELECT 1
-             FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
-                  LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
-             WHERE f.value::STRING = s.SIGNAL_ID
-               AND c.PROMOTED_TO IS NOT NULL
-           )
-         ORDER BY s.SIGNAL_TIMESTAMP DESC NULLS LAST
+        `SELECT SIGNAL_ID
+         FROM (
+           SELECT s.SIGNAL_ID,
+                  s.INGESTED_AT,
+                  ROW_NUMBER() OVER (
+                    PARTITION BY s.SOURCE_NAME ORDER BY s.INGESTED_AT DESC
+                  ) AS rn_in_source
+           FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
+           WHERE s.INGESTED_AT > DATEADD(hour, -${POOL_LOOKBACK_HOURS}, CURRENT_TIMESTAMP())
+             AND s.AGENT_SESSION_ID LIKE 'sess-%'
+             AND COALESCE(s.METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
+             AND NOT EXISTS (
+               SELECT 1
+               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
+                    LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+               WHERE f.value::STRING = s.SIGNAL_ID
+                 AND c.PROMOTED_TO IS NOT NULL
+             )
+         )
+         WHERE rn_in_source <= ${PER_SOURCE_CAP}
+         ORDER BY INGESTED_AT DESC
          LIMIT ${POOL_LIMIT}`,
         [],
       );
@@ -146,10 +162,10 @@ export default defineComponent({
 
       const signal_ids_json = JSON.stringify(signal_ids);
 
-      console.log(`prepare_chain: Louvain clustering ${pool_size} signals (resolution=0.8)`);
+      console.log(`prepare_chain: Louvain clustering ${pool_size} signals (resolution=${RESOLUTION})`);
       const clusterRowsRaw = await execute(
         conn,
-        "CALL MCC_RAW.MARKETING_DEV.PROC_CLUSTER_SIGNAL_SUBSET(PARSE_JSON(?)::ARRAY, 0.8::FLOAT)",
+        `CALL MCC_RAW.MARKETING_DEV.PROC_CLUSTER_SIGNAL_SUBSET(PARSE_JSON(?)::ARRAY, ${RESOLUTION}::FLOAT)`,
         [signal_ids_json],
       );
       const row = Array.isArray(clusterRowsRaw) ? clusterRowsRaw[0] : clusterRowsRaw;

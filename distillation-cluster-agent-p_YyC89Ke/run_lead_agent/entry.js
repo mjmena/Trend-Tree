@@ -593,8 +593,9 @@ function parseClusterRows(input) {
   return [];
 }
 
-function buildClusterSummary(assignments) {
+function buildClusterSummary(assignments, infoById) {
   if (!Array.isArray(assignments) || assignments.length === 0) return [];
+  const info = infoById instanceof Map ? infoById : new Map();
   const byCluster = new Map();
   for (const a of assignments) {
     const cid = a.cluster_id;
@@ -605,9 +606,12 @@ function buildClusterSummary(assignments) {
   for (const [cluster_id, members] of byCluster.entries()) {
     members.sort((x, y) => (y.similarity_to_seed || 0) - (x.similarity_to_seed || 0));
     const sources = {};
-    for (const m of members) sources[m.source_name] = (sources[m.source_name] || 0) + 1;
+    for (const m of members) {
+      const src = info.get(m.signal_id)?.source_name || "unknown";
+      sources[src] = (sources[src] || 0) + 1;
+    }
     const source_breakdown = Object.entries(sources).sort((a, b) => b[1] - a[1]).map(([s, n]) => `${s}*${n}`).join(", ");
-    const sample_titles = members.slice(0, 3).map((m) => (m.signal_title || "").slice(0, 100));
+    const sample_titles = members.slice(0, 3).map((m) => (info.get(m.signal_id)?.title || "").slice(0, 100));
     out.push({ cluster_id, size: members.length, source_breakdown, sample_titles });
   }
   out.sort((a, b) => b.size - a.size);
@@ -635,25 +639,40 @@ export default defineComponent({
     gtrends_url: { type: "string", label: "Search Google Trends tool endpoint", optional: true },
     grok_url: { type: "string", label: "Grok Live Search tool endpoint", optional: true },
   },
-  async run({ $ }) {
-    const evt = this.event || {};
+  async run({ steps, $ }) {
+    // Read bulk inputs directly from prior steps' $return_value rather than via
+    // props: at a 1600-signal pool the event bundle (cluster_rows + signal_ids),
+    // signal_rows, and cluster_rows each exceed Pipedream's ~512KB prop cap.
+    // Mirrors the steps.$return_value pattern used elsewhere (e.g.
+    // upsert_signals). Props remain as optional fallbacks for back-compat.
+    const hr = steps?.handle_request?.$return_value || {};
+    const evt = this.event || hr;
     const dryRun = evt.dry_run === true;
     const started = Date.now();
 
-    const cluster_assignments = parseClusterRows(this.cluster_rows);
+    const cluster_assignments = parseClusterRows(this.cluster_rows ?? hr.cluster_rows);
     const cluster_lookup = new Map(cluster_assignments.map((c) => [c.signal_id, c]));
 
-    const signal_pool = (Array.isArray(this.signal_rows) ? this.signal_rows : []).map((r) => {
+    const signalRows = (Array.isArray(this.signal_rows) && this.signal_rows.length)
+      ? this.signal_rows
+      : (steps?.q_fetch_signals?.$return_value || []);
+    const signal_pool = (Array.isArray(signalRows) ? signalRows : []).map((r) => {
       const c = cluster_lookup.get(r.SIGNAL_ID);
       return {
         signal_id: r.SIGNAL_ID, source_name: r.SOURCE_NAME, title: r.SIGNAL_TITLE,
         body: r.SIGNAL_TEXT, detected_at: r.SIGNAL_TIMESTAMP,
-        domain: tryParseMetadataDomain(r.METADATA), url: tryParseMetadataUrl(r.METADATA),
+        // domain/url now arrive as scalar columns (MD_DOMAIN/MD_URL) from
+        // q_fetch_signals — no full METADATA VARIANT shipped. Fall back to the
+        // url's hostname when MD_DOMAIN is absent (mirrors the old parser).
+        domain: r.MD_DOMAIN || hostnameOf(r.MD_URL), url: r.MD_URL || null,
         cluster_id: c ? c.cluster_id : null,
       };
     });
 
-    const cluster_summary = buildClusterSummary(cluster_assignments);
+    // cluster_rows is slimmed (id/cluster_id/similarity only) — look up
+    // title/source for the digest from signal_pool by signal_id.
+    const infoById = new Map(signal_pool.map((s) => [s.signal_id, s]));
+    const cluster_summary = buildClusterSummary(cluster_assignments, infoById);
 
     // DT_TREND_DASHBOARD columns (post-2026-04-28 refactor):
     //   TREND_NAME (was TREND_TOPIC), HEAT_INDEX (was TREND_HEAT_INDEX),
@@ -793,15 +812,9 @@ function capTrace(trace, maxBytes) {
   return compact.slice(-Math.floor(maxBytes / 200));
 }
 
-function tryParseMetadataDomain(md) {
-  try {
-    const m = typeof md === "string" ? JSON.parse(md) : md;
-    return m?.domain || (m?.url ? new URL(m.url).hostname : null);
-  } catch { return null; }
-}
-function tryParseMetadataUrl(md) {
-  try {
-    const m = typeof md === "string" ? JSON.parse(md) : md;
-    return m?.url || m?.uri || m?.embedded_url || null;
-  } catch { return null; }
+// Domain/url are now extracted as scalar columns (MD_DOMAIN/MD_URL) in
+// q_fetch_signals, so the full METADATA VARIANT no longer ships. This is the
+// only residual parse: derive a hostname when MD_DOMAIN is null.
+function hostnameOf(url) {
+  try { return url ? new URL(url).hostname : null; } catch { return null; }
 }
