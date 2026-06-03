@@ -13,6 +13,77 @@ This document covers every field a strategist sees on an ATLAS card. Field surfa
 
 ---
 
+## How a trend is found
+
+![How a trend gets to your ATLAS card — 6-stage pipeline flow](../images/atlas-flow.svg)
+
+<!-- Diagram source: docs/images/atlas-flow.mmd. To regenerate after a pipeline change,
+     edit the .mmd file, render via mermaid.live (paste, export SVG), then edit the SVG's
+     width/height to explicit pixels (e.g. width="1200" height="79", remove width="100%"
+     and max-width style) so Confluence renders it at full readable size instead of a thumbnail. -->
+
+The short answer: **we don't ask AI what's trending. We collect raw data from the real world, and AI evaluates what's already happening.** The steps below explain where each datapoint on a card comes from and what decision produced it.
+
+### 1. Listen — raw signals from real platforms
+
+The pipeline continuously ingests from ~15 sources: Bluesky posts, GDELT news articles, Google Trends curves, Amazon trending products, and more. Some sources run continuously; others run on a schedule. Every article, post, or data point that clears basic quality checks becomes one signal — a single, verifiable row tied to a real URL.
+
+We also run three discovery agents (Gemini, Grok, ChatGPT) that proactively search the public web every 2 hours for emerging patterns and return URLs. Every URL a discovery agent finds is post-verified for resolvability before it enters the pipeline — we don't ingest an agent's interpretation of a topic, we ingest the underlying content it pointed to.
+
+→ See the [source catalog](sources.md) for the full list.
+
+### 2. Cluster + gate — where noise gets filtered
+
+This is the most important step for data reliability.
+
+A **distillation agent** (Gemini 3.1 Pro) groups semantically related signals into **candidates** — potential trends. Before any candidate is considered for promotion, it must pass a hard structural gate:
+
+- **At least 2 signals** in the cluster
+- **At least 2 independent source families** — signals from a single platform don't constitute a trend
+
+Candidates that don't pass are automatically rejected without any LLM involvement. A signal cluster from one source — even a large one — is treated as platform velocity, not a cultural trend.
+
+Candidates that pass the gate are handed to a **promotion agent** (Gemini 3.1 Pro), which evaluates the full cluster — source breakdown, distillation confidence, specificity, and whether anything semantically similar already exists as a live trend. The agent decides: promote as a new trend, defer for more evidence, merge into an existing trend, or reject.
+
+**A trend that appears on ATLAS cleared both the structural gate and the LLM judgment layer.** That's what `ORIGINALLY_SURFACED_AT` marks — the moment both passed.
+
+> See the [glossary](glossary.md) for the **candidate** vs **trend** distinction.
+
+### 3. Profile — AI interpretation on a verified foundation
+
+Once a trend is promoted, an **enrichment agent** (Claude Sonnet 4.6) writes the card: B2C and B2B names, category, summary, cultural drivers, seasonal relevance, geographic hotspots, vibe shift, and an evidence pool. The agent starts from the signal cluster that already cleared the gate — it's reasoning about something real, not speculating from scratch. It can also run live searches during profiling to pull in additional grounding, and any URLs it finds are added back to the trend's signal record.
+
+The narrative fields (summary, cultural drivers, etc.) are AI-written interpretation. The **evidence pool is the paper trail** — the real signals and sources that grounded the agent's analysis. If a claim in the summary looks off, the evidence pool is where to check.
+
+Names and category are **frozen at first enrichment** so cards don't quietly rename themselves over time.
+
+→ See [`TREND_NAME`](fields/trend-name.md) and [narrative fields](fields/narrative-fields.md).
+
+### 4. Track — how talked about is this right now?
+
+Every hour, a **lifecycle agent** (Gemini 3.1 Pro) re-evaluates every live trend against recent signal flow, publisher breadth, and the trend's own history. Two numbers come out:
+
+- **`HEAT_INDEX`** (0–100) — how much is this trend being talked about right now. Smoothed so a single quiet hour doesn't crater a hot trend.
+- **`LIFECYCLE_STATUS`** — the trend's overall trajectory: `NEW` / `STABLE` / `STAGNANT` / `DECLINING` / `RETIRED`.
+
+Heat reflects current volume and momentum. Lifecycle reflects the shape of the trend over time.
+
+→ See [`HEAT_INDEX`](fields/heat-index.md) and [`LIFECYCLE_STATUS`](fields/lifecycle-status.md).
+
+### 5. Predict — how likely is this to grow?
+
+Once a day, a **prediction agent** scores every live trend on week-over-week deltas: heat acceleration, base volume, source diversity expansion, and cluster growth. The result is a `PREDICTION_SCORE` (0–100) and a `PREDICTION_FLAG` (`Emerging` / `Watchlist` / `High Potential`).
+
+Prediction is distinct from heat: heat says *how active is this now*, prediction says *is this trend still building or has it peaked*. Trends flagged `Emerging` or `High Potential` appear in the Predictions Queue.
+
+→ See [prediction deep dive](fields/prediction.md).
+
+### 6. Display — ATLAS assembles the card
+
+ATLAS reads a Snowflake view that joins the latest output from each agent into one row per trend, refreshing every 15 minutes. What you see on a card is always the most recent evaluation from each stage above.
+
+---
+
 ## At a glance — field reference
 
 Every score in this table is on a **0–100 scale unless otherwise noted**. The columns:
@@ -96,50 +167,6 @@ Every score in this table is on a **0–100 scale unless otherwise noted**. The 
 | 🟡 Revenue Potential | Estimated revenue if we publish on this trend | TBD | Insights Agent → migrating | [→](migrating.md#revenue-potential) |
 | 🟡 AI Match % | Vectorization match to the CSA content library | TBD | Insights Agent → migrating | [→](migrating.md#ai-match) |
 | 🟡 Overall Score (G/Y/R) | ≥ 75 green / 50–74 yellow / < 50 red rollup | enum + 0–100 | Insights Agent → migrating | [→](migrating.md#overall-score) |
-
----
-
-## How a trend gets to your ATLAS card
-
-![How a trend gets to your ATLAS card — 6-stage pipeline flow](../images/atlas-flow.svg)
-
-<!-- Diagram source: docs/images/atlas-flow.mmd. To regenerate after a pipeline change,
-     edit the .mmd file and render via mermaid.live (paste, export SVG) or `mmdc -i atlas-flow.mmd -o atlas-flow.svg` -->
-
-
-### 1. Listen — we ingest signals from many sources
-
-The pipeline knows about 15 sources today (around 10 actively ingesting at any given moment; a few are paused or run intermittently). Some are **direct platform sources** (Bluesky, Google Trends, Amazon, etc.) where we pull from a public API or feed. Others are **discovery agents** — LLMs that proactively search the public web every 2 hours and bring back URLs we post-verify before ingest. Each raw signal becomes one row in our internal `FCT_SIGNALS` table.
-
-→ See the [source catalog](sources.md) for the full list with provenance and refresh cadence per source.
-
-### 2. Identify — AI condenses signals into trends
-
-Raw signals are noisy. A **distillation agent** (Gemini 3.1 Pro) clusters related signals — using a mix of semantic similarity and shared topical hints — into **candidates**. A second **promotion agent** evaluates each candidate against quality gates (sufficient cluster size, source breadth, novelty) and decides which ones become canonical trends. When a candidate is promoted, it gets a stable `TREND_ID` and lands in `FCT_TRENDS`.
-
-> See the [glossary](glossary.md) for the **candidate** vs **trend** distinction.
-
-### 3. Profile — each trend gets a rich description
-
-An **enrichment agent** (Claude Sonnet 4.6) takes each new trend and produces a complete profile in one pass: B2C and B2B names, category and subcategory, a short and long summary, cultural drivers, seasonal relevance, geographic hotspots, vibe shift, and a typed evidence pool. The names and category are **frozen** at this first enrichment — re-enrichment can update the rest of the payload, but the identity stays stable so cards don't quietly rename themselves over time.
-
-→ See [`TREND_NAME`](fields/trend-name.md) and [narrative fields](fields/narrative-fields.md).
-
-### 4. Track — heat reflects momentum, lifecycle reflects shape
-
-Every hour, a **lifecycle agent** (Gemini 3.1 Pro) re-evaluates every live trend. It looks at recent signal flow, publisher breadth, and the trend's history; the result is a fresh `HEAT_INDEX` (a 0–100 EWMA-smoothed momentum score) and a `LIFECYCLE_STATUS` (`NEW` / `STABLE` / `STAGNANT` / `DECLINING` / `RETIRED`). Heat is the "how hot right now" number. Lifecycle is the "what shape is this trend in" label.
-
-→ See [`HEAT_INDEX`](fields/heat-index.md) and [`LIFECYCLE_STATUS`](fields/lifecycle-status.md).
-
-### 5. Predict — daily emergence scoring
-
-Once a day, a **prediction agent** scores every live trend on four week-over-week deltas (heat acceleration, low base volume, source diversity expansion, cluster formation). The result is a `PREDICTION_SCORE` (0–100), a `PREDICTION_FLAG` (`Emerging` / `Watchlist` / `High Potential`), and a boolean `PREDICTION_ELIGIBLE` that gates the Predictions Queue. Unlike heat (which says "how hot now"), prediction says "how likely to grow."
-
-→ See [prediction deep dive](fields/prediction.md).
-
-### 6. Display — ATLAS reads everything
-
-ATLAS queries a Snowflake dynamic table (`DT_TREND_DASHBOARD`) that joins the latest row from each agent's ledger into one row per trend. The dynamic table refreshes every 15 minutes, so changes upstream take at most 15 minutes to appear on a card.
 
 ---
 
