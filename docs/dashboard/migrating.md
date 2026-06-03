@@ -7,6 +7,8 @@ The fields below currently render on ATLAS cards but are computed by the Insight
 
 Before implementation, each field needs a real **definition**. So every section below carries a **🔍 To define it** block: what the field means, what data it needs, what we already have, and the open decisions to lock. This is a scouting checklist, not an implementation plan.
 
+> ⚠️ **Data update (2026-06-03):** a warehouse scan found that **most of the "Missing / external" data below already exists in Snowflake**, live and fresh — GSC (6.5B rows), the CSA/CUE content corpus + vectors, and audience/demographic + IAB tables — just in schemas this project doesn't read yet. The per-field "Have / Missing" notes below predate that scan. See **[Data Sourcing companion →](migrating-data-sources.md)** for the verified table-by-table mapping, join smoke-tests, and the (smaller) real gaps.
+
 > When a field's definition is locked and it ships, its section graduates to a full deep dive under `docs/dashboard/fields/` (or stays here if the depth doesn't warrant a separate page).
 
 **Repo facts we can lean on:** 1024-dim Cortex embeddings (`snowflake-arctic-embed-l-v2.0`) on `FCT_TRENDS` / `FCT_SIGNALS` / `FCT_TREND_ENRICHMENT_LEDGER.TREND_VECTOR`; cosine machinery already live (`VECTOR_COSINE_SIMILARITY`); `HEAT_INDEX`, `PREDICTION_SCORE`, `DISTINCT_SOURCE_COUNT`, cluster size, `FCT_TRENDS.CONFIDENCE`, enrichment `category_confidence` / `LOW_CONFIDENCE_FLAG`, `FCT_TREND_GTRENDS_DAILY` interest %, `FCT_TREND_SOURCE_METRICS`.
