@@ -2,7 +2,12 @@
 -- Database: MCC_RAW.MARKETING_DEV
 --
 -- Called by the enrichment write workflow (write-p_o7CWa2K) once the agent
--- run completes. Appends one row to FCT_TREND_ENRICHMENT_LEDGER. On the
+-- run completes. Appends one row to FCT_TREND_ENRICHMENT_LEDGER. The row's
+-- TREND_VECTOR is computed server-side via Cortex (EMBED_TEXT_1024 over
+-- FN_TREND_EMBED_DOC) when no VECTOR arg is supplied — which is the normal
+-- path, since the write workflow passes NULL. A passed-in VECTOR still wins
+-- for back-compat. The same UDF is used by the one-time vector backfill, so
+-- every trend vector shares one recipe (arctic-embed-l-v2.0/1024). On the
 -- first enrichment run for a trend (KIND='initial'), also UPDATEs frozen
 -- identity columns on FCT_TRENDS via two separately-guarded writes:
 --
@@ -62,16 +67,30 @@ def sql_json(obj):
     return "PARSE_JSON('" + json.dumps(obj).replace("'", "''").replace("\\", "\\\\") + "')"
 
 
-def sql_vector(vec):
-    """1024-dim float vector as a Snowflake VECTOR literal."""
-    if vec is None:
+def vector_sql(vec, topic, payload_dict):
+    """Resolve the TREND_VECTOR SQL expression.
+
+    Precedence:
+      1. An explicitly-passed vector arg (back-compat) -> VECTOR literal.
+      2. Otherwise compute the embedding server-side via Cortex from the
+         canonical trend doc (FN_TREND_EMBED_DOC) so the vector no longer
+         depends on a value supplied by the write workflow. Recipe lives in
+         the UDF; same call is used by the one-time backfill, so go-forward
+         and historical vectors share one recipe (arctic-embed-l-v2.0/1024).
+    """
+    if vec is not None:
+        if isinstance(vec, str):
+            try:
+                vec = json.loads(vec)
+            except (ValueError, TypeError):
+                vec = None
+        if vec:
+            floats = [str(float(x)) for x in vec]
+            return "[" + ",".join(floats) + "]::VECTOR(FLOAT, 1024)"
+    if not topic and not payload_dict:
         return 'NULL'
-    if isinstance(vec, str):
-        vec = json.loads(vec)
-    if not vec:
-        return 'NULL'
-    floats = [str(float(x)) for x in vec]
-    return "[" + ",".join(floats) + "]::VECTOR(FLOAT, 1024)"
+    return ("SNOWFLAKE.CORTEX.EMBED_TEXT_1024('snowflake-arctic-embed-l-v2.0', "
+            f"MCC_RAW.MARKETING_DEV.FN_TREND_EMBED_DOC({sql_str(topic)}, {sql_json(payload_dict)}))")
 
 
 def sql_num(n):
@@ -94,6 +113,18 @@ def run(session, TREND_ID, PAYLOAD, VECTOR, SESSION_ID, CHAIN_ID, KIND,
 
     payload_dict = PAYLOAD if isinstance(PAYLOAD, dict) else (json.loads(PAYLOAD) if isinstance(PAYLOAD, str) else {})
 
+    # Frozen trend topic — anchors the embedding doc when VECTOR isn't passed.
+    topic = None
+    try:
+        rs = session.sql(
+            f"SELECT TREND_TOPIC FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS "
+            f"WHERE TREND_ID = {sql_str(TREND_ID)}"
+        ).collect()
+        if rs:
+            topic = rs[0][0]
+    except Exception:
+        topic = None
+
     # 1. Append ledger row (always)
     session.sql(f"""
         INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER (
@@ -114,7 +145,7 @@ def run(session, TREND_ID, PAYLOAD, VECTOR, SESSION_ID, CHAIN_ID, KIND,
             {sql_str(SESSION_ID)},
             {sql_str(CHAIN_ID)},
             {sql_json(payload_dict)},
-            {sql_vector(VECTOR)},
+            {vector_sql(VECTOR, topic, payload_dict)},
             {sql_str(MODEL_USED)},
             {sql_num(INPUT_TOKENS)},
             {sql_num(OUTPUT_TOKENS)},
