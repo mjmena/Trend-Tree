@@ -149,7 +149,7 @@ Not a migrating field, but a related definition task. Today "related trends" are
 - **Validation / ground truth:** for *every* field, how do we know a score is "good"? Likely need labeled examples or editorial sign-off per field — without this, "real implementation" has no success criterion.
 - **Definition ownership:** who is the authority for each field's meaning — editorial, Marcelo, or us? (Confidence / Content Gap / Overall are editorial-judgment calls.)
 - **Embedding compatibility:** Content Gap and AI Match both compare trend vectors to an external corpus — that corpus must be embedded with a compatible model, or we re-embed. Pin this early.
-- **Storage pattern (when we build):** the `FCT_TREND_PREDICTION_LEDGER` → `PROC_PREDICTION_APPLY` → dashboard-join pattern is the template; one combined insights ledger fits. Noted for continuity, not needed for scouting.
+- **Storage pattern (when we build):** the append-only ledger → dashboard-join pattern (e.g. `FCT_TREND_PREDICTION_LEDGER`) is the template; one combined insights ledger fits. Write it with a single server-side `INSERT...SELECT`, not a JSON-array bound param through the Pipedream SQL proxy (that path fails at ~80KB+ — see the prediction agent's 2026-06-05 rewrite). Noted for continuity, not needed for scouting.
 
 ## What we need from stakeholders
 

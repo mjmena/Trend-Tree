@@ -4,7 +4,10 @@
 // Manual POSTs to the HTTP trigger can override:
 //   { chain_id, dry_run }
 //
-// dry_run=true scores and returns the summary without inserting to the ledger.
+// dry_run=true skips the ledger INSERT (commit_to_ledger guards on it).
+// Note: with the INSERT...SELECT commit, a dry_run reports zero counts from
+// `summarize` (nothing was written under this chain_id) — it validates that
+// the scoring SQL compiles without persisting. For real scores, omit dry_run.
 
 const SHORT_ID_OK = /^[A-Za-z0-9_\-]{1,64}$/;
 

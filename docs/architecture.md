@@ -39,7 +39,7 @@ flowchart TD
     H3 -->|INSERT| I["FCT_TREND_ENRICHMENT_LEDGER"]
     J["lifecycle-agent-p_JZCz73w\nGemini 3.1 Pro @ 1h"] -->|"HTTP fanout"| J2["lifecycle-subagent-p_gYC562o"]
     J2 -->|INSERT| K["FCT_TREND_LIFECYCLE_LEDGER"]
-    P["prediction-agent-p_QPCkLP1\ndeterministic SQL @ daily"] -->|"PROC_PREDICTION_APPLY"| P2["FCT_TREND_PREDICTION_LEDGER"]
+    P["prediction-agent-p_QPCkLP1\ndeterministic SQL @ daily 14:00 UTC"] -->|"INSERT...SELECT"| P2["FCT_TREND_PREDICTION_LEDGER"]
     K --> P
     G & I & K & P2 -->|"15-min dynamic table"| L["DT_TREND_DASHBOARD"]
 ```
@@ -153,10 +153,11 @@ Deterministic emergence scorer. Single batch SQL run scores every live (non-RETI
 Steps:
 
 1. `normalize_event` — generates `chain_id` per run; accepts `{ chain_id, dry_run }` override on manual POST.
-2. `q_score_trends` — one SQL query that JOINs `FCT_TREND_LIFECYCLE_LEDGER` (heat now / 7d / 14d), `FCT_TREND_SIGNALS` (signal flow last-7d vs prior-7d), and a `signal_domains` CTE (source diversity last-7d vs prior-7d), then computes the score + percentile + flag + eligibility in nested CTEs. Output: one row per live trend ready for the ledger.
-3. `serialize_decisions` — wraps the row array into the JSON-string payload `PROC_PREDICTION_APPLY` consumes.
-4. `commit_to_ledger` — `CALL MCC_RAW.MARKETING_DEV.PROC_PREDICTION_APPLY(PARSE_JSON(:1)::ARRAY, chain_id)`. Atomic batch INSERT.
-5. `respond` — returns `{ chain_id, total_rows, scored_count, eligible_count, null_count, committed }`.
+2. `commit_to_ledger` — a single `INSERT INTO FCT_TREND_PREDICTION_LEDGER (...) WITH <CTEs> SELECT ... FROM ranked`. The scoring CTE chain JOINs `FCT_TREND_LIFECYCLE_LEDGER` (heat now / 7d / 14d), `FCT_TREND_SIGNALS` (signal flow last-7d vs prior-7d), and a `signal_domains` CTE (source diversity last-7d vs prior-7d), then computes score + percentile + flag + eligibility — and writes the result in the same statement. `chain_id` is inlined; a `WHERE '{{dry_run}}' <> 'true'` guard skips the write on dry runs. No JSON round-trip, no bound param, no stored proc.
+3. `summarize` — reads the just-written rows back (`WHERE CHAIN_ID = '{{chain_id}}'`) for the response counts.
+4. `respond` — returns `{ chain_id, dry_run, total_rows, scored_count, eligible_count, null_count, rows_inserted }`.
+
+> **2026-06-05 rewrite:** the original `q_score_trends` → `serialize_decisions` → `CALL PROC_PREDICTION_APPLY` path shipped a single ~82KB JSON array as a bound param through the Pipedream SQL proxy, which rejected it ("Error contacting database") — the proxy commit path never actually worked end-to-end. The proc also did 173 sequential single-row INSERTs (~87s). Both problems collapse away by scoring + writing in one server-side `INSERT…SELECT` (~3.5s). `PROC_PREDICTION_APPLY` and `serialize_decisions` were dropped.
 
 The dashboard's `latest_prediction` CTE picks up the most recent row per trend by `EVALUATED_AT` and surfaces 3 additive columns (`PREDICTION_SCORE`, `PREDICTION_FLAG`, `PREDICTION_ELIGIBLE`). **Strict isolation: prediction columns are never read by HEAT_INDEX or LIFECYCLE_STATUS** (a product constraint from Jason Smith).
 
