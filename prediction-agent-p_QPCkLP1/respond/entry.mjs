@@ -13,11 +13,14 @@ export default defineComponent({
   async run({ $ }) {
     const e = this.event || {};
 
-    // snowflake-execute-sql-query returns rows[] for the summarize SELECT.
-    const s = (Array.isArray(this.summary?.rows) && this.summary.rows[0]) || {};
+    // snowflake-execute-sql-query@0.2.3 returns $return_value as the row array
+    // directly (not wrapped in { rows }). Stay tolerant of both shapes.
+    const asRows = (v) => (Array.isArray(v) ? v : (Array.isArray(v?.rows) ? v.rows : []));
 
-    // The INSERT step returns a single row like { "number of rows inserted": N }.
-    const ins = (Array.isArray(this.commit_result?.rows) && this.commit_result.rows[0]) || {};
+    const s = asRows(this.summary)[0] || {};
+
+    // The INSERT step returns one row like { "number of rows inserted": N }.
+    const ins = asRows(this.commit_result)[0] || {};
     const inserted = ins["number of rows inserted"] ?? ins.NUMBER_OF_ROWS_INSERTED ?? null;
 
     const summary = {
