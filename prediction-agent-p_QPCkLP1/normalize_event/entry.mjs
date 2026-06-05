@@ -1,6 +1,7 @@
 // Prediction Agent — normalize_event
 //
-// Cron-fired at daily 06:00 UTC. Manual POSTs can override:
+// Cron-fired daily at 14:00 UTC (source dc_wDuPeGB, cron "0 14 * * *").
+// Manual POSTs to the HTTP trigger can override:
 //   { chain_id, dry_run }
 //
 // dry_run=true scores and returns the summary without inserting to the ledger.
