@@ -112,6 +112,29 @@ export default defineComponent({
         metrics: r.metrics,
       }));
 
+    // ── GSC term set ───────────────────────────────────────────────
+    // Persist the clean LLM phrases (not the GDELT-tuned padded `terms`)
+    // for the GSC demand matcher. Dedup on LOWER(TRIM(...)) — the same key
+    // FCT_TREND_GSC_TERMS.TERM_NORM uses — so the merge step can't hit a
+    // duplicate-key error within a single batch.
+    const gscSource = (this.search_term_output?.llm_terms?.length
+      ? this.search_term_output.llm_terms
+      : this.search_term_output?.terms) ?? [];
+    const gscSeen = new Set();
+    const gscTerms = [];
+    for (const raw of gscSource) {
+      const term = String(raw).trim();
+      const norm = term.toLowerCase();
+      // Specificity gate (mirrors PROC_MATCH_GSC_DEMAND's terms CTE): require
+      // multi-word OR a long single token. Bare common tokens ("spray",
+      // "fiber") are too polysemous and pull off-topic GSC demand; a specific
+      // neologism ("fibremaxxing") clears the length floor.
+      const isSpecific = norm.includes(" ") || norm.length >= 8;
+      if (norm.length < 5 || !isSpecific || gscSeen.has(norm)) continue;
+      gscSeen.add(norm);
+      gscTerms.push({ trend_id: trendId, term });
+    }
+
     const sourceCoverage = writeRecords.length;
     console.log("--- Source Results ---");
     for (const r of allRecords) {
@@ -129,6 +152,9 @@ export default defineComponent({
       heat_index: heatIndex,
       velocity,
       search_terms: this.search_term_output?.terms ?? [],
+      // GSC term set for the merge_gsc_terms step → FCT_TREND_GSC_TERMS,
+      // passed as a single SQL param, unpacked via FLATTEN(PARSE_JSON(...)).
+      gsc_terms_json: gscTerms.length > 0 ? JSON.stringify(gscTerms) : "[]",
       source_coverage: sourceCoverage,
       records: writeRecords,
       // Stringified payload for the downstream merge_fct_metrics registry

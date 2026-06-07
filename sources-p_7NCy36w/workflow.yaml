@@ -176,6 +176,44 @@ steps:
           source.HEADLINE_METRIC_NAME, source.METRICS
         )
       params: []
+- namespace: merge_gsc_terms
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        MERGE INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_GSC_TERMS AS target
+        USING (
+          SELECT
+            r.value:trend_id::STRING                 AS TREND_ID,
+            r.value:term::STRING                     AS TERM,
+            LOWER(TRIM(r.value:term::STRING))        AS TERM_NORM
+          FROM TABLE(FLATTEN(INPUT => PARSE_JSON($${{steps.aggregate.$return_value.gsc_terms_json}}$$))) r
+        ) AS source
+        ON target.TREND_ID = source.TREND_ID AND target.TERM_NORM = source.TERM_NORM
+        WHEN NOT MATCHED THEN INSERT (
+          TREND_ID, TERM, TERM_NORM
+        ) VALUES (
+          source.TREND_ID, source.TERM, source.TERM_NORM
+        )
+      query: |-
+        MERGE INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_GSC_TERMS AS target
+        USING (
+          SELECT
+            r.value:trend_id::STRING                 AS TREND_ID,
+            r.value:term::STRING                     AS TERM,
+            LOWER(TRIM(r.value:term::STRING))        AS TERM_NORM
+          FROM TABLE(FLATTEN(INPUT => PARSE_JSON($${{steps.aggregate.$return_value.gsc_terms_json}}$$))) r
+        ) AS source
+        ON target.TREND_ID = source.TREND_ID AND target.TERM_NORM = source.TERM_NORM
+        WHEN NOT MATCHED THEN INSERT (
+          TREND_ID, TERM, TERM_NORM
+        ) VALUES (
+          source.TREND_ID, source.TERM, source.TERM_NORM
+        )
+      params: []
 - namespace: respond
   runtime: nodejs20.x
   uses: "./respond/entry.js"

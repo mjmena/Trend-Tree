@@ -85,6 +85,10 @@ Example for "Methylene Blue Biohacking":
 Respond with only the JSON array.`;
 
     let terms;
+    // Clean LLM-only phrases (before the n-gram/long-word padding is mixed
+    // in). The GDELT/Wikimedia fetchers want the padded `terms`; the GSC
+    // matcher wants these unpadded, query-shaped phrases. Empty on fallback.
+    let llmTerms = [];
     let tokenUsage = null;
 
     try {
@@ -116,6 +120,7 @@ Respond with only the JSON array.`;
         try {
           const parsed = JSON.parse(clean);
           if (!Array.isArray(parsed)) throw new Error("not an array");
+          llmTerms = dedup(parsed.map((t) => String(t).trim()));
           terms = dedup([
             ...parsed.map((t) => String(t).trim()),
             ...ngrams,
@@ -147,6 +152,9 @@ Respond with only the JSON array.`;
       trend_topic: trendTopic,
       terms,
       terms_json: JSON.stringify(terms),
+      // Unpadded LLM phrases for GSC matching (falls back to `terms` in the
+      // aggregate step when this is empty, e.g. on Claude failure).
+      llm_terms: llmTerms,
       _token_usage: tokenUsage,
     };
   },
