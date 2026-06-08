@@ -28,7 +28,7 @@ steps:
           INPUT_ACCELERATION, INPUT_INVERSE_HEAT,
           INPUT_SOURCES_LAST_7D, INPUT_SOURCES_PRIOR_7D, INPUT_SOURCE_DELTA,
           INPUT_SIGNALS_LAST_7D, INPUT_SIGNALS_PRIOR_7D, INPUT_SIGNAL_DELTA,
-          INPUT_SCORE_PERCENTILE, DAYS_SINCE_PROMOTION
+          INPUT_SCORE_PERCENTILE, DAYS_SINCE_PROMOTION, COMPUTATION_VERSION
         )
         WITH lifecycle_now AS (
           SELECT TREND_ID,
@@ -90,34 +90,35 @@ steps:
             END AS DOMAIN
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS s
         ),
-        sources_last_7d AS (
-          SELECT ts.TREND_ID, COUNT(DISTINCT sd.DOMAIN) AS n
+        -- Cumulative-set growth (backfill-insensitive): each publisher/signal is
+        -- attributed to the 7-day window in which it FIRST links to the trend, so
+        -- the delta is a level-difference of a monotonic distinct-count and can
+        -- never go negative. A bulk re-link of historical signals raises the
+        -- cumulative count once and it stays elevated -- no phantom cliff. (issue #33)
+        source_first_link AS (
+          SELECT ts.TREND_ID, sd.DOMAIN, MIN(ts.LINKED_AT) AS first_linked
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
           JOIN signal_domains sd ON sd.SIGNAL_ID = ts.SIGNAL_ID
-          WHERE ts.LINKED_AT >= DATEADD(day, -7, CURRENT_TIMESTAMP())
-            AND sd.DOMAIN IS NOT NULL
-          GROUP BY ts.TREND_ID
+          WHERE sd.DOMAIN IS NOT NULL
+          GROUP BY ts.TREND_ID, sd.DOMAIN
         ),
-        sources_prior_7d AS (
-          SELECT ts.TREND_ID, COUNT(DISTINCT sd.DOMAIN) AS n
-          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
-          JOIN signal_domains sd ON sd.SIGNAL_ID = ts.SIGNAL_ID
-          WHERE ts.LINKED_AT >= DATEADD(day, -14, CURRENT_TIMESTAMP())
-            AND ts.LINKED_AT <  DATEADD(day, -7,  CURRENT_TIMESTAMP())
-            AND sd.DOMAIN IS NOT NULL
-          GROUP BY ts.TREND_ID
-        ),
-        signals_last_7d AS (
-          SELECT TREND_ID, COUNT(DISTINCT SIGNAL_ID) AS n
-          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
-          WHERE LINKED_AT >= DATEADD(day, -7, CURRENT_TIMESTAMP())
+        sources_cumulative AS (
+          SELECT TREND_ID,
+                 COUNT(*)                                                      AS n_now,
+                 COUNT_IF(first_linked < DATEADD(day, -7, CURRENT_TIMESTAMP())) AS n_prior
+          FROM source_first_link
           GROUP BY TREND_ID
         ),
-        signals_prior_7d AS (
-          SELECT TREND_ID, COUNT(DISTINCT SIGNAL_ID) AS n
+        signal_first_link AS (
+          SELECT TREND_ID, SIGNAL_ID, MIN(LINKED_AT) AS first_linked
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
-          WHERE LINKED_AT >= DATEADD(day, -14, CURRENT_TIMESTAMP())
-            AND LINKED_AT <  DATEADD(day, -7,  CURRENT_TIMESTAMP())
+          GROUP BY TREND_ID, SIGNAL_ID
+        ),
+        signals_cumulative AS (
+          SELECT TREND_ID,
+                 COUNT(*)                                                      AS n_now,
+                 COUNT_IF(first_linked < DATEADD(day, -7, CURRENT_TIMESTAMP())) AS n_prior
+          FROM signal_first_link
           GROUP BY TREND_ID
         ),
         raw AS (
@@ -129,21 +130,19 @@ steps:
             l14.heat_14d,
             (ln.heat_now - l7.heat_7d) - (l7.heat_7d - l14.heat_14d) AS acceleration,
             (100 - ln.heat_now)                                       AS inverse_heat,
-            COALESCE(slt.n, 0)                                        AS sources_last_7d,
-            COALESCE(spr.n, 0)                                        AS sources_prior_7d,
-            (COALESCE(slt.n, 0) - COALESCE(spr.n, 0))                 AS source_delta,
-            COALESCE(sigl.n, 0)                                       AS signals_last_7d,
-            COALESCE(sigp.n, 0)                                       AS signals_prior_7d,
-            (COALESCE(sigl.n, 0) - COALESCE(sigp.n, 0))               AS signal_delta,
+            COALESCE(sc.n_now, 0)                                     AS sources_last_7d,
+            COALESCE(sc.n_prior, 0)                                   AS sources_prior_7d,
+            (COALESCE(sc.n_now, 0) - COALESCE(sc.n_prior, 0))         AS source_delta,
+            COALESCE(gc.n_now, 0)                                     AS signals_last_7d,
+            COALESCE(gc.n_prior, 0)                                   AS signals_prior_7d,
+            (COALESCE(gc.n_now, 0) - COALESCE(gc.n_prior, 0))         AS signal_delta,
             DATEDIFF('day', t.PROMOTED_AT, CURRENT_TIMESTAMP())       AS days_since_promotion
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
           LEFT JOIN lifecycle_now    ln  ON ln.TREND_ID  = t.TREND_ID
           LEFT JOIN lifecycle_7d     l7  ON l7.TREND_ID  = t.TREND_ID
           LEFT JOIN lifecycle_14d    l14 ON l14.TREND_ID = t.TREND_ID
-          LEFT JOIN sources_last_7d  slt ON slt.TREND_ID = t.TREND_ID
-          LEFT JOIN sources_prior_7d spr ON spr.TREND_ID = t.TREND_ID
-          LEFT JOIN signals_last_7d  sigl ON sigl.TREND_ID = t.TREND_ID
-          LEFT JOIN signals_prior_7d sigp ON sigp.TREND_ID = t.TREND_ID
+          LEFT JOIN sources_cumulative sc ON sc.TREND_ID = t.TREND_ID
+          LEFT JOIN signals_cumulative gc ON gc.TREND_ID = t.TREND_ID
           WHERE NVL(ln.lifecycle_status, 'NEW') != 'RETIRED'
         ),
         scored AS (
@@ -158,8 +157,8 @@ steps:
               ELSE ROUND(
                   0.25 * GREATEST(0, LEAST(100, (r.acceleration  + 30) / 60.0  * 100))
                 + 0.25 * GREATEST(0, LEAST(100, r.inverse_heat))
-                + 0.25 * GREATEST(0, LEAST(100, (r.source_delta  +  5) / 15.0  * 100))
-                + 0.25 * GREATEST(0, LEAST(100, (r.signal_delta  + 10) / 40.0  * 100)),
+                + 0.25 * GREATEST(0, LEAST(100, r.source_delta / 2.0 * 100))
+                + 0.25 * GREATEST(0, LEAST(100, r.signal_delta / 4.0 * 100)),
                 1
               )
             END AS prediction_score
@@ -189,10 +188,9 @@ steps:
             ELSE NULL
           END                                                       AS PREDICTION_FLAG,
           (prediction_score      IS NOT NULL
-            AND heat_now         <  60
+            AND heat_now         <  70
             AND acceleration     >  0
-            AND source_delta     >  0
-            AND signal_delta     >  0
+            AND (source_delta > 0 OR signal_delta > 0)
             AND days_since_promotion >= 14
             AND score_percentile >= 0.70)                           AS PREDICTION_ELIGIBLE,
           heat_now                                                  AS INPUT_HEAT_NOW,
@@ -207,7 +205,8 @@ steps:
           signals_prior_7d                                          AS INPUT_SIGNALS_PRIOR_7D,
           signal_delta                                              AS INPUT_SIGNAL_DELTA,
           score_percentile                                          AS INPUT_SCORE_PERCENTILE,
-          days_since_promotion                                      AS DAYS_SINCE_PROMOTION
+          days_since_promotion                                      AS DAYS_SINCE_PROMOTION,
+          'v2'                                                      AS COMPUTATION_VERSION
         FROM ranked
         WHERE '{{steps.normalize_event.$return_value.dry_run}}' <> 'true'
       query: |-
@@ -218,7 +217,7 @@ steps:
           INPUT_ACCELERATION, INPUT_INVERSE_HEAT,
           INPUT_SOURCES_LAST_7D, INPUT_SOURCES_PRIOR_7D, INPUT_SOURCE_DELTA,
           INPUT_SIGNALS_LAST_7D, INPUT_SIGNALS_PRIOR_7D, INPUT_SIGNAL_DELTA,
-          INPUT_SCORE_PERCENTILE, DAYS_SINCE_PROMOTION
+          INPUT_SCORE_PERCENTILE, DAYS_SINCE_PROMOTION, COMPUTATION_VERSION
         )
         WITH lifecycle_now AS (
           SELECT TREND_ID,
@@ -280,34 +279,35 @@ steps:
             END AS DOMAIN
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS s
         ),
-        sources_last_7d AS (
-          SELECT ts.TREND_ID, COUNT(DISTINCT sd.DOMAIN) AS n
+        -- Cumulative-set growth (backfill-insensitive): each publisher/signal is
+        -- attributed to the 7-day window in which it FIRST links to the trend, so
+        -- the delta is a level-difference of a monotonic distinct-count and can
+        -- never go negative. A bulk re-link of historical signals raises the
+        -- cumulative count once and it stays elevated -- no phantom cliff. (issue #33)
+        source_first_link AS (
+          SELECT ts.TREND_ID, sd.DOMAIN, MIN(ts.LINKED_AT) AS first_linked
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
           JOIN signal_domains sd ON sd.SIGNAL_ID = ts.SIGNAL_ID
-          WHERE ts.LINKED_AT >= DATEADD(day, -7, CURRENT_TIMESTAMP())
-            AND sd.DOMAIN IS NOT NULL
-          GROUP BY ts.TREND_ID
+          WHERE sd.DOMAIN IS NOT NULL
+          GROUP BY ts.TREND_ID, sd.DOMAIN
         ),
-        sources_prior_7d AS (
-          SELECT ts.TREND_ID, COUNT(DISTINCT sd.DOMAIN) AS n
-          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
-          JOIN signal_domains sd ON sd.SIGNAL_ID = ts.SIGNAL_ID
-          WHERE ts.LINKED_AT >= DATEADD(day, -14, CURRENT_TIMESTAMP())
-            AND ts.LINKED_AT <  DATEADD(day, -7,  CURRENT_TIMESTAMP())
-            AND sd.DOMAIN IS NOT NULL
-          GROUP BY ts.TREND_ID
-        ),
-        signals_last_7d AS (
-          SELECT TREND_ID, COUNT(DISTINCT SIGNAL_ID) AS n
-          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
-          WHERE LINKED_AT >= DATEADD(day, -7, CURRENT_TIMESTAMP())
+        sources_cumulative AS (
+          SELECT TREND_ID,
+                 COUNT(*)                                                      AS n_now,
+                 COUNT_IF(first_linked < DATEADD(day, -7, CURRENT_TIMESTAMP())) AS n_prior
+          FROM source_first_link
           GROUP BY TREND_ID
         ),
-        signals_prior_7d AS (
-          SELECT TREND_ID, COUNT(DISTINCT SIGNAL_ID) AS n
+        signal_first_link AS (
+          SELECT TREND_ID, SIGNAL_ID, MIN(LINKED_AT) AS first_linked
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
-          WHERE LINKED_AT >= DATEADD(day, -14, CURRENT_TIMESTAMP())
-            AND LINKED_AT <  DATEADD(day, -7,  CURRENT_TIMESTAMP())
+          GROUP BY TREND_ID, SIGNAL_ID
+        ),
+        signals_cumulative AS (
+          SELECT TREND_ID,
+                 COUNT(*)                                                      AS n_now,
+                 COUNT_IF(first_linked < DATEADD(day, -7, CURRENT_TIMESTAMP())) AS n_prior
+          FROM signal_first_link
           GROUP BY TREND_ID
         ),
         raw AS (
@@ -319,21 +319,19 @@ steps:
             l14.heat_14d,
             (ln.heat_now - l7.heat_7d) - (l7.heat_7d - l14.heat_14d) AS acceleration,
             (100 - ln.heat_now)                                       AS inverse_heat,
-            COALESCE(slt.n, 0)                                        AS sources_last_7d,
-            COALESCE(spr.n, 0)                                        AS sources_prior_7d,
-            (COALESCE(slt.n, 0) - COALESCE(spr.n, 0))                 AS source_delta,
-            COALESCE(sigl.n, 0)                                       AS signals_last_7d,
-            COALESCE(sigp.n, 0)                                       AS signals_prior_7d,
-            (COALESCE(sigl.n, 0) - COALESCE(sigp.n, 0))               AS signal_delta,
+            COALESCE(sc.n_now, 0)                                     AS sources_last_7d,
+            COALESCE(sc.n_prior, 0)                                   AS sources_prior_7d,
+            (COALESCE(sc.n_now, 0) - COALESCE(sc.n_prior, 0))         AS source_delta,
+            COALESCE(gc.n_now, 0)                                     AS signals_last_7d,
+            COALESCE(gc.n_prior, 0)                                   AS signals_prior_7d,
+            (COALESCE(gc.n_now, 0) - COALESCE(gc.n_prior, 0))         AS signal_delta,
             DATEDIFF('day', t.PROMOTED_AT, CURRENT_TIMESTAMP())       AS days_since_promotion
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
           LEFT JOIN lifecycle_now    ln  ON ln.TREND_ID  = t.TREND_ID
           LEFT JOIN lifecycle_7d     l7  ON l7.TREND_ID  = t.TREND_ID
           LEFT JOIN lifecycle_14d    l14 ON l14.TREND_ID = t.TREND_ID
-          LEFT JOIN sources_last_7d  slt ON slt.TREND_ID = t.TREND_ID
-          LEFT JOIN sources_prior_7d spr ON spr.TREND_ID = t.TREND_ID
-          LEFT JOIN signals_last_7d  sigl ON sigl.TREND_ID = t.TREND_ID
-          LEFT JOIN signals_prior_7d sigp ON sigp.TREND_ID = t.TREND_ID
+          LEFT JOIN sources_cumulative sc ON sc.TREND_ID = t.TREND_ID
+          LEFT JOIN signals_cumulative gc ON gc.TREND_ID = t.TREND_ID
           WHERE NVL(ln.lifecycle_status, 'NEW') != 'RETIRED'
         ),
         scored AS (
@@ -348,8 +346,8 @@ steps:
               ELSE ROUND(
                   0.25 * GREATEST(0, LEAST(100, (r.acceleration  + 30) / 60.0  * 100))
                 + 0.25 * GREATEST(0, LEAST(100, r.inverse_heat))
-                + 0.25 * GREATEST(0, LEAST(100, (r.source_delta  +  5) / 15.0  * 100))
-                + 0.25 * GREATEST(0, LEAST(100, (r.signal_delta  + 10) / 40.0  * 100)),
+                + 0.25 * GREATEST(0, LEAST(100, r.source_delta / 2.0 * 100))
+                + 0.25 * GREATEST(0, LEAST(100, r.signal_delta / 4.0 * 100)),
                 1
               )
             END AS prediction_score
@@ -379,10 +377,9 @@ steps:
             ELSE NULL
           END                                                       AS PREDICTION_FLAG,
           (prediction_score      IS NOT NULL
-            AND heat_now         <  60
+            AND heat_now         <  70
             AND acceleration     >  0
-            AND source_delta     >  0
-            AND signal_delta     >  0
+            AND (source_delta > 0 OR signal_delta > 0)
             AND days_since_promotion >= 14
             AND score_percentile >= 0.70)                           AS PREDICTION_ELIGIBLE,
           heat_now                                                  AS INPUT_HEAT_NOW,
@@ -397,7 +394,8 @@ steps:
           signals_prior_7d                                          AS INPUT_SIGNALS_PRIOR_7D,
           signal_delta                                              AS INPUT_SIGNAL_DELTA,
           score_percentile                                          AS INPUT_SCORE_PERCENTILE,
-          days_since_promotion                                      AS DAYS_SINCE_PROMOTION
+          days_since_promotion                                      AS DAYS_SINCE_PROMOTION,
+          'v2'                                                      AS COMPUTATION_VERSION
         FROM ranked
         WHERE '{{steps.normalize_event.$return_value.dry_run}}' <> 'true'
       params: []

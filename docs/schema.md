@@ -298,10 +298,10 @@ Every prediction-agent run, one row per (trend, eval). Append-only. **Current st
 | `INPUT_HEAT_NOW` / `INPUT_HEAT_7D` / `INPUT_HEAT_14D` | EWMA-smoothed heat values at three time anchors, from the lifecycle ledger |
 | `INPUT_ACCELERATION` | `(heat_now − heat_7d) − (heat_7d − heat_14d)` — rate of acceleration, not just direction |
 | `INPUT_INVERSE_HEAT` | `100 − heat_now` — the "low base volume" signal (predictions favor trends that have not peaked) |
-| `INPUT_SOURCES_LAST_7D` / `INPUT_SOURCES_PRIOR_7D` | Distinct domains contributing signals in each window |
-| `INPUT_SOURCE_DELTA` | Source diversity expansion last-7d vs prior-7d |
-| `INPUT_SIGNALS_LAST_7D` / `INPUT_SIGNALS_PRIOR_7D` | Signal counts in each window |
-| `INPUT_SIGNAL_DELTA` | Cluster formation proxy: signals last-7d − signals prior-7d |
+| `INPUT_SOURCES_LAST_7D` / `INPUT_SOURCES_PRIOR_7D` | Cumulative distinct publisher domains ever-linked, as of now / as of 7d ago (`v2+`; in `v1` rows these were single-week volumes) |
+| `INPUT_SOURCE_DELTA` | Source diversity growth = `SOURCES_LAST_7D − SOURCES_PRIOR_7D` = new domains first-linked in the last 7d (non-negative, backfill-insensitive — see [`prediction-flow.md`](prediction-flow.md#inputs)) |
+| `INPUT_SIGNALS_LAST_7D` / `INPUT_SIGNALS_PRIOR_7D` | Cumulative distinct signal_ids ever-linked, as of now / as of 7d ago (`v2+`) |
+| `INPUT_SIGNAL_DELTA` | Cluster formation proxy = `SIGNALS_LAST_7D − SIGNALS_PRIOR_7D` = new signals first-linked in the last 7d (non-negative) |
 | `INPUT_SCORE_PERCENTILE` | `PERCENT_RANK()` of this trend's score across the scored population at this eval |
 | `DAYS_SINCE_PROMOTION` | `DATEDIFF(day, FCT_TRENDS.PROMOTED_AT, NOW)` — gates the young-trend NULL rule |
 | `COMPUTATION_VERSION` | Bumped when the scoring formula changes; maintains auditable lineage |
