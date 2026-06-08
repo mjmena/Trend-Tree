@@ -145,21 +145,24 @@ on-topic from the polysemy noise `LIKE '%fiber%'` could not —
 3. **Content Gap** = nearest-content cosine per trend; "gap" = nothing above threshold in a recent window. **AI Match %** = same cosine → calibrated percent, aggregated to CSA section/collection.
 
 **Decisions to lock:**
-- **Model + dims.** The data team's 768 vectors are `arctic-m-v1.5` (fingerprinted) — *reusable* if we embed trends with that same model/dim (their 876K content + 143M search vectors come free), but they're keyword-level. For fine-grained, embed `PLAINTEXT` fresh: `arctic-m-v1.5`/768 to stay interoperable with the data team's vectors, or `arctic-l-v2`/1024 for max quality (isolated). Either way embed *both* sides yourself — stored `TREND_VECTOR` is only 42% populated. Dims are independent of fine-grained-ness; `arctic-l-v2` is Matryoshka, so 1024 truncates to 256 (¼ storage, ~lossless) if size matters.
+- **Model + dims.** The data team's 768 vectors are `arctic-m-v1.5` (fingerprinted) — *reusable* if we embed trends with that same model/dim (their 876K content + 143M search vectors come free), but they're keyword-level. For fine-grained, embed `PLAINTEXT` fresh: `arctic-m-v1.5`/768 to stay interoperable with the data team's vectors, or `arctic-l-v2`/1024 for max quality (isolated). For the **content** side you embed yourself regardless. The **trend** side, though, is now served reliably: `DT_TREND_DASHBOARD.TREND_VECTOR_ARCTIC_EMBED_L_V2_0` (added 2026-06-08, #37) exposes the canonical 1024-dim trend vector, and the dashboard CTE serves each trend's latest *non-NULL* vector — so all 250 live trends are populated (see the resolved NULL-write note below; the earlier "42% populated" figure was a point-in-time low during the May 20–28 NULL window). Dims are independent of fine-grained-ness; `arctic-l-v2` is Matryoshka, so 1024 truncates to 256 (¼ storage, ~lossless) if size matters.
 - **Trend-doc construction is the real lever** — embedding a richer trend doc (topic + summary + drivers) rather than the bare topic phrase is what lifted matching. The `query:` prefix some e5/arctic variants use made **no difference** for `arctic-embed-l-v2.0` in a held-constant test (avg 0.26 plain vs 0.256 prefixed) — skip it.
 - **Dedup** by `CONTENTID` — `ISCANONICAL` is useless (only 115 'true' rows); market-variants repeat the same article many times.
 - **Chunk vs whole-article** — most fit arctic's 8K-token window whole; for genuinely *fine-grained* matching, chunk long articles into passages and take max-similarity.
 - **History depth → Cortex cost.** Rolling 90-day window ≈ 32K articles ≈ **~30M tokens**; full-corpus backfill (~1.7M articles) ≈ **~1.5–2B tokens**. Embedding is among the cheapest Cortex functions (orders of magnitude under LLM calls), but the full backfill is the line item to price — decide rolling-window vs full-history up front.
 - **Threshold calibration** (~0.4 separated the buckets here) and **refresh cadence**.
 
-> **Separate bug surfaced (root-caused):** `write-p_o7CWa2K/workflow.yaml` (lines 45 & 58)
-> passes `NULL::ARRAY` as the vector arg to `PROC_ENRICHMENT_APPLY`, and the enrichment agent
-> emits no embedding — so every `initial`/`refinement` row has written a NULL `TREND_VECTOR`
-> since the 2026-04-28 ledger refactor (first NULL 2026-04-29 16:59 UTC; ~100% vectored before).
-> `promotion_seed` rows still embed inline via Cortex, so only **92/217 (42%)** live trends have a
-> *current* vector — which also leaves the dashboard `RELATED_TRENDS` empty/degraded for the rest.
-> **Fix:** have `PROC_ENRICHMENT_APPLY` embed inline via Cortex (as `proc_promotion_apply` already
-> does at `EMBED_TEXT_1024(... TREND_TOPIC ...)`), rather than rely on a caller-supplied vector.
+> **Separate bug surfaced (root-caused) — RESOLVED as of 2026-05-29:** `write-p_o7CWa2K`
+> passed `NULL::ARRAY` as the vector arg to `PROC_ENRICHMENT_APPLY` while the enrichment agent
+> emitted no embedding, so a window of `initial` rows wrote a NULL `TREND_VECTOR`. The fix —
+> embed inline via Cortex (as `proc_promotion_apply` already does at
+> `EMBED_TEXT_1024(... TREND_TOPIC ...)`) rather than rely on a caller-supplied vector — landed
+> ~2026-05-29: `initial` rows have written non-NULL vectors every day since (verified
+> 2026-06-08). The **92/217 (42%)** figure was the point-in-time low during the May 20–28 NULL
+> window; today **250/250 live trends carry a current (absolute-latest) vector**, so
+> `RELATED_TRENDS` and the new `TREND_VECTOR_ARCTIC_EMBED_L_V2_0` column are fully populated.
+> (Note the dashboard already tolerated the gap: its `trend_vectors` CTE serves the latest
+> *non-NULL* vector per trend, so coverage was always better than the raw row-level NULL rate.)
 
 ---
 
