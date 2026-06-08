@@ -151,6 +151,7 @@ COALESCE(item:source::STRING, item:source_name::STRING) AS source
 | Column | Type | Notes |
 |---|---|---|
 | `RELATED_TRENDS` | ARRAY | Top-5 semantically similar trends, ordered by cosine similarity descending. Shape: `{ trend_id, trend_name, category, similarity_score }`. Threshold ≥ 0.65; returns empty array if no match. Computed via `VECTOR_COSINE_SIMILARITY` on `FCT_TREND_ENRICHMENT_LEDGER.TREND_VECTOR`. |
+| `TREND_VECTOR_ARCTIC_EMBED_L_V2_0` | VECTOR(FLOAT, 1024) | Canonical trend embedding (`snowflake-arctic-embed-l-v2.0`), latest enrichment vector scoped to live `FCT_TRENDS`. `NULL` for trends without an enrichment vector. Powers the Hunter B2C feed recommender (distances / clusters / per-user aggregate vectors). Model is encoded in the column name; the underlying ledger column is plain `TREND_VECTOR`. The 768-dim `arctic-embed-m-v1.5` GSC space is **not** exposed. **Select explicitly** — never `SELECT *` — so this ~4KB/row vector doesn't ride into ATLAS payloads that don't need it. |
 
 ### Deprecated columns
 

@@ -41,6 +41,12 @@
 --     entries shift from "platform headline metrics" to gtrends scalars.
 -- FCT_TREND_SOURCE_METRICS no longer read by this dynamic table.
 --
+-- 2026-06-08 (#37 trend vector for B2C feed): expose the canonical 1024-dim
+-- trend embedding as TREND_VECTOR_ARCTIC_EMBED_L_V2_0 by joining the existing
+-- trend_vectors CTE (built for RELATED_TRENDS) into the final SELECT. Additive
+-- column; underlying FCT_TREND_ENRICHMENT_LEDGER.TREND_VECTOR unchanged. See
+-- the column's inline note for the explicit-select + O(n²) scale caveats.
+--
 -- Output column shape preserved for Steeple consumers (minus the two dropped
 -- promotion-* columns and TOP_SIGNALS.pagerank_score).
 
@@ -359,7 +365,26 @@ SELECT
     ts.TOP_SIGNALS,
     mt.MACROTREND_TAGS,
     r.RELATED_TRENDS,
-    e.ENRICHED_AT
+    e.ENRICHED_AT,
+
+    -- 2026-06-08 (#37): canonical trend embedding for the Hunter B2C feed
+    -- recommender (distances / clusters / per-user aggregate vectors). Reuses
+    -- the trend_vectors CTE already built for RELATED_TRENDS — same "latest
+    -- enrichment vector, scoped to live FCT_TRENDS" semantics — so this is
+    -- purely additive (no new scan). Model encoded in the wire-facing name so
+    -- it's self-documenting; the underlying ledger column stays TREND_VECTOR
+    -- (no rename → no repo/prod drift). Only the 1024-dim trend-concept space
+    -- is exposed; the 768-dim arctic-embed-m-v1.5 GSC space stays internal.
+    --
+    -- API note (Marcelo): consumers must select columns EXPLICITLY — never
+    -- SELECT * — so this ~4KB/row vector doesn't ride into ATLAS payloads that
+    -- don't need it.
+    --
+    -- Scale note: the real cliff is the O(n²) pairwise cosine in
+    -- pairwise_similarity (~100M VECTOR_COSINE_SIMILARITY calls/refresh at
+    -- ~10k trends), NOT vector storage. Flag for a future VECTOR_SEARCH/ANN
+    -- migration. Not a today problem at ~200 trends.
+    tv.TREND_VECTOR                                                       AS TREND_VECTOR_ARCTIC_EMBED_L_V2_0
 
 FROM trend_base tb
 LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t  ON tb.TREND_ID = t.TREND_ID
@@ -369,4 +394,5 @@ LEFT JOIN evidence_split es                           ON tb.TREND_ID = es.TREND_
 LEFT JOIN top_signals ts                              ON tb.TREND_ID = ts.TREND_ID
 LEFT JOIN macro_tags mt                               ON tb.TREND_ID = mt.TREND_ID
 LEFT JOIN related_trends r                            ON tb.TREND_ID = r.TREND_ID
+LEFT JOIN trend_vectors tv                            ON tb.TREND_ID = tv.TREND_ID
 LEFT JOIN latest_prediction pred                      ON tb.TREND_ID = pred.TREND_ID;
