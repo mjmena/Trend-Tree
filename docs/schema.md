@@ -232,6 +232,52 @@ FCT_TRENDS                       (one row per agent-promoted trend)
 
 ---
 
+## DT_TREND_DAILY
+
+A dynamic table giving one clean row per **`(TREND_ID, DAY)`** of trend history — the time-series companion to `DT_TREND_DASHBOARD`. Where the dashboard answers "what is this trend *right now*", this answers "how did it get here, day by day". Backs the Hunter B2C platform's `score_timeseries` graph, `week_high` / `week_low`, and the week-over-week momentum badge. `TARGET_LAG = '18 hours'`, `REFRESH_MODE = FULL` on `TREND_AGENT_WH`. **7,434 rows** (250 trends × ~6 weeks) as of 2026-06-08. DDL: [`sql/dt_trend_daily.sql`](../sql/dt_trend_daily.sql).
+
+| Column | Notes |
+|---|---|
+| `TREND_ID` | Grain part. Join key to `FCT_TRENDS` / `DT_TREND_DASHBOARD`. |
+| `DAY` | Grain part. One row per calendar day from the trend's first activity (first lifecycle eval or first signal link, whichever is older) through `CURRENT_DATE`. Dense — no day is skipped, which is what makes the 7-day `LAG` below exactly one week. |
+| `HEAT_INDEX` | Daily **MAX** of `FCT_TREND_LIFECYCLE_LEDGER.NEW_HEAT_SMOOTHED`, **carry-forward gap-filled** (the last observed daily max held flat across no-eval days). Never null for a day on/after the trend's first lifecycle eval — a gap would otherwise read as "heat went to zero". |
+| `SIGNAL_COUNT` | Cumulative count of distinct signals linked to the trend **as of this day** — each signal attributed to its first-link day (`MIN(LINKED_AT)`). Monotonic and backfill-immune. |
+| `SOURCE_COUNT` | Same, for distinct **publisher domains** (not source-platform names) — reuses the `signal_domains` extraction shared with `DT_TREND_DASHBOARD` and the prediction agent. |
+| `NEW_SIGNALS_TODAY` | Distinct signals whose first link to the trend landed on this day (`0` on quiet days). |
+| `HEAT_WOW_PCT` | `(HEAT_INDEX − LAG(HEAT_INDEX, 7)) / NULLIF(LAG(…,7), 0) × 100`. **Velocity-as-percent** — a first difference over 7 days. NULL in a trend's first 7 days and when the 7-day-ago value was 0. |
+| `SIGNAL_WOW_PCT` | Same formula on `SIGNAL_COUNT`. Reuses the 7d window convention prediction (#33) standardized on, for cross-surface consistency. |
+
+> **HEAT_INDEX here ≠ `DT_TREND_DASHBOARD.HEAT_INDEX`, on purpose.** This is the daily **MAX** of the hourly smoothed series (a downsampled graph line); the dashboard's is the single **latest evaluation** (the headline number). They differ within a day by design. **Hunter sources the headline from the dashboard, the graph line from here.**
+
+> **`HEAT_WOW_PCT` ≠ `INPUT_ACCELERATION`.** `HEAT_WOW_PCT` is a *first* difference ("how fast"); `FCT_TREND_PREDICTION_LEDGER.INPUT_ACCELERATION` is a *second* difference ("speeding up or slowing down"). Keep them separate.
+
+> **Why not a materialized view?** Snowflake MVs forbid window functions, `QUALIFY`, and joins — and this needs all three (daily downsample + `LAG` + lifecycle-ledger ↔ signal join). It must be a dynamic table.
+
+> **No backfill job.** Snowflake builds the full history from existing `FCT_TREND_LIFECYCLE_LEDGER` / `FCT_TREND_SIGNALS` rows on creation (`INITIALIZE = ON_CREATE`). The orphaned `FCT_TREND_DAILY_SNAPSHOTS` DDL named in #38 is *not* used — it has no writer (see [`prediction-flow.md`](prediction-flow.md)); the signal/source columns are derived live from `FCT_TREND_SIGNALS.LINKED_AT` using the same cumulative-set framing as the prediction agent.
+
+`week_high` / `week_low` and `score_timeseries` are intentionally **documented queries** over this table, not stored columns — they're pure trailing windows, Hunter-shaped, with no drift risk:
+
+```sql
+-- score_timeseries: the heat graph line for one trend
+SELECT DAY, HEAT_INDEX
+FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DAILY
+WHERE TREND_ID = :trend_id
+ORDER BY DAY;
+
+-- week_high / week_low: trailing-7-day heat band, per day.
+-- (Window spec inlined per call — Snowflake has no named WINDOW clause.)
+SELECT DAY, HEAT_INDEX,
+       MAX(HEAT_INDEX) OVER (ORDER BY DAY ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS WEEK_HIGH,
+       MIN(HEAT_INDEX) OVER (ORDER BY DAY ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS WEEK_LOW
+FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DAILY
+WHERE TREND_ID = :trend_id
+ORDER BY DAY;
+```
+
+Force a refresh: `ALTER DYNAMIC TABLE MCC_PRESENTATION.TREND_AGENT.DT_TREND_DAILY REFRESH;`
+
+---
+
 ## Supporting tables
 
 ### FCT_TRENDS — trend identity
