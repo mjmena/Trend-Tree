@@ -7,9 +7,14 @@
 //
 // **No project-listing endpoint** exists in the Pipedream REST API
 // (cookbook: "Use this instead of asking 'what workflows are in this
-// project' — there's no REST endpoint for it"). The list below must be
-// kept in sync manually when new workflows are scaffolded. audit-agent
-// itself is intentionally omitted — error-alerts catches its errors.
+// project' — there's no REST endpoint for it"; re-confirmed 2026-06-08:
+// GET /workflows, /orgs/{id}/workflows, /projects/{id}/workflows all 404).
+// The list below must be kept in sync manually when new workflows are
+// scaffolded — when it drifts, the omitted workflows' errors silently
+// never reach the audit (this is how the entire ingestion tier went
+// unmonitored until 2026-06-08). audit-agent itself is intentionally
+// omitted — a run that dies mid-flight can't report its own death; the
+// external multi-repo error monitor covers it.
 //
 // New pattern in this repo — no other workflow calls api.pipedream.com
 // from inside a step. URL pattern documented in scripts/test_distillation.sh:117.
@@ -28,26 +33,45 @@ const CONCURRENCY = 4;
 // a new workflow. Pair the id with a human-readable name so the agent's
 // report doesn't have to look up names from p_* alone.
 const WORKFLOW_REGISTRY = [
-  { id: "p_vQCkwgV", name: "daily-digest" },
+  // --- core trend pipeline ---
   { id: "p_5VCPP3N", name: "discovery" },
-  { id: "p_8rCBgnl", name: "dispatcher" },
   { id: "p_YyC89Ke", name: "distillation-cluster-agent" },
   { id: "p_mkCBBqb", name: "distillation" },
+  { id: "p_jmCjj3J", name: "distillation-subagent" },
   { id: "p_o7CWWZl", name: "distillation-revisit" },
   { id: "p_ezCwwKm", name: "distillation-revisit-subagent" },
-  { id: "p_jmCjj3J", name: "distillation-subagent" },
   { id: "p_dDCWWPg", name: "distillation-watchdog" },
+  { id: "p_xMC99jg", name: "promotion" },
+  { id: "p_yKCmm9r", name: "promotion-agent" },
+  { id: "p_8rCBgnl", name: "dispatcher" },
+  { id: "p_7NCy36w", name: "sources" },
   { id: "p_xMC995w", name: "enrichment" },
-  { id: "p_zAC1Nd9", name: "error-alerts" },
-  { id: "p_13CN9KG", name: "gtrends-poller" },
+  { id: "p_o7CWa2K", name: "write" },
+  // --- lifecycle / prediction / digest ---
   { id: "p_JZCz73w", name: "lifecycle-agent" },
+  { id: "p_gYC562o", name: "lifecycle-subagent" },
   { id: "p_KwCoaap", name: "lifecycle-attribution-agent" },
   { id: "p_PACe77B", name: "lifecycle-attribution-subagent" },
-  { id: "p_gYC562o", name: "lifecycle-subagent" },
-  { id: "p_yKCmm9r", name: "promotion-agent" },
-  { id: "p_xMC99jg", name: "promotion" },
-  { id: "p_7NCy36w", name: "sources" },
-  { id: "p_o7CWa2K", name: "write" },
+  { id: "p_QPCkLP1", name: "prediction-agent" },
+  { id: "p_vQCkwgV", name: "daily-digest" },
+  // --- ingestion (was entirely unmonitored before 2026-06-08) ---
+  { id: "p_13CN9KG", name: "gtrends-poller" },
+  { id: "p_rvC71gN", name: "ingest-amazon-movers" },
+  { id: "p_V9CgV17", name: "ingest-bluesky" },
+  { id: "p_3nC3xkk", name: "ingest-google-trends" },
+  { id: "p_wOC618j", name: "ingest-google-trends-explore" },
+  { id: "p_xMC9jR5", name: "ingest-pinterest" },
+  { id: "p_yKCm9Am", name: "ingest-tiktok-trending" },
+  { id: "p_5VCPJVJ", name: "ingest-gemini-food-drink" },
+  { id: "p_dDCWMDJ", name: "ingest-gemini-other" },
+  { id: "p_BjC3yGQ", name: "ingest-gemini-travel" },
+  { id: "p_zAC1DvL", name: "ingest-gemini-wellness" },
+  { id: "p_ZJCrPWJ", name: "gemini-prompt-tester" },
+  // --- ingestion agent-tools (transient 429s/timeouts expected — triage as INFO unless sustained) ---
+  { id: "p_vQCkkGK", name: "grok-live-search" },
+  { id: "p_13CNNwP", name: "search-bluesky" },
+  { id: "p_WxCppoa", name: "search-gdelt" },
+  { id: "p_YyC88x8", name: "search-google-trends" },
 ];
 
 async function fetchJson(url, apiKey, timeoutMs = FETCH_TIMEOUT_MS) {

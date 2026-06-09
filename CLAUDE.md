@@ -27,8 +27,7 @@ A GitHub-synced Pipedream project. Each top-level directory is one Pipedream wor
 | `lifecycle-agent-p_JZCz73w` + `lifecycle-subagent-p_gYC562o` | Gemini 3.1 Pro lifecycle agent. Sweeps every hour, re-evaluates trend status (NEW/GROWING/STABLE/DECLINING/DORMANT/RESURGENT/RETIRED) → `FCT_TREND_LIFECYCLE_LEDGER` |
 | `prediction-agent-p_QPCkLP1` | Deterministic emergence scorer (no LLM). Computes `PREDICTION_SCORE` (0–100), `PREDICTION_FLAG` (Emerging / Watchlist / High Potential), `PREDICTION_ELIGIBLE` across all live trends in one batch SQL run → `FCT_TREND_PREDICTION_LEDGER`. Feeds the Insights Agent Predictions Queue. Daily 14:00 UTC cron (`dc_wDuPeGB`) + manual via HTTP. Scores + writes in a single `INSERT...SELECT` (no proc). |
 | `daily-digest-p_vQCkwgV` | Email digest of recently-promoted trends |
-| `audit-agent-p_xMC9nm3` | Gemini 3.1 Pro health auditor. Daily 13:00 UTC + HTTP. Prefetches Snowflake freshness/cost/stuck-trends + Pipedream errors per workflow, emits GREEN/YELLOW/RED report → `FCT_AUDIT_LEDGER` + Slack DM (gated on non-GREEN). Aggregate view; `error-alerts-p_zAC1Nd9` owns realtime per-error alerting |
-| `error-alerts-p_zAC1Nd9` | Subscribes to account-wide `$errors` event; DMs Marty per error in real time. Counterpart to audit-agent's periodic aggregate |
+| `audit-agent-p_xMC9nm3` | Gemini 3.1 Pro health auditor. Daily 13:00 UTC + HTTP. Prefetches Snowflake freshness/cost/stuck-trends + Pipedream errors per workflow (registry covers all live workflows incl. the full ingestion tier as of 2026-06-08), emits GREEN/YELLOW/RED report → `FCT_AUDIT_LEDGER` + Slack DM (gated on non-GREEN). Realtime per-error alerting is handled by an external multi-repo monitor outside this project |
 | `ingestion/*` | Per-source ingestion workflows (Bluesky, Amazon, Pinterest, TikTok, Google Trends + agent-tools subdir) |
 
 **Deactivated** (kept in repo for rollback / reference):
