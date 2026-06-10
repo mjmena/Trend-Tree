@@ -61,10 +61,12 @@ WITH promoted AS (
 flattened AS (
     SELECT p.TREND_ID, f.value::STRING AS SIGNAL_ID
     FROM promoted p, LATERAL FLATTEN(INPUT => p.SUPPORTING_SIGNAL_IDS) f
-    -- Drop overlong array entries (e.g. Gemini grounding-redirect URLs the
-    -- agent emitted that can't possibly match a real STG SIGNAL_ID — STG
-    -- is VARCHAR(255), so anything wider is by definition unmatched).
-    WHERE LENGTH(f.value::STRING) <= 255
+    -- Sanity cap on array entries. STG.SIGNAL_ID was widened from
+    -- VARCHAR(255) (sql/alter_signal_id_widen.sql, issue #45), so long
+    -- article URLs are now legitimate IDs; 2048 matches the ingest-side
+    -- URL cap and still drops garbage (e.g. Gemini grounding-redirect
+    -- monsters with embedded payloads).
+    WHERE LENGTH(f.value::STRING) <= 2048
 )
 SELECT
     fl.TREND_ID,

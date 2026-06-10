@@ -193,7 +193,10 @@ async function fetchArticleMeta(rawUrl, opts = {}) {
     });
     const finalUrl = resp.url || rawUrl;
     const canonical = stripAndNormalize(finalUrl);
-    if (!canonical || canonical.length > 255 || canonical.includes('vertexaisearch.cloud.google.com')) {
+    // 2048 is a junk-URL sanity cap (STG.SIGNAL_ID is no longer VARCHAR(255)
+    // — see sql/alter_signal_id_widen.sql); matches the google-trends ingester
+    // and the TASK_PROMOTE_TREND_SIGNALS link filter.
+    if (!canonical || canonical.length > 2048 || canonical.includes('vertexaisearch.cloud.google.com')) {
       return { canonical: null, http_status: 0, status_class: 'dead', error: 'url_too_long_or_redirect' };
     }
     const status_class = classifyStatus(resp.status);
@@ -237,7 +240,7 @@ async function fetchArticleMeta(rawUrl, opts = {}) {
     // with the original URL stripped/normalized so dedup still works.
     const rawCanonical = stripAndNormalize(rawUrl);
     return {
-      canonical: (rawCanonical && rawCanonical.length <= 255 && !rawCanonical.includes('vertexaisearch.cloud.google.com'))
+      canonical: (rawCanonical && rawCanonical.length <= 2048 && !rawCanonical.includes('vertexaisearch.cloud.google.com'))
         ? rawCanonical : null,
       http_status: 0,
       status_class: "transient",

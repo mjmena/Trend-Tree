@@ -36,6 +36,52 @@ const PUBLISHER_BLOCKLIST = new Set([
   "pff.com",
 ]);
 
+// URLs longer than this are junk (scraped-page artifacts, embedded base64
+// payloads) — no real article slug needs more. Matches the link-table cap
+// in TASK_PROMOTE_TREND_SIGNALS (sql/fct_trend_signals.sql).
+const MAX_URL_LENGTH = 2048;
+
+// ── Inlined from agents/lib/url_canon.mjs (source of truth — keep in sync) ──
+const TRACKING_PARAMS = new Set([
+  "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id",
+  "utm_name", "utm_brand", "utm_social", "utm_social-type",
+  "fbclid", "gclid", "dclid", "msclkid", "mc_cid", "mc_eid",
+  "ref", "ref_src", "ref_url", "referrer",
+  "_ga", "_gl", "_gac",
+  "yclid", "wbraid", "gbraid",
+  "igshid", "twclid",
+]);
+
+const PER_DOMAIN_STRIP = {
+  "amazon.com": new Set(["psc", "th", "linkCode", "linkId", "tag", "ref_", "qid", "sr"]),
+  "youtube.com": new Set(["si", "feature"]),
+  "youtu.be":    new Set(["si"]),
+};
+
+function stripAndNormalize(rawUrl) {
+  if (typeof rawUrl !== "string" || !rawUrl) return null;
+  let u;
+  try { u = new URL(rawUrl); } catch { return null; }
+  if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+
+  // Lowercase host, strip leading www.
+  u.hostname = u.hostname.toLowerCase().replace(/^www\./, "");
+
+  // Strip tracking params (universal + per-domain).
+  const domainParams = PER_DOMAIN_STRIP[u.hostname] || PER_DOMAIN_STRIP[u.hostname.replace(/^[^.]+\./, "")];
+  for (const k of [...u.searchParams.keys()]) {
+    if (TRACKING_PARAMS.has(k) || (domainParams && domainParams.has(k))) u.searchParams.delete(k);
+  }
+
+  // Strip trailing slash unless it's the bare host root.
+  let s = u.toString();
+  if (s.endsWith("/") && u.pathname !== "/") s = s.slice(0, -1);
+  // URL.toString() may append "?" when all params were stripped — clean up.
+  s = s.replace(/\?$/, "");
+  return s;
+}
+// ── end inline ──────────────────────────────────────────────────────────────
+
 function extractPublisherDomain(url) {
   try {
     return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
@@ -110,7 +156,15 @@ async function fetchRssTrends(cookieJar) {
         skippedUrls += 1;
         continue;
       }
-      const publisherDomain = extractPublisherDomain(ni.url);
+      // SIGNAL_ID = canonical URL (Option D). Strip tracking params so the
+      // same article seen with different UTM tags dedupes to one signal,
+      // and so the ID matches what discovery/gdelt would produce for it.
+      const canonicalUrl = stripAndNormalize(ni.url);
+      if (!canonicalUrl || canonicalUrl.length > MAX_URL_LENGTH) {
+        skippedUrls += 1;
+        continue;
+      }
+      const publisherDomain = extractPublisherDomain(canonicalUrl);
       if (!publisherDomain) {
         skippedUrls += 1;
         continue;
@@ -126,8 +180,8 @@ async function fetchRssTrends(cookieJar) {
         continue;
       }
       signals.push({
-        SIGNAL_ID: ni.url,
-        URL: ni.url,
+        SIGNAL_ID: canonicalUrl,
+        URL: canonicalUrl,
         SOURCE_NAME: "google_trends_rss",
         SIGNAL_TIMESTAMP: ts,
         SIGNAL_TITLE: ni.article_title,
@@ -138,7 +192,7 @@ async function fetchRssTrends(cookieJar) {
           gt_trending_query: title,
           gt_approx_traffic: traffic,
           publisher: publisherDomain,
-          url: ni.url,
+          url: ni.url, // raw feed URL kept for provenance; identity is the canonical form
         }),
       });
       emittedForQuery += 1;

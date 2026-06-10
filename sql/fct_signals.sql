@@ -15,7 +15,7 @@
 -- the aggregated amazon_trends rows are the useful unit).
 
 CREATE OR REPLACE TABLE MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS (
-    SIGNAL_ID         VARCHAR(255)  NOT NULL PRIMARY KEY,
+    SIGNAL_ID         VARCHAR(16777216) NOT NULL PRIMARY KEY,  -- widened from 255 — see sql/alter_signal_id_widen.sql
     SOURCE_NAME       VARCHAR(50)   NOT NULL,
     SIGNAL_TIMESTAMP  TIMESTAMP_NTZ,
     SIGNAL_TITLE      VARCHAR,
