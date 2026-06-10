@@ -2,7 +2,7 @@
 
 A deep dive on the Pipedream infrastructure: workflow inventory, inter-workflow HTTP wiring, shared library, design patterns, and debugging.
 
-For the Snowflake data model, see [`schema.md`](schema.md). For the non-technical overview, see [`README.md`](../README.md).
+For the Snowflake data model, see [`dashboard/data-contract.md`](dashboard/data-contract.md). For the non-technical overview, see [`README.md`](../README.md).
 
 ---
 

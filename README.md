@@ -63,5 +63,5 @@ Verticals are configurable and tuned per-model, so coverage can be reweighted as
 
 ## For technical readers
 
-- **[`docs/schema.md`](docs/schema.md)** — Snowflake table reference, starting with `DT_TREND_DASHBOARD` (the Trend Dashboard). Quick-start queries included.
+- **[`docs/dashboard/data-contract.md`](docs/dashboard/data-contract.md)** — Snowflake table reference / data contract for the downstream platforms: `DT_TREND_DASHBOARD`, `DT_TREND_DAILY`, `DT_TREND_CONNECTIONS`. Column schema, types, example values, quick-start queries.
 - **[`docs/architecture.md`](docs/architecture.md)** — Pipedream workflow inventory, inter-workflow HTTP call map, shared library, design patterns, and debugging guide.

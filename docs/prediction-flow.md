@@ -4,7 +4,7 @@ The Predictions Queue in the Insights Agent surfaces emerging trends *before* th
 
 This doc covers the McClatchy-side pipeline only: how `PREDICTION_SCORE`, `PREDICTION_FLAG`, and `PREDICTION_ELIGIBLE` are computed and surfaced on `DT_TREND_DASHBOARD`.
 
-For Pipedream wiring see [`architecture.md`](architecture.md#prediction-agent-p_qpcklp1). For the column shapes see [`schema.md`](schema.md#prediction-emergence-columns).
+For Pipedream wiring see [`architecture.md`](architecture.md#prediction-agent-p_qpcklp1). For the column shapes see [`dashboard/data-contract.md`](dashboard/data-contract.md#prediction-emergence).
 
 ---
 

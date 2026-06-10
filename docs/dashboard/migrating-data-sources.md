@@ -55,7 +55,7 @@ All read today with our existing role — no new grant needed to *read* in this 
 | **Missing** | nothing data-wise — this is a **weighting + validation** problem |
 | **Data-team ask** | none (internal). Editorial owns "what trustworthiness means" + a ground-truth set. |
 
-> Doc drift note: `schema.md` lists `FCT_TRENDS.CONFIDENCE` / `TOTAL_CLUSTER_SIZE` /
+> Doc drift note: older docs referenced `FCT_TRENDS.CONFIDENCE` / `TOTAL_CLUSTER_SIZE` /
 > `DISTINCT_SOURCE_COUNT`, but the live `FCT_TRENDS` no longer carries them (14 cols, identity
 > only). They're in the promotion ledger / derived in the dashboard. Build off the dashboard.
 

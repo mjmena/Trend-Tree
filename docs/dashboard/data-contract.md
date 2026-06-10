@@ -1,0 +1,252 @@
+<!-- Title: Data Contract -->
+<!-- Parent: ATLAS Dashboard -->
+
+**Audience:** Engineers consuming the Trend Tree Snowflake tables — the Insights Agent backend and the Trend Hunter B2C feed. (For the plain-English, strategist-facing card reference, see [ATLAS Dashboard — Field Reference](https://mcclatchy.atlassian.net/wiki/x/CgARdw).)
+
+**Purpose:** The full column schema, type, meaning, and an example value for the two dynamic tables the downstream platforms read.
+
+**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`). This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-06-10.
+
+**Example values are real, pulled 2026-06-08** — mostly from the live trend **Hyper-Tactile Interiors** (`c51f1620-a832-4f13-a443-a7df03bf6a99`). A few fields that are null for that trend (geographic hotspots, macrotrend tags, the social-evidence object) use a populated row from another live trend to show the shape. Column names and types are authoritative.
+
+**Three tables, three questions.** `DT_TREND_DASHBOARD` answers _"what is this trend right now"_ — one row per trend, latest state. `DT_TREND_DAILY` answers _"how did it get here, day by day"_ — one row per `(TREND_ID, DAY)`. `DT_TREND_CONNECTIONS` answers _"which trends relate to each other"_ — one row per undirected trend pair, latest recompute. All three join on `TREND_ID` (`DT_TREND_CONNECTIONS` via `TREND_ID_A` / `TREND_ID_B`).
+
+<ac:structured-macro ac:name="toc"><ac:parameter ac:name="maxLevel">2</ac:parameter><ac:parameter ac:name="exclude">See also</ac:parameter></ac:structured-macro>
+
+---
+
+## DT_TREND_DASHBOARD
+
+One row per trend, joining trend identity, the latest enrichment payload, lifecycle state, and prediction scoring. Dynamic table, `TARGET_LAG = '15 minutes'`, `REFRESH_MODE = AUTO` on `TREND_AGENT_WH`.
+
+**Never** `SELECT *`**.** Select columns explicitly so the \~4 KB/row `TREND_VECTOR_ARCTIC_EMBED_L_V2_0` doesn't ride into payloads that don't need it.
+
+### Identity
+
+| Column | Type | What it is | Example value |
+| --- | --- | --- | --- |
+| `TREND_ID` | VARCHAR | UUID. Stable across all enrichment and lifecycle runs. Universal join key. | `c51f1620-a832-4f13-a443-a7df03bf6a99` |
+| `TREND_NAME` | VARCHAR | Display name. Prefers B2C, falls back to B2B then topic. | `Hyper-Tactile Interiors` |
+| `TREND_NAME_B2B` | VARCHAR | Business/pitch name. Frozen at first enrichment. | `Sensory-First Home Furnishing` |
+
+### Categorization
+
+| Column | Type | What it is | Example value |
+| --- | --- | --- | --- |
+| `CATEGORY` | VARCHAR | One of 14: `wellness` `food_beverage` `beauty` `fitness` `fashion` `home_living` `sustainability` `consumer_tech` `personal_care` `social_lifestyle` `entertainment` `travel` `parenting` `other`. Frozen at first enrichment. | `home_living` |
+| `SUBCATEGORY` | VARCHAR | Snake_case finer classification within the category. | `tactile_maximalism` |
+| `CATEGORY_CONFIDENCE` | FLOAT | Enrichment agent's confidence. **0–1 scale** (⚠ not 0–100). | `0.95` |
+| `LOW_CONFIDENCE_FLAG` | BOOLEAN | TRUE when `CATEGORY_CONFIDENCE < 0.6`. | `false` |
+
+### Summaries
+
+| Column | Type | What it is | Example value |
+| --- | --- | --- | --- |
+| `SUMMARY_SHORT` | VARCHAR | 1–2 sentences, action-oriented. Card-preview length. | `Consumers are swapping sleek minimalism for soft-edged interiors, prioritizing tactile materials like bouclé, fluted millwork, and curved furniture to create warm, inviting homes.` |
+| `SUMMARY_LONG` | VARCHAR | One paragraph (≤500 chars). Card-detail length. | `Driven by a desire for comfort and authentic self-expression, homeowners are actively rejecting stark, clinical minimalism. Instead, they are investing in tactile and textured interior design, incorporating elements like rounded sofas, fluted wood paneling, and dimensional fabrics such as bouclé and rattan…` |
+
+### Heat & lifecycle
+
+| Column | Type | What it is | Example value |
+| --- | --- | --- | --- |
+| `HEAT_INDEX` | FLOAT | Smoothed heat, 0–100 (1dp). **The single latest evaluation** — the headline number. Reflects signal velocity, recency, source breadth. | `68.3` |
+| `LIFECYCLE_STATUS` | VARCHAR | Current trajectory. Updated hourly by the lifecycle agent. Enum below. | `STABLE` |
+| `VELOCITY_DIRECTION` | VARCHAR | Back-compat alias for `LIFECYCLE_STATUS` — same value, older name. | `STABLE` |
+
+**Lifecycle stage enum** (expected progression is roughly linear):
+
+| Stage | Meaning |
+| --- | --- |
+| `NEW` | Just promoted; first 24–48h, heat ≥ 60 |
+| `GROWING` | Heat increasing; signal volume trending up |
+| `STABLE` | Consistent heat; not accelerating or decelerating |
+| `DECLINING` | Heat falling; signal volume tapering |
+| `DORMANT` | Heat low and flat; signal volume thin |
+| `RESURGENT` | Previously dormant; heat spiking again |
+| `RETIRED` | Two consecutive retire proposals; signal volume flatlined |
+
+### Cluster size
+
+| Column | Type | What it is | Example value |
+| --- | --- | --- | --- |
+| `TOTAL_CLUSTER_SIZE` | NUMBER | Distinct signals linked to the trend. | `40` |
+| `DISTINCT_SOURCE_COUNT` | NUMBER | Distinct **publisher domains** contributing (four GDELT articles from four publishers = 4). Higher = more credible. | `27` |
+| `DISTINCT_PUBLISHER_COUNT` | NUMBER | Alias for `DISTINCT_SOURCE_COUNT` — same value, clearer name. | `27` |
+| `ORIGINALLY_SURFACED_AT` | TIMESTAMP | When the trend first appeared in the distillation pipeline. | `2026-04-27T00:39:45Z` |
+
+### Prediction (emergence)
+
+Written daily by the prediction agent. **Additive and isolated** — never read by HEAT_INDEX, LIFECYCLE_STATUS, or any scoring path. See [Prediction (Score / Flag / Eligible)](https://mcclatchy.atlassian.net/wiki/x/GQAjdw).
+
+| Column | Type | What it is | Example value |
+| --- | --- | --- | --- |
+| `PREDICTION_SCORE` | NUMBER(5,1) | 0–100 emergence signal. Equal-weighted blend of velocity acceleration, low base volume, source-diversity expansion, cluster formation (all WoW). `NULL` for trends < 14 days old. | `76.7` |
+| `PREDICTION_FLAG` | VARCHAR | `Emerging` (40–65), `Watchlist` (65–80), `High Potential` (80+). `NULL` below 40 / NULL score. | `Watchlist` |
+| `PREDICTION_ELIGIBLE` | BOOLEAN | TRUE = qualifies for the Predictions Queue (heat not peaked + positive acceleration + new publisher/signal in 7d + age ≥ 14d + top-30% percentile). | `true` |
+
+### Source metrics
+
+| Column | Type | What it is | Example value |
+| --- | --- | --- | --- |
+| `KEY_DATA_POINTS` | ARRAY | Latest Google Trends pull's interest scalars. One object per metric: `{ source, metric_name, metric_value }`. Empty array if no gtrends row. | see shape below |
+
+```json
+[
+  { "source": "google_trends", "metric_name": "interest_peak_pct", "metric_value": 100 },
+  { "source": "google_trends", "metric_name": "interest_avg_pct",  "metric_value": 1.6 }
+]
+```
+
+### Cultural narrative
+
+| Column | Type | What it is | Example value |
+| --- | --- | --- | --- |
+| `SOCIAL_NARRATIVE` | ARRAY | 3–5 bullets on why this is happening now. Shape: `{ point, evidence_url }`. | `[{"point":"Consumers are openly rejecting 'clinical minimalism' and 'cool greys' in favor of warmth.","evidence_url":"https://bsky.app/profile/livingfinds.com/post/…"}]` |
+| `CULTURAL_DRIVERS` | ARRAY | Underlying forces: `{ driver, influence_level }`. Level is `high\|medium\|low`. | `[{"driver":"Desire for emotional grounding and warmth in living spaces after years of sterile minimal designs.","influence_level":"high"}]` |
+| `SEASONAL_RELEVANCE` | OBJECT | `{ is_seasonal, peak_months? }`. | `{"is_seasonal":false}` |
+| `GEOGRAPHIC_HOTSPOTS` | ARRAY | `{ region, intensity }`. Intensity is `high\|medium\|low`. Empty array when not geographically concentrated (as it is for this trend). | `[{"region":"United States","intensity":"high"},{"region":"United Kingdom","intensity":"medium"}]` _(other trend)_ |
+
+### Evidence pools
+
+The enrichment agent produces a typed pool of links. The dashboard pre-buckets it for direct rendering:
+
+| Column | Type | Contents / best for |
+| --- | --- | --- |
+| `EVIDENCE` | ARRAY | Full pool, unsplit. When you need all evidence in one pass. |
+| `GENERAL_EVIDENCE` | ARRAY | `type IN ('news','commerce')` — hard proof: articles, product pages. |
+| `SOCIAL_EVIDENCE` | ARRAY | `type = 'social'` — voice-of-customer: posts with quotes + engagement. |
+| `OTHER_EVIDENCE` | ARRAY | `type IN ('reference','search_volume','video','other')` — background. |
+
+**Evidence object shape** (a real `social` entry — `quote` and `engagement` are present only on social):
+
+```json
+{
+  "url":         "https://bsky.app/profile/livingfinds.com/post/bsky_3b2883ceea068666",
+  "type":        "social",
+  "source":      "@livingfinds.com",
+  "claim":       "Social consensus that limewash is a trending, eco-friendly way to add earthy character to walls.",
+  "captured_at": "2026-05-23T14:15:26Z",
+  "quote":       "Limewash paint is trending because it's impossibly forgiving — the more uneven, the better. Made from crushed limestone, eco-friendly… Designers say earthy, rooted colors are the 2026 direction.",
+  "engagement":  { "likes": 0, "reposts": 0 }
+}
+```
+
+**Type enum:** `news` · `social` · `commerce` · `reference` · `search_volume` · `video` · `other`.
+
+**Legacy key compatibility:** pre-2026-04-28 rows use `source_url` / `source_type` / `source_name` instead of `url` / `type` / `source`. `COALESCE` both shapes when reading.
+
+### Relationships & embedding
+
+| Column | Type | What it is | Example value |
+| --- | --- | --- | --- |
+| `RELATED_TRENDS` | ARRAY | Top-5 semantically similar trends, cosine desc. Shape: `{ trend_id, trend_name, category, similarity }`. Threshold ≥ 0.65; empty array if none. | `[{"trend_id":"971f85f1-…","trend_name":"Silk & Subtract","category":"home_living","similarity":0.6911}]` |
+| `MACROTREND_TAGS` | ARRAY | Higher-level theme labels the trend rolls into. Often null (rebuild pending). | `["Frictionless On-The-Go"]` _(other trend)_ |
+| `TREND_VECTOR_ARCTIC_EMBED_L_V2_0` | VECTOR(FLOAT, 1024) | Canonical trend embedding (`snowflake-arctic-embed-l-v2.0`), latest enrichment vector scoped to live `FCT_TRENDS`. `NULL` if no enrichment vector. Powers the Trend Hunter B2C feed recommender (distances / clusters / per-user aggregate vectors). The 768-dim GSC space is **not** exposed. | `[0.0123, -0.0456, …]` (1024 floats) |
+
+**Embedding ownership (Trend Hunter B2C).** McClatchy owns this canonical vector space; Trend Hunter builds the per-user vector as an aggregate of these trend vectors so it lives in our space by construction. The model is encoded in the column name; the underlying ledger column stays `TREND_VECTOR`. A model swap / re-embed / retrain will be signalled by changing the wire-facing column name (its `_ARCTIC_EMBED_L_V2_0` suffix is the version marker).
+
+### Timestamps & provenance
+
+| Column | Type | What it is | Example value |
+| --- | --- | --- | --- |
+| `ENRICHED_AT` | TIMESTAMP | When the current enrichment payload was written. | `2026-05-27T04:06:37Z` |
+| `LAST_LIFECYCLE_EVAL_AT` | TIMESTAMP | When lifecycle last evaluated this trend. | `2026-06-08T09:10:12Z` |
+| `RETIREMENT_REASON` | VARCHAR | Why a RETIRED trend was retired. `NULL` otherwise. | `null` |
+| `TREND_SOURCE` | VARCHAR | Provenance of the trend row. | `fct_trends` |
+
+### Deprecated columns
+
+Kept while the front end migrates. **New work should target the replacement columns.**
+
+| Deprecated | Replacement | Notes |
+| --- | --- | --- |
+| `SOCIAL_PROOF` | `GENERAL_EVIDENCE` | NULL on new-shape rows |
+| `VOICE_OF_CUSTOMER` | `SOCIAL_EVIDENCE` | NULL on new-shape rows |
+| `VIBE_SHIFT` | `SUMMARY_SHORT` | NULL on new-shape rows |
+| `TOP_SIGNALS` | `EVIDENCE` (first 5 news/commerce/social) | Legacy shape: `{ title, url, source }` |
+| `NAME_CANDIDATES_CONSIDERED` / `NAME_REVIEWER` | — | Naming-audit metadata; not for display |
+
+---
+
+## DT_TREND_DAILY
+
+One clean row per `(TREND_ID, DAY)` of trend history — the time-series companion to the dashboard. Backs the Trend Hunter B2C `score_timeseries` graph, `week_high` / `week_low`, and the week-over-week momentum badge. Dynamic table, `TARGET_LAG = '18 hours'`, `REFRESH_MODE = FULL` on `TREND_AGENT_WH`. \~7,400 rows (≈250 trends × ≈6 weeks). No backfill job — Snowflake builds full history on creation.
+
+_Example values below are the_ `2026-06-08` _row for the same trend (_`Hyper-Tactile Interiors`_)._
+
+| Column | Type | What it is | Example value |
+| --- | --- | --- | --- |
+| `TREND_ID` | VARCHAR | Grain part. Join key to `FCT_TRENDS` / `DT_TREND_DASHBOARD`. | `c51f1620-a832-4f13-a443-a7df03bf6a99` |
+| `DAY` | DATE | Grain part. One row per calendar day from the trend's first activity through `CURRENT_DATE`. Dense — no day skipped, so the 7-day `LAG` is exactly one week. | `2026-06-08` |
+| `HEAT_INDEX` | NUMBER(\_,1) | Daily **MAX** of the smoothed heat, carry-forward gap-filled. Never null on/after the first lifecycle eval. | `69.6` |
+| `SIGNAL_COUNT` | NUMBER | Cumulative distinct signals linked as of this day (each attributed to its first-link day). Monotonic, backfill-immune. | `40` |
+| `SOURCE_COUNT` | NUMBER | Same, for distinct **publisher domains** (not source-platform names). | `27` |
+| `NEW_SIGNALS_TODAY` | NUMBER | Distinct signals whose first link landed on this day (`0` on quiet days). | `0` |
+| `HEAT_WOW_PCT` | NUMBER(\_,1) | **Velocity-as-percent** — first difference over 7 days: `(HEAT − LAG(HEAT,7)) / LAG(HEAT,7) × 100`. `NULL` in first 7 days and when the 7-day-ago value was 0. | `13.0` |
+| `SIGNAL_WOW_PCT` | NUMBER(\_,1) | Same formula on `SIGNAL_COUNT`. | `8.1` |
+
+`HEAT_INDEX` **here ≠** `DT_TREND_DASHBOARD.HEAT_INDEX`**, on purpose.** This is the daily **MAX** of the hourly smoothed series (the graph line); the dashboard's is the single **latest evaluation** (the headline). They differ within a day by design — e.g. for `Hyper-Tactile Interiors` on 2026-06-08 the dashboard reads **68.3** while this table reads **69.6**. Trend Hunter sources the headline from the dashboard, the graph line from here.
+
+`HEAT_WOW_PCT` **≠** `INPUT_ACCELERATION`**.** `HEAT_WOW_PCT` is a _first_ difference ("how fast"); the prediction ledger's `INPUT_ACCELERATION` is a _second_ difference ("speeding up or slowing down"). Keep them separate.
+
+`week_high` / `week_low` and `score_timeseries` are **documented queries** over this table, not stored columns — pure trailing windows with no drift risk:
+
+```sql
+-- score_timeseries: the heat graph line for one trend
+SELECT DAY, HEAT_INDEX
+FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DAILY
+WHERE TREND_ID = :trend_id
+ORDER BY DAY;
+
+-- week_high / week_low: trailing-7-day heat band, per day
+SELECT DAY, HEAT_INDEX,
+       MAX(HEAT_INDEX) OVER (ORDER BY DAY ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS WEEK_HIGH,
+       MIN(HEAT_INDEX) OVER (ORDER BY DAY ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS WEEK_LOW
+FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DAILY
+WHERE TREND_ID = :trend_id
+ORDER BY DAY;
+```
+
+---
+
+## DT_TREND_CONNECTIONS
+
+One row per **undirected** trend pair — the cross-trend similarity surface backing the Insights Agent **Connections** page (formerly "Collections"). Dynamic table, `TARGET_LAG = '15 minutes'`, `REFRESH_MODE = AUTO` on `TREND_AGENT_WH`. Exposes **only the latest recompute generation**; the append-only history lives in `FCT_TREND_CONNECTIONS_LEDGER` underneath.
+
+This replaces Atlas's in-container `trend_correlations` table (which embedded trend text with MiniLM-384 and ran the cosine matrix in-process). Edges are now computed pipeline-side over the higher-quality 1024-dim `snowflake-arctic-embed-l-v2.0` trend vectors and recomputed daily by the `MARKETING_TASK_RECOMPUTE_CONNECTIONS` Snowflake task (each run reads the latest vector per trend, so new and re-enriched trends are picked up automatically).
+
+**Many-to-many:** a trend id appears as `TREND_ID_A` or `TREND_ID_B` in up to **8** rows (`MAX_EDGES_PER_TREND`, keeping the highest-scoring edges) — a single trend can participate in many connections.
+
+_Example values below are a real cross-category edge from the 2026-06-10 recompute: **Crock Awakening** (food_beverage) ↔ **Fibermaxxing** (wellness)._
+
+| Column | Type | What it is | Example value |
+| --- | --- | --- | --- |
+| `TREND_ID_A` | VARCHAR | Lower trend id of the undirected pair (`TREND_ID_A < TREND_ID_B`, no self-pairs). Join key to `DT_TREND_DASHBOARD`. | `9ff11688-d2f6-4747-a321-4adb756b125e` |
+| `TREND_ID_B` | VARCHAR | Higher trend id of the pair. Join key to `DT_TREND_DASHBOARD`. | `a2676910-edb2-41f5-8bfa-6b4fce5d1b7d` |
+| `SCORE` | FLOAT | `VECTOR_COSINE_SIMILARITY` of the two trends' latest vectors, 4dp. Higher = more similar. | `0.5915` |
+| `CATEGORY_A` | VARCHAR | Frozen `FCT_TRENDS.CATEGORY` of `TREND_ID_A` (the 14-value enum above). | `food_beverage` |
+| `CATEGORY_B` | VARCHAR | Frozen `FCT_TRENDS.CATEGORY` of `TREND_ID_B`. | `wellness` |
+
+**Category-aware thresholds.** An edge is kept when `SCORE ≥ 0.62` for same-category pairs, or `SCORE ≥ 0.45` for cross-category pairs (a lower bar so the prized cross-category connections — e.g. wellness ↔ food_beverage — surface while same-category noise is suppressed). These are calibrated for the arctic-1024 space and are **not** Atlas's old MiniLM-384 constants (0.55 / 0.38).
+
+```sql
+-- All connections for one trend (it can sit on either side of the pair)
+SELECT TREND_ID_A, TREND_ID_B, SCORE, CATEGORY_A, CATEGORY_B
+FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_CONNECTIONS
+WHERE :trend_id IN (TREND_ID_A, TREND_ID_B)
+ORDER BY SCORE DESC;
+
+-- Cross-category connections only (the cross-pollination view)
+SELECT * FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_CONNECTIONS
+WHERE CATEGORY_A <> CATEGORY_B
+ORDER BY SCORE DESC;
+```
+
+> **Isolated from `RELATED_TRENDS`.** `DT_TREND_DASHBOARD.RELATED_TRENDS` (top-5, flat ≥ 0.65) and `DT_TREND_CONNECTIONS` (category-aware, capped, undirected) are computed separately for now and may differ; reconcile deliberately rather than assume they match.
+
+---
+
+## See also
+
+* [ATLAS Dashboard — Field Reference](https://mcclatchy.atlassian.net/wiki/x/CgARdw) — plain-English, strategist-facing version of the dashboard fields.
+* [Prediction (Score / Flag / Eligible)](https://mcclatchy.atlassian.net/wiki/x/GQAjdw) — emergence scoring deep dive.
