@@ -107,7 +107,7 @@ steps:
           x.SOURCE_NAME         AS X_SOURCE_NAME
         FROM sig_ids
         JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS x
-          ON x.SIGNAL_ID = sig_ids.sid OR x.LEGACY_SIGNAL_ID = sig_ids.sid
+          ON x.SIGNAL_ID = sig_ids.sid
         ORDER BY x.SIGNAL_TIMESTAMP DESC NULLS LAST
         LIMIT 10
       query: |-
@@ -136,7 +136,7 @@ steps:
           x.SOURCE_NAME         AS X_SOURCE_NAME
         FROM sig_ids
         JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS x
-          ON x.SIGNAL_ID = sig_ids.sid OR x.LEGACY_SIGNAL_ID = sig_ids.sid
+          ON x.SIGNAL_ID = sig_ids.sid
         ORDER BY x.SIGNAL_TIMESTAMP DESC NULLS LAST
         LIMIT 10
     params: []
