@@ -28,10 +28,11 @@ A GitHub-synced Pipedream project. Each top-level directory is one Pipedream wor
 | `prediction-agent-p_QPCkLP1` | Deterministic emergence scorer (no LLM). Computes `PREDICTION_SCORE` (0–100), `PREDICTION_FLAG` (Emerging / Watchlist / High Potential), `PREDICTION_ELIGIBLE` across all live trends in one batch SQL run → `FCT_TREND_PREDICTION_LEDGER`. Feeds the Insights Agent Predictions Queue. Daily 14:00 UTC cron (`dc_wDuPeGB`) + manual via HTTP. Scores + writes in a single `INSERT...SELECT` (no proc). |
 | `daily-digest-p_vQCkwgV` | Email digest of recently-promoted trends |
 | `audit-agent-p_xMC9nm3` | Gemini 3.1 Pro health auditor. Daily 13:00 UTC + HTTP. Prefetches Snowflake freshness/cost/stuck-trends + Pipedream errors per workflow (registry covers all live workflows incl. the full ingestion tier as of 2026-06-08), emits GREEN/YELLOW/RED report → `FCT_AUDIT_LEDGER` + Slack DM (gated on non-GREEN). Realtime per-error alerting is handled by an external multi-repo monitor outside this project |
-| `ingestion/*` | Per-source ingestion workflows (Bluesky, Amazon, Pinterest, TikTok, Google Trends + agent-tools subdir) |
+| `ingestion/*` | Per-source ingestion workflows (Bluesky, Amazon, Pinterest, Google Trends + agent-tools subdir) |
 
 **Deactivated** (kept in repo for rollback / reference):
 - `llm-enrichment-p_YyC86Zo` — legacy 3-LLM cascade. Replaced by `enrichment-p_xMC995w` on 2026-04-27.
+- `ingestion/tiktok-p_yKCm9Am` — Creative Center hashtag scraper, scrapped 2026-06-09. TikTok retired the scraped page (301 → "TikTok One Creative Suite"; the `creative_radar_api` XHR is gone), and the hashtag-level output never met the distillation specificity rubric anyway (#18). The discovery workflow's Grok lane covers the TikTok cultural niche.
 
 ## Trend pipeline flow
 

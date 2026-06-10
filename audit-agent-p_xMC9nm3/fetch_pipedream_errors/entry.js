@@ -61,7 +61,8 @@ const WORKFLOW_REGISTRY = [
   { id: "p_3nC3xkk", name: "ingest-google-trends" },
   { id: "p_wOC618j", name: "ingest-google-trends-explore" },
   { id: "p_xMC9jR5", name: "ingest-pinterest" },
-  { id: "p_yKCm9Am", name: "ingest-tiktok-trending" },
+  // ingest-tiktok-trending (p_yKCm9Am) scrapped 2026-06-09 — TikTok retired the
+  // Creative Center page the scraper depended on (see issues #18/#20).
   { id: "p_5VCPJVJ", name: "ingest-gemini-food-drink" },
   { id: "p_dDCWMDJ", name: "ingest-gemini-other" },
   { id: "p_BjC3yGQ", name: "ingest-gemini-travel" },
