@@ -2,6 +2,8 @@
 
 **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`
 
+> **Published mirror:** the `DT_TREND_DASHBOARD` + `DT_TREND_DAILY` contract (types + real example values) is mirrored for downstream consumers — the Insights Agent backend and the Trend Hunter B2C feed — at [Confluence → Data Contract](https://mcclatchy.atlassian.net/wiki/x/DoBZeQ). **Keep both in sync** when a table's shape changes.
+
 Start with `DT_TREND_DASHBOARD` (the Trend Dashboard) — it's the right starting point for almost any consumer of this data. The supporting tables below explain what it draws from.
 
 ---
@@ -25,7 +27,7 @@ LIMIT 20;
 | Column | Type | Notes |
 |---|---|---|
 | `TREND_ID` | VARCHAR | UUID. Stable across all enrichment and lifecycle runs. Use as join key to all ledger tables. |
-| `TREND_NAME` | VARCHAR | Display name. Prefers `TREND_NAME_B2C`, falls back to `TREND_NAME_B2B` then `TREND_TOPIC`. |
+| `TREND_NAME` | VARCHAR | Display name. Prefers the singular `TREND_NAME` (post-2026-05-27 cutover), falling back to legacy `TREND_NAME_B2C` / `TREND_NAME_B2B` then `TREND_TOPIC`. |
 | `TREND_NAME_B2B` | VARCHAR | Business/sponsorship-pitch name. Frozen at first enrichment. |
 | `TREND_TOPIC` | VARCHAR | Agent-originated noun-verb phrase from distillation (e.g. "Honey-note gourmand fragrances surging as the new feminine scent direction"). |
 
