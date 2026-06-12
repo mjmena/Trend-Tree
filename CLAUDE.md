@@ -13,6 +13,12 @@ A GitHub-synced Pipedream project. Each top-level directory is one Pipedream wor
 - **Pipedream project**: `proj_x9sLmqO` ("Trend Tree")
 - Workspace, network, and Snowflake account IDs are in the imported `mcclatchy-stack.md`.
 
+## Workflow defaults
+
+- Questions ("is X worth keeping?", "what's happening with Y?") get analysis, not edits. Don't start implementing until a change is explicitly requested.
+- Non-trivial features start design-first: `/grill-with-docs` → `/to-prd` → `/to-issues`, then implement from the issue (`/ship-issue`).
+- Keep changes surgical and scoped to the explicit request — no extra endpoints, steps, or features without asking.
+
 ## Active workflows
 
 | Workflow | Purpose |
@@ -125,6 +131,14 @@ curl -sS -X POST https://eoqf5zok2vcvael.m.pipedream.net \
 ```
 
 If the response is HTML (`<p><b>Success!</b></p>`), the trigger's `custom_response` toggle is off (see Pipedream snippet).
+
+## Deploying & verifying changes
+
+A commit to `production` **is** the deploy — Pipedream redeploys changed workflows after the push, asynchronously.
+
+- Confirm the redeploy actually landed before firing test requests (a curl during the sync lag exercises the *old* code). Check via the Pipedream API — recipes in the `pipedream-synced-project` skill.
+- Don't trust HTTP responses from deployed-component HTTP sources (`sc_xxx` triggers): they can return `400 "Error in workflow"` while the run succeeds (#24). Workflow built-in HTTP triggers with `custom_response` on are reliable; `sc_xxx` responses are not.
+- "It worked" means rows landed. Verify outcomes by querying the target table (`FCT_TREND_ENRICHMENT_LEDGER`, `FCT_AUDIT_LEDGER`, …) for the id/run you fired — not by reading curl output.
 
 ## Related repos on this machine
 
