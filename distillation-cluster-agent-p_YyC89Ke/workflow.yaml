@@ -18,8 +18,6 @@ steps:
   props:
     snowflake:
       authProvisionId: apn_yghdQYJ
-    # signal_ids read directly from steps.$return_value in code (the ~256KB
-    # id list exceeds the prop cap at a 1600-signal pool) — not wired here.
 - namespace: q_fetch_neighbors
   runtime: nodejs20.x
   uses: "./q_fetch_neighbors/entry.js"
@@ -118,9 +116,6 @@ steps:
   props:
     google_gemini:
       authProvisionId: apn_EOhp9DY
-    # event / signal_rows / cluster_rows are read directly from
-    # steps.$return_value inside run_lead_agent to bypass the ~512KB prop
-    # cap at a 1600-signal pool — intentionally NOT wired as props here.
     neighbor_rows: "{{steps.q_fetch_neighbors.$return_value}}"
     prompts_rows: "{{steps.q_load_prompts.$return_value}}"
     examples_rows: "{{steps.q_load_examples.$return_value}}"
