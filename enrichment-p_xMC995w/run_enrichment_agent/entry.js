@@ -161,6 +161,52 @@ const INGEST_SCHEMAS = {
   },
 };
 
+// ─────────────────────────────────────────────────────────────────────
+// descriptor (canonical: agents/lib/descriptor.mjs — keep in sync)
+// Machine-facing { statement, query } artifact + specificity_score telemetry
+// (ADR-0003). statement = sole embedding seed; query = atomic, consumer-
+// vernacular join key to external keyword APIs (ET, Google Trends).
+// ─────────────────────────────────────────────────────────────────────
+
+const ATOMIC_QUERY_RULE =
+  "A single atomic, consumer-vernacular search term — the ingredient, " +
+  "product, or practice a shopper would actually type into a search box. " +
+  "NOT the compound behavior, NOT a coined marketing label, NOT industry " +
+  "jargon (e.g. 'retailtainment', 'agentic commerce'), and NOT a fresh " +
+  "internet-slang neologism that catalogs lag on (e.g. '-maxxing' coinages). " +
+  "Prefer the established noun a category already has over a clever phrase. " +
+  "This is a join key to external keyword APIs (Exploding Topics, Google " +
+  "Trends) — it is graded on whether those catalogs recognize it, so reach " +
+  "for the plainest term that still names THIS trend specifically.";
+
+const STATEMENT_RULE =
+  "A tight 2-4 sentence faithful prose core in a machine register: the " +
+  "subject, the specific behavior/product (the noun a consumer can put on a " +
+  "slide and the verb they are doing), the distinguishing axis vs. sibling " +
+  "trends, and the domain. De-buzzworded — no marketing flavor, no " +
+  "call-to-action, not action-oriented copy. This is consumed by other " +
+  "systems (the trend embedding, external APIs), not by a human reader.";
+
+const DESCRIPTOR_TOOL_PROPERTIES = {
+  descriptor: {
+    type: "object",
+    description:
+      "Machine-facing canonical artifact (ADR-0003). NOT a summary, NOT the name — the de-buzzworded soul of the trend, authored for other systems.",
+    properties: {
+      statement: { type: "string", description: STATEMENT_RULE },
+      query: { type: "string", description: ATOMIC_QUERY_RULE },
+    },
+    required: ["statement", "query"],
+  },
+  specificity_score: {
+    type: "number",
+    description:
+      "Self-predicted 0.0-1.0 (1.0 = crisp noun-verb-product, 0.0 = bare category). Telemetry on how specific this trend is — no gate acts on it.",
+  },
+};
+
+const DESCRIPTOR_REQUIRED_FIELDS = ["descriptor", "specificity_score"];
+
 const ENRICHMENT_SCHEMAS = {
   propose_enrichment: {
     name: "propose_enrichment",
@@ -261,8 +307,9 @@ const ENRICHMENT_SCHEMAS = {
           description: "All 10 single-audience candidates with per-axis 0-10 scores. Required for naming-quality audit. Drop the legacy audience field — singular name per trend post-2026-05-27 cutover.",
         },
         reasoning: { type: "string", description: "≤500 chars on why this name + categorization fit." },
+        ...DESCRIPTOR_TOOL_PROPERTIES,
       },
-      required: ["trend_name", "summary_short", "summary_long", "category", "subcategory", "category_confidence", "evidence", "name_candidates_considered", "reasoning"],
+      required: ["trend_name", "summary_short", "summary_long", "category", "subcategory", "category_confidence", "evidence", "name_candidates_considered", "reasoning", ...DESCRIPTOR_REQUIRED_FIELDS],
     },
   },
 };

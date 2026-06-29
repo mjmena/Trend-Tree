@@ -172,6 +172,11 @@ export default defineComponent({
         trend_name_b2c: e.trend_name_b2c ?? null,
         summary_short: e.summary_short ?? null,
         summary_long: e.summary_long ?? null,
+        // ADR-0003: machine-facing descriptor { statement, query } +
+        // self-predicted specificity. Lands at PAYLOAD:descriptor on the
+        // ledger; descriptor.statement is the embed seed (FN_TREND_EMBED_DOC).
+        descriptor: e.descriptor ?? null,
+        specificity_score: e.specificity_score ?? null,
         category,
         subcategory,
         category_confidence: e.category_confidence ?? null,
