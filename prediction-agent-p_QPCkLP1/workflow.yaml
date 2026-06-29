@@ -35,3 +35,4 @@ steps:
     event: "{{steps.normalize_event.$return_value}}"
     summary: "{{steps.summarize.$return_value}}"
     commit_result: "{{steps.commit_to_ledger.$return_value}}"
+
