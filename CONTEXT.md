@@ -62,6 +62,26 @@ _Avoid_: conflating with [trend topic] — they share an origin column at promot
 The 1–3 word search query (e.g., `kali uchis`, `nba finals`) that anchored a batch of related news articles in the Google Trends RSS feed at ingest time. After the 2026-05-27 flatten, lives in `FCT_SIGNALS.METADATA.gt_trending_query` on every `google_trends_rss` row. **Provenance tag, not identity** — flattened articles are first-class signals; the trending query is recoverable metadata, not a row in any table. Relationship to [trend topic] is **many-to-many**: one trending query's articles can attach to several trends if headlines diverge, and one trend can be underwritten by articles from multiple trending queries.
 _Avoid_: conflating with [gtrends search keyword] — both are short query strings but they live in different tables for different audiences. The search keyword is on `FCT_TRENDS`, written at promotion, polled against the GT Explore API. The trending query is on `FCT_SIGNALS.METADATA`, copied from the RSS feed at ingest, never re-derived.
 
+**Heat index**:
+How broadly the world is validating a trend *right now* — cross-publisher breadth (the dominant term), recency, signal velocity, external search interest, promotion confidence; smoothed hourly (formula: `docs/dashboard/fields/heat-index.md`). Trend-intrinsic — every input observes the trend's own activity; none observe McClatchy's position on it.
+_Avoid_: reading heat as "should we cover this" (that's the [opportunity score]); "buzz" / "how talked-about it is" (breadth + external interest make it *validation*, not chatter volume).
+
+**Prediction score**:
+Likelihood the trend will *grow* from here — heat acceleration + cumulative publisher/signal-set growth, deterministic daily batch (contract: `docs/prediction-contract.md`). Trajectory only, and deliberately isolated: it carries **no value, coverage, or audience component** (confirmed 2026-06-12 while scoping the [opportunity score]).
+_Avoid_: treating prediction as "worth covering" — a trend can be surging into territory we already cover wall-to-wall (no [white space]) or into territory with no McClatchy relevance at all.
+
+**White space**:
+The *condition* a trend can be in: live reader/search demand that McClatchy's **own published corpus** doesn't serve. The coverage side is ours alone — market-wide saturation is [heat index] breadth's job, so a nationally-saturated trend with zero McClatchy coverage and live demand *is* white space. The demand side (v1) is search demand: GSC first-party (audience-qualified by construction, positive-only semantics) plus Google Trends market interest.
+_Avoid_: the market-level strategy reading ("nobody anywhere is covering this"); using "white space" as the score's name — white space is the condition, the [opportunity score] is its measurement.
+
+**Opportunity score**:
+The 0–100 composite measuring how much [white space] a trend has for McClatchy. v1 inputs: [content gap] and search demand; designed to absorb audience fit and revenue potential as those components land (see `docs/dashboard/migrating.md`). Relational — trend × McClatchy — unlike the trend-intrinsic [heat index] and [prediction score]. This is the real implementation of what the ATLAS mockup renders as "Overall Score" (Decision Page, green/yellow/red).
+_Avoid_: "Overall Score" (mockup label — implies a rollup of everything including heat/confidence, which this isn't); "actionability score"; "white-space score".
+
+**Content gap**:
+The supply-side *component*: how uncovered a trend is in McClatchy's own published corpus. One leg of [white space], not the whole condition — a gap nobody is searching for is not an opportunity.
+_Avoid_: conflating with [white space] (gap is coverage-only; white space additionally requires demand); "competitor gap" (the corpus is ours — corpus candidates in `docs/dashboard/migrating-data-sources.md`).
+
 ## Flagged ambiguities
 
 **`SOURCE_NAME` does not encode the entry mechanism.** A signal's source name tells you the platform/origin, not how it arrived — the [Source] mechanism (passive ingester vs. [agent search tool]) is an orthogonal axis. Three names are mixed- or tool-provenance: `bluesky` and `google_trends_explore` are written by *both* a passive ingester *and* an [agent search tool]; `gdelt` is now written *only* by the search-gdelt tool (the passive GDELT batch ingester was retired 2026-04-26); `grok_live` is the lone agent-search-tool output with a dedicated name (no passive "grok" platform exists). To tell whether a given signal came from passive ingestion or an agent tool call, inspect `METADATA` (tool calls carry `search_query`) — not `SOURCE_NAME`. **This shared naming is accidental, not designed** (confirmed 2026-05-28): the [agent search tool]s simply reused the platform label. It's a known cleanup target — tool-sourced signals should carry separable provenance (a dedicated source name, or a `METADATA` provenance flag) so passive vs. tool signals don't require parsing `search_query`. Until that lands, treat `bluesky` / `gdelt` / `google_trends_explore` as mixed-provenance.

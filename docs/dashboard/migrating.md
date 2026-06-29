@@ -17,7 +17,7 @@ Before implementation, each field needs a real **definition**. So every section 
 
 ## 🟡 Audience Match
 
-> **Status:** Currently computed by the Insights Agent backend (mockup). Building the real version in the McClatchy pipeline.
+> **Status:** Currently computed by the Insights Agent backend (mockup). Building the real version in the McClatchy pipeline. **When built, folds into the [Opportunity Score](#overall-score) value leg** — v1 of that composite ships demand-only (locked 2026-06-12).
 
 **At a glance** — How well the trend matches the publication's target demographics.
 **Scale** — TBD (best-guess: 0–100).
@@ -55,26 +55,26 @@ Before implementation, each field needs a real **definition**. So every section 
 
 ## 🟡 Content Gap
 
-> **Status:** Currently computed by the Insights Agent backend (mockup). Building the real version in the McClatchy pipeline.
+> **Status:** Definition **locked 2026-06-12** (grill session → `CONTEXT.md` "Content gap"). Mockup still renders on ATLAS; the real version ships as the supply-side leg of the [Opportunity Score](#overall-score).
 
-**At a glance** — Whether the trend is under-covered in our existing content library (a "gap" we should fill).
-**Scale** — TBD.
-**What feeds it** — TBD.
-**Where it appears in ATLAS** — TBD.
+**At a glance** — How uncovered the trend is in **McClatchy's own** published corpus. The supply-side *component* of white space — a gap nobody is searching for is not an opportunity.
+**Scale** — `gap_factor` 0–1 in the ledger; surfaced alongside the Opportunity Score so the "why" is visible.
+**What feeds it** — Per-term semantic match: each trend's `FCT_TREND_GSC_TERMS` phrases (768-dim, `arctic-m-v1.5`) against the data team's `CUE_CONTENT_VECTORS` (876K), counting articles within a recent window (default 90d, stored as `WINDOW_DAYS`), cosine threshold shared with the GSC demand matcher. `gap_factor` = inverted log-squash of the matched-article mass.
+**Where it appears in ATLAS** — Component beside the Opportunity Score (exact card placement = Marcelo coordination).
 
-**🔍 To define it**
-- **Answers:** is this whitespace we should write into (under-covered by us)?
-- **Definition unknowns:** gap relative to *what* corpus — our published articles, competitor coverage, or both? Binary gap vs degree-of-gap? Over what time window of "existing coverage"?
-- **Inputs needed:** our published-content corpus (topics + vectors); optionally competitor coverage.
-- **Have in-repo:** trend vectors + cosine machinery (the matching half is solved). **No content corpus.**
-- **Missing / external:** published-content metadata + embeddings (CMS / CSA library export).
-- **Decisions to lock:** corpus source; gap metric (semantic distance to nearest published piece? count of recent pieces on the topic?); scale; embedding compatibility with our vectors.
+**🔒 Locked**
+- **Corpus = ours only.** Market saturation is heat-breadth's job (tallow test: nationally saturated + zero McClatchy coverage + live demand ⇒ still a gap). Keeps the axes orthogonal.
+- **Recent-count, not nearest-distance** — degree-of-gap (continuous), and one borderline article from 80 days ago must not erase a gap.
+- **Per-term lens, symmetric with the demand leg** — same terms, same 768 space, same threshold ⇒ per-term `DETAIL` explains *which facet* is uncovered ("cherry red gel nails: 212 queries, 0 stories").
+- **Upgrade path preserved:** re-embed article `PLAINTEXT` at 1024 later without changing the field's meaning.
+
+**Still open** — threshold + squash calibration (validation panel); corpus-skew sanity check (local-news mix can fake a zero — see [Data Sourcing](migrating-data-sources.md)).
 
 <a id="revenue-potential"></a>
 
 ## 🟡 Revenue Potential
 
-> **Status:** Currently computed by the Insights Agent backend (mockup). Building the real version in the McClatchy pipeline. Marcelo is working with Chad on Google Search Console data; pending warehouse capacity.
+> **Status:** Currently computed by the Insights Agent backend (mockup). Building the real version in the McClatchy pipeline. Marcelo is working with Chad on Google Search Console data; pending warehouse capacity. **When built, folds into the [Opportunity Score](#overall-score) value leg** (v1 demand-only; the RPM/yield table remains the genuinely missing dataset).
 
 **At a glance** — Estimated revenue if we publish on this trend.
 **Scale** — TBD.
@@ -110,22 +110,21 @@ Before implementation, each field needs a real **definition**. So every section 
 
 <a id="overall-score"></a>
 
-## 🟡 Overall Score (Green / Yellow / Red)
+## 🟡 Opportunity Score (formerly "Overall Score", Green / Yellow / Red)
 
-> **Status:** Currently computed by the Insights Agent backend (mockup). Building the real version in the McClatchy pipeline.
+> **Status:** Definition **locked 2026-06-12** (grill session → `CONTEXT.md` "Opportunity score" / "White space"). Canonical name is **Opportunity Score**; "Overall Score" is the mockup label (ATLAS rename = Marcelo coordination). Mockup still renders; real build pending.
 
-**At a glance** — A weighted rollup of Trend Strength + Audience Match + Content Gap + Revenue Potential into a single decision-friendly score with a color band.
-**Scale** — 0–100 with thresholds: ≥ 75 green / 50–74 yellow / < 50 red.
-**What feeds it** — The four inputs above.
-**Where it appears in ATLAS** — Decision Page (out of scope for this doc). Confirm whether the color band also surfaces on the main card.
+**At a glance** — The 0–100 measurement of a trend's **white space** for McClatchy: live reader/search demand that our own corpus doesn't serve. Relational (trend × McClatchy), unlike the trend-intrinsic `HEAT_INDEX` / `PREDICTION_SCORE`.
+**Scale** — 0–100, `NULL` when demand is unmeasurable. G/Y/R bands calibrated empirically on the live distribution — the mockup's ≥75 / 50–74 / <50 is *not* assumed.
+**What feeds it** — `100 × gap_factor × demand_factor` (multiplicative: either leg ≈ 0 kills it). Demand v1 = GSC first-party (`FCT_TREND_GSC_DEMAND`, positive-only by design) + Google Trends interest; gap = [Content Gap](#content-gap). [Audience Match](#audience-match) and [Revenue Potential](#revenue-potential) fold into the value leg as they're built.
+**Where it appears in ATLAS** — Decision Page (the mockup's slot); component factors surfaced beside it so strategists can see the "why".
 
-**🔍 To define it**
-- **Answers:** one decision-friendly go/no-go per trend.
-- **Definition unknowns:** confirmed inputs (the four above — is Confidence / AI Match excluded on purpose)? Weights? What *is* "Trend Strength" — `HEAT_INDEX`, `PREDICTION_SCORE`, or a composite? Graceful degradation when inputs are null?
-- **Inputs needed:** the four (or more) component scores above.
-- **Have in-repo:** Trend Strength proxy (`HEAT_INDEX`); the rest depend on the fields above.
-- **Missing / external:** dependent on the four input fields being defined first.
-- **Decisions to lock:** input set, weights, Trend Strength definition, band thresholds (confirm ≥75 / 50–74 / <50), missing-input behavior. **Define last — it's a rollup of the others.**
+**🔒 Locked**
+- **Trend Strength is NOT an input** (the open question above, resolved): heat/lifecycle act as a **gate, not a score input** — `OPPORTUNITY_ELIGIBLE` = lifecycle not in `DORMANT`/`RETIRED`, with `DECLINING` staying eligible (media chatter declining ≠ reader demand gone; the demand leg already requires live demand). Mirrors the `PREDICTION_SCORE`/`PREDICTION_ELIGIBLE` split, including the isolation guarantee: opportunity fields never feed heat, lifecycle, or prediction.
+- **Missing demand *evidence*** (GT empty **and** no GSC match) ⇒ `NULL`, never zero — GT's empty-response ambiguity is a documented foot-gun.
+- **Grain:** global v1, grain-ready (`SCOPE='ALL'` column; per-paper is a deliberate v2 once a UI surface exists).
+- **Runner:** `opportunity-agent` Pipedream workflow, twin of `prediction-agent-p_QPCkLP1` — daily cron + HTTP manual fire, single `INSERT...SELECT` → append-only `FCT_TREND_OPPORTUNITY_LEDGER` (per-term `DETAIL`, `MATCH_THRESHOLD`, `WINDOW_DAYS`, `COMPUTATION_VERSION='v1'` from day one). Additive `DT_TREND_DASHBOARD` columns only.
+- **Validation before exposure:** backfill + review panel — score all live trends ledger-only; review top/bottom/oddball cells plus the three anchors (gel nails → high, fiber → mid-low, zero-proof → high-ish) with editorial; calibrate squash/threshold/bands; only then add the DT columns.
 
 ---
 
