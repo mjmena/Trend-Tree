@@ -1,6 +1,11 @@
 # ADR-0003 sample sweep: descriptor neighbor-quality comparison (#54)
 
-**Generated:** 2026-06-30 · **Scope:** 18-trend sample · **Decision input for:** #55 (legacy embed-recipe retire go/no-go)
+**Generated:** 2026-06-30 · **Scope:** 18-trend cross-category sample + full `food_beverage` category (55) · **Decision input for:** #55 (legacy embed-recipe retire go/no-go)
+
+> **Update (full-category extension):** after the 18-trend sample held, we
+> re-enriched the **entire `food_beverage` category (55/55)** for a within-category
+> comparison at scale. Findings strengthen: mean top-3 cosine **rose** 0.570 →
+> **0.584**, clusters tightened, no scrambling. See the [food_beverage section](#full-category-extension-food_beverage-n55) below.
 
 ## What this is
 
@@ -76,12 +81,48 @@ boilerplate). Same-category purity ticks up. The tightest sibling pairs survive.
   the statement seed concentrates on identity, so similarities spread out while
   the *ranking* of true siblings is preserved or sharpened.
 
+## Full-category extension: food_beverage (n=55)
+
+The whole active `food_beverage` category re-enriched (55/55 carry a descriptor +
+statement vector; one transient HTTP-400 failure cleared on a single retry —
+idempotency confirmed). Within-category top-3 neighbors, legacy vs statement:
+
+| Metric | Legacy recipe | Statement seed |
+|---|---|---|
+| Mean top-3 cosine | 0.570 | **0.584** |
+| Identical #1 nearest neighbor | — | 21 / 55 (38%) |
+
+At full-category scale the mean similarity **rises** (the small-sample dip
+reverses), and the lower #1-preservation rate is expected — with 55 candidates
+there are many near-ties for the top slot, so #1 reshuffles among genuine
+siblings while neighborhoods tighten overall.
+
+Illustrative (legacy → statement):
+
+| Trend | Frozen topic | Legacy top-3 | Statement top-3 |
+|---|---|---|---|
+| Heat Atlas | *Global Spice Surge* | Spicy-Fruit [.657] · Swangy [.653] · Seoul-to-Aldi [.611] | Spicy-Fruit [**.759**] · Swangy [**.708**] · Seoul-to-Aldi [.687] |
+| Protein Feelings | *Food and Beverage Trends* | GLP-1-Aligned [.659] · Dairy Proteinmaxxing [.618] · Pack the Week [.591] | Dairy Proteinmaxxing [.636] · Modular Snack Meals [.619] · Post-Imitation Plant Proteins [.605] |
+| GLP-1-Aligned Eating | *GLP-1 Halo Effect — protein-forward grocery buying…* | Protein Feelings [.659] · Sensory Single-Serves [.567] · Dairy Proteinmaxxing [.475] | Pantry Protagonist [.537] · Mass Merchant as Primary Grocer [.509] · Midnight Magnesium Bites [.497] |
+| Swangy Street-Candy | *Swangy flavors in RTD…* | Swavory [.741] · Spicy-Fruit [.719] · Heat Atlas [.653] | Spicy-Fruit [.711] · Heat Atlas [**.708**] · Swavory [.699] |
+
+- **Vague topics get faithful neighborhoods.** "Protein Feelings" (topic literally
+  *"Food and Beverage Trends"*) and "Heat Atlas" (*"Global Spice Surge"*) cohere with
+  their real siblings under the statement seed.
+- **Meaningful re-grouping, not noise.** "GLP-1-Aligned Eating" moves off generic
+  protein and onto grocery-shopping-behavior trends — matching its statement's actual
+  emphasis (*protein-forward grocery buying*), arguably a more faithful identity.
+- The dense flavor cluster (Swangy/Swavory/Spicy-Fruit/Heat Atlas) stays mutually
+  nearest and **tightens**.
+
 ## Recommendation
 
-Statement-based vectors hold (and modestly improve) identity-similarity quality
-on the sample, with a qualitative win on vague-topic trends. **Supports
-proceeding to the full 263-trend sweep**, and is a green-leaning signal for the
-#55 legacy-recipe retire decision — which remains the human gate.
+Statement-based vectors hold and **improve** identity-similarity quality — neutral
+on the small cross-category sample, net-positive at full `food_beverage` scale —
+with a clear qualitative win on vague-topic trends and faithful re-grouping. The
+COALESCE fallback (#53) means partial rollout is safe at any point. **Supports
+completing the full active-set sweep**, and is a green signal for the #55
+legacy-recipe retire decision — which remains the human gate.
 
 ## Reproduce
 
