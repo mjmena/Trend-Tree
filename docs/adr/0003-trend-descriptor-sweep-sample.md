@@ -115,14 +115,30 @@ Illustrative (legacy → statement):
 - The dense flavor cluster (Swangy/Swavory/Spicy-Fruit/Heat Atlas) stays mutually
   nearest and **tightens**.
 
+## Second full category: beauty (n=51)
+
+Replicates the food_beverage result — the directional finding is consistent across
+two independent full categories (51/51 covered; the two transient HTTP-400s cleared
+on a single retry each):
+
+| Metric | Legacy recipe | Statement seed |
+|---|---|---|
+| Mean top-3 cosine (food_beverage) | 0.570 | **0.584** |
+| Mean top-3 cosine (beauty) | 0.590 | **0.605** |
+| #1 nearest neighbor preserved (beauty) | — | 24 / 51 (47%) |
+
+Both full categories show mean similarity **rising** under the statement seed, with
+no scrambling. Two consistent data points at scale.
+
 ## Recommendation
 
 Statement-based vectors hold and **improve** identity-similarity quality — neutral
 on the small cross-category sample, net-positive at full `food_beverage` scale —
-with a clear qualitative win on vague-topic trends and faithful re-grouping. The
-COALESCE fallback (#53) means partial rollout is safe at any point. **Supports
-completing the full active-set sweep**, and is a green signal for the #55
-legacy-recipe retire decision — which remains the human gate.
+with a clear qualitative win on vague-topic trends and faithful re-grouping. Two
+independent full categories (food_beverage, beauty) both show mean top-3 cosine
+rising at scale. The COALESCE fallback (#53) means partial rollout is safe at any
+point. **Supports completing the full active-set sweep**, and is a green signal for
+the #55 legacy-recipe retire decision — which remains the human gate.
 
 ## Reproduce
 
