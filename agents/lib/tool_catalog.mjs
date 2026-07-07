@@ -414,6 +414,10 @@ const LEAD_ONLY_SCHEMAS = {
       type: "object",
       properties: {
         topic: { type: "string", description: "Specific noun-verb behavior, ≤80 chars. Reject if you'd write 'wellness' or 'AI productivity tools'." },
+        // Atomic candidate query (ADR-0004). Rule text mirrors ATOMIC_QUERY_RULE
+        // in descriptor.mjs; the deployed copy is inlined in each distillation
+        // lead step's entry.js — keep all three in sync.
+        query: { type: "string", description: "A single atomic, consumer-vernacular search term — the ingredient, product, or practice a shopper would type into a search box. NOT the compound behavior, a coined label, or industry jargon. The candidate-lineage precursor to descriptor.query (ADR-0003) and the join key an external keyword API (Exploding Topics) is looked up by at promotion." },
         supporting_signal_ids: { type: "array", items: { type: "string" }, description: "Final supporting signal ids (lead's scan + subagent evidence)." },
         confidence: { type: "number", description: "0.0-1.0, your conviction this represents a real durable consumer pattern." },
         specificity_score: { type: "number", description: "0.0-1.0, how concrete/actionable the topic is (1.0 = noun-verb-product, 0.0 = category)." },
@@ -424,7 +428,7 @@ const LEAD_ONLY_SCHEMAS = {
         evidence_added: { type: "array", description: "Subagent-fetched signals beyond original cluster, if any." },
         reasoning: { type: "string", description: "≤500 char rationale." },
       },
-      required: ["topic", "supporting_signal_ids", "confidence", "specificity_score", "bucket", "verdict", "reasoning"],
+      required: ["topic", "query", "supporting_signal_ids", "confidence", "specificity_score", "bucket", "verdict", "reasoning"],
     },
   },
 };
