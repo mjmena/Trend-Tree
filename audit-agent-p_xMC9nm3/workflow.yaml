@@ -391,6 +391,41 @@ steps:
   uses: "./fetch_pipedream_errors/entry.js"
   props:
     event: "{{steps.normalize_event.$return_value}}"
+- namespace: q_et_rescue
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        -- ET corroboration-oracle rescue funnel (ADR-0004), last 24h. One row.
+        --   CANDS_24H / CANDS_WITH_QUERY_24H — slice-1 candidate QUERY authoring
+        --     coverage (should approach 100%; 0% = distillation not authoring the
+        --     atomic query, so ET rescue silently no-ops but still costs an LLM run).
+        --   ET_CONSULTED_24H — single-family candidates routed into the subagent
+        --     that hit Exploding Topics (the NEW LLM spend from the gate change).
+        --   ET_RESCUED_24H — of those, promoted because ET supplied source #2.
+        --   ET_CONSULTED_REJECTED_24H — consulted but not corroborated.
+        --   ET_LEDGER_ROWS_24H — FCT_TREND_ET_LEDGER rows (should equal RESCUED).
+        SELECT
+          COUNT_IF(CREATED_AT > DATEADD(hour,-24,CURRENT_TIMESTAMP()))                                                          AS CANDS_24H,
+          COUNT_IF(QUERY IS NOT NULL AND CREATED_AT > DATEADD(hour,-24,CURRENT_TIMESTAMP()))                                    AS CANDS_WITH_QUERY_24H,
+          COUNT_IF(ET_CORROBORATION IS NOT NULL AND COALESCE(PROMOTED_AT,REJECTED_AT) > DATEADD(hour,-24,CURRENT_TIMESTAMP()))  AS ET_CONSULTED_24H,
+          COUNT_IF(ET_WAS_SECOND_SOURCE = TRUE AND PROMOTED_AT > DATEADD(hour,-24,CURRENT_TIMESTAMP()))                         AS ET_RESCUED_24H,
+          COUNT_IF(ET_CORROBORATION IS NOT NULL AND COALESCE(ET_WAS_SECOND_SOURCE,FALSE)=FALSE AND REJECTED_AT > DATEADD(hour,-24,CURRENT_TIMESTAMP())) AS ET_CONSULTED_REJECTED_24H,
+          (SELECT COUNT(*) FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ET_LEDGER WHERE OBSERVED_AT > DATEADD(hour,-24,CURRENT_TIMESTAMP())) AS ET_LEDGER_ROWS_24H
+        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
+      query: |-
+        SELECT
+          COUNT_IF(CREATED_AT > DATEADD(hour,-24,CURRENT_TIMESTAMP()))                                                          AS CANDS_24H,
+          COUNT_IF(QUERY IS NOT NULL AND CREATED_AT > DATEADD(hour,-24,CURRENT_TIMESTAMP()))                                    AS CANDS_WITH_QUERY_24H,
+          COUNT_IF(ET_CORROBORATION IS NOT NULL AND COALESCE(PROMOTED_AT,REJECTED_AT) > DATEADD(hour,-24,CURRENT_TIMESTAMP()))  AS ET_CONSULTED_24H,
+          COUNT_IF(ET_WAS_SECOND_SOURCE = TRUE AND PROMOTED_AT > DATEADD(hour,-24,CURRENT_TIMESTAMP()))                         AS ET_RESCUED_24H,
+          COUNT_IF(ET_CORROBORATION IS NOT NULL AND COALESCE(ET_WAS_SECOND_SOURCE,FALSE)=FALSE AND REJECTED_AT > DATEADD(hour,-24,CURRENT_TIMESTAMP())) AS ET_CONSULTED_REJECTED_24H,
+          (SELECT COUNT(*) FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ET_LEDGER WHERE OBSERVED_AT > DATEADD(hour,-24,CURRENT_TIMESTAMP())) AS ET_LEDGER_ROWS_24H
+        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
+    params: []
 - namespace: run_audit_agent
   runtime: nodejs20.x
   uses: "./run_audit_agent/entry.js"
@@ -403,6 +438,7 @@ steps:
     stuck_trends_rows: "{{steps.q_stuck_trends.$return_value}}"
     orphan_trends_rows: "{{steps.q_orphan_trends.$return_value}}"
     cost_24h_rows: "{{steps.q_cost_24h.$return_value}}"
+    et_rescue_rows: "{{steps.q_et_rescue.$return_value}}"
     pipedream_errors: "{{steps.fetch_pipedream_errors.$return_value}}"
     prompts_rows: "{{steps.q_audit_prompts.$return_value}}"
 - namespace: commit_audit_ledger

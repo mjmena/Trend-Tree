@@ -385,6 +385,7 @@ export default defineComponent({
     stuck_trends_rows: { type: "any" },
     orphan_trends_rows: { type: "any", optional: true },
     cost_24h_rows: { type: "any" },
+    et_rescue_rows: { type: "any", optional: true },
     pipedream_errors: { type: "any" },
     prompts_rows: { type: "any" },
   },
@@ -407,6 +408,7 @@ export default defineComponent({
     const stuck_trends = this.stuck_trends_rows || [];
     const orphan_trends_count = Number((this.orphan_trends_rows || [])[0]?.ACTIVE_ORPHAN_TRENDS || 0);
     const cost_24h = this.cost_24h_rows || [];
+    const et_rescue = (this.et_rescue_rows || [])[0] || {};
     const pipedream_health = this.pipedream_errors || { summary: {}, workflows: [] };
 
     // Load + render prompts
@@ -426,6 +428,26 @@ export default defineComponent({
       `(live trends whose FCT_TREND_SIGNALS all point at SIGNAL_IDs not in FCT_SIGNALS — ` +
       `distillation-agent leak. Migration backlog was purged 2026-05-26; this should stay near 0.)`;
     const cost24hBlock = fmtJson(cost_24h);
+    // ET corroboration-oracle rescue funnel (ADR-0004). Single prefetched row.
+    const etr = et_rescue;
+    const n = (v) => Number(v || 0);
+    const etQueryCov = n(etr.CANDS_24H) > 0
+      ? `${n(etr.CANDS_WITH_QUERY_24H)}/${n(etr.CANDS_24H)} (${Math.round(100 * n(etr.CANDS_WITH_QUERY_24H) / n(etr.CANDS_24H))}%)`
+      : "n/a (no candidates in 24h)";
+    const etRescueBlock =
+      `candidate_query_authoring_coverage: ${etQueryCov}\n` +
+      `et_consulted (single-family rescue attempts, = new LLM spend): ${n(etr.ET_CONSULTED_24H)}\n` +
+      `  -> et_rescued_and_promoted: ${n(etr.ET_RESCUED_24H)}\n` +
+      `  -> et_consulted_but_rejected: ${n(etr.ET_CONSULTED_REJECTED_24H)}\n` +
+      `et_ledger_rows_written: ${n(etr.ET_LEDGER_ROWS_24H)} (should EQUAL et_rescued_and_promoted)\n` +
+      `Interpretation: query coverage should approach 100% — near 0% means distillation ` +
+      `is not authoring the atomic query, so ET rescue silently no-ops while still paying ` +
+      `for the subagent run (WARN). et_ledger_rows != et_rescued signals a ledger-seed bug ` +
+      `(WARN). A spike in et_consulted with ~zero rescues over many days can mean bad ` +
+      `queries or ET API failures — check the promotion subagent logs for http_403 / ` +
+      `timeout / "key not configured". Some rejects are healthy (ET genuinely misses); ` +
+      `judge the RATIO over time, not a single day. This funnel is INFORMATIONAL — only ` +
+      `raise an alert on the structural anomalies above, not on normal reject volume.`;
     const pipedreamHealthBlock = fmtJson({
       summary: pipedream_health.summary,
       note: "active flag is NOT surfaced — Pipedream REST has no GET endpoint for it. Do not infer 'workflow deactivated' from missing active field.",
@@ -446,6 +468,7 @@ export default defineComponent({
       dashboard_freshness_block: dashboardFreshnessBlock,
       stuck_trends_block: stuckTrendsBlock,
       orphan_trends_block: orphanTrendsBlock,
+      et_rescue_block: etRescueBlock,
       cost_24h_block: cost24hBlock,
       pipedream_health_block: pipedreamHealthBlock,
     });
