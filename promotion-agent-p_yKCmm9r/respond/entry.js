@@ -31,6 +31,10 @@ export default defineComponent({
       rationale: ar.rationale || ar.final_text || "",
       max_neighbor_sim: ar.max_neighbor_sim || null,
       considered_neighbors: ar.considered_neighbors || [],
+      // ET corroboration verdict (ADR-0004) — MUST forward or the lead/proc
+      // never see it and ET_CORROBORATION / ET_WAS_SECOND_SOURCE stay NULL.
+      et_was_second_source: ar.et_was_second_source === true,
+      et_corroboration: ar.et_corroboration || null,
       // Telemetry
       model_used: ar.model || null,
       tokens: ar.tokens || { input: 0, output: 0, total: 0 },

@@ -333,6 +333,10 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
         considered= d.get('considered_neighbors', [])
         tokens    = d.get('tokens', {})
         cost_usd  = d.get('cost_usd')
+        # ET corroboration decision record (ADR-0004). et_corr is the agent's ET
+        # snapshot; et_second is TRUE only when ET supplied the 2nd source family.
+        et_corr   = d.get('et_corroboration')
+        et_second = bool(d.get('et_was_second_source'))
 
         # Derive candidate meta for audit (cluster_size, source_count, confidence)
         cluster_size, source_count, confidence = derive_candidate_meta(session, cid)
@@ -407,7 +411,9 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                     UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
                     SET PROMOTED_AT = CURRENT_TIMESTAMP(),
                         PROMOTED_TO = {sql_str(new_tid)},
-                        PROMOTION_DECIDED_BY = {sql_str(chain_id)}
+                        PROMOTION_DECIDED_BY = {sql_str(chain_id)},
+                        ET_CORROBORATION = {sql_json(et_corr)},
+                        ET_WAS_SECOND_SOURCE = {('TRUE' if et_second else 'FALSE')}
                     WHERE CANDIDATE_ID = {sql_str(cid)}
                 """).collect()
 
@@ -505,11 +511,15 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                 # the daily revisit workflow find these signals via "stamped
                 # but no candidate has PROMOTED_TO" and give them a second
                 # look against signals from later main-run sessions.
+                # ET record captured on reject too (an ET-rescue candidate whose
+                # ET verify missed / was sub-volume) for lift measurement.
                 session.sql(f"""
                     UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
                     SET REJECTED_AT = CURRENT_TIMESTAMP(),
                         REJECTION_REASON = {sql_str((rej_reason or 'UNSPECIFIED')[:200])},
-                        PROMOTION_DECIDED_BY = {sql_str(chain_id)}
+                        PROMOTION_DECIDED_BY = {sql_str(chain_id)},
+                        ET_CORROBORATION = {sql_json(et_corr)},
+                        ET_WAS_SECOND_SOURCE = {('TRUE' if et_second else 'FALSE')}
                     WHERE CANDIDATE_ID = {sql_str(cid)}
                 """).collect()
 

@@ -116,9 +116,18 @@ export default defineComponent({
     const iteration = Math.max(1, Number(body.iteration) || 1);
     const dry_run = body.dry_run === true || body.dry_run === "true";
 
+    // ET corroboration routing (ADR-0004). et_rescue = the lead classified this
+    // as a single-source-family candidate above τ; the agent should look
+    // candidate_query up in Exploding Topics and, if ET independently confirms
+    // the concept with real volume, count ET as the missing second source family.
+    const et_rescue = body.et_rescue === true || body.et_rescue === "true";
+    const candidate_query = String(body.candidate_query || "").trim() || null;
+
     const candidate = {
       candidate_id,
       candidate_topic,
+      candidate_query,
+      et_rescue,
       distillation_verdict,
       distillation_dedup_target,
       distillation_reasoning: String(body.distillation_reasoning || ""),
@@ -137,6 +146,9 @@ export default defineComponent({
       distillation_recommendation_block: fmtDistillationBlock(candidate),
       neighbor_count: valid_neighbors.length,
       neighbor_blocks: valid_neighbors.map((n, i) => fmtNeighborBlock(n, i)).join("\n\n") || "(no surfaced neighbors above sim 0.50)",
+      et_rescue_block: et_rescue
+        ? `⚑ ET-RESCUE CANDIDATE. This candidate has only ONE independent source family, so it fails the two-source doctrine on signals alone. Its confidence/specificity cleared the routing threshold, so you MUST call verify_exploding_topics with the candidate_query ("${candidate_query || candidate_topic}") before deciding. If ET independently recognizes the SAME concept (your judgment — /database-search is fuzzy) AND it has meaningful absolute_volume, count ET as the second source family and PROMOTE_NEW; set et_was_second_source=true. If ET misses, returns a different concept, or the volume is trivial, this candidate stays single-family — REJECT it as you would today.`
+        : "",
     };
 
     console.log(
