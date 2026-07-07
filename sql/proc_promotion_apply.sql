@@ -281,6 +281,32 @@ def seed_enrichment_v0(session, trend_id):
     """).collect()
 
 
+def seed_et_ledger_v0(session, trend_id, candidate_id, et_corr):
+    """Seed FCT_TREND_ET_LEDGER from an ET-rescued candidate's ET snapshot
+    (ADR-0004 slice 3). Called INSIDE the PROMOTE_NEW transaction, gated on
+    et_was_second_source — so exactly one row per rescued trend, no row for a
+    normal promotion, and it rolls back with the FCT_TRENDS insert on failure.
+    Idempotent by construction: a promoted candidate is never re-selected, so
+    this never fires twice for the same TREND_ID."""
+    if not et_corr:
+        return
+    matched = 'TRUE' if et_corr.get('matched') else 'FALSE'
+    vol = et_corr.get('absolute_volume')
+    session.sql(f"""
+        INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ET_LEDGER
+            (TREND_ID, WRITTEN_BY, MATCHED, KEYWORD, ABSOLUTE_VOLUME,
+             GROWTH, CLASSIFICATIONS, RAW, CANDIDATE_ID, QUERIED)
+        SELECT {sql_str(trend_id)}, 'promotion', {matched},
+               {sql_str(et_corr.get('keyword'))},
+               {int(vol) if vol is not None else 'NULL'},
+               {sql_json(et_corr.get('growth'))},
+               {sql_json(et_corr.get('classifications'))},
+               {sql_json(et_corr)},
+               {sql_str(candidate_id)},
+               {sql_str(et_corr.get('queried'))}
+    """).collect()
+
+
 def lookup_leader_outcome(session, leader_cid):
     """For MERGE_INTO_CANDIDATE — fetch the leader candidate's PROMOTED_TO,
     REJECTED_AT, DEFERRED_UNTIL so we can mirror or resolve."""
@@ -423,6 +449,11 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                 # insert — a failure here rolls back the whole promotion.
                 seed_lifecycle_v0(session, new_tid)
                 seed_enrichment_v0(session, new_tid)
+                # ADR-0004: seed the ET ledger ONLY for ET-rescued trends (ET
+                # supplied the second source family). Same transaction as the
+                # FCT_TRENDS mint — one row per rescued trend, none otherwise.
+                if et_second:
+                    seed_et_ledger_v0(session, new_tid, cid, et_corr)
 
                 session.sql("COMMIT").collect()
                 results.append({'candidate_id': cid, 'decision': 'PROMOTE_NEW',
