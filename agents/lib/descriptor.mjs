@@ -12,9 +12,14 @@
 // Inlined sites (as of ADR-0003 / issue #52):
 //   - enrichment-p_xMC995w/run_enrichment_agent/entry.js
 //
-// Future consumer (per ADR-0003): promotion's GTRENDS_KEYWORD slot can
-// import ATOMIC_QUERY_RULE to author the same atomic query string earlier
-// in the pipeline without a rewrite.
+// ATOMIC_QUERY_RULE reuse (as of ADR-0004 / issue #59): the distillation
+// lead now authors the same atomic query as the [candidate query] on every
+// candidate (propose_trend_candidate.query), persisted to
+// STG_TREND_CANDIDATES.QUERY. That rule text is inlined (not imported) in:
+//   - distillation-cluster-agent-p_YyC89Ke/run_lead_agent/entry.js
+//     (propose_trend_candidate schema)
+// so a corroboration oracle (Exploding Topics, slice 2) can be looked up at
+// promotion — before the trend, and thus descriptor.query, exists.
 // =====================================================================
 
 // The atomic-query authoring rule. Declarative, no worked one-shot

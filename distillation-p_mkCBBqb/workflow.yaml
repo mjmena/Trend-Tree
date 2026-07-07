@@ -107,7 +107,7 @@ steps:
       value: |-
         INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES (
           CANDIDATE_ID, AGENT_SESSION_ID, CHAIN_ID, ITERATION,
-          TOPIC, SUPPORTING_SIGNAL_IDS, CONFIDENCE, SPECIFICITY_SCORE,
+          TOPIC, QUERY, SUPPORTING_SIGNAL_IDS, CONFIDENCE, SPECIFICITY_SCORE,
           SOURCE_BREAKDOWN, BUCKET, VERDICT, EVIDENCE_ADDED,
           REASONING, REASONING_TRACE, DEDUP_OF_TREND_ID
         )
@@ -142,6 +142,7 @@ steps:
           cand.j:chain_id::STRING,
           cand.j:iteration::NUMBER,
           cand.j:topic::STRING,
+          cand.j:query::STRING,
           COALESCE(vs.supporting_signal_ids, ARRAY_CONSTRUCT()),
           cand.j:confidence::FLOAT,
           cand.j:specificity_score::FLOAT,
@@ -159,7 +160,7 @@ steps:
       query: |-
         INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES (
           CANDIDATE_ID, AGENT_SESSION_ID, CHAIN_ID, ITERATION,
-          TOPIC, SUPPORTING_SIGNAL_IDS, CONFIDENCE, SPECIFICITY_SCORE,
+          TOPIC, QUERY, SUPPORTING_SIGNAL_IDS, CONFIDENCE, SPECIFICITY_SCORE,
           SOURCE_BREAKDOWN, BUCKET, VERDICT, EVIDENCE_ADDED,
           REASONING, REASONING_TRACE, DEDUP_OF_TREND_ID
         )
@@ -194,6 +195,7 @@ steps:
           cand.j:chain_id::STRING,
           cand.j:iteration::NUMBER,
           cand.j:topic::STRING,
+          cand.j:query::STRING,
           COALESCE(vs.supporting_signal_ids, ARRAY_CONSTRUCT()),
           cand.j:confidence::FLOAT,
           cand.j:specificity_score::FLOAT,
