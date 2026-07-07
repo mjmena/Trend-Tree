@@ -101,22 +101,35 @@ async function fanoutSubagents({
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Quality gate
+// Candidate classifier (ADR-0004)
 //
-// HARD reject (no LLM dispatch, $0 cost): minimal evidence of a real trend.
-//   - cluster_size < 2 (orphan signals)
-//   - source_families < 2 (no cross-platform corroboration — single-platform
-//     bursts are product velocity, not trends)
+// One pure function, classifyCandidate(c) → { action, reason, flags }:
+//   - reject            — no LLM dispatch, $0. Single source family AND below
+//                         the routing threshold (low confidence or low
+//                         specificity). No corroboration-oracle rescue merited.
+//   - route_normal      — ≥2 independent source families. Promote path
+//                         unchanged; distillation's soft quality_flags ride
+//                         along for the subagent to weigh.
+//   - route_et_rescue   — exactly one source family BUT confidence ≥ τ AND
+//                         specificity ≥ τ. Instead of a $0 reject (old
+//                         behavior), the candidate is routed into the subagent
+//                         loop, where the Exploding Topics oracle gets a chance
+//                         to earn the missing second source family. The soft
+//                         flags ride along too.
 //
-// SOFT pass to LLM with quality_flags: candidate is multi-source and has
-// enough signals to consider, but distillation flagged low confidence or
-// low specificity. LLM applies extra skepticism — defaulting to DEFER over
-// confident PROMOTE_NEW when flags are present.
+// The old `cluster_size < 2` hard-reject branch is DROPPED: distillation
+// enforces ≥2 supporting signals (schema minItems:2 + a hard code guard), so
+// the check could never fire (ADR-0004). The two-source doctrine stays intact —
+// ET is a non-signal way to CLEAR the second-family requirement, never a way to
+// veto a candidate that already has two real families.
 // ─────────────────────────────────────────────────────────────────────
 
-const HARD_GATE = {
-  min_cluster_size: 2,
-  min_source_families: 2,
+// τ for the ET-rescue routing pre-filter. Starts at 0.5/0.5 (mirrors
+// SOFT_THRESHOLDS) — a tunable knob. `confidence` and `specificity_score`
+// become load-bearing here: they now gate the single-family bucket.
+const ET_TAU = {
+  min_confidence: 0.5,
+  min_specificity: 0.5,
 };
 
 const SOFT_THRESHOLDS = {
@@ -151,16 +164,6 @@ function distinctSourceFamilies(sourceBreakdown) {
   return families;
 }
 
-function failHardGate(c) {
-  const size = c.CLUSTER_SIZE ?? 0;
-  const families = distinctSourceFamilies(c.SOURCE_BREAKDOWN);
-  if (size < HARD_GATE.min_cluster_size)
-    return `cluster_size=${size}<${HARD_GATE.min_cluster_size}`;
-  if (families.size < HARD_GATE.min_source_families)
-    return `source_families=${families.size}<${HARD_GATE.min_source_families} (got [${[...families].join(",")}])`;
-  return null;
-}
-
 function qualityFlags(c) {
   const flags = [];
   const conf = c.CONFIDENCE ?? 0;
@@ -168,6 +171,41 @@ function qualityFlags(c) {
   if (conf < SOFT_THRESHOLDS.min_confidence) flags.push(`low_confidence:${conf}`);
   if (spec < SOFT_THRESHOLDS.min_specificity) flags.push(`low_specificity:${spec}`);
   return flags;
+}
+
+// Pure classifier — the single gate. Returns { action, reason, flags,
+// source_families }. See the block comment above for the action semantics.
+function classifyCandidate(c) {
+  const families = distinctSourceFamilies(c.SOURCE_BREAKDOWN);
+  const flags = qualityFlags(c);
+  const familyList = [...families].join(",");
+
+  if (families.size >= 2) {
+    return {
+      action: "route_normal",
+      reason: `source_families=${families.size} ([${familyList}])`,
+      flags,
+      source_families: families.size,
+    };
+  }
+
+  // Exactly one (or zero) real source family from here down.
+  const conf = c.CONFIDENCE ?? 0;
+  const spec = c.SPECIFICITY_SCORE ?? 0;
+  if (conf >= ET_TAU.min_confidence && spec >= ET_TAU.min_specificity) {
+    return {
+      action: "route_et_rescue",
+      reason: `single_family ([${familyList}]) conf=${conf}>=${ET_TAU.min_confidence} spec=${spec}>=${ET_TAU.min_specificity} — eligible for ET corroboration`,
+      flags,
+      source_families: families.size,
+    };
+  }
+  return {
+    action: "reject",
+    reason: `single_family ([${familyList}]) below tau: conf=${conf} spec=${spec} (need >=${ET_TAU.min_confidence}/${ET_TAU.min_specificity})`,
+    flags,
+    source_families: families.size,
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -317,6 +355,8 @@ function buildDispatch(candidate, candidateVector, neighborPool, flags, ctx) {
   return {
     candidate_id: candidate.CANDIDATE_ID,
     candidate_topic: candidate.CANDIDATE_TOPIC,
+    candidate_query: candidate.CANDIDATE_QUERY || null,  // atomic ET lookup key (ADR-0004)
+    et_rescue: ctx.et_rescue === true,                   // single-family; ET may earn source #2
     distillation_verdict: candidate.DISTILLATION_VERDICT,
     distillation_dedup_target: candidate.DISTILLATION_DEDUP_TARGET || null,
     distillation_reasoning: candidate.DISTILLATION_REASONING || "",
@@ -367,21 +407,24 @@ export default defineComponent({
     const { vectorsByCandidate: vecByCid, neighborsByCandidate } =
       indexCombinedRows(this.vectors_and_neighbors, this.neighbor_signal_samples);
 
-    // Pass 1: quality-gate pre-check. Short-circuit obvious LOW_QUALITY rejects
-    // so we don't burn LLM tokens on them, and don't let them participate in
-    // intra-batch clustering.
+    // Pass 1: classify. Short-circuit `reject` candidates as LOW_QUALITY (no
+    // LLM dispatch, $0) so they don't burn tokens or enter intra-batch
+    // clustering. `route_normal` and `route_et_rescue` survive to the loop;
+    // the classification (flags + et_rescue) is kept per-candidate for Pass 3.
     const bundle = [];
     const survivors = [];
+    const classByCid = new Map();
 
     for (const c of candidates) {
-      const hardFail = failHardGate(c);
-      if (hardFail) {
+      const cls = classifyCandidate(c);
+      classByCid.set(c.CANDIDATE_ID, cls);
+      if (cls.action === "reject") {
         bundle.push({
           candidate_id: c.CANDIDATE_ID,
           decision: "REJECT",
           decision_category: "LOW_QUALITY",
-          rejection_reason: `HARD_GATE: ${hardFail}`,
-          rationale: `Auto-rejected by hard gate: ${hardFail}.`,
+          rejection_reason: `GATE: ${cls.reason}`,
+          rationale: `Auto-rejected by classifier: ${cls.reason}.`,
           distillation_verdict: c.DISTILLATION_VERDICT,
           max_neighbor_sim: null,
           considered_neighbors: [],
@@ -419,24 +462,29 @@ export default defineComponent({
       });
     }
 
-    // Pass 3: build subagent dispatches for leaders + singletons.
+    // Pass 3: build subagent dispatches for leaders + singletons. Reuse the
+    // Pass-1 classification for each — its flags, and whether this is an
+    // ET-rescue candidate (single-family, above τ) the subagent should try to
+    // corroborate via Exploding Topics.
     const dispatches = [];
     for (const c of leaders) {
-      const flags = qualityFlags(c);
+      const cls = classByCid.get(c.CANDIDATE_ID) || classifyCandidate(c);
       const vec = vecByCid.get(c.CANDIDATE_ID) || null;
       const neighbors = neighborsByCandidate.get(c.CANDIDATE_ID) || [];
-      dispatches.push(buildDispatch(c, vec, neighbors, flags, {
+      dispatches.push(buildDispatch(c, vec, neighbors, cls.flags, {
         chain_id: evt.chain_id,
         iteration: evt.iteration,
         dry_run: dryRun,
+        et_rescue: cls.action === "route_et_rescue",
       }));
     }
 
+    const etRescueCount = dispatches.filter((d) => d.et_rescue).length;
     console.log(
       `lead: ${candidates.length} candidates, ` +
-      `${bundle.filter((b) => b.decision_category === "LOW_QUALITY").length} hard-gated, ` +
+      `${bundle.filter((b) => b.decision_category === "LOW_QUALITY").length} classifier-rejected, ` +
       `${followers.length} intra-batch-merged, ` +
-      `${dispatches.length} to dispatch`,
+      `${dispatches.length} to dispatch (${etRescueCount} et_rescue)`,
     );
 
     if (dryRun) {
@@ -498,6 +546,8 @@ export default defineComponent({
         distillation_verdict: r.distillation_verdict,
         max_neighbor_sim: r.max_neighbor_sim,
         considered_neighbors: r.considered_neighbors || [],
+        et_was_second_source: r.et_was_second_source === true,   // ADR-0004: ET earned source #2
+        et_corroboration: r.et_corroboration || null,            // ET snapshot for the decision record
         model_used: r.model_used,
         tokens: r.tokens,
         cost_usd: r.cost_usd,
@@ -524,6 +574,7 @@ export default defineComponent({
       bundle_count: bundle.length,
       quality_gate_rejected: bundle.filter((b) => b.decision_category === "LOW_QUALITY").length,
       dispatched_count: dispatches.length,
+      et_rescue_dispatched: etRescueCount,
       failed_dispatches: failed,
       cost_usd: Math.round(totalCost * 10000) / 10000,
       fanout_summary: fanout.summary,
