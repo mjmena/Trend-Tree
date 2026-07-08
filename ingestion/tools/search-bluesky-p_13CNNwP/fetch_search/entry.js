@@ -107,8 +107,21 @@ export default defineComponent({
           : text;
 
       const signalId = `bsky_${uriHash}`;
+
+      // Public web URL for the post: at://did/app.bsky.feed.post/rkey →
+      // https://bsky.app/profile/did/post/rkey (mirrors the ingestion
+      // fetch_source builder). Hand the agent the REAL url so it cites this
+      // instead of fabricating one from signal_id — the bsky_<hash> id is a
+      // sha256 fragment, never a valid rkey, so glued-together post URLs 404.
+      const uriParts = uri.replace(/^at:\/\//, "").split("/");
+      const postUrl =
+        uriParts.length >= 3 && uriParts[1] === "app.bsky.feed.post"
+          ? `https://bsky.app/profile/${uriParts[0]}/post/${uriParts[2]}`
+          : null; // malformed uri — omit rather than hand over a non-URL to glue
+
       signals.push({
         SIGNAL_ID: signalId,
+        URL: postUrl,
         SOURCE_NAME: "bluesky",
         SIGNAL_TIMESTAMP: ts,
         SIGNAL_TITLE: signalTitle,
@@ -128,6 +141,7 @@ export default defineComponent({
       // Agent-facing payload (concise; the LLM doesn't need the full Snowflake row shape)
       posts.push({
         signal_id: signalId,
+        url: postUrl,
         author_handle: author.handle || "",
         text: signalText.slice(0, 600),
         like_count: postView.likeCount || 0,

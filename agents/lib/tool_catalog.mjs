@@ -191,7 +191,7 @@ const INGEST_SCHEMAS = {
   ingest_search_bluesky: {
     name: "ingest_search_bluesky",
     description:
-      "Search Bluesky (ATProto searchPosts) for posts matching a query. Returns up to `limit` posts with author handle, text snippet, like + repost counts, embedded URL if any, created_at. Latency ~6-8s. Use to corroborate emerging signals, gather voice-of-customer quotes, or check whether a hypothesis has cultural traction. All returned posts are also written to STG_EXTERNAL_SIGNALS tagged with the current agent_session_id.",
+      "Search Bluesky (ATProto searchPosts) for posts matching a query. Returns up to `limit` posts with author handle, text snippet, like + repost counts, embedded URL if any, created_at, and `url` (the canonical bsky.app post permalink). Latency ~6-8s. Use to corroborate emerging signals, gather voice-of-customer quotes, or check whether a hypothesis has cultural traction. When citing a post as evidence, use the returned `url` verbatim — never build one from signal_id or author_handle (those are not valid rkeys and 404). All returned posts are also written to STG_EXTERNAL_SIGNALS tagged with the current agent_session_id.",
     input_schema: {
       type: "object",
       properties: {
