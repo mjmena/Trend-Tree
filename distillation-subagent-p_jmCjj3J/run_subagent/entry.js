@@ -132,6 +132,15 @@ const PROPOSE_SCHEMA = {
       type: "object",
       properties: {
         topic: { type: "string", description: "Specific noun-verb behavior, ≤80 chars." },
+        // Atomic candidate query (ADR-0004). Canonical rule: ATOMIC_QUERY_RULE
+        // in agents/lib/descriptor.mjs — keep in sync with the enrichment
+        // propose_enrichment.descriptor.query field. The lead persists it to
+        // STG_TREND_CANDIDATES.QUERY when it registers this candidate.
+        query: {
+          type: "string",
+          description:
+            "A single atomic, consumer-vernacular search term — the ingredient, product, or practice a shopper would actually type into a search box. NOT the compound behavior, NOT a coined marketing label, NOT industry jargon (e.g. 'retailtainment', 'agentic commerce'), and NOT a fresh internet-slang neologism that catalogs lag on (e.g. '-maxxing' coinages). Prefer the established noun a category already has over a clever phrase. This is a join key to external keyword APIs (Exploding Topics, Google Trends) — it is graded on whether those catalogs recognize it, so reach for the plainest term that still names THIS trend specifically.",
+        },
         supporting_signal_ids: { type: "array", items: { type: "string" }, minItems: 2 },
         confidence: { type: "number" },
         specificity_score: { type: "number" },
@@ -141,7 +150,7 @@ const PROPOSE_SCHEMA = {
         evidence_added: { type: "array", items: { type: "string" } },
         reasoning: { type: "string", description: "≤500 char rationale." },
       },
-      required: ["topic", "supporting_signal_ids", "confidence", "specificity_score", "verdict", "reasoning"],
+      required: ["topic", "query", "supporting_signal_ids", "confidence", "specificity_score", "verdict", "reasoning"],
     },
   },
 };

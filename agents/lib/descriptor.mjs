@@ -13,13 +13,17 @@
 //   - enrichment-p_xMC995w/run_enrichment_agent/entry.js
 //
 // ATOMIC_QUERY_RULE reuse (as of ADR-0004 / issue #59): the distillation
-// lead now authors the same atomic query as the [candidate query] on every
-// candidate (propose_trend_candidate.query), persisted to
-// STG_TREND_CANDIDATES.QUERY. That rule text is inlined (not imported) in:
-//   - distillation-cluster-agent-p_YyC89Ke/run_lead_agent/entry.js
-//     (propose_trend_candidate schema)
+// lead + subagent now author the same atomic query as the [candidate query]
+// on every candidate (propose_trend_candidate.query), persisted to
+// STG_TREND_CANDIDATES.QUERY. That rule text is inlined (not imported) in the
+// ACTIVE authoring path — the workflows that actually write candidates:
+//   - distillation-p_mkCBBqb/run_lead_agent/entry.js  (registers + persists)
+//   - distillation-subagent-p_jmCjj3J/run_subagent/entry.js  (surfaces it)
+//     (both propose_trend_candidate schemas)
 // so a corroboration oracle (Exploding Topics, slice 2) can be looked up at
 // promotion — before the trend, and thus descriptor.query, exists.
+// NB: distillation-cluster-agent-p_YyC89Ke does NOT write candidates — do not
+// add the field there (that mis-wire caused the slice-1 misdeploy).
 // =====================================================================
 
 // The atomic-query authoring rule. Declarative, no worked one-shot
