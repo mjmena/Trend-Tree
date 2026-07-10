@@ -28,19 +28,27 @@ export default defineComponent({
       type: "string",
       label: "Rendered HTML body",
     },
+    text_body: {
+      type: "string",
+      label: "Rendered plain-text body (MIME text/plain alternative)",
+      optional: true,
+    },
   },
   async run({ $ }) {
+    const email = {
+      app_id: BRAZE_APP_ID,
+      subject: this.subject,
+      from: `${FROM_NAME} <${FROM_EMAIL}>`,
+      body: this.html_body,
+    };
+    // Braze's email object takes the text/plain alternative as plaintext_body.
+    const text = String(this.text_body ?? "").trim();
+    if (text) email.plaintext_body = text;
+
     const payload = {
       broadcast: true,
       segment_id: SEGMENT_ID,
-      messages: {
-        email: {
-          app_id: BRAZE_APP_ID,
-          subject: this.subject,
-          from: `${FROM_NAME} <${FROM_EMAIL}>`,
-          body: this.html_body,
-        },
-      },
+      messages: { email },
     };
 
     const url = `https://${this.braze.$auth.instance_domain}.braze.${this.braze.$auth.region}/messages/send`;
