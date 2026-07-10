@@ -141,6 +141,7 @@ steps:
         WITH signal_domains AS (
           SELECT
             s.SIGNAL_ID,
+            s.SIGNAL_TIMESTAMP,
             CASE
               WHEN s.SOURCE_NAME = 'wikimedia'             THEN 'wikipedia.org'
               WHEN s.SOURCE_NAME = 'amazon_trends'         THEN 'amazon.com'
@@ -170,11 +171,13 @@ steps:
         JOIN signal_domains sd ON sd.SIGNAL_ID = ts.SIGNAL_ID
         WHERE ts.TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
           AND sd.DOMAIN IS NOT NULL
+          AND sd.SIGNAL_TIMESTAMP > DATEADD(day, -21, CURRENT_TIMESTAMP())
         GROUP BY sd.DOMAIN
       query: |-
         WITH signal_domains AS (
           SELECT
             s.SIGNAL_ID,
+            s.SIGNAL_TIMESTAMP,
             CASE
               WHEN s.SOURCE_NAME = 'wikimedia'             THEN 'wikipedia.org'
               WHEN s.SOURCE_NAME = 'amazon_trends'         THEN 'amazon.com'
@@ -204,6 +207,7 @@ steps:
         JOIN signal_domains sd ON sd.SIGNAL_ID = ts.SIGNAL_ID
         WHERE ts.TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
           AND sd.DOMAIN IS NOT NULL
+          AND sd.SIGNAL_TIMESTAMP > DATEADD(day, -21, CURRENT_TIMESTAMP())
         GROUP BY sd.DOMAIN
     params: []
 - namespace: q_lifecycle_history
@@ -215,14 +219,14 @@ steps:
     sql:
       value: |-
         SELECT EVALUATED_AT, PRIOR_STATUS, NEW_STATUS, PRIOR_HEAT, NEW_HEAT,
-               HEAT_MODIFIER_PCT, REASONING, RETIREMENT_PROPOSAL, REQUESTED_RE_ENRICHMENT
+               HEAT_BASE, HEAT_MODIFIER_PCT, REASONING, RETIREMENT_PROPOSAL, REQUESTED_RE_ENRICHMENT
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
         WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
         ORDER BY EVALUATED_AT DESC
         LIMIT 5
       query: |-
         SELECT EVALUATED_AT, PRIOR_STATUS, NEW_STATUS, PRIOR_HEAT, NEW_HEAT,
-               HEAT_MODIFIER_PCT, REASONING, RETIREMENT_PROPOSAL, REQUESTED_RE_ENRICHMENT
+               HEAT_BASE, HEAT_MODIFIER_PCT, REASONING, RETIREMENT_PROPOSAL, REQUESTED_RE_ENRICHMENT
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
         WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
         ORDER BY EVALUATED_AT DESC

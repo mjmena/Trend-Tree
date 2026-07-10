@@ -49,7 +49,7 @@ Half-open intervals on `PREDICTION_SCORE`:
 ### `PREDICTION_ELIGIBLE` — `TRUE` requires **all** of
 
 1. `PREDICTION_SCORE IS NOT NULL`
-2. `INPUT_HEAT_NOW < 70` — not already peaked (heat compresses to ~0–77 today)
+2. `INPUT_HEAT_NOW < 70` — not already peaked (see gate note below)
 3. `INPUT_ACCELERATION > 0` — heat is accelerating
 4. `INPUT_SOURCE_DELTA > 0 OR INPUT_SIGNAL_DELTA > 0` — gained ≥1 new publisher or signal in the last 7d
 5. `DAYS_SINCE_PROMOTION >= 14`
@@ -57,6 +57,14 @@ Half-open intervals on `PREDICTION_SCORE`:
 
 On a typical run ~15–20% of scored trends are eligible. The queue can be small
 on broadly-decelerating days but is rarely empty.
+
+> **Gate note (heat formula v2, 2026-07-10 — ADR-0005).** The `heat_now < 70`
+> threshold was calibrated against the old compressed 0–77 heat scale. Heat v2
+> (linked evidence only) drops levels ~30 pts board-wide, so for ~1–2 weeks
+> after cutover `INPUT_ACCELERATION` reads as global deceleration and the
+> Predictions Queue will go quiet before it recovers. Re-derive the gate (and
+> the acceleration expectations above) against the v2 distribution once
+> post-cutover history exists — tracked as the #33 recalibration follow-up.
 
 **Isolation guarantee:** prediction fields never influence `HEAT_INDEX`,
 `LIFECYCLE_STATUS`, or any other scoring path (product requirement). They are

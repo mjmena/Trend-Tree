@@ -94,11 +94,10 @@ const TOOL_SCHEMAS = {
           enum: ["NEW", "GROWING", "STABLE", "DECLINING", "DORMANT", "RESURGENT", "RETIRED"],
           description: "The lifecycle state to commit. RETIRED requires two-cycle confirm — see system prompt.",
         },
-        heat_modifier_pct: {
-          type: "number",
-          description: "Modifier in [-20, 20]; clamped at commit. Use sparingly — see decision rubric.",
-        },
-        heat_modifier_reason: { type: "string" },
+        // heat_modifier_pct was removed in heat v2 (ADR-0005): the commit
+        // proc applies a fixed per-status factor; the magnitude is never
+        // the LLM's to pick. Any modifier fields the agent still emits are
+        // ignored by PROC_LIFECYCLE_APPLY.
         // Optional via absence from `required`. We previously had
         // `nullable: true` here (commit 9ffc7b7) but Gemini's protobuf
         // schema parser tightened on 2026-04-28 evening — it now rejects
@@ -117,7 +116,7 @@ const TOOL_SCHEMAS = {
         },
         reasoning: { type: "string", description: "≤500 chars defending the decision." },
       },
-      required: ["status", "heat_modifier_pct", "next_eval_in_hours", "reasoning"],
+      required: ["status", "next_eval_in_hours", "reasoning"],
     },
   },
 };
@@ -217,61 +216,54 @@ function shannonEntropyNormalized(counts) {
   return h / Math.log(vals.length);
 }
 
-function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
-
-function computeHeatBase({ metrics, signal_domain_counts, recent_signals, gtrends_history }) {
+// Heat formula v2 (ADR-0005): a pure measure of LINKED evidence — signals
+// attached to the trend in FCT_TREND_SIGNALS. Candidate (vector-similar but
+// unlinked) signals earn zero heat; the path for a candidate to start
+// counting is attribution, not similarity. Google Trends is not a heat
+// input — demand-side evidence lives on the opportunity-score axis.
+function computeHeatBase({ metrics, signal_domain_counts, recent_signals }) {
   const now = Date.now();
 
-  // recency_factor: half-life 120h — a signal from a week ago still scores ~25%
+  // recency_factor: hours since the newest LINKED signal, half-life 120h.
+  // No LAST_UPDATE_AT fallback — bookkeeping timestamps are not evidence.
+  // recent_signals is the 14d linked prefetch; a trend with nothing linked
+  // in 14d would score ≤ exp(-2.8) ≈ 0.06 anyway, so no-rows → 0.
   const lastSignalTs = recent_signals[0]?.signal_timestamp
     ? new Date(recent_signals[0].signal_timestamp).getTime()
-    : metrics?.last_update_at ? new Date(metrics.last_update_at).getTime() : now;
-  const hoursSince = Math.max(0, (now - lastSignalTs) / (3600 * 1000));
-  const recency_factor = Math.exp(-hoursSince / 120);
+    : null;
+  const recency_factor = lastSignalTs
+    ? Math.exp(-Math.max(0, (now - lastSignalTs) / (3600 * 1000)) / 120)
+    : 0;
 
-  // velocity_factor: 7-day merged count, sigmoid centered at 2 signals/week.
-  // Floor (0 signals): sigmoid(-0.67) ≈ 0.34 → 8.5 pts.
-  // Neutral (2 signals): sigmoid(0) = 0.5 → 12.5 pts.
+  // velocity_factor: linear in linked signals over 7d, saturating at 3.
+  // Replaces the sigmoid and its 0.34 zero-signal floor: 0 linked = 0 pts.
   const sevenD = 7 * 24 * 3600 * 1000;
   const last7dCount = recent_signals.filter((s) => {
     const ts = s.signal_timestamp ? new Date(s.signal_timestamp).getTime() : 0;
     return ts > 0 && (now - ts) <= sevenD;
   }).length;
-  const velocity_factor = sigmoid((last7dCount - 2) / 3);
+  const velocity_factor = Math.min(1, last7dCount / 3);
 
-  // breadth_factor: log-publishers × shannon entropy across distinct attached
-  // publisher domains. Anchored so 10 publishers (even distribution) = 1.0.
-  // 1 publisher → 0; 2 → ~0.16; 5 → ~0.62; 10+ → 1.0. Penalizes both narrowness
-  // AND lopsided distributions (e.g., 8/10 signals from one publisher).
+  // breadth_factor: log-publishers × shannon entropy across distinct linked
+  // publisher domains ACTIVE IN THE LAST 21 DAYS (q_signal_domains windows
+  // the counts — cumulative breadth was an age counter). Anchored so 6
+  // active domains (observed windowed max) with even distribution = 1.0.
   // Publisher extraction mirrors sql/dt_trend_dashboard.sql's signal_domains
   // CTE — keep them in sync.
   const distinct = Object.values(signal_domain_counts).filter(v => v > 0).length;
   const log_score = distinct === 0
     ? 0
-    : Math.min(1, Math.max(0, Math.log2(distinct) - 0.5) / (Math.log2(10) - 0.5));
+    : Math.min(1, Math.max(0, Math.log2(distinct) - 0.5) / (Math.log2(6) - 0.5));
   const entropy = shannonEntropyNormalized(signal_domain_counts);
   const breadth_factor = log_score * entropy;
-
-  // external_factor: latest gtrends INTEREST_AVG_PCT normalized to [0,1].
-  // Avg, not peak: GT normalizes single-keyword timeseries so peak is
-  // always 100 when any data exists — peak/100 collapses to a binary
-  // {0,1} signal. Avg captures sustained interest vs single spike, which
-  // is what the formula assumed peak would be.
-  // Default 0 when no gtrends data — validation strength means "earned
-  // evidence," not "assumed."
-  const latestGt = gtrends_history[0];
-  const external_factor = latestGt && Number.isFinite(Number(latestGt.interest_avg_pct))
-    ? Math.min(1, Math.max(0, Number(latestGt.interest_avg_pct) / 100))
-    : 0;
 
   // confidence: from FCT_TRENDS.CONFIDENCE (0-1)
   const confidence = Number(metrics?.confidence || 0.5);
 
   const heat_base =
-    20 * recency_factor +
+    25 * recency_factor +
     25 * velocity_factor +
-    25 * breadth_factor +
-    20 * external_factor +
+    40 * breadth_factor +
     10 * confidence;
 
   return {
@@ -280,7 +272,6 @@ function computeHeatBase({ metrics, signal_domain_counts, recent_signals, gtrend
       recency_factor: Math.round(recency_factor * 1000) / 1000,
       velocity_factor: Math.round(velocity_factor * 1000) / 1000,
       breadth_factor: Math.round(breadth_factor * 1000) / 1000,
-      external_factor: Math.round(external_factor * 1000) / 1000,
       confidence: Math.round(confidence * 1000) / 1000,
     },
   };
@@ -530,8 +521,9 @@ export default defineComponent({
 
     // Per-domain signal counts attached to this trend (from q_signal_domains).
     // Drives breadth_factor via Shannon entropy in computeHeatBase. Counts come
-    // from FCT_TREND_SIGNALS (both 'supporting' and 'attributed' LINK_KINDs)
-    // with each signal mapped to a canonical publisher domain.
+    // from FCT_TREND_SIGNALS (both 'supporting' and 'attributed' LINK_KINDs),
+    // windowed to signals active in the last 21 days (ADR-0005), with each
+    // signal mapped to a canonical publisher domain.
     const signal_domain_counts = Object.fromEntries(
       (this.signal_domain_rows || [])
         .filter((r) => r.DOMAIN && Number(r.SIGNAL_COUNT) > 0)
@@ -544,6 +536,7 @@ export default defineComponent({
       new_status: r.NEW_STATUS,
       prior_heat: r.PRIOR_HEAT,
       new_heat: r.NEW_HEAT,
+      heat_base: r.HEAT_BASE,
       heat_modifier_pct: r.HEAT_MODIFIER_PCT,
       reasoning: r.REASONING,
       retirement_proposal: parseVariant(r.RETIREMENT_PROPOSAL),
@@ -587,48 +580,43 @@ export default defineComponent({
       similarity: Number(r.SIMILARITY || 0),
     }));
 
-    // Merge promotion-time signals with vector-similar recent signals so
-    // recency + velocity reflect ongoing topic activity, not just the frozen
-    // promotion-time link set. Dedup by signal_id; sort newest-first so
-    // computeHeatBase sees the most recent signal at index 0.
-    const signalById = new Map();
-    for (const s of [...recent_signals, ...candidate_signals]) {
-      if (!signalById.has(s.signal_id)) signalById.set(s.signal_id, s);
-    }
-    const merged_signals = [...signalById.values()].sort((a, b) => {
-      const ta = a.signal_timestamp ? new Date(a.signal_timestamp).getTime() : 0;
-      const tb = b.signal_timestamp ? new Date(b.signal_timestamp).getTime() : 0;
-      return tb - ta;
-    });
-
-    // Compute heat baseline
+    // Heat v2 (ADR-0005): heat is computed from LINKED signals only.
+    // Candidate signals stay in the prompt as a growth hint but earn zero
+    // heat points — no merge. recent_signals arrives newest-first from SQL.
     const { heat_base, components } = computeHeatBase({
-      metrics, signal_domain_counts, recent_signals: merged_signals, gtrends_history,
+      metrics, signal_domain_counts, recent_signals,
     });
 
-    // Velocity + trajectory metrics for the agent's heat context block.
+    // Raw linked-evidence metrics for the agent's heat context block. The
+    // status rubric keys on these (never on modified heat — anti-feedback
+    // rule): linked n7 vs prior week, active publishers, days silent.
     const _now = Date.now();
     const _7d = 7 * 24 * 3600 * 1000;
     const _24h = 24 * 3600 * 1000;
-    const last7dSignals = merged_signals.filter(s => {
-      const ts = s.signal_timestamp ? new Date(s.signal_timestamp).getTime() : 0;
-      return ts > 0 && (_now - ts) <= _7d;
-    });
-    const last24hCount = merged_signals.filter(s => {
-      const ts = s.signal_timestamp ? new Date(s.signal_timestamp).getTime() : 0;
-      return ts > 0 && (_now - ts) <= _24h;
-    }).length;
-    const dailyVelocityAvg = (last7dSignals.length / 7).toFixed(1);
-    // lifecycle_history is sorted newest-first by the SQL query
-    const priorHeat = lifecycle_history.length ? Number(lifecycle_history[0].new_heat) : null;
-    const heatDelta = priorHeat !== null ? (heat_base - priorHeat).toFixed(1) : null;
+    const linkedTs = recent_signals
+      .map(s => (s.signal_timestamp ? new Date(s.signal_timestamp).getTime() : 0))
+      .filter(ts => ts > 0);
+    const last7dCount = linkedTs.filter(ts => (_now - ts) <= _7d).length;
+    const priorWeekCount = linkedTs.filter(ts => (_now - ts) > _7d).length; // 14d prefetch − last 7d
+    const last24hCount = linkedTs.filter(ts => (_now - ts) <= _24h).length;
+    const newestLinkedTs = linkedTs.length ? Math.max(...linkedTs) : null;
+    const daysSilent = newestLinkedTs !== null
+      ? ((_now - newestLinkedTs) / (24 * 3600 * 1000)).toFixed(1)
+      : null;
+    const activeDomains = Object.values(signal_domain_counts).filter(v => v > 0).length;
+    // lifecycle_history is sorted newest-first by the SQL query.
+    // Delta is raw-vs-raw (heat_base vs prior HEAT_BASE), never vs the
+    // status-modified value — see anti-feedback rule.
+    const priorHeatBase = lifecycle_history.length && lifecycle_history[0].heat_base != null
+      ? Number(lifecycle_history[0].heat_base) : null;
+    const heatDelta = priorHeatBase !== null ? (heat_base - priorHeatBase).toFixed(1) : null;
     const heatTrajectory = lifecycle_history.length
       ? lifecycle_history.slice(0, 5).map(h => `${h.evaluated_at}: ${h.new_heat}`).join(" → ")
       : null;
 
     const context = {
       neighbor_pool,
-      recent_signals: merged_signals,
+      recent_signals,
       lifecycle_history,
       proposed_decision: null,
       agent_session_id: ev.agent_session_id,
@@ -686,12 +674,14 @@ Specificity score: ${metrics.specificity_score}`;
 
     const heat_baseline_block = `heat_base = ${heat_base}
 components: ${fmtJson(components)}
-formula: 20*recency + 25*velocity + 25*breadth + 20*external + 10*confidence
-heat_delta (vs prior eval): ${heatDelta !== null ? heatDelta : "(first eval)"}
-heat_trajectory (recent evals, newest first): ${heatTrajectory || "(first eval)"}
-signals last 7d: ${last7dSignals.length} (avg ${dailyVelocityAvg}/day)
-signals last 24h: ${last24hCount}
-Your modifier window: [-20, 20] %`;
+formula: 25*recency + 25*velocity + 40*breadth + 10*confidence  (LINKED evidence only)
+heat_base_delta (vs prior eval's heat_base): ${heatDelta !== null ? heatDelta : "(first eval)"}
+heat_trajectory (committed heat, recent evals, newest first): ${heatTrajectory || "(first eval)"}
+LINKED signals last 7d: ${last7dCount}  |  prior week (7-14d ago): ${priorWeekCount}
+LINKED signals last 24h: ${last24hCount}
+days since newest linked signal: ${daysSilent !== null ? daysSilent : "(none in 14d window)"}
+active publisher domains (last 21d): ${activeDomains}
+Status heat factor is FIXED and applied at commit: GROWING/RESURGENT +10%, STABLE/NEW 0%, DECLINING -10%, DORMANT -15%.`;
 
     // Load + render prompts
     const loaded = loadPrompts(this.prompts_rows);

@@ -1,10 +1,17 @@
--- Procedure: Atomic apply for lifecycle-agent decisions (v3 — ledger only).
+-- Procedure: Atomic apply for lifecycle-agent decisions (v4 — heat v2).
 -- Database: MCC_RAW.MARKETING_DEV
 --
 -- Called by the lifecycle subagent's commit_decision step. Each decision
 -- gets exactly one row appended to FCT_TREND_LIFECYCLE_LEDGER. No FCT_TRENDS
 -- updates, no narrative writes, no daily snapshot writes — those are all
 -- derived now (V_TREND_LIFECYCLE_CURRENT handles "current state").
+--
+-- Heat v2 (ADR-0005): the heat modifier is a FIXED per-status factor applied
+-- here — GROWING/RESURGENT +10, STABLE/NEW 0, DECLINING −10, DORMANT −15.
+-- The agent's judgment is fully expressed in choosing the status; any
+-- heat_modifier_pct the agent still emits is ignored. The factor keys on the
+-- status actually applied (matters for first-cycle retire proposals, which
+-- keep the prior status).
 --
 -- Two-cycle retire confirm: if decision.status='RETIRED', the proc reads
 -- the prior ledger row's RETIREMENT_PROPOSAL. First proposal logs but keeps
@@ -22,7 +29,7 @@
 --     "heat_base":           42.3,
 --     "lifecycle_decision":  {
 --       "status":               "GROWING|STABLE|DECLINING|DORMANT|RESURGENT|RETIRED|NEW",
---       "heat_modifier_pct":    -3.5,
+--       "heat_modifier_pct":    -3.5,          (legacy; ignored since heat v2)
 --       "heat_modifier_reason": "...",
 --       "retirement_reason":    null | "...",
 --       "next_eval_in_hours":   6,
@@ -52,6 +59,15 @@ from datetime import datetime
 
 ALLOWED_STATUSES = {'NEW', 'GROWING', 'STABLE', 'DECLINING', 'DORMANT', 'RESURGENT', 'RETIRED'}
 
+# Heat v2 (ADR-0005): fixed per-status heat factor, applied in code. The
+# magnitude is never the LLM's to pick. RETIRED gets 0 — a committed
+# retirement's heat is moot.
+STATUS_HEAT_MODIFIER = {
+    'GROWING': 10, 'RESURGENT': 10,
+    'STABLE': 0, 'NEW': 0, 'RETIRED': 0,
+    'DECLINING': -10, 'DORMANT': -15,
+}
+
 
 def sql_str(s):
     if s is None or s == '':
@@ -69,14 +85,6 @@ def sql_num(n):
     if n is None or not isinstance(n, (int, float)):
         return 'NULL'
     return str(float(n))
-
-
-def clamp(n, lo, hi):
-    try:
-        v = float(n)
-    except (TypeError, ValueError):
-        return None
-    return max(lo, min(hi, v))
 
 
 def get_prior_lifecycle_row(session, trend_id):
@@ -167,19 +175,8 @@ def run(session, DECISIONS, CHAIN_ID, WRITE_LIVE):
             prior_heat_smoothed = prior_lc['new_heat_smoothed'] if prior_lc else None
             prior_proposal      = prior_lc['retirement_proposal'] if prior_lc else None
 
-            # Heat computation: clamp modifier, compute final, smooth via EWMA
-            heat_base = d.get('heat_base')
-            modifier  = clamp(decision.get('heat_modifier_pct', 0), -20, 20) or 0
-            new_heat  = None
-            if heat_base is not None:
-                new_heat = round(max(0, min(100, float(heat_base) * (1 + modifier / 100.0))), 1)
-
-            new_heat_smoothed = None
-            if new_heat is not None:
-                ps = float(prior_heat_smoothed) if prior_heat_smoothed is not None else float(new_heat)
-                new_heat_smoothed = round(0.5 * ps + 0.5 * float(new_heat), 1)
-
-            # Two-cycle retire confirm
+            # Two-cycle retire confirm (before heat: the fixed heat factor
+            # keys on the status actually applied)
             retirement_proposal = None
             actually_apply_status = status
             if status == 'RETIRED':
@@ -191,6 +188,19 @@ def run(session, DECISIONS, CHAIN_ID, WRITE_LIVE):
                 if prior_proposal is None:
                     # First proposal — log only, don't flip status
                     actually_apply_status = prior_status or 'DORMANT'
+
+            # Heat v2: fixed per-status factor (agent-supplied
+            # heat_modifier_pct is ignored), then EWMA smoothing
+            heat_base = d.get('heat_base')
+            modifier  = STATUS_HEAT_MODIFIER.get(actually_apply_status, 0)
+            new_heat  = None
+            if heat_base is not None:
+                new_heat = round(max(0, min(100, float(heat_base) * (1 + modifier / 100.0))), 1)
+
+            new_heat_smoothed = None
+            if new_heat is not None:
+                ps = float(prior_heat_smoothed) if prior_heat_smoothed is not None else float(new_heat)
+                new_heat_smoothed = round(0.5 * ps + 0.5 * float(new_heat), 1)
 
             # NEXT_EVAL_AT: clamped [1, 168] hours from NOW; NULL for RETIRED
             next_hours = decision.get('next_eval_in_hours')

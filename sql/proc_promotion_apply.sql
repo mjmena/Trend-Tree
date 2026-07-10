@@ -209,14 +209,15 @@ def seed_lifecycle_v0(session, trend_id):
     V_TREND_LIFECYCLE_CURRENT immediately surfaces it. Status NEW, initial
     heat from the same formula PROC v2 used inline, NEXT_EVAL_AT = +1h."""
     # Initial heat seed at promotion mirrors lifecycle subagent's computeHeatBase()
-    # — see lifecycle-subagent-p_gYC562o/run_subagent/entry.js. Keep both in sync.
-    # At promotion time: recency_factor = 1.0 (just emitted); external_factor = 0
-    # (no gtrends yet). Breadth uses source-name count as proxy for publisher
-    # count — lifecycle agent recomputes per-publisher within ~1h.
+    # v2 (ADR-0005) — see lifecycle-subagent-p_gYC562o/run_subagent/entry.js.
+    # Keep both in sync. At promotion time: recency_factor = 1.0 (signals just
+    # linked). Breadth uses source-family count as proxy for publisher domains
+    # (entropy proxy 1.0) — lifecycle agent recomputes per-publisher within ~1h.
+    # Status NEW → fixed heat factor 0, so NEW_HEAT = HEAT_BASE.
     #
-    # heat_base = 20*1 + 25*sigmoid((signal_count - 2)/3) + 25*log_score(sources)
-    #           + 0 + 10*confidence
-    # log_score = max(0, log2(n) - 0.5) / (log2(10) - 0.5), clamped to [0,1].
+    # heat_base = 25*1 + 25*min(1, signal_count/3) + 40*log_score(sources)
+    #           + 10*confidence
+    # log_score = (log2(n) - 0.5) / (log2(6) - 0.5), clamped to [0,1].
     session.sql(f"""
         INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER (
             TREND_ID, EVALUATED_AT, AGENT_SESSION_ID,
@@ -238,13 +239,12 @@ def seed_lifecycle_v0(session, trend_id):
                 t.TREND_ID,
                 t.PROMOTED_AT,
                 ROUND(LEAST(100, GREATEST(0,
-                    20.0
-                    + 25.0 / (1 + EXP(-((COALESCE(ARRAY_SIZE(c.SUPPORTING_SIGNAL_IDS), 0) - 2.0) / 3.0)))
-                    + 25.0 * LEAST(1.0, GREATEST(0.0,
+                    25.0
+                    + 25.0 * LEAST(1.0, COALESCE(ARRAY_SIZE(c.SUPPORTING_SIGNAL_IDS), 0) / 3.0)
+                    + 40.0 * LEAST(1.0, GREATEST(0.0,
                         (LOG(2, GREATEST(COALESCE(ARRAY_SIZE(OBJECT_KEYS(c.SOURCE_BREAKDOWN)), 0), 1)) - 0.5)
-                        / (LOG(2, 10) - 0.5)
+                        / (LOG(2, 6) - 0.5)
                     ))
-                    + 0
                     + 10.0 * COALESCE(c.CONFIDENCE, 0.5)
                 )), 1) AS heat_base
             FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
