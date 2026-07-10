@@ -46,10 +46,9 @@ steps:
         ),
         agg AS (
           SELECT
-            (SELECT COUNT(DISTINCT f.value::STRING)
-               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
-              WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}')
-                 OR c.DEDUP_OF_TREND_ID = '{{steps.handle_request.$return_value.trend_id}}') AS TOTAL_CLUSTER_SIZE,
+            (SELECT COUNT(DISTINCT SIGNAL_ID)
+               FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
+              WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}') AS TOTAL_CLUSTER_SIZE,
             (SELECT COUNT(DISTINCT k.value::STRING)
                FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => OBJECT_KEYS(c.SOURCE_BREAKDOWN)) k
               WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}')
@@ -102,10 +101,9 @@ steps:
         ),
         agg AS (
           SELECT
-            (SELECT COUNT(DISTINCT f.value::STRING)
-               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
-              WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}')
-                 OR c.DEDUP_OF_TREND_ID = '{{steps.handle_request.$return_value.trend_id}}') AS TOTAL_CLUSTER_SIZE,
+            (SELECT COUNT(DISTINCT SIGNAL_ID)
+               FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
+              WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}') AS TOTAL_CLUSTER_SIZE,
             (SELECT COUNT(DISTINCT k.value::STRING)
                FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => OBJECT_KEYS(c.SOURCE_BREAKDOWN)) k
               WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}')

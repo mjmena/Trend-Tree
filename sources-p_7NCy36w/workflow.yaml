@@ -25,12 +25,9 @@ steps:
           LIMIT 1
         ),
         cluster_size AS (
-          SELECT COUNT(DISTINCT f.value::STRING) AS TOTAL_CLUSTER_SIZE
-          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
-            ON c.CANDIDATE_ID = t.CANDIDATE_ID OR c.DEDUP_OF_TREND_ID = t.TREND_ID,
-               LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
-          WHERE t.TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+          SELECT COUNT(DISTINCT SIGNAL_ID) AS TOTAL_CLUSTER_SIZE
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
+          WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
         )
         SELECT t.TREND_ID, t.TREND_TOPIC,
                COALESCE(cs.TOTAL_CLUSTER_SIZE, 0)               AS TOTAL_CLUSTER_SIZE,
@@ -51,12 +48,9 @@ steps:
           LIMIT 1
         ),
         cluster_size AS (
-          SELECT COUNT(DISTINCT f.value::STRING) AS TOTAL_CLUSTER_SIZE
-          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
-            ON c.CANDIDATE_ID = t.CANDIDATE_ID OR c.DEDUP_OF_TREND_ID = t.TREND_ID,
-               LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
-          WHERE t.TREND_ID = '{{steps.trigger.event.body.trend_id}}'
+          SELECT COUNT(DISTINCT SIGNAL_ID) AS TOTAL_CLUSTER_SIZE
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
+          WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
         )
         SELECT t.TREND_ID, t.TREND_TOPIC,
                COALESCE(cs.TOTAL_CLUSTER_SIZE, 0)               AS TOTAL_CLUSTER_SIZE,
