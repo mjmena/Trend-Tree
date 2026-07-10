@@ -53,7 +53,11 @@ steps:
         FROM selected s
         JOIN MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD v USING (TREND_ID)
         ORDER BY
-          CASE WHEN v.VELOCITY_DIRECTION IN ('NEW','GROWING','RESURGENT') THEN 0 ELSE 1 END,
+          CASE
+            WHEN v.VELOCITY_DIRECTION = 'NEW' THEN 0
+            WHEN v.VELOCITY_DIRECTION IN ('GROWING','RESURGENT') THEN 1
+            ELSE 2
+          END,
           v.HEAT_INDEX DESC
         LIMIT 20
       query: |-
@@ -94,7 +98,11 @@ steps:
         FROM selected s
         JOIN MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD v USING (TREND_ID)
         ORDER BY
-          CASE WHEN v.VELOCITY_DIRECTION IN ('NEW','GROWING','RESURGENT') THEN 0 ELSE 1 END,
+          CASE
+            WHEN v.VELOCITY_DIRECTION = 'NEW' THEN 0
+            WHEN v.VELOCITY_DIRECTION IN ('GROWING','RESURGENT') THEN 1
+            ELSE 2
+          END,
           v.HEAT_INDEX DESC
         LIMIT 20
       params: []
@@ -120,4 +128,5 @@ steps:
       authProvisionId: apn_0WhgpWJ
     subject: "{{steps.build_email.$return_value.subject}}"
     html_body: "{{steps.build_email.$return_value.html_body}}"
+    text_body: "{{steps.build_email.$return_value.text_body}}"
 

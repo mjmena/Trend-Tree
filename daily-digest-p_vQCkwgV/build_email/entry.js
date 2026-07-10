@@ -53,6 +53,29 @@ const prettifyToken = (s) => String(s ?? "")
   .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
   .join(" ");
 
+// ---------- digest ordering ----------
+//
+// NEW always sorts to the very top — those are what readers scan for — then
+// other rising statuses (GROWING/RESURGENT), then everything else (filler).
+// Heat breaks ties within a tier. This single comparator backs both the
+// subject-line top-3 and the card render order so they can't drift apart.
+const velocityRank = (r) => {
+  const v = String(r?.VELOCITY_DIRECTION ?? "").toUpperCase();
+  if (v === "NEW") return 0;
+  if (v === "GROWING" || v === "RESURGENT") return 1;
+  return 2;
+};
+
+// "Rising" = new or moving (tiers 0-1); drives the subject/count copy.
+const isRising = (r) => velocityRank(r) < 2;
+
+// NEW is the headline tier — counted separately so the subject/header can
+// lead with "N new" rather than lumping NEW in with GROWING/RESURGENT.
+const isNew = (r) => velocityRank(r) === 0;
+
+const byTierThenHeat = (a, b) =>
+  velocityRank(a) - velocityRank(b) || (b.HEAT_INDEX ?? 0) - (a.HEAT_INDEX ?? 0);
+
 // ---------- HTML fragments ----------
 
 const chip = (label, { bg = "#f3f4f6", fg = "#374151", border = "#e5e7eb" } = {}) =>
@@ -116,6 +139,40 @@ const sourceRow = (sig) => {
     </tr>`;
 };
 
+// TOP_SIGNALS is the enrichment agent's curated source list for the card.
+// Top up from EVIDENCE (deduped by URL) when fewer than 3 are available.
+// Shared by the HTML card and the plaintext renderer so both show the same
+// sources.
+const topSignalsFor = (row) => {
+  const topRaw = (parseVariant(row.TOP_SIGNALS) || []).filter((s) => s && (s.url || s.URL));
+  const seenUrls = new Set(topRaw.map((s) => s.url || s.URL));
+  const evidenceTopUp = (parseVariant(row.EVIDENCE) || [])
+    .filter((ev) => ev && ev.url && !seenUrls.has(ev.url))
+    .map((ev) => ({ url: ev.url, title: ev.claim || ev.source, source: ev.source }));
+  return [...topRaw, ...evidenceTopUp].slice(0, 3);
+};
+
+const relatedNamesFor = (row) => (parseVariant(row.RELATED_TRENDS) || [])
+  .slice(0, 2)
+  .map((r) => r.trend_name || r.TREND_NAME)
+  .filter(Boolean);
+
+// Tier labels for the section dividers, indexed by velocityRank
+// (0=NEW, 1=GROWING/RESURGENT, 2=filler).
+const TIER_LABELS = ["New today", "Also rising", "Top by heat"];
+
+// A section divider: small uppercase label over a hairline rule. Groups the
+// cards by lifecycle tier so the NEW-first ordering reads at a glance.
+const sectionHeader = (label) =>
+  `<div style="margin:8px 2px 12px;padding-bottom:8px;border-bottom:1px solid #e5e7eb;font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.1em;text-transform:uppercase;">${esc(label)}</div>`;
+
+// Prefer-light hints. Best-effort — Gmail/Outlook.com still force-invert in
+// dark mode regardless — but this stops well-behaved clients (Apple Mail,
+// Outlook desktop) from auto-darkening the light palette.
+const HEAD_META = `<meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <style>:root{color-scheme:light;supported-color-schemes:light;}</style>`;
+
 const renderCard = (row) => {
   // TREND_NAME is the B2C-first coalesced headline from DT_TREND_DASHBOARD
   // (COALESCE(B2C, B2B, topic)). B2B is shown as a muted subtitle when it
@@ -134,14 +191,7 @@ const renderCard = (row) => {
   const velocity = velocityChip(row.VELOCITY_DIRECTION);
   const heat = heatChip(row.HEAT_INDEX);
 
-  // TOP_SIGNALS is the enrichment agent's curated source list for the card.
-  // Top up from EVIDENCE (deduped by URL) when fewer than 3 are available.
-  const topRaw = (parseVariant(row.TOP_SIGNALS) || []).filter((s) => s && (s.url || s.URL));
-  const seenUrls = new Set(topRaw.map((s) => s.url || s.URL));
-  const evidenceTopUp = (parseVariant(row.EVIDENCE) || [])
-    .filter((ev) => ev && ev.url && !seenUrls.has(ev.url))
-    .map((ev) => ({ url: ev.url, title: ev.claim || ev.source, source: ev.source }));
-  const topSignals = [...topRaw, ...evidenceTopUp].slice(0, 3);
+  const topSignals = topSignalsFor(row);
   const sourcesHtml = topSignals.length > 0
     ? `<div style="margin-top:14px;">
          <div style="font-size:10px;font-weight:700;color:#9ca3af;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;">Sources</div>
@@ -151,10 +201,7 @@ const renderCard = (row) => {
        </div>`
     : "";
 
-  const relatedNames = (parseVariant(row.RELATED_TRENDS) || [])
-    .slice(0, 2)
-    .map((r) => r.trend_name || r.TREND_NAME)
-    .filter(Boolean);
+  const relatedNames = relatedNamesFor(row);
   const relatedHtml = relatedNames.length
     ? `<p style="margin:10px 0 0;font-size:12px;color:#9ca3af;line-height:1.5;">Related: ${relatedNames.map(esc).join(" · ")}</p>`
     : "";
@@ -179,6 +226,43 @@ const renderCard = (row) => {
       ${sourcesHtml}
       ${relatedHtml}
     </div>`;
+};
+
+// Plaintext counterpart of renderCard — the MIME text/plain alternative.
+// Same fields, no markup: headline, optional B2B subtitle, a meta line,
+// summary, sources (title + bare URL), related.
+const renderCardText = (row) => {
+  const headline = row.TREND_NAME ?? "(untitled trend)";
+  const b2b = row.TREND_NAME_B2B || null;
+  const subtitle = b2b && b2b !== headline ? b2b : null;
+
+  const status = row.VELOCITY_DIRECTION ? prettifyToken(row.VELOCITY_DIRECTION) : "";
+  const heatVal = Number(row.HEAT_INDEX);
+  const heat = row.HEAT_INDEX != null && !Number.isNaN(heatVal)
+    ? `Heat ${heatVal.toFixed(1)}`
+    : "";
+  const cat = [row.CATEGORY, row.SUBCATEGORY].filter(Boolean).map(prettifyToken).join(" / ");
+  const meta = [status, heat, cat].filter(Boolean).join(" · ");
+
+  const summary = String(row.SUMMARY_SHORT ?? "").trim();
+
+  const sourceLines = topSignalsFor(row)
+    .map((s) => {
+      const url = s.url ?? s.URL;
+      const title = s.title ?? s.TITLE ?? s.source ?? s.SOURCE ?? url;
+      return `  - ${title}\n    ${url}`;
+    })
+    .join("\n");
+
+  const related = relatedNamesFor(row);
+
+  const lines = [headline];
+  if (subtitle) lines.push(`(${subtitle})`);
+  if (meta) lines.push(meta);
+  if (summary) lines.push(summary);
+  if (sourceLines) lines.push(`Sources:\n${sourceLines}`);
+  if (related.length) lines.push(`Related: ${related.join(" · ")}`);
+  return lines.join("\n");
 };
 
 // ---------- main component ----------
@@ -208,43 +292,46 @@ export default defineComponent({
     const dateStr = fmtDate(new Date());
     const shortDate = fmtDateShort(new Date());
 
-    const isRisingStatus = (v) => {
-      const u = String(v ?? "").toUpperCase();
-      return u === "NEW" || u === "GROWING" || u === "RESURGENT";
-    };
-
-    const risingCount = rows.filter((r) => isRisingStatus(r.VELOCITY_DIRECTION)).length;
+    const risingCount = rows.filter(isRising).length;
+    const newCount = rows.filter(isNew).length;
+    const otherRisingCount = risingCount - newCount; // GROWING / RESURGENT
     const fillerCount = rows.length - risingCount;
 
     // Pick the top 3 names for the subject in the same order the cards
-    // render: rising-first bucket, then heat desc within each bucket.
+    // render: NEW first, then other rising, then filler; heat desc within tier.
     const topNames = rows
       .slice()
-      .sort((a, b) => {
-        const ra = isRisingStatus(a.VELOCITY_DIRECTION) ? 0 : 1;
-        const rb = isRisingStatus(b.VELOCITY_DIRECTION) ? 0 : 1;
-        if (ra !== rb) return ra - rb;
-        return (b.HEAT_INDEX ?? 0) - (a.HEAT_INDEX ?? 0);
-      })
+      .sort(byTierThenHeat)
       .slice(0, 3)
       .map((r) => r.TREND_NAME)
       .filter(Boolean)
       .join(", ");
 
-    // Subject is "<count> new and rising trends: <top 3>" so the inbox
-    // line names what's in this issue. Friendly-from already says
-    // "Trend Digest" so the wordmark isn't repeated.
+    // Lead the count copy with NEW — that's the tier readers scan for — and
+    // only name "rising" for the GROWING/RESURGENT remainder. Shared by the
+    // subject line and the header/preheader blurb so they stay in step.
+    // Yields "2 new + 3 rising", "2 new", or "3 rising" (only used when
+    // risingCount > 0).
+    const risingNoun = risingCount === 1 ? "trend" : "trends";
+    const risingPhrase = newCount > 0 && otherRisingCount > 0
+      ? `${newCount} new + ${otherRisingCount} rising`
+      : newCount > 0
+        ? `${newCount} new`
+        : `${otherRisingCount} rising`;
+
+    // Subject names what's in this issue, leading with new. Friendly-from
+    // already says "Trend Digest" so the wordmark isn't repeated.
     const subject = rows.length === 0
       ? `Trend Digest · ${shortDate}`
       : risingCount > 0
-        ? `${risingCount} new and rising ${risingCount === 1 ? "trend" : "trends"}: ${topNames}`
+        ? `${risingPhrase} ${risingNoun}: ${topNames}`
         : `${rows.length} top ${rows.length === 1 ? "trend" : "trends"}: ${topNames}`;
 
     const countBlurb = risingCount === 0
       ? `${rows.length} top ${rows.length === 1 ? "trend" : "trends"} by heat`
       : fillerCount > 0
-        ? `${risingCount} new and rising, plus ${fillerCount} top by heat`
-        : `${risingCount} new and rising ${risingCount === 1 ? "trend" : "trends"}`;
+        ? `${risingPhrase}, plus ${fillerCount} top by heat`
+        : `${risingPhrase} ${risingNoun}`;
 
     const introHtml = introText
       ? `<div style="margin:0 0 24px;padding:18px 22px;background:#ffffff;border:1px solid #e5e7eb;border-left:3px solid #2563eb;border-radius:8px;font-size:14px;line-height:1.6;color:#1f2937;font-style:italic;">
@@ -283,7 +370,14 @@ export default defineComponent({
     // Empty-state short-circuit.
     if (rows.length === 0) {
       const emptyHtml = `<!DOCTYPE html>
-<html><body style="margin:0;padding:48px 20px;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  ${HEAD_META}
+  <title>${esc(subject)}</title>
+</head>
+<body style="margin:0;padding:48px 20px;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
   ${preheaderHtml}
   <div style="max-width:600px;margin:0 auto;">
     ${header}
@@ -293,32 +387,60 @@ export default defineComponent({
     </div>
   </div>
 </body></html>`;
+      const emptyText = [
+        "TREND INSIGHTS DAILY",
+        dateStr,
+        "",
+        "No new or rising trends right now.",
+        "The digest will resume once fresh enrichment output lands.",
+        "",
+        "--",
+        `Open dashboard: ${DASHBOARD_URL}`,
+      ].join("\n");
       $.export("$summary", `${subject} — empty`);
-      return { subject, html_body: emptyHtml };
+      return { subject, html_body: emptyHtml, text_body: emptyText };
     }
 
-    // Rising trends first (bucket 0), filler top-heat trends after (bucket 1);
-    // within each bucket, sort by heat desc.
-    const isRising = (r) => {
-      const v = String(r.VELOCITY_DIRECTION ?? "").toUpperCase();
-      return v === "NEW" || v === "GROWING" || v === "RESURGENT";
-    };
-    const cards = rows
-      .slice()
-      .sort((a, b) => {
-        const ra = isRising(a) ? 0 : 1;
-        const rb = isRising(b) ? 0 : 1;
-        if (ra !== rb) return ra - rb;
-        return (b.HEAT_INDEX ?? 0) - (a.HEAT_INDEX ?? 0);
-      })
-      .map(renderCard)
+    // Sort NEW-first, then bucket by lifecycle tier so each tier can get its
+    // own section divider ("New today" / "Also rising" / "Top by heat"). One
+    // grouping feeds both the HTML cards and the plaintext body.
+    const sorted = rows.slice().sort(byTierThenHeat);
+    const tierGroups = [0, 1, 2].map((tier) => sorted.filter((r) => velocityRank(r) === tier));
+
+    const sections = tierGroups
+      .map((group, tier) => (group.length
+        ? sectionHeader(TIER_LABELS[tier]) + group.map(renderCard).join("")
+        : ""))
       .join("");
+
+    const textSections = tierGroups
+      .map((group, tier) => (group.length
+        ? `== ${TIER_LABELS[tier].toUpperCase()} ==\n\n${group.map(renderCardText).join("\n\n")}`
+        : ""))
+      .filter(Boolean)
+      .join("\n\n\n");
+
+    // Plaintext MIME alternative — deliverability + watch/notification/screen
+    // reader fallback. Mirrors the HTML: masthead, count blurb, optional
+    // editorial intro, then the same tiered sections.
+    const textParts = ["TREND INSIGHTS DAILY", dateStr, countBlurb];
+    if (introText) textParts.push("", introText);
+    textParts.push(
+      "",
+      textSections,
+      "",
+      "--",
+      `Open dashboard: ${DASHBOARD_URL}`,
+      `Generated by Trend Tree · ${dateStr}`,
+    );
+    const text_body = textParts.join("\n");
 
     const html_body = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  ${HEAD_META}
   <title>${esc(subject)}</title>
 </head>
 <body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#111827;">
@@ -329,7 +451,7 @@ export default defineComponent({
         <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;">
           <tr><td>${header}</td></tr>
           ${introHtml ? `<tr><td>${introHtml}</td></tr>` : ""}
-          <tr><td>${cards}</td></tr>
+          <tr><td>${sections}</td></tr>
           <tr>
             <td style="padding:24px 4px 8px 4px;text-align:center;font-size:11px;color:#9ca3af;">
               Generated by Trend Tree · ${esc(dateStr)}
@@ -343,6 +465,6 @@ export default defineComponent({
 </html>`;
 
     $.export("$summary", `${subject} — ${rows.length} cards`);
-    return { subject, html_body };
+    return { subject, html_body, text_body };
   },
 });
