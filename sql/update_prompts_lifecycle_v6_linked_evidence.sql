@@ -38,8 +38,15 @@ INSERT INTO DIM_LLM_PROMPT (PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS, 
 SELECT
     'lifecycle.subagent.system',
     6,
-    MODEL,
-    $$You are the lifecycle agent for one trend. Your job is to re-evaluate a previously-promoted trend's state by reading pre-fetched Snowflake context and emitting one structured decision via `propose_lifecycle_decision`.
+    p.MODEL,
+    t.TPL,
+    p.MODEL_PARAMS,
+    TRUE,
+    MD5(t.TPL),
+    'marty',
+    'v6 heat formula v2 (ADR-0005): linked evidence only; agent no longer sets heat modifier — fixed per-status factor at commit; candidates advisory-only'
+FROM DIM_LLM_PROMPT p
+CROSS JOIN (SELECT $$You are the lifecycle agent for one trend. Your job is to re-evaluate a previously-promoted trend's state by reading pre-fetched Snowflake context and emitting one structured decision via `propose_lifecycle_decision`.
 
 You are PURELY EVALUATIVE. You do not hunt signals — promotion and distillation already do that. You do not call live web/API tools. Every input you need is in the prefetched context blocks below. The in-process query tools just slice and filter that prefetched data.
 
@@ -137,22 +144,13 @@ HEAT BASELINE (precomputed, linked evidence only):
 
 Read the context. Use query tools if you want to slice it differently. Reason through the decision rubric. Then call `propose_lifecycle_decision` exactly once with your final answer.
 
-Be honest about uncertainty — STABLE is a fine answer when nothing has materially changed. Don't fabricate movement to seem useful.$$,
-    MODEL_PARAMS,
-    TRUE,
-    NULL,
-    'marty',
-    'v6 heat formula v2 (ADR-0005): linked evidence only; agent no longer sets heat modifier — fixed per-status factor at commit; candidates advisory-only'
-FROM DIM_LLM_PROMPT
-WHERE PROMPT_KEY = 'lifecycle.subagent.system'
-  AND VERSION = 5
+Be honest about uncertainty — STABLE is a fine answer when nothing has materially changed. Don't fabricate movement to seem useful.$$ AS TPL) t
+WHERE p.PROMPT_KEY = 'lifecycle.subagent.system'
+  AND p.VERSION = 5
   AND NOT EXISTS (
     SELECT 1 FROM DIM_LLM_PROMPT
     WHERE PROMPT_KEY = 'lifecycle.subagent.system' AND VERSION = 6
   );
-
-UPDATE DIM_LLM_PROMPT SET CONTENT_HASH = MD5(TEMPLATE)
-WHERE PROMPT_KEY = 'lifecycle.subagent.system' AND VERSION = 6 AND CONTENT_HASH IS NULL;
 
 COMMIT;
 
@@ -169,8 +167,15 @@ INSERT INTO DIM_LLM_PROMPT (PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS, 
 SELECT
     'lifecycle.subagent.decision_rubric',
     6,
-    MODEL,
-    $$Branch on the trend's current LIFECYCLE_STATUS. For each, the default action and the override conditions.
+    p.MODEL,
+    t.TPL,
+    p.MODEL_PARAMS,
+    TRUE,
+    MD5(t.TPL),
+    'marty',
+    'v6 heat formula v2 (ADR-0005): thresholds re-keyed to raw linked metrics (n7 vs prior week, active domains 21d, days silent); modifier + source-breadth callout sections removed; GT advisory only'
+FROM DIM_LLM_PROMPT p
+CROSS JOIN (SELECT $$Branch on the trend's current LIFECYCLE_STATUS. For each, the default action and the override conditions.
 
 ═══ IMPORTANT: WHICH NUMBERS GATE DECISIONS ═══
 
@@ -284,21 +289,12 @@ Set `request_re_enrichment: true` ONLY when:
 - New signal types have appeared since enrichment (e.g., trend started as Bluesky-only and now has news + ecommerce coverage that warrants fuller treatment)
 - Status flipped to RESURGENT after a long DORMANT period (the trend has "come back different")
 
-Re-enrichment costs ~$0.40-0.50; don't request it for cosmetic narrative tweaks.$$,
-    MODEL_PARAMS,
-    TRUE,
-    NULL,
-    'marty',
-    'v6 heat formula v2 (ADR-0005): thresholds re-keyed to raw linked metrics (n7 vs prior week, active domains 21d, days silent); modifier + source-breadth callout sections removed; GT advisory only'
-FROM DIM_LLM_PROMPT
-WHERE PROMPT_KEY = 'lifecycle.subagent.decision_rubric'
-  AND VERSION = 5
+Re-enrichment costs ~$0.40-0.50; don't request it for cosmetic narrative tweaks.$$ AS TPL) t
+WHERE p.PROMPT_KEY = 'lifecycle.subagent.decision_rubric'
+  AND p.VERSION = 5
   AND NOT EXISTS (
     SELECT 1 FROM DIM_LLM_PROMPT
     WHERE PROMPT_KEY = 'lifecycle.subagent.decision_rubric' AND VERSION = 6
   );
-
-UPDATE DIM_LLM_PROMPT SET CONTENT_HASH = MD5(TEMPLATE)
-WHERE PROMPT_KEY = 'lifecycle.subagent.decision_rubric' AND VERSION = 6 AND CONTENT_HASH IS NULL;
 
 COMMIT;
