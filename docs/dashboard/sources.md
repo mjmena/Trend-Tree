@@ -3,10 +3,11 @@
 
 # Where the signals come from
 
-The pipeline knows about 15 sources today, of which roughly 10 are actively ingesting at any moment (a few are paused or intermittent — flagged per-source below). The sources fall into two functional buckets:
+The pipeline knows about ~14 sources today; several are paused, retired, or on-demand (flagged per-source below). The sources fall into three functional buckets:
 
 - **Direct platform sources** are integrations that pull from a single platform's public API or feed. These are canonical — every signal is verifiable end-to-end against the source.
 - **Discovery agents** are LLMs that proactively search the public web for emerging themes every 2 hours. They return URLs we post-verify before ingesting; some signals are filtered out before they reach the trend. _LLM-mediated, with post-verification._
+- **Agent search tools** (e.g. `grok_live`, `search-gdelt`) are on-demand search tools the distillation and enrichment agents call while reasoning about a specific cluster or trend. They don't run on a schedule.
 
 ---
 
@@ -23,9 +24,9 @@ The pipeline knows about 15 sources today, of which roughly 10 are actively inge
 
 ### `gdelt`
 
-- **What it is** — GDELT (Global Database of Events, Language, and Tone) — a news-monitoring index covering thousands of publishers worldwide.
+- **What it is** — GDELT (Global Database of Events, Language, and Tone) — a news-monitoring index covering thousands of publishers worldwide. The **passive GDELT batch ingester was retired 2026-04-26**; `gdelt` rows now come **only** from the `search-gdelt` agent search tool.
 - **Provides** — News articles tagged by theme, location, sentiment.
-- **Cadence** — _TODO: confirm current cadence (15-min default, may be throttled)_
+- **Cadence** — On-demand — called by the distillation and enrichment agents, not on a fixed schedule.
 - **Publisher** — Extracted from `METADATA:domain` per article; many publishers (NYT, WaPo, BBC, etc.).
 - **Reliability** — Canonical.
 - **Notes** — Requires a `User-Agent` header (default node-fetch UA gets dropped silently); some IP-based rate limiting in effect.
@@ -52,17 +53,16 @@ The pipeline knows about 15 sources today, of which roughly 10 are actively inge
 
 - **What it is** — Wikipedia pageview signals.
 - **Provides** — Pageview spikes for Wikipedia articles.
-- **Cadence** — _TODO: confirm — the batch ingester was retired in late April 2026; historical data is preserved in `FCT_SIGNALS` but new ingestion may be paused. Mark active vs historical._
+- **Cadence** — Not currently ingesting — the passive batch ingester was retired in late April 2026. Historical data is preserved in `FCT_SIGNALS`.
 - **Publisher** — Always `wikipedia.org`.
 - **Reliability** — Canonical.
 
-### `tiktok`
+### `tiktok` — ⚠ scrapped 2026-06-09
 
-- **What it is** — TikTok trending signals.
-- **Provides** — Trending video / sound signals.
-- **Cadence** — _TODO: confirm_
+- **What it is** — TikTok trending signals. **This source was scrapped on 2026-06-09 and the ingestion workflow retired.** TikTok took down the scraped Creative Center page and the hashtag-level output never met the distillation specificity rubric. Historical `tiktok` rows are preserved in `FCT_SIGNALS`.
+- **Provides** — (retired) Trending video / sound signals.
 - **Publisher** — Always `tiktok.com`.
-- **Reliability** — Canonical, with shape caveats — _TODO: confirm whether the TikTok ingester is currently routing to the test table or to live (it was paused in April 2026 pending shape fixes)_.
+- **Reliability** — No longer ingesting; kept for historical reference only.
 
 ### `pinterest`
 
@@ -92,11 +92,17 @@ The pipeline knows about 15 sources today, of which roughly 10 are actively inge
 - **Publisher** — From `METADATA:source_name`.
 - **Reliability** — Same as discovery agents above.
 
+---
+
+## Agent search tools
+
+These are **not** discovery agents — they're on-demand search tools the distillation and enrichment agents call while reasoning about a specific cluster or trend. They don't run on a cron; they fire only when an agent invokes them.
+
 ### `grok_live`
 
-- **What it is** — Grok's live search API, used to pull real-time X (Twitter) content during enrichment.
+- **What it is** — Grok's live search API, an agent search tool. **X-only since 2026-05-28** — it pulls real-time X (Twitter) content.
 - **Provides** — Social-platform signals grounded via Grok's search.
-- **Cadence** — Called on demand by the enrichment agent.
+- **Cadence** — Called on demand by the distillation and enrichment agents (not on a schedule).
 - **Publisher** — Always `x.com`.
 - **Reliability** — LLM-mediated.
 

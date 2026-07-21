@@ -18,9 +18,9 @@ Trend Tree is a coordinated system of five specialized AI agents. Each owns exac
 
 **Promotion** — A second Gemini agent evaluates each candidate against the live portfolio and decides: new standalone trend, duplicate of one already tracked, or noise. Approved candidates fire the enrichment chain immediately.
 
-**Enrichment** — A Claude Sonnet 4.6 agent loop produces the canonical trend record: B2C name (editorial), B2B name (sponsorship pitch), summary, audience profiles, and cited evidence. A four-layer naming pass — interleaved thinking, live grounding (Bluesky, GDELT, Grok search), in-prompt anti-cliché review, and a post-emission reviewer — keeps names sharp, specific, and brand-safe.
+**Enrichment** — A Claude Sonnet 4.6 agent loop produces the canonical trend record: a single clarity-first `TREND_NAME`, summary, audience profiles, and cited evidence. A four-layer naming pass — interleaved thinking, live grounding (Bluesky, GDELT, Grok search), in-prompt anti-cliché review, and a post-emission reviewer — keeps names sharp, specific, and brand-safe. (The earlier dual B2C/B2B naming was retired at the 2026-05-27 singular-name cutover — see ADR-0001.)
 
-**Lifecycle** — A Gemini sweeper runs hourly. For each active trend it recomputes the heat index from signal velocity, classifies the trajectory (NEW / GROWING / STABLE / PEAK / STAGNANT / DECLINING), flags meaningful narrative drift, and retires trends that have gone quiet.
+**Lifecycle** — A Gemini sweeper runs hourly. For each active trend it recomputes the heat index from linked-evidence velocity and breadth, classifies the trajectory (NEW / GROWING / STABLE / DECLINING / DORMANT / RESURGENT / RETIRED), flags meaningful narrative drift, and retires trends that have gone quiet.
 
 ---
 
@@ -30,8 +30,7 @@ Each trend on the dashboard is a complete, ready-to-use intelligence record:
 
 | Field | Example |
 |---|---|
-| **B2C name** (editorial / consumer) | *The White Cast Vanishing Act* |
-| **B2B name** (sponsorship pitch) | *Invisible Zinc Pivot* |
+| **Name** (clarity-first) | *The White Cast Vanishing Act* |
 | **Category** | beauty |
 | **Heat index** | 63.8 / 100 |
 | **Status** | STABLE |
@@ -55,7 +54,7 @@ That said, our structured ingestion runs continuously across five source familie
 - **Social** — Bluesky
 - **Search** — Google Trends
 - **Commerce** — Amazon Movers & Shakers
-- **Video / Other** — TikTok, Pinterest
+- **Other** — Pinterest (the TikTok scraper was retired 2026-06-09; the Grok discovery lane now covers the TikTok cultural niche)
 
 Verticals are configurable and tuned per-model, so coverage can be reweighted as editorial and sponsorship priorities shift.
 

@@ -3,7 +3,7 @@
 Field contract for downstream consumers of the emergence-prediction outputs
 (`PREDICTION_SCORE` / `PREDICTION_FLAG` / `PREDICTION_ELIGIBLE`). For how these
 are computed see [`prediction-flow.md`](prediction-flow.md); for the full data
-model see [`schema.md`](schema.md). Produced by `prediction-agent-p_QPCkLP1`.
+model see [`dashboard/data-contract.md`](dashboard/data-contract.md). Produced by `prediction-agent-p_QPCkLP1`.
 
 > **`COMPUTATION_VERSION = v2` (2026-06-08, issue #33).** The two link-based
 > scoring *inputs* (source-diversity, cluster-formation) were redefined from

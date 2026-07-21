@@ -53,8 +53,9 @@ All workflows share network `net_5Lnie3` (required for Snowflake egress allowlis
 | Workflow ID | Directory | Trigger | Purpose | Lambda |
 |---|---|---|---|---|
 | `p_5VCPP3N` | `discovery-p_5VCPP3N` | 3× cron (per-LLM) + HTTP | Multi-model signal discovery across 6 verticals | 4096 MB · 600s |
-| `p_mkCBBqb` | `distillation-p_mkCBBqb` | cron 2h + HTTP | Lead orchestrator: cluster-hinted signal window → subagent fanout | 8192 MB · 750s |
+| `p_mkCBBqb` | `distillation-p_mkCBBqb` | cron 4h + watchdog demand-fire + HTTP | Lead orchestrator: cluster-hinted signal window → dispatches to shared cluster-agent | 8192 MB · 750s |
 | `p_jmCjj3J` | `distillation-subagent-p_jmCjj3J` | HTTP | Per-hypothesis verdict: REAL_TREND / NOISE / DUPLICATE | 4096 MB · 600s |
+| `p_YyC89Ke` | `distillation-cluster-agent-p_YyC89Ke` | HTTP (suspend/resume) | Shared Gemini 3.1 Pro cluster reasoner; called by distillation + revisit | 8192 MB · 750s |
 | `p_o7CWWZl` | `distillation-revisit-p_o7CWWZl` | cron + HTTP | Re-investigates previously deferred candidates | 4096 MB · 750s |
 | `p_ezCwwKm` | `distillation-revisit-subagent-p_ezCwwKm` | HTTP | Subagent for revisit pass | 4096 MB · 600s |
 | `p_dDCWWPg` | `distillation-watchdog-p_dDCWWPg` | cron ~5min | Fires distillation on demand if pool backlog > threshold or cursor stale | 512 MB · 60s |
@@ -68,10 +69,10 @@ All workflows share network `net_5Lnie3` (required for Snowflake egress allowlis
 | `p_gYC562o` | `lifecycle-subagent-p_gYC562o` | HTTP | Per-trend status + heat evaluation (Gemini 3.1 Pro) | 4096 MB · 600s |
 | `p_KwCoaap` | `lifecycle-attribution-agent-p_KwCoaap` | HTTP | Attribution lifecycle agent | 4096 MB · 600s |
 | `p_PACe77B` | `lifecycle-attribution-subagent-p_PACe77B` | HTTP | Attribution lifecycle subagent | 4096 MB · 600s |
-| `p_QPCkLP1` | `prediction-agent-p_QPCkLP1` | HTTP (+ daily cron TBD) | Deterministic emergence scorer over all live trends → FCT_TREND_PREDICTION_LEDGER | 4096 MB · 600s |
+| `p_QPCkLP1` | `prediction-agent-p_QPCkLP1` | cron daily 14:00 UTC + HTTP | Deterministic emergence scorer over all live trends → FCT_TREND_PREDICTION_LEDGER | 4096 MB · 600s |
 | `p_13CN9KG` | `gtrends-poller-p_13CN9KG` | cron daily | Google Trends interest curves → FCT_TREND_GTRENDS_DAILY | 2048 MB · 600s |
 | `p_vQCkwgV` | `daily-digest-p_vQCkwgV` | cron daily | Assembles + sends trend digest via Braze | 2048 MB · 300s |
-| `p_zAC1Nd9` | `error-alerts-p_zAC1Nd9` | HTTP | Slack error notifications when a workflow errors | — |
+| `p_xMC9nm3` | `audit-agent-p_xMC9nm3` | cron daily 13:00 UTC + HTTP | Gemini 3.1 Pro health auditor → FCT_AUDIT_LEDGER + Slack DM (gated non-GREEN) | 2048 MB · 300s |
 
 ---
 
@@ -193,9 +194,12 @@ Update schedule: `PUT /v1/sources/{source_id}` with new `intervalSeconds`.
 |---|---|---|---|
 | `ingestion/amazon-p_rvC71gN` | Amazon Movers & Shakers | cron | `STG_EXTERNAL_SIGNALS` |
 | `ingestion/bluesky-p_V9CgV17` | Bluesky public feed | cron | `STG_EXTERNAL_SIGNALS` |
-| `ingestion/google-trends-p_3nC3xkk` | Google Trends | cron | `STG_EXTERNAL_SIGNALS` |
-| `ingestion/tiktok-p_yKCm9Am` | TikTok trending | cron | `STG_EXTERNAL_SIGNALS` (TEST table) |
+| `ingestion/google-trends-p_3nC3xkk` | Google Trends (RSS daily-trends) | cron | `STG_EXTERNAL_SIGNALS` |
+| `ingestion/ingest-google-trends-explore-p_wOC618j` | Google Trends Explore (per-keyword interest) | cron | `STG_EXTERNAL_SIGNALS` |
 | `ingestion/pinterest-p_xMC9jR5` | Pinterest trends | cron | `STG_EXTERNAL_SIGNALS` (TEST table) |
+| ~~`ingestion/tiktok-p_yKCm9Am`~~ | ~~TikTok trending~~ | — | **Scrapped 2026-06-09** — page retired; workflow deactivated |
+
+**LLM discovery verticals** (`ingestion/LLM/`) — per-vertical Gemini discovery agents feeding `STG_EXTERNAL_SIGNALS`: `gemini-food-drink-p_5VCPJVJ`, `gemini-other-p_dDCWMDJ`, `gemini-travel-p_BjC3yGQ`, `gemini-wellness-p_zAC1DvL`, plus `gemini-prompt-tester-p_ZJCrPWJ` (non-prod harness).
 
 **Agent-callable search tools** (HTTP, fired on-demand by agent tool loops):
 
@@ -398,7 +402,7 @@ Active prompt keys in `DIM_LLM_PROMPT` (`IS_ACTIVE = TRUE`):
 
 | Key | Model | Notes |
 |---|---|---|
-| `discovery.gemini.system` | Gemini 3.1 Pro | |
+| `discovery.gemini.system` | Gemini 2.5 Flash | |
 | `discovery.grok.system` | Grok | |
 | `discovery.chatgpt.system` | ChatGPT | |
 | `distillation.lead.system` v5 | Gemini 3.1 Pro | Cluster-hint aware |

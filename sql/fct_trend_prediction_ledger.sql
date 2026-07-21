@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS MCC_PRESENTATION.TREND_AGENT.FCT_TREND_PREDICTION_LED
 
   PREDICTION_SCORE       NUMBER(5,1)                            COMMENT '0-100, NULL when trend too young for WoW math (<14d)',
   PREDICTION_FLAG        VARCHAR(32)                            COMMENT 'Emerging|Watchlist|High Potential|NULL',
-  PREDICTION_ELIGIBLE    BOOLEAN       DEFAULT FALSE            COMMENT 'top-30%-by-score AND positive deltas AND heat<60 AND age>=14d',
+  PREDICTION_ELIGIBLE    BOOLEAN       DEFAULT FALSE            COMMENT 'top-30%-by-score AND positive deltas AND heat<70 AND age>=14d',
 
   -- Scoring inputs (audit trail + future tuning)
   INPUT_HEAT_NOW         FLOAT                                  COMMENT 'NEW_HEAT_SMOOTHED of latest lifecycle ledger row',

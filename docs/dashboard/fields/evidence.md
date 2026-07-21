@@ -24,6 +24,8 @@
 
 ## TOP_SIGNALS
 
+> ⚠ **Deprecated.** Kept while the front end migrates; new work should read `EVIDENCE` directly (first 5 news/commerce/social entries).
+
 **At a glance** — The 5 strongest evidence entries — what the agent thinks best represents the trend.
 
 **Scale** — Array of up to 5 entries.

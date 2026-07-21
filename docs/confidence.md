@@ -2,9 +2,9 @@
 
 **Who this is for:** Anyone using the Trend Dashboard who needs to defend a decision based on it — content strategy, editorial, analyst, leadership. If a number on the screen surprises you, this doc tells you where it came from.
 
-**Last updated:** 2026-06-09
+**Last updated:** 2026-07-21
 
-For the technical deep-dive, see [`architecture.md`](architecture.md) and [`schema.md`](schema.md). For Pipedream/Snowflake context, see [`../CLAUDE.md`](../CLAUDE.md).
+For the technical deep-dive, see [`architecture.md`](architecture.md) and [`dashboard/data-contract.md`](dashboard/data-contract.md). For Pipedream/Snowflake context, see [`../CLAUDE.md`](../CLAUDE.md).
 
 ---
 
@@ -49,7 +49,7 @@ Each model gets a different prompt and a different angle. Every proposed signal 
 | Amazon Movers & Shakers | Product trends across 6 departments |
 | Pinterest | Trending content |
 
-Each ingester runs on its own cron schedule, configured in the Pipedream UI (not in git). Check the workflow's trigger panel in Pipedream for current cadence. A separate workflow `gtrends-poller-p_13CN9KG` populates `FCT_TREND_GTRENDS_DAILY` directly (used by the heat-index external factor) — it's not in the producer count above because it doesn't write to `STG_EXTERNAL_SIGNALS`.
+Each ingester runs on its own cron schedule, configured in the Pipedream UI (not in git). Check the workflow's trigger panel in Pipedream for current cadence. A separate workflow `gtrends-poller-p_13CN9KG` populates `FCT_TREND_GTRENDS_DAILY` directly (Google Trends interest for narrative/opportunity context — **no longer a heat input** since the v2 formula dropped the external factor) — it's not in the producer count above because it doesn't write to `STG_EXTERNAL_SIGNALS`.
 
 All nine producers write to the same staging table. A 5-minute Snowflake task (`TASK_PROMOTE_SIGNALS_TO_FCT`) promotes rows to `FCT_SIGNALS` and embeds a 1024-dim vector for clustering.
 
@@ -65,37 +65,41 @@ Discovery URLs are validated before insert. Observed hallucination rate ~2% (≈
 
 ### Formula
 
-Computed by the lifecycle subagent at [lifecycle-subagent-p_gYC562o/run_subagent/entry.js:270](../lifecycle-subagent-p_gYC562o/run_subagent/entry.js) (the clamp + modifier are applied downstream in `sql/proc_lifecycle_apply.sql`):
+Fully deterministic (**formula v2, ADR-0005**). Computed by the lifecycle subagent's `computeHeatBase()` in [lifecycle-subagent-p_gYC562o/run_subagent/entry.js](../lifecycle-subagent-p_gYC562o/run_subagent/entry.js); the clamp + status factor are applied downstream in `sql/proc_lifecycle_apply.sql`:
 
 ```
-heat_base = 20·recency + 25·velocity + 25·breadth + 20·external + 10·confidence
-HEAT_INDEX = clamp( heat_base × (1 + heat_modifier_pct/100), 0, 100 )
+heat_base         = 25·recency + 25·velocity + 40·breadth + 10·confidence
+new_heat          = clamp( heat_base × (1 + status_factor/100), 0, 100 )
+new_heat_smoothed = 0.5·prior_smoothed + 0.5·new_heat
+
+status_factor: GROWING +10 | RESURGENT +10 | STABLE 0 | NEW 0 | DECLINING −10 | DORMANT −15
 ```
+
+Heat is measured **only from evidence actually linked to the trend** in `FCT_TREND_SIGNALS` (link kinds `supporting` / `attributed`). Vector-similar-but-unlinked "candidate" signals score zero until the attribution agent links them. **Google Trends is no longer a heat input** (dropped 2026-07-10, #34) — demand-side interest now lives on the opportunity-score axis, so heat is pure earned-publisher-behavior.
 
 ### What each factor measures
 
 | Factor | Weight | What it captures |
 |---|---|---|
-| **Recency** | 20 | Exponential decay on signal age. Half-life 120 hours (~5 days). Older signals contribute less. |
-| **Velocity** | 25 | Sigmoid on signal count in the last 7 days, centered at 2 signals/week. Rewards acceleration, not just volume. |
-| **Breadth** | 25 | Shannon entropy of distinct producer domains. A trend showing up across Bluesky + TikTok + Amazon scores higher than the same volume from just X. |
-| **External** | 20 | Google Trends `INTEREST_AVG_PCT` normalized to [0,1]. **Defaults to 0 when there's no Google Trends data** — validation strength is earned evidence, not an assumed baseline. (Avg, not peak: GT pins peak to 100 whenever any data exists, so `peak/100` would collapse to a binary signal; avg captures sustained interest.) |
+| **Recency** | 25 | Exponential decay on the newest **linked** signal's age. Half-life 120 hours (~5 days). 0 when nothing linked in 14d. |
+| **Velocity** | 25 | Linked signals in the last 7 days — linear, saturating at 3/week. 0 linked = 0 pts. |
+| **Breadth** | 40 | **Dominant term.** Cross-publisher resonance in the last 21 days — log of distinct active publishers × Shannon entropy. 6 evenly-distributed active domains earn the full 40. |
 | **Confidence** | 10 | The `CONFIDENCE` field from `FCT_TRENDS`, set at promotion time. |
 
-### LLM modifier
+### Status factor (replaces the old LLM modifier)
 
-After `heat_base` is computed, the lifecycle agent reads the trend's narrative context and emits a **modifier between -20% and +20%**. This is where qualitative context (a celebrity endorsement, a news cycle ending) adjusts the math. The modifier is logged in `FCT_TREND_LIFECYCLE_LEDGER` so you can see what the agent did and why.
+There is no free-form agent modifier anymore. The lifecycle agent's judgment enters exactly once: the **status** it chooses (GROWING / STABLE / DECLINING / …) applies the fixed factor above. That status decision — and the resulting heat — is logged in `FCT_TREND_LIFECYCLE_LEDGER`.
 
 ### Reading the number
 
 | Range | Interpretation |
 |---|---|
-| 0–25 | Background noise / dormant |
-| 25–50 | Emerging but not validated across sources |
-| 50–75 | Active trend with multi-source signal |
-| 75–100 | High-conviction trend, multi-source, recent, sustained |
+| 0–15 | No current linked evidence; running on confidence alone |
+| 15–35 | A pulse — recent activity from one or two publishers |
+| 35–60 | Actively covered by several publishers this week |
+| 60+ | Broad, current, multi-publisher validation; rare and meaningful |
 
-These bands are guidance, not gates. The Lifecycle Stage (NEW / GROWING / STABLE / etc.) is the gate.
+These bands are **absolute, descriptive vignettes** (anchored on live data at the v2 cutover: median ≈ 11, ~78% of trends land 0–30 — the honest shape of linked evidence), not percentile guarantees or gates. A trend's number never changes because *other* trends changed. The Lifecycle Stage (NEW / GROWING / STABLE / etc.) is the gate. See [`dashboard/fields/heat-index.md`](dashboard/fields/heat-index.md) for the full v2 breakdown.
 
 ---
 

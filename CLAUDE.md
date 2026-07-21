@@ -23,22 +23,28 @@ A GitHub-synced Pipedream project. Each top-level directory is one Pipedream wor
 
 | Workflow | Purpose |
 |---|---|
-| `discovery-p_5VCPP3N` | Multi-LLM (Gemini + Grok + ChatGPT) discovery agents — every 2h, surface emerging signals into `STG_EXTERNAL_SIGNALS` |
-| `distillation-p_mkCBBqb` + `distillation-subagent-p_jmCjj3J` | Gemini 3.1 Pro lead + subagent. Distills raw signals (cluster-hint annotated via `PROC_CLUSTER_SIGNAL_SUBSET` over `FCT_SIGNALS`) into trend candidates → `STG_TREND_CANDIDATES` |
+| `discovery-p_5VCPP3N` | Multi-LLM (Gemini 2.5 Flash + Grok + ChatGPT) discovery agents — every 2h, surface emerging signals into `STG_EXTERNAL_SIGNALS` |
+| `distillation-p_mkCBBqb` + `distillation-subagent-p_jmCjj3J` | Distillation lead. Acquires unclaimed signals, cluster-hints via `PROC_CLUSTER_SIGNAL_SUBSET` over `FCT_SIGNALS`, then dispatches the actual clustering to the shared **cluster-agent** (suspend/resume) → candidates land in `STG_TREND_CANDIDATES`. 4h baseline cron + demand-fired by the watchdog. |
+| `distillation-cluster-agent-p_YyC89Ke` | Shared Gemini 3.1 Pro **cluster reasoner** (the LLM "lead"). HTTP suspend/resume subagent called by *both* `distillation` and `distillation-revisit` — works around the ~5.5-min HTTP sync-response cap. Fetches signals + embedding neighbors, emits trend candidates. |
+| `distillation-watchdog-p_dDCWWPg` | Demand-driven trigger. 15-min cron reads the unclaimed-signal pool size + cursor age; POSTs the distillation HTTP trigger when the pool is full enough and enough time has passed. Shrinks the gap the 4h baseline cron would otherwise leave. |
+| `distillation-revisit-p_o7CWWZl` + `distillation-revisit-subagent-p_ezCwwKm` | Re-clustering pass over *already-ingested* signals (batches from `STG_REVISIT_BATCH_QUEUE`), 24h cron. Reuses the shared cluster-agent. Recovers trends that earlier passes missed. |
 | `promotion-p_xMC99jg` + `promotion-agent-p_yKCmm9r` | Gemini 3.1 Pro promotion agent. Evaluates candidates → calls `PROC_PROMOTION_APPLY` to write `FCT_TRENDS` rows → `fire_enrichment_chain` step fans out to dispatcher |
 | `dispatcher-p_8rCBgnl` | Stateless chain runner — takes `{trend_id}` POST → fires `sources` → `enrichment` → `write` synchronously |
 | `sources-p_7NCy36w` | Per-trend source-metrics fetcher — populates `FCT_TREND_SOURCE_METRICS` |
+| `gtrends-poller-p_13CN9KG` | Per-active-trend Google Trends interest fetcher. 24h cron + HTTP → writes `FCT_TREND_GTRENDS_DAILY` (feeds `INTEREST_PEAK_PCT` / `INTEREST_AVG_PCT`). |
 | `enrichment-p_xMC995w` | Single Claude Sonnet 4.6 agent loop — produces the canonical enrichment record (the lone Anthropic holdout post-Gemini migration) |
 | `write-p_o7CWa2K` | Persists enrichment to `FCT_TREND_ENRICHMENT_LEDGER` (append-only ledger; the legacy `DIM_TREND_ENRICHMENT` was retired in the 2026-04-28 agent-owned-ledgers refactor) |
 | `lifecycle-agent-p_JZCz73w` + `lifecycle-subagent-p_gYC562o` | Gemini 3.1 Pro lifecycle agent. Sweeps every hour, re-evaluates trend status (NEW/GROWING/STABLE/DECLINING/DORMANT/RESURGENT/RETIRED) → `FCT_TREND_LIFECYCLE_LEDGER` |
+| `lifecycle-attribution-agent-p_KwCoaap` + `lifecycle-attribution-subagent-p_PACe77B` | Gemini 3.1 Pro attribution agent. Hourly cron sweeps active trends and dispatches subagents that attribute newly-ingested candidate signals to existing trends → appends `FCT_TREND_SIGNALS` links (grows a trend's evidence pool over time). |
 | `prediction-agent-p_QPCkLP1` | Deterministic emergence scorer (no LLM). Computes `PREDICTION_SCORE` (0–100), `PREDICTION_FLAG` (Emerging / Watchlist / High Potential), `PREDICTION_ELIGIBLE` across all live trends in one batch SQL run → `FCT_TREND_PREDICTION_LEDGER`. Feeds the Insights Agent Predictions Queue. Daily 14:00 UTC cron (`dc_wDuPeGB`) + manual via HTTP. Scores + writes in a single `INSERT...SELECT` (no proc). |
 | `daily-digest-p_vQCkwgV` | Email digest of recently-promoted trends |
 | `audit-agent-p_xMC9nm3` | Gemini 3.1 Pro health auditor. Daily 13:00 UTC + HTTP. Prefetches Snowflake freshness/cost/stuck-trends + Pipedream errors per workflow (registry covers all live workflows incl. the full ingestion tier as of 2026-06-08), emits GREEN/YELLOW/RED report → `FCT_AUDIT_LEDGER` + Slack DM (gated on non-GREEN). Realtime per-error alerting is handled by an external multi-repo monitor outside this project |
-| `ingestion/*` | Per-source ingestion workflows (Bluesky, Amazon, Pinterest, Google Trends + agent-tools subdir) |
+| `ingestion/*` | Per-source ingestion workflows (Bluesky, Amazon, Pinterest, Google Trends) + `ingestion/tools/` (agent search tools) + `ingestion/LLM/` (Gemini discovery verticals: food-drink / other / travel / wellness) |
 
 **Deactivated** (kept in repo for rollback / reference):
-- `llm-enrichment-p_YyC86Zo` — legacy 3-LLM cascade. Replaced by `enrichment-p_xMC995w` on 2026-04-27.
 - `ingestion/tiktok-p_yKCm9Am` — Creative Center hashtag scraper, scrapped 2026-06-09. TikTok retired the scraped page (301 → "TikTok One Creative Suite"; the `creative_radar_api` XHR is gone), and the hashtag-level output never met the distillation specificity rubric anyway (#18). The discovery workflow's Grok lane covers the TikTok cultural niche.
+
+> The legacy `llm-enrichment-p_YyC86Zo` (3-LLM cascade, replaced by `enrichment-p_xMC995w` on 2026-04-27) has been **removed** from the repo — no longer kept for rollback.
 
 ## Trend pipeline flow
 
@@ -49,8 +55,10 @@ discovery agents (every 2h) → STG_EXTERNAL_SIGNALS
                                   ↓
                           FCT_SIGNALS  ←  embedded signal record
                                   ↓
-                        distillation lead/subagent (Gemini 3.1 Pro)
+                        distillation lead (4h cron + watchdog demand-fire)
                           (cluster-hinted via PROC_CLUSTER_SIGNAL_SUBSET)
+                                  ↓ dispatches to shared cluster-agent (Gemini 3.1 Pro)
+                          distillation-cluster-agent  ← also reused by distillation-revisit
                                   ↓ (proposes candidates)
                           STG_TREND_CANDIDATES
                                   ↓
@@ -61,6 +69,8 @@ discovery agents (every 2h) → STG_EXTERNAL_SIGNALS
                         TASK_PROMOTE_TREND_SIGNALS (5-min)
                                   ↓
                           FCT_TREND_SIGNALS  ←  trend↔signal links
+                          (lifecycle-attribution agent, hourly, keeps
+                           appending newly-ingested signals to live trends)
                                   ↓ promotion's fire_enrichment_chain
                           dispatcher (HTTP, per trend)
                                   ↓
@@ -86,7 +96,7 @@ discovery agents (every 2h) → STG_EXTERNAL_SIGNALS
 
 **FCT_TRENDS is the canonical trend identity table** (post-2026-04-27 agent-owned-ledgers refactor — slim, immutable). All mutable state (heat, lifecycle status, enrichment payload, supporting signals) lives in dedicated append-only ledgers / link tables. The legacy `FCT_TREND_METRICS` is frozen — 324 historical rows from the suspended SQL Louvain clustering job; don't write new code that reads it.
 
-For per-table column detail, see [`docs/data_model.md`](docs/data_model.md).
+For per-column detail on the dashboard table, see [`docs/dashboard/data-contract.md`](docs/dashboard/data-contract.md).
 
 ## The Enrichment workflow (`enrichment-p_xMC995w`)
 

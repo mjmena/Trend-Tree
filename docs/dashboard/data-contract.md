@@ -26,8 +26,8 @@ One row per trend, joining trend identity, the latest enrichment payload, lifecy
 | Column | Type | What it is | Example value |
 | --- | --- | --- | --- |
 | `TREND_ID` | VARCHAR | UUID. Stable across all enrichment and lifecycle runs. Universal join key. | `c51f1620-a832-4f13-a443-a7df03bf6a99` |
-| `TREND_NAME` | VARCHAR | Display name. Prefers B2C, falls back to B2B then topic. | `Hyper-Tactile Interiors` |
-| `TREND_NAME_B2B` | VARCHAR | Business/pitch name. Frozen at first enrichment. | `Sensory-First Home Furnishing` |
+| `TREND_NAME` | VARCHAR | Singular canonical display name (ADR-0001, singular-name cutover 2026-05-27). COALESCE starts with singular `TREND_NAME`, then falls back to legacy B2C/B2B and topic. | `Hyper-Tactile Interiors` |
+| `TREND_NAME_B2B` | VARCHAR | Retired legacy fallback (dual B2C/B2B scheme retired). Frozen at first enrichment. | `Sensory-First Home Furnishing` |
 
 ### Categorization
 

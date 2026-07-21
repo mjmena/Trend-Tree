@@ -9,8 +9,8 @@
 
 | Entry | What it is |
 |---|---|
-| `interest_peak_pct` | Peak interest in the 30-day window, 0–100 (Google Trends scale) |
-| `interest_avg_pct` | Average interest over the same window, 0–100 |
+| `interest_peak_pct` | Effectively **binary**: `100` when the Google Trends series is non-empty, `0` when empty/blocked. Single-keyword normalization pins the peak to 100, so this is not a continuous 0–100 peak. |
+| `interest_avg_pct` | Average interest over the window, 0–100 — the **continuous** measure of the two. |
 
 **What feeds it** — The `gtrends-poller` workflow runs daily and pulls Google Trends interest curves for each live trend. The two scalars from the most recent pull surface here. An empty array means the poller hasn't seen the trend yet (or Google Trends returned no data for the query).
 
