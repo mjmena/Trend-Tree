@@ -2,6 +2,8 @@
 
 **A side-by-side look at what changed, with real examples from the live data as of 2026-04-28.**
 
+> **Historical snapshot (2026-04-28).** Row counts and examples are point-in-time. Two mechanics described below have since changed: heat is now formula v2 with **Google Trends dropped** and EWMA α=0.5 (50/50), and dual B2C/B2B naming was retired for a **singular `TREND_NAME`**. For current heat/lifecycle/naming, see [`confidence.md`](confidence.md), [`dashboard/fields/heat-index.md`](dashboard/fields/heat-index.md), and ADR-0001/ADR-0005.
+
 ---
 
 ## TL;DR
@@ -162,7 +164,7 @@ The new lifecycle agent runs every hour. For each trend due for re-evaluation, i
 1. Pulls the latest 7-day signal counts and source diversity
 2. Pulls daily Google Trends search interest
 3. Smooths the new heat reading against the prior with EWMA (70% prior + 30% new) to dampen single-day noise
-4. Decides: NEW (still ramping) → STABLE (healthy) → STAGNANT (low signal week-over-week) → DECLINING (negative momentum) → RETIRED
+4. Decides a lifecycle status from the current set: NEW / GROWING / STABLE / DECLINING / DORMANT / RESURGENT / RETIRED (the legacy `STAGNANT` status is gone)
 5. **Two-cycle retire confirm**: if it proposes RETIRED, it doesn't commit. The next eval has to also propose RETIRED before the trend is actually marked. One off day can't kill a trend.
 6. If the narrative has shifted (new sub-behaviors emerging, dominant source changing), it can flag `request_re_enrichment` to trigger a description refresh without touching the trend's identity.
 

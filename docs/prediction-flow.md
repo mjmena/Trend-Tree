@@ -102,7 +102,7 @@ The percentile gate aims at the "~30% of trends should be eligible" product targ
 - **Heat ceiling `< 70` instead of `< 60`** — still excludes the genuinely-peaked trends (heat tops out at ~77) while admitting accelerating growers.
 - **Delta gate is `OR` instead of `AND`** — "gained a new publisher *or* a new signal" is the real-meaning bar; requiring both simultaneously is stricter than the product needs now that the deltas are non-negative and meaningful.
 
-The hard `heat < 60` / equal-weight / strict-`AND` design is revisited once strategist Approve/Dismiss volume supports regression tuning (out of scope here). **The conjunction can still legitimately produce few eligible trends** on broadly-decelerating days — by design, the Predictions Queue stays small rather than surfacing flat trends.
+This heuristic gate design (heat ceiling, equal weights, delta logic) is revisited once strategist Approve/Dismiss volume supports regression tuning (out of scope here). **The conjunction can still legitimately produce few eligible trends** on broadly-decelerating days — by design, the Predictions Queue stays small rather than surfacing flat trends.
 
 ---
 
@@ -188,4 +188,4 @@ The frontend already maps `prediction_score` / `prediction_flag` from the API re
 - **Cluster delta is signal-count delta**, not historical pairwise vector-similarity expansion. Tracking the latter would require snapshotting pairwise similarity over time (expensive, deferred).
 - **Equal 25% weights are a launch heuristic.** Re-tune from Approve/Dismiss data once volume justifies it. Bump `COMPUTATION_VERSION` when the formula changes so the ledger remains auditable across versions.
 - **Cron not yet wired.** The workflow has only its HTTP trigger today. Adding a `dc_xxx` cron source at 06:00 UTC is a one-commit follow-up (see `pipedream_cron_via_repo.md` notes in memory).
-- **Daily snapshot table.** ~~If future analytics work needs cheaper WoW rollups outside the prediction pipeline, stand up `FCT_TREND_DAILY_SNAPSHOTS` separately~~ — **done (#38)**, but as a dynamic table (`DT_TREND_DAILY`) deriving daily signal/source counts live from `FCT_TREND_SIGNALS.LINKED_AT`, *not* the orphaned `FCT_TREND_DAILY_SNAPSHOTS` DDL (which still has no writer and stays unused). See [`schema.md`](schema.md#dt_trend_daily).
+- **Daily snapshot table.** ~~If future analytics work needs cheaper WoW rollups outside the prediction pipeline, stand up `FCT_TREND_DAILY_SNAPSHOTS` separately~~ — **done (#38)**, but as a dynamic table (`DT_TREND_DAILY`) deriving daily signal/source counts live from `FCT_TREND_SIGNALS.LINKED_AT`, *not* the orphaned `FCT_TREND_DAILY_SNAPSHOTS` DDL (which still has no writer and stays unused). See [`dashboard/data-contract.md`](dashboard/data-contract.md#dt_trend_daily).

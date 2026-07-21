@@ -3,7 +3,7 @@
 
 # Narrative fields
 
-`SUMMARY_SHORT`, `SUMMARY_LONG`, `SOCIAL_NARRATIVE`, `CULTURAL_DRIVERS`, `SEASONAL_RELEVANCE`, `GEOGRAPHIC_HOTSPOTS`, `VIBE_SHIFT`
+`SUMMARY_SHORT`, `SUMMARY_LONG`, `SOCIAL_NARRATIVE`, `CULTURAL_DRIVERS`, `SEASONAL_RELEVANCE`, `GEOGRAPHIC_HOTSPOTS` (⚠ `VIBE_SHIFT` deprecated → `SUMMARY_SHORT`)
 
 **At a glance** — The free-text descriptions a strategist reads to understand what the trend is about. Written by the enrichment agent in a single pass.
 
@@ -15,7 +15,7 @@
 | `CULTURAL_DRIVERS` | Why this trend is happening culturally. |
 | `SEASONAL_RELEVANCE` | When (if at all) the trend has seasonal patterns. |
 | `GEOGRAPHIC_HOTSPOTS` | Where the trend is concentrated. |
-| `VIBE_SHIFT` | One-line shift narrative — what changed. |
+| `VIBE_SHIFT` | ⚠ **Deprecated** (replaced by `SUMMARY_SHORT`; NULL on new-shape rows). One-line shift narrative — what changed. |
 
 **Scale** — Text and arrays, no numeric scoring.
 

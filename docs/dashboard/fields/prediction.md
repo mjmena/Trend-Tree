@@ -37,7 +37,7 @@ A trend can have low heat and a high prediction score (early-stage, accelerating
 
 `TRUE` requires **all** of:
 
-1. `HEAT_INDEX < 60` (not already peaked)
+1. `HEAT_INDEX < 70` (not already peaked)
 2. Positive velocity acceleration (actually accelerating)
 3. Positive source-diversity delta (publisher breadth expanding)
 4. Positive signal-count delta (cluster forming)

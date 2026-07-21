@@ -26,7 +26,7 @@ The short answer: **we don't ask AI what's trending. We collect raw data from th
 
 ### 1. Listen — raw signals from real platforms
 
-The pipeline continuously ingests from ~15 sources: Bluesky posts, GDELT news articles, Google Trends curves, Amazon trending products, and more. Some sources run continuously; others run on a schedule. Every article, post, or data point that clears basic quality checks becomes one signal — a single, verifiable row tied to a real URL.
+The pipeline continuously ingests from ~14 sources: Bluesky posts, GDELT news articles, Google Trends curves, Amazon trending products, and more. Some sources run continuously; others run on a schedule. Every article, post, or data point that clears basic quality checks becomes one signal — a single, verifiable row tied to a real URL.
 
 We also run three discovery agents (Gemini, Grok, ChatGPT) that proactively search the public web every 2 hours for emerging patterns and return URLs. Every URL a discovery agent finds is post-verified for resolvability before it enters the pipeline — we don't ingest an agent's interpretation of a topic, we ingest the underlying content it pointed to.
 
@@ -51,7 +51,7 @@ Candidates that pass the gate are handed to a **promotion agent** (Gemini 3.1 Pr
 
 ### 3. Profile — AI interpretation on a verified foundation
 
-Once a trend is promoted, an **enrichment agent** (Claude Sonnet 4.6) writes the card: B2C and B2B names, category, summary, cultural drivers, seasonal relevance, geographic hotspots, vibe shift, and an evidence pool. The agent starts from the signal cluster that already cleared the gate — it's reasoning about something real, not speculating from scratch. It can also run live searches during profiling to pull in additional grounding, and any URLs it finds are added back to the trend's signal record.
+Once a trend is promoted, an **enrichment agent** (Claude Sonnet 4.6) writes the card: the canonical trend name, category, summary, cultural drivers, seasonal relevance, geographic hotspots, and an evidence pool. The agent starts from the signal cluster that already cleared the gate — it's reasoning about something real, not speculating from scratch. It can also run live searches during profiling to pull in additional grounding, and any URLs it finds are added back to the trend's signal record.
 
 The narrative fields (summary, cultural drivers, etc.) are AI-written interpretation. The **evidence pool is the paper trail** — the real signals and sources that grounded the agent's analysis. If a claim in the summary looks off, the evidence pool is where to check.
 
@@ -64,7 +64,7 @@ Names and category are **frozen at first enrichment** so cards don't quietly ren
 Every hour, a **lifecycle agent** (Gemini 3.1 Pro) re-evaluates every live trend against recent signal flow, publisher breadth, and the trend's own history. Two numbers come out:
 
 - **`HEAT_INDEX`** (0–100) — how much is this trend being talked about right now. Smoothed so a single quiet hour doesn't crater a hot trend.
-- **`LIFECYCLE_STATUS`** — the trend's overall trajectory: `NEW` / `STABLE` / `STAGNANT` / `DECLINING` / `RETIRED`.
+- **`LIFECYCLE_STATUS`** — the trend's overall trajectory: `NEW` / `GROWING` / `STABLE` / `DECLINING` / `DORMANT` / `RESURGENT` / `RETIRED`.
 
 Heat reflects current volume and momentum. Lifecycle reflects the shape of the trend over time.
 
@@ -80,7 +80,7 @@ Prediction is distinct from heat: heat says *how active is this now*, prediction
 
 ### 6. Display — ATLAS assembles the card
 
-ATLAS reads a Snowflake view that joins the latest output from each agent into one row per trend, refreshing every 15 minutes. What you see on a card is always the most recent evaluation from each stage above.
+ATLAS reads the Snowflake dynamic table `DT_TREND_DASHBOARD`, which joins the latest output from each agent into one row per trend, refreshing every 15 minutes. What you see on a card is always the most recent evaluation from each stage above.
 
 ---
 
@@ -99,7 +99,7 @@ Every score in this table is on a **0–100 scale unless otherwise noted**. The 
 | Field | What it means | Scale | Computed by | More |
 |---|---|---|---|---|
 | `HEAT_INDEX` | How hot the trend is **right now** (EWMA-smoothed momentum) | 0–100 | Lifecycle agent (hourly) | [→](fields/heat-index.md) |
-| `LIFECYCLE_STATUS` | `NEW` / `STABLE` / `STAGNANT` / `DECLINING` / `RETIRED` | enum | Lifecycle agent (hourly) | [→](fields/lifecycle-status.md) |
+| `LIFECYCLE_STATUS` | `NEW` / `GROWING` / `STABLE` / `DECLINING` / `DORMANT` / `RESURGENT` / `RETIRED` | enum | Lifecycle agent (hourly) | [→](fields/lifecycle-status.md) |
 | `VELOCITY_DIRECTION` | _Back-compat alias for `LIFECYCLE_STATUS`._ Same value under an older name. | enum | Lifecycle agent (hourly) | [→](fields/lifecycle-status.md) |
 | `PREDICTION_SCORE` | How likely the trend is to **grow** (deterministic emergence formula) | 0–100 | Prediction agent (daily) | [→](fields/prediction.md) |
 | `PREDICTION_FLAG` | `Emerging` / `Watchlist` / `High Potential` | enum | Prediction agent (daily) | [→](fields/prediction.md) |
@@ -117,8 +117,8 @@ Every score in this table is on a **0–100 scale unless otherwise noted**. The 
 
 | Field | What it means | Scale | Computed by | More |
 |---|---|---|---|---|
-| `TREND_NAME` | Display name on the card (B2C-first with B2B fallback) | text | Enrichment agent (frozen at 1st enrichment) | [→](fields/trend-name.md) |
-| `TREND_NAME_B2B` | Descriptive corporate-floor alternative name | text | Enrichment agent (frozen at 1st enrichment) | [→](fields/trend-name.md) |
+| `TREND_NAME` | Singular canonical display name on the card (COALESCE prefers `TREND_NAME`, then legacy B2C/B2B fallbacks) | text | Enrichment agent (frozen at 1st enrichment) | [→](fields/trend-name.md) |
+| `TREND_NAME_B2B` | Retired legacy fallback name (dual B2C/B2B scheme retired) | text | Enrichment agent (frozen at 1st enrichment) | [→](fields/trend-name.md) |
 | `CATEGORY` / `SUBCATEGORY` | Top-level vertical + specific sub-classification | enum / text | Enrichment agent (frozen at 1st enrichment) | [→](fields/category.md) |
 | `CATEGORY_CONFIDENCE` | How sure the agent was about the category | **0–1** (⚠ not 0–100) | Enrichment agent | [→](fields/category.md) |
 | `LOW_CONFIDENCE_FLAG` | `TRUE` when `CATEGORY_CONFIDENCE < 0.6` | boolean | Enrichment agent | [→](fields/category.md) |
@@ -127,7 +127,7 @@ Every score in this table is on a **0–100 scale unless otherwise noted**. The 
 
 | Field | What it means | Scale | Computed by | More |
 |---|---|---|---|---|
-| `SUMMARY_SHORT`, `SUMMARY_LONG`, `SOCIAL_NARRATIVE`, `CULTURAL_DRIVERS`, `SEASONAL_RELEVANCE`, `GEOGRAPHIC_HOTSPOTS`, `VIBE_SHIFT` | Free-text narrative fields describing the trend | text / array | Enrichment agent | [→](fields/narrative-fields.md) |
+| `SUMMARY_SHORT`, `SUMMARY_LONG`, `SOCIAL_NARRATIVE`, `CULTURAL_DRIVERS`, `SEASONAL_RELEVANCE`, `GEOGRAPHIC_HOTSPOTS` (⚠ `VIBE_SHIFT` deprecated → use `SUMMARY_SHORT`) | Free-text narrative fields describing the trend | text / array | Enrichment agent | [→](fields/narrative-fields.md) |
 
 ### Evidence
 
@@ -135,7 +135,7 @@ Every score in this table is on a **0–100 scale unless otherwise noted**. The 
 |---|---|---|---|---|
 | `EVIDENCE` | Typed pool of supporting evidence (news / commerce / social / reference / search_volume / video / other) | array | Enrichment agent | [→](fields/evidence.md) |
 | `GENERAL_EVIDENCE`, `SOCIAL_EVIDENCE`, `OTHER_EVIDENCE` | Pre-bucketed slices of `EVIDENCE` for UI sections | array | Dashboard (live) | [→](fields/evidence.md) |
-| `TOP_SIGNALS` | First 5 evidence entries (news/commerce/social only), in agent emit order | array | Dashboard (live) | [→](fields/evidence.md#top_signals) |
+| `TOP_SIGNALS` _(⚠ deprecated → use `EVIDENCE`, first 5 news/commerce/social)_ | First 5 evidence entries (news/commerce/social only), in agent emit order | array | Dashboard (live) | [→](fields/evidence.md#top_signals) |
 | `KEY_DATA_POINTS` | Google Trends interest scalars (peak %, avg %) for the trend | array | Google Trends poller (daily) | [→](fields/key-data-points.md) |
 
 ### Relationships
@@ -173,7 +173,7 @@ Every score in this table is on a **0–100 scale unless otherwise noted**. The 
 ## Further reading
 
 - **[Field deep dives](fields/)** — one page per field on the card.
-- **[Where the signals come from](sources.md)** — direct platform sources + discovery agents.
+- **[Where the signals come from](sources.md)** — direct platform sources, discovery agents, and on-demand agent search tools.
 - **[🟡 Migrating fields](migrating.md)** — Insights Agent backend fields being moved into McClatchy's pipeline.
 - **[FAQ](faq.md)** — 10 most-asked questions.
 - **[Glossary](glossary.md)** — ATLAS-scoped terminology.
