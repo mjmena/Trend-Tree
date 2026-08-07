@@ -16,7 +16,7 @@ A GitHub-synced Pipedream project. Each top-level directory is one Pipedream wor
 ## Workflow defaults
 
 - Questions ("is X worth keeping?", "what's happening with Y?") get analysis, not edits. Don't start implementing until a change is explicitly requested.
-- Non-trivial features start design-first: `/grill-with-docs` → `/to-prd` → `/to-issues`, then implement from the issue (`/ship-issue`).
+- Non-trivial features start design-first: `/grill-with-docs` → `/to-spec` → `/to-tickets`, then implement from the ticket (`/implement`).
 - Keep changes surgical and scoped to the explicit request — no extra endpoints, steps, or features without asking.
 
 ## Active workflows
@@ -159,7 +159,11 @@ A commit to `production` **is** the deploy — Pipedream redeploys changed workf
 
 ### Issue tracker
 
-Issues + PRDs live in GitHub Issues (`mjmena/Trend-Tree`), managed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues live in **JIRA project `CRMA`** (board 1626), scoped to this repo by the `trend-tree` **component**, via the Atlassian MCP tools. PRDs are Confluence pages linked from Epics. See `docs/agents/issue-tracker.md` — the tracker-consuming skills (`/triage`, `/to-spec`, `/to-tickets`, `/wayfinder`, `/board-standing`, `/epic-orchestrator`, `/implement`, `/grill-with-docs`) all read it by that exact path. GitHub Issues on `mjmena/Trend-Tree` are the pre-2026-08-07 archive — read-only history, don't create new ones.
+
+If `docs/agents/issue-tracker.md` is missing, or references a skill name that
+no longer exists, stop and tell the user to run `/setup-crma-skills` — do not
+improvise a tracker workflow or guess the repo's component.
 
 ### Triage labels
 
