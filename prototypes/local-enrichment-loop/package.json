@@ -1,0 +1,11 @@
+{
+  "name": "prototype-local-enrichment-loop",
+  "private": true,
+  "description": "PROTOTYPE (CRMA-438) — throwaway local port of the enrichment agent loop. Do not deploy.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node src/run.mjs",
+    "test": "node --test"
+  }
+}
