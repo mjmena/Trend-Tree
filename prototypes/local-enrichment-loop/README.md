@@ -43,9 +43,10 @@ npm test
 # capture prefetch fixtures for one trend (needs snow CLI auth only)
 node src/run.mjs <trend_id> --capture --dry-run
 
-# full local run against real Snowflake + real LLM keys
-export GEMINI_API_KEY=...        # agent loop (Gemini 3.1 Pro)
-export ANTHROPIC_API_KEY=...     # name reviewer (Sonnet 4.6)
+# full local run against real Snowflake + a real LLM key (all-Gemini
+# since 2026-08-08 — the reviewer was converted off Sonnet so one key
+# runs everything; prod's reviewer still uses Sonnet 4.6)
+export GEMINI_API_KEY=...        # agent loop + name reviewer (all-Gemini)
 node src/run.mjs <trend_id>
 
 # fast offline rerun from fixtures (the edit→rerun loop under test)
@@ -64,7 +65,7 @@ Output: the enrichment record + telemetry JSON to stdout and
 ## Container
 
 `Dockerfile` packages the same CLI (`docker build -t enrich-proto . &&
-docker run -e GEMINI_API_KEY -e ANTHROPIC_API_KEY enrich-proto <trend_id>
+docker run -e GEMINI_API_KEY enrich-proto <trend_id>
 --fixture`). Note: fixtures must be captured before `docker build` (they're
 copied into the image; `--capture` inside the container would need snow CLI
 auth mounted). No container runtime was installed on the authoring machine —

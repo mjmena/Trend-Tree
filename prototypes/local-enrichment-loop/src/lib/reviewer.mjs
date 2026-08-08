@@ -1,13 +1,19 @@
 // PROTOTYPE (CRMA-438) — name reviewer, ported from
-// enrichment-p_xMC995w/run_name_reviewer/entry.js. Delta vs. prod: takes a
-// bare `api_key` instead of the Pipedream `anthropic` app prop; tier1Check
-// and its helpers are exported for unit tests.
+// enrichment-p_xMC995w/run_name_reviewer/entry.js. Deltas vs. prod:
+//   - takes a bare `api_key` instead of the Pipedream `anthropic` app prop
+//   - tier1Check and its helpers are exported for unit tests
+//   - CONVERTED TO GEMINI (2026-08-08, maintainer decision): both reviewer
+//     calls run on the same Gemini model as the agent loop, so the whole
+//     prototype needs one key. Prod still runs Sonnet 4.6 — if the verdict
+//     holds, converting prod is a separate story for the migration spec.
+//     JSON mode (responseMimeType) replaces prompt-level "JSON only" hope;
+//     thinking is pinned low and maxOutputTokens floored so thought tokens
+//     can't starve the visible JSON.
 
 import { loadPrompts, render, mustGet, parseJsonFromText } from "./prompt_loader.mjs";
 
-export const MODEL = "claude-sonnet-4-6";
-const RATES_PER_M = { input: 3.0, output: 15.0 };
-const ANTHROPIC_VERSION = "2023-06-01";
+export const MODEL = "gemini-3.1-pro-preview";
+const RATES_PER_M = { input: 2.0, output: 12.0 };
 
 export const DECODER_PROMPT_KEY = "enrichment.reviewer.decoder";
 export const VERIFIER_PROMPT_KEY = "enrichment.reviewer.verifier";
@@ -50,23 +56,27 @@ export function tier1Check(name) {
   return { pass: true, first_beat: beat.join(" ") };
 }
 
-async function callAnthropic({ apiKey, system, userMessage, maxTokens, temperature }) {
+async function callGemini({ apiKey, system, userMessage, maxTokens, temperature }) {
   const started = Date.now();
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": ANTHROPIC_VERSION,
+  const resp = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: [{ role: "user", parts: [{ text: userMessage }] }],
+        generationConfig: {
+          temperature,
+          // Floor leaves headroom for thought tokens (candidatesTokenCount
+          // includes them) so the visible JSON never gets truncated.
+          maxOutputTokens: Math.max(maxTokens, 1000),
+          responseMimeType: "application/json",
+          thinkingConfig: { thinkingLevel: "low" },
+        },
+      }),
     },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: maxTokens,
-      system,
-      messages: [{ role: "user", content: userMessage }],
-      temperature,
-    }),
-  });
+  );
   const duration_ms = Date.now() - started;
 
   if (!resp.ok) {
@@ -75,13 +85,14 @@ async function callAnthropic({ apiKey, system, userMessage, maxTokens, temperatu
   }
 
   const data = await resp.json();
-  const usage = data.usage || {};
-  const tin = usage.input_tokens || 0;
-  const tout = usage.output_tokens || 0;
+  const usage = data.usageMetadata || {};
+  const tin = usage.promptTokenCount || 0;
+  const tout = usage.candidatesTokenCount || 0;
   const cost_usd = Math.round(
     (((tin / 1_000_000) * RATES_PER_M.input + (tout / 1_000_000) * RATES_PER_M.output)) * 10000
   ) / 10000;
-  const text = (data.content || []).filter((b) => b.type === "text").map((b) => b.text).join("\n");
+  const parts = ((data.candidates || [])[0]?.content?.parts) || [];
+  const text = parts.filter((p) => typeof p.text === "string" && p.thought !== true).map((p) => p.text).join("\n");
   return { text, tokens: { input: tin, output: tout }, cost_usd, duration_ms };
 }
 
@@ -126,11 +137,11 @@ export async function runNameReviewer({ api_key, agent_output, metrics_rows, pro
   const loaded = loadPrompts(prompts_rows);
   const decoderPrompt = mustGet(loaded, DECODER_PROMPT_KEY);
   const verifierPrompt = mustGet(loaded, VERIFIER_PROMPT_KEY);
-  if (!api_key) throw new Error("api_key is required (ANTHROPIC_API_KEY) — or pass --skip-reviewer");
+  if (!api_key) throw new Error("api_key is required (GEMINI_API_KEY) — or pass --skip-reviewer");
 
   // ── Stage 2: Decoder call (blind, no topic) ────────────────────────
   const decoderSystem = render(decoderPrompt.template, { trend_name: trendName });
-  const decoderResp = await callAnthropic({
+  const decoderResp = await callGemini({
     apiKey: api_key,
     system: decoderSystem,
     userMessage: "Decode the trend name. Reply with JSON only.",
@@ -154,7 +165,7 @@ export async function runNameReviewer({ api_key, agent_output, metrics_rows, pro
     category,
     subcategory,
   });
-  const verifierResp = await callAnthropic({
+  const verifierResp = await callGemini({
     apiKey: api_key,
     system: verifierSystem,
     userMessage: "Verify the name decodes correctly. Reply with JSON only.",

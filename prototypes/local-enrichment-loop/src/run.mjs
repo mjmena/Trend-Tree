@@ -133,12 +133,12 @@ async function main() {
     stop_reason: result.stop_reason,
   };
 
-  // ── name reviewer (Sonnet 4.6) ─────────────────────────────────────
+  // ── name reviewer (Gemini — converted from Sonnet 4.6, 2026-08-08) ──
   let reviewer_output = { skipped: true, reason: "skip_reviewer_flag" };
   if (!args.flags.has("skip-reviewer")) {
     const tRev = Date.now();
     reviewer_output = await runNameReviewer({
-      api_key: process.env.ANTHROPIC_API_KEY,
+      api_key: process.env.GEMINI_API_KEY,
       agent_output,
       metrics_rows: pre.q_metrics,
       prompts_rows: pre.q_prompts,

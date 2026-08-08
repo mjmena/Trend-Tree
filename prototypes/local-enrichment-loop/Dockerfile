@@ -1,6 +1,6 @@
 # PROTOTYPE (CRMA-438) — containerized local enrichment loop. Throwaway.
 # Build:  docker build -t enrich-proto .
-# Run:    docker run --rm -e GEMINI_API_KEY -e ANTHROPIC_API_KEY \
+# Run:    docker run --rm -e GEMINI_API_KEY \
 #           enrich-proto <trend_id> --fixture
 # Fixtures are baked into the image (capture them first); live Snowflake
 # mode would need snow CLI + auth mounted, which is out of scope for the
