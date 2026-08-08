@@ -7,6 +7,7 @@
 //                    [--skip-reviewer] [--budget <usd>] [--max-iter <n>]
 
 import { mkdir, writeFile } from "node:fs/promises";
+import { execFileSync } from "node:child_process";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { prefetchLive, saveFixture, loadFixture } from "./prefetch.mjs";
@@ -26,6 +27,17 @@ const ENDPOINTS = {
 };
 
 const log = (msg) => process.stderr.write(msg + "\n");
+
+// GEMINI_API_KEY from env, falling back to the macOS keychain entry
+// `gemini-api` (the local-dev credential convention on this machine).
+function resolveGeminiKey() {
+  if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
+  try {
+    return execFileSync("security", ["find-generic-password", "-s", "gemini-api", "-w"], { encoding: "utf8" }).trim();
+  } catch {
+    return null;
+  }
+}
 
 function parseArgs(argv) {
   const args = { flags: new Set(), opts: {} };
@@ -94,7 +106,8 @@ async function main() {
   }
 
   // ── agent loop (Gemini 3.1 Pro) ────────────────────────────────────
-  if (!process.env.GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not set");
+  const geminiKey = resolveGeminiKey();
+  if (!geminiKey) throw new Error("GEMINI_API_KEY not set (env or keychain entry 'gemini-api')");
   const context = {
     source_metrics_pool,
     trend_neighbor_pool,
@@ -107,7 +120,7 @@ async function main() {
 
   const tLoop = Date.now();
   const result = await runAgentLoop({
-    api_key: process.env.GEMINI_API_KEY,
+    api_key: geminiKey,
     tool_names: EAGER_TOOL_NAMES,
     system: renderedSystem,
     user_message: renderedUser,
@@ -138,7 +151,7 @@ async function main() {
   if (!args.flags.has("skip-reviewer")) {
     const tRev = Date.now();
     reviewer_output = await runNameReviewer({
-      api_key: process.env.GEMINI_API_KEY,
+      api_key: geminiKey,
       agent_output,
       metrics_rows: pre.q_metrics,
       prompts_rows: pre.q_prompts,
