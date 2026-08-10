@@ -94,6 +94,12 @@ Ready-made JQL for the queries agents run most. Everything is scoped to `project
 and every one wants compact output — **always pass `responseContentFormat: "markdown"`**
 (see **List / search issues** above for why field-narrowing is not the lever).
 
+> **Exception: `/board-standing` does not use the MCP tools at all.** Its whole read is
+> `skills/board-standing/scripts/board-read.sh`, curl against the Jira REST API, because
+> REST honours `fields` (the MCP ships full descriptions regardless) and pages past 100.
+> The JQL below still describes what it asks for; the transport differs. Don't "fix" it
+> back onto the MCP tools.
+
 - **`ready-for-agent` frontier** — all agent-ready work board-wide (`epic-orchestrator`
   consumes it per epic; `board-standing` surfaces it as each effort's takeable set):
   ```
