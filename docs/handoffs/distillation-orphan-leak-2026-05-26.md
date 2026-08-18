@@ -140,11 +140,13 @@ in isolation** — silently drops the agent's claimed evidence and masks
 the underlying distillation problem. Use only as belt-and-suspenders
 *after* the distillation root cause is fixed.
 
-### Audit-agent tripwire (already shipped 2026-05-26)
+### Audit-agent tripwire (shipped 2026-05-26, non-functional until 2026-08-18 — see correction above)
 
-The audit-agent's new `data_hygiene` area watches `active_orphan_trends`.
+The audit-agent's `data_hygiene` area watches `active_orphan_trends`.
 YELLOW at 1–5 orphans, RED above 5. If you fix the root cause and the
-count stays at 0 indefinitely, the fix worked.
+count stays at 0 indefinitely **after CRMA-722's fix (2026-08-18)**, the
+fix worked. Readings from before that date are not signal — the field
+was silently null, not genuinely 0.
 
 ## Key files
 
