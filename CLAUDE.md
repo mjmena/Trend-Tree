@@ -159,7 +159,7 @@ A commit to `production` **is** the deploy — Pipedream redeploys changed workf
 
 ### Issue tracker
 
-Issues live in **JIRA project `CRMA`** (board 1626), scoped to this repo by the `trend-tree` **component**, via the Atlassian MCP tools. PRDs are Confluence pages linked from Epics. See `docs/agents/issue-tracker.md` — the tracker-consuming skills (`/triage`, `/to-spec`, `/to-tickets`, `/wayfinder`, `/board-standing`, `/epic-orchestrator`, `/implement`, `/grill-with-docs`) all read it by that exact path. GitHub Issues on `mjmena/Trend-Tree` are the pre-2026-08-07 archive — read-only history, don't create new ones.
+Issues live in **JIRA project `CRMA`** (board 1626), scoped to this repo by the `trend-tree` **component**, via the Atlassian MCP tools. Long-form artifacts are **repo-native** — PRDs at `docs/prd/`, wayfinder maps at `docs/wayfinder/`, with JIRA holding identity and a link. See `docs/agents/issue-tracker.md` — the tracker-consuming skills (`/triage`, `/to-spec`, `/to-tickets`, `/wayfinder`, `/board-standing`, `/epic-orchestrator`, `/implement`, `/grill-with-docs`) all read it by that exact path. GitHub Issues on `mjmena/Trend-Tree` are the pre-2026-08-07 archive — read-only history, don't create new ones.
 
 If `docs/agents/issue-tracker.md` is missing, or references a skill name that
 no longer exists, stop and tell the user to run `/setup-crma-skills` — do not
