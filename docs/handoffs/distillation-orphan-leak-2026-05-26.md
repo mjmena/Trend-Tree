@@ -18,6 +18,13 @@ The audit-agent now carries a `data_hygiene` tripwire that fires YELLOW
 if `active_orphan_trends` ≥ 1, RED if > 5 — so this leak is no longer
 silent.
 
+> **Correction (2026-08-18, CRMA-722):** the tripwire above was silently
+> non-functional from this handoff's date until 2026-08-18. `data_hygiene`
+> was never declared in `propose_audit_report`'s JSON schema, so Gemini's
+> function-calling dropped the field on every run — `FCT_AUDIT_LEDGER`
+> carried no orphan-trend signal for the full window. Fixed in
+> [mjmena/Trend-Tree#100](https://github.com/mjmena/Trend-Tree/pull/100).
+
 ## How it was discovered
 
 While auditing why ~30% of live trends have `DISTINCT_PUBLISHER_COUNT = 0`,
