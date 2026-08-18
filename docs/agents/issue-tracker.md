@@ -299,18 +299,15 @@ Two deltas from how the skill describes it, both learned the hard way:
 
 ### Maps that predate this contract
 
-Three maps were charted before the map body moved into the repo, so their bodies
-still live in the JIRA description. **They are legacy, not corrupt.** Migration is
-**lazy** — the first session to touch a map converts it, then works normally:
+Three maps were charted before a map had **two homes**, so their body still sits
+in the JIRA description rather than the repo. **They are legacy, not corrupt.**
+Migration is **lazy** — the first session to touch a map converts it, then works
+normally. This repo needs `--default-branch production`; `--help` carries the rest.
 
 ```bash
 ~/.claude/skills/wayfinder-ops/scripts/migrate-map.py <MAP-KEY> "$PWD" \
   --default-branch production [--commit]
 ```
-
-Without `--commit` it is a dry run. It converts ADF to markdown properly rather
-than flattening to text, and commits through a throwaway `git worktree` — it never
-switches your branch.
 
 | Map | Body (markdown) | Open children | State |
 | --- | --- | --- | --- |
