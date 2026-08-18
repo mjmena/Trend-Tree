@@ -426,6 +426,123 @@ steps:
           (SELECT COUNT(*) FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ET_LEDGER WHERE OBSERVED_AT > DATEADD(hour,-24,CURRENT_TIMESTAMP())) AS ET_LEDGER_ROWS_24H
         FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
     params: []
+- namespace: q_prompt_drift
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        -- DIM_LLM_PROMPT drift guardrail (CRMA-469). DIM_LLM_PROMPT is a live,
+        -- runtime-loaded table with no CI/deploy gate — editing it directly
+        -- (instead of committing a sql/update_prompts_*.sql migration) is how
+        -- the 2026-07-10 drift audit and the signal.attribution.rubric gap
+        -- (v2/v3 edited live, never committed — see CRMA-469) both happened.
+        -- MANIFEST below is the max VERSION each PROMPT_KEY has committed to
+        -- sql/ as of this file. Whoever lands a new update_prompts_*.sql
+        -- migration MUST bump this same key here in the same commit — see the
+        -- CLAUDE.md rule (CRMA-469) — or this tripwire false-alarms next run.
+        --   LIVE_AHEAD_OF_REPO / UNTRACKED_IN_MANIFEST — live has a version
+        --     nobody committed. The real governance failure this exists to catch.
+        --   REPO_AHEAD_OF_LIVE / MANIFEST_KEY_NOT_LIVE — committed but not
+        --     applied yet, or a retired key. Usually benign; not usually urgent.
+        WITH manifest AS (
+          SELECT * FROM VALUES
+            ('audit.report_rubric', 2),
+            ('audit.system', 4),
+            ('discovery.chatgpt.search', 4),
+            ('discovery.claude.rerank', 2),
+            ('discovery.gemini.search', 4),
+            ('discovery.grok.search', 4),
+            ('distillation.lead.system', 7),
+            ('distillation.revisit.subagent.system', 1),
+            ('distillation.subagent.system', 5),
+            ('enrichment.agent.naming_guidance', 3),
+            ('enrichment.agent.system', 7),
+            ('enrichment.agent.user', 1),
+            ('enrichment.claude.synthesize', 1),
+            ('enrichment.gemini.categorize', 1),
+            ('enrichment.grok.cultural', 1),
+            ('enrichment.reviewer.decoder', 1),
+            ('enrichment.reviewer.verifier', 1),
+            ('lifecycle.subagent.decision_rubric', 6),
+            ('lifecycle.subagent.system', 6),
+            ('promotion.lead.system', 1),
+            ('promotion.subagent.decision_rubric', 3),
+            ('promotion.subagent.system', 3),
+            ('signal.attribution.rubric', 3),
+            ('signal.attribution.system', 1)
+          AS m(PROMPT_KEY, COMMITTED_VERSION)
+        ),
+        live AS (
+          SELECT PROMPT_KEY, VERSION AS LIVE_VERSION
+          FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
+          WHERE IS_ACTIVE = TRUE
+        )
+        SELECT
+          COALESCE(l.PROMPT_KEY, m.PROMPT_KEY) AS PROMPT_KEY,
+          l.LIVE_VERSION,
+          m.COMMITTED_VERSION,
+          CASE
+            WHEN m.PROMPT_KEY IS NULL THEN 'UNTRACKED_IN_MANIFEST'
+            WHEN l.PROMPT_KEY IS NULL THEN 'MANIFEST_KEY_NOT_LIVE'
+            WHEN l.LIVE_VERSION > m.COMMITTED_VERSION THEN 'LIVE_AHEAD_OF_REPO'
+            WHEN l.LIVE_VERSION < m.COMMITTED_VERSION THEN 'REPO_AHEAD_OF_LIVE'
+            ELSE 'OK'
+          END AS DRIFT_STATUS
+        FROM live l
+        FULL OUTER JOIN manifest m ON m.PROMPT_KEY = l.PROMPT_KEY
+        ORDER BY 1
+      query: |-
+        WITH manifest AS (
+          SELECT * FROM VALUES
+            ('audit.report_rubric', 2),
+            ('audit.system', 4),
+            ('discovery.chatgpt.search', 4),
+            ('discovery.claude.rerank', 2),
+            ('discovery.gemini.search', 4),
+            ('discovery.grok.search', 4),
+            ('distillation.lead.system', 7),
+            ('distillation.revisit.subagent.system', 1),
+            ('distillation.subagent.system', 5),
+            ('enrichment.agent.naming_guidance', 3),
+            ('enrichment.agent.system', 7),
+            ('enrichment.agent.user', 1),
+            ('enrichment.claude.synthesize', 1),
+            ('enrichment.gemini.categorize', 1),
+            ('enrichment.grok.cultural', 1),
+            ('enrichment.reviewer.decoder', 1),
+            ('enrichment.reviewer.verifier', 1),
+            ('lifecycle.subagent.decision_rubric', 6),
+            ('lifecycle.subagent.system', 6),
+            ('promotion.lead.system', 1),
+            ('promotion.subagent.decision_rubric', 3),
+            ('promotion.subagent.system', 3),
+            ('signal.attribution.rubric', 3),
+            ('signal.attribution.system', 1)
+          AS m(PROMPT_KEY, COMMITTED_VERSION)
+        ),
+        live AS (
+          SELECT PROMPT_KEY, VERSION AS LIVE_VERSION
+          FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
+          WHERE IS_ACTIVE = TRUE
+        )
+        SELECT
+          COALESCE(l.PROMPT_KEY, m.PROMPT_KEY) AS PROMPT_KEY,
+          l.LIVE_VERSION,
+          m.COMMITTED_VERSION,
+          CASE
+            WHEN m.PROMPT_KEY IS NULL THEN 'UNTRACKED_IN_MANIFEST'
+            WHEN l.PROMPT_KEY IS NULL THEN 'MANIFEST_KEY_NOT_LIVE'
+            WHEN l.LIVE_VERSION > m.COMMITTED_VERSION THEN 'LIVE_AHEAD_OF_REPO'
+            WHEN l.LIVE_VERSION < m.COMMITTED_VERSION THEN 'REPO_AHEAD_OF_LIVE'
+            ELSE 'OK'
+          END AS DRIFT_STATUS
+        FROM live l
+        FULL OUTER JOIN manifest m ON m.PROMPT_KEY = l.PROMPT_KEY
+        ORDER BY 1
+    params: []
 - namespace: run_audit_agent
   runtime: nodejs20.x
   uses: "./run_audit_agent/entry.js"
@@ -441,6 +558,7 @@ steps:
     et_rescue_rows: "{{steps.q_et_rescue.$return_value}}"
     pipedream_errors: "{{steps.fetch_pipedream_errors.$return_value}}"
     prompts_rows: "{{steps.q_audit_prompts.$return_value}}"
+    prompt_drift_rows: "{{steps.q_prompt_drift.$return_value}}"
 - namespace: commit_audit_ledger
   runtime: nodejs20.x
   uses: "./commit_audit_ledger/entry.js"
