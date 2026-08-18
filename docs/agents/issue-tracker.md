@@ -2,7 +2,8 @@
 
 Issues for this repo live in **JIRA**, project `CRMA`, on team board `1626`. Code and PRs
 live in **GitHub** (`mjmena/Trend-Tree` — this repo is the board's exception to the usual
-Bitbucket workspace); PRDs and long-form docs in **Confluence**.
+Bitbucket workspace). **Long-form agent docs — PRDs, wayfinder maps, ADRs — live in this
+repo**, linked from their JIRA issue.
 
 JIRA is reached through the **Atlassian MCP tools** — there is no `jira` CLI here. GitHub
 PR and repo operations go through the `gh` CLI.
@@ -36,11 +37,14 @@ and the component wins. Do not scope on them.
 ## Mapping the skills onto JIRA
 
 - **`to-tickets` slice → a `Story`** in CRMA. Each tracer-bullet vertical slice is one Story.
-- **`to-spec` PRD → an `Epic`** in CRMA, with the long-form spec as a **Confluence page**
-  linked from the Epic. The Stories a later `to-tickets` run produces link **under that
-  Epic** (set the Story's parent / Epic Link to the Epic key; fall back to `createIssueLink`
-  if the parent field is unavailable).
-- **`triage` roles → JIRA labels** (see `triage-labels.md`).
+- **`to-spec` PRD → an `Epic`** in CRMA, with the long-form spec **in this repo** at
+  `docs/prd/<slug>.md` — reviewed in a PR and linked from the Epic by a remote link to the
+  file on GitHub. It is **not** a Confluence page. The Stories a later `to-tickets` run
+  produces link **under that Epic** (set the Story's parent / Epic Link to the Epic key;
+  fall back to `createIssueLink` if the parent field is unavailable).
+- **`triage` roles → JIRA labels** (see `triage-labels.md`). `/triage` must also read
+  **Triage operations** below before it buckets or closes anything — two of its default
+  readings are wrong on this board.
 
 ## Conventions
 
@@ -120,9 +124,46 @@ and every one wants compact output — **always pass `responseContentFormat: "ma
   ```
   This is a **two-step** — JQL cannot express "has no open blocker". Request `issuelinks`
   in `fields` and drop any issue whose inward `is blocked by` link points at a non-Done
-  issue. See **Wayfinding operations → Frontier query**; do not reimplement the post-filter.
+  issue. `wayfinder-ops`' `frontier` verb already does this — see **Wayfinding
+  operations → The operations are a script, not a procedure**. Do not reimplement
+  the post-filter.
 - **One issue, in full** — `getJiraIssue` with `comment` in `fields` (also honours
   `responseContentFormat: "markdown"`).
+
+## Triage operations
+
+Used by `/triage`. Two of the skill's default readings misfire on this board — apply these
+instead.
+
+### The "unlabeled" bucket means *no state role*, not *no labels*
+
+`/triage`'s first discovery bucket is described upstream as **Unlabeled — never triaged**.
+Read it as *carries no **state role*** (`needs-triage` / `needs-info` / `ready-for-agent` /
+`ready-for-human` / `wontfix`) — **not** as *carries no labels at all*.
+
+On CRMA every issue is scoped somehow: it already carries a component, or a legacy
+`repo:` or domain label. Under the strict reading the bucket comes back empty and hides
+exactly the never-triaged issues it exists to surface.
+
+### Merged is not shipped
+
+For anything running as a **deployed service**, VCS reachability — a commit citing the
+ticket, `git branch -r --contains` showing it on the default branch — proves a **merge**,
+not a **fix**. The bug can be live in production with the fix sitting merged and
+undeployed.
+
+**Here the deployed artifact is a Pipedream workflow.** A commit to `production` *is* the
+deploy, but Pipedream redeploys **asynchronously**, so the merge and the running code are
+two different facts. Before closing anything as `wontfix` / **already implemented**, check
+the running artifact: confirm the redeploy landed via the Pipedream API (recipes in the
+`pipedream-synced-project` skill), and confirm the behaviour by querying the target table
+for rows from the run — not by reading a curl response. If the deployed code predates the
+fix commit, the issue stays **open** and needs a deploy — usually `ready-for-human`.
+
+This also sharpens step 3 (**Verify the claim**): verification for a deployed service ends
+at the running workflow, not at the merge commit. Tickets that say so themselves
+("requires a redeploy to take effect") are the ones most likely to be closed wrongly,
+because the merge evidence looks so clean.
 
 ## Pull requests as a triage surface
 
@@ -132,8 +173,31 @@ feature requests, so `/triage` does not read them.
 ## When a skill says "publish to the issue tracker"
 
 Create a JIRA issue in `CRMA` with `createJiraIssue`, carrying this repo's `trend-tree`
-component. Long-form specs and PRDs are **Confluence pages** linked from the JIRA Epic, not
-pasted into an issue body — `/to-spec` writes those with `createConfluencePage`.
+component.
+
+**Long-form prose does not go in an issue body.** JIRA caps a description at **32,767
+characters**, and an effort that grows past it fails its next write with no warning. Every
+long-form artifact is therefore **repo-native**, with JIRA holding identity and a link:
+
+| Artifact | Lives at | JIRA holds |
+| --- | --- | --- |
+| PRD / spec (`/to-spec`) | `docs/prd/<slug>.md` | an **Epic**, remote-linked to the file |
+| Wayfinder map (`/wayfinder`) | `docs/wayfinder/<slug>.md` | a **Task** labelled `wayfinder:map`, description a stub |
+| ADRs, domain model (`/domain-modeling`) | `docs/adr/`, `CONTEXT.md` | nothing — repo-only |
+
+Each is reviewed in a PR like any other doc. **None of them is a Confluence page.**
+
+Confluence here carries **stakeholder** docs only, and this repo's are **not** in the
+`docs/confluence/` folder the `repo-pipelines` skill publishes. Trend Tree's stakeholder
+docs live under `docs/dashboard/` (canonical) and are mirrored by hand into the **ATLAS**
+space — `docs/dashboard/data-contract.md` carries a `<!-- Parent: ATLAS Dashboard -->`
+marker naming its parent page. **Edit the repo file first, then publish.** Never author a
+Trend Tree doc in Confluence and back-port it.
+
+## When a skill says "read the PRD" (`to-tickets`)
+
+Read `docs/prd/<slug>.md` from this repo — follow the Epic's remote link if you have only
+the Epic key. Do **not** look in Confluence.
 
 ## When a skill says "fetch the relevant ticket"
 
@@ -141,42 +205,145 @@ pasted into an issue body — `/to-spec` writes those with `createConfluencePage
 
 ## Wayfinding operations
 
-Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
+Used by `/wayfinder`. A map has **two homes**: JIRA owns the graph, the repo owns
+the prose.
 
-- **Map**: a **Task** labelled `wayfinder:map` plus this repo's `trend-tree` component.
-  Epic is reserved for `/to-spec` PRDs — do not use it for maps. JIRA labels accept
-  colons, so `wayfinder:map` survives literally.
+- **Map file**: `docs/wayfinder/<slug>.md`, on branch `wayfinder/<slug>` — one
+  branch per **map**, not per session, living exactly as long as the map. Its first
+  line is the marker `<!-- map: <map-key> -->`, which is how the script finds it
+  without being told a slug. Start from
+  `~/.claude/skills/wayfinder-ops/templates/map.md`. Open the PR when the map
+  completes.
+  **Never commit a map to `production`.** A commit to this repo's default branch **is**
+  a Pipedream deploy, so a one-line map commit would ship a redeploy of every changed
+  workflow.
+- **Map issue**: a **Task** labelled `wayfinder:map` plus this repo's `trend-tree`
+  component. Its **description is a stub** — the Destination plus a link to the map
+  file. Epic is reserved for `/to-spec` PRDs. JIRA labels accept colons, so
+  `wayfinder:map` survives literally.
 - **Child ticket**: a **Sub-task** with `parent` set to the map issue, labelled
-  `wayfinder:<type>` (`research` / `prototype` / `grilling` / `task`). Once claimed, the
-  ticket is assigned to the driving dev.
-  **Sub-task, not Story** — Story and Task both sit at JIRA hierarchy level 0, so a Task
-  map cannot parent a Story (`createJiraIssue` fails with *"Please select valid parent
-  issue"*). Sub-task is level -1 and parents correctly under the map, which keeps the
-  documented `parent = <map-key>` frontier query working. Verified 2026-07-19 on CRMA-55.
+  `wayfinder:<type>` (`research` / `prototype` / `grilling` / `task`). **Sub-task, not
+  Story** — Story and Task both sit at JIRA hierarchy level 0, so a Task map cannot
+  parent a Story (`createJiraIssue` fails with *"Please select valid parent issue"*).
+  Sub-task is level -1 and parents correctly, which keeps `parent = <map-key>` working.
+  Verified 2026-07-19 on CRMA-55.
 - **Blocking**: the native **`Blocks`** issue link — the canonical, UI-visible edge, so
   the frontier renders in JIRA's own dependency view. Create it with `createIssueLink`
   (`getIssueLinkTypes` for the id). A ticket is unblocked when every issue that blocks it
   is Done. Any prose `## Blocked by` line in a body **must** be backed by a real link.
-- **Frontier query**: JQL finds the open, unassigned children —
-  ```
-  project = CRMA AND parent = <map-key> AND statusCategory != Done AND assignee IS EMPTY
-    ORDER BY created ASC
-  ```
-  JQL **cannot** express "has no open blocker", so this is a two-step: request
-  `issuelinks` in `fields`, then drop any issue whose inward `is blocked by` links point
-  at an issue that is not Done. First surviving issue in creation order wins.
-- **Claim**: `editJiraIssue` setting `assignee` — the session's first write, before any
-  other work.
-- **Resolve**: `addCommentToJiraIssue` with the answer (AI prefix required), transition to
-  **Done** (`41`), then append a context pointer (gist + link) to the map's
-  Decisions-so-far.
+- **Claim**: the claim marker is **In Progress**, not the assignee. Both get set,
+  but status is what the frontier reads — an assignee alone left 5 CRMA tickets
+  parked in Backlog and invisible to the frontier for weeks.
+
+### The operations are a script, not a procedure
+
+```
+~/.claude/skills/wayfinder-ops/scripts/wayfinder.sh --repo "$PWD" <verb>
+
+  frontier <map-key>                 takeable set as TSV, blockers filtered
+  chart    <map-key> <tickets.json>  every child + every Blocks edge, one call
+  claim    <ticket-key>              assign + In Progress
+  resolve  <ticket> <answer.md> --decided "<line>" [--binds "<…>"]
+                                     comment, close, append to map file, commit
+```
+
+`chart --dry-run` prints what it would create; the ticket-spec format is in that
+skill's `SKILL.md`. `resolve` measures the map file and prints the compaction
+rules itself when they apply — **compaction never runs on the save path**.
+
+**If the script is missing**, link it and re-run:
+`ln -s ~/claude-skills/skills/wayfinder-ops ~/.claude/skills/wayfinder-ops`.
+Until then fall back to the MCP calls in **Board query cookbook** — correct, and
+much slower.
+
+Everything else stays on the MCP, where it works: reading one issue, an ad-hoc
+comment, an ad-hoc transition all run below 2% failure. The script exists only for
+bulk reads (the MCP ships full descriptions regardless of `fields` and failed
+34.6% of wayfinder's searches), batch writes, and map bodies that outgrew the
+32,767-character description cap.
+
+### Index discipline
+
+The map file is uncapped; that is **not** licence for a longer map. The body is
+loaded **in full, once per session**, so its size is a tax every future session
+pays before doing any work. Measured across 28 CRMA maps, a body grows **~1,986
+characters per closed decision** — about 5,000 tokens at ten decisions.
+
+One line per closed ticket, in two named parts:
+
+```markdown
+- [<closed ticket title>](link) — **Decided:** <the answer, one line>
+  **Binds:** <what downstream work this constrains — or `nothing further`>
+```
+
+`Binds` is what makes zooming optional: it states the constraint a later ticket
+must honour, which is the only reason that ticket needs the entry at all. **Amend
+by rewriting the line, not appending to it** — git tracks what changed better than
+a parenthetical can.
+
+### Research subagents
+
+`/wayfinder`'s charting step fires one `/research` subagent per `research` ticket.
+Two deltas from how the skill describes it, both learned the hard way:
+
+- **The ticket is the durable place — no per-agent branches.** Parallel subagents
+  share one working tree, so a `research/<name>` branch per agent has them fighting
+  over `git checkout`. Each records findings **on its own ticket** and links the
+  full write-up as an asset. Tell it explicitly **not** to close the ticket, change
+  its status, or run any `git` command. A scratch file is not durable either.
+- **Require a start comment as well as a findings comment.** A subagent dies with
+  the session that launched it, silently and with no tombstone. The start comment
+  *is* the tombstone: no comment means it never got going; a start comment with no
+  findings means it died mid-read. Without that marker the next session cannot tell
+  dead from still-thinking, and the honest reading is always **dead** — re-launch it.
+
+### Maps that predate this contract
+
+Three maps were charted before the map body moved into the repo, so their bodies
+still live in the JIRA description. **They are legacy, not corrupt.** Migration is
+**lazy** — the first session to touch a map converts it, then works normally:
+
+```bash
+~/.claude/skills/wayfinder-ops/scripts/migrate-map.py <MAP-KEY> "$PWD" \
+  --default-branch production [--commit]
+```
+
+Without `--commit` it is a dry run. It converts ADF to markdown properly rather
+than flattening to text, and commits through a throwaway `git worktree` — it never
+switches your branch.
+
+| Map | Body (markdown) | Open children | State |
+| --- | --- | --- | --- |
+| `CRMA-429` — move the agent fleet off Pipedream to GCP | — | 10 of 19 | **migrated 2026-08-18** → `docs/wayfinder/move-the-agent-fleet-off-pipedream-to.md` on branch `wayfinder/move-the-agent-fleet-off-pipedream-to` |
+| `CRMA-481` — Prediction Pillar Strategy | 6,115 chars | 3 of 9 | migrate on next touch |
+| `CRMA-428` — prediction scoring v3 | 4,009 chars | 5 of 5 | migrate on next touch |
+
+Sizes measured 2026-08-18. `CRMA-429` was migrated eagerly that day rather than
+lazily: at 18,926 characters it had roughly seven closed decisions of headroom
+before its next description write would have failed **silently** against the cap.
+The remaining two are small enough to leave until a session touches them.
+
+**Fix the stub link after every migration on this repo.** `migrate-map.py`
+hardcodes a Bitbucket URL (`https://bitbucket.org/<remote>/src/<branch>/<file>`)
+and reads `<remote>` from the **Remote** line above — which here is a GitHub path.
+The result is a broken `bitbucket.org/github.com/...` link written into the JIRA
+stub, and that link is the only pointer to the map body. Replace it by hand with
+the GitHub form, then confirm it resolves:
+
+```bash
+https://github.com/mjmena/Trend-Tree/blob/<branch>/<file>
+gh api "repos/mjmena/Trend-Tree/contents/<file>?ref=<branch>" --jq .html_url
+```
+
+The script also stamps a hardcoded migration date in the stub. Correct it to the
+real date while you are fixing the URL.
 
 ### Wayfinder tickets are not agent pickup work
 
-**Never label a wayfinder map or ticket `ready-for-agent`.** `epic-orchestrator` implements
-`ready-for-agent` stories unattended and would try to implement a decision ticket as if it
-were a code change. Wayfinder tickets are worked only by a `/wayfinder` session invoked
-against the map.
+**Never label a wayfinder map or ticket `ready-for-agent`.** `epic-orchestrator`
+implements `ready-for-agent` stories unattended and would try to implement a
+decision ticket as if it were a code change. Wayfinder tickets are worked only by a
+`/wayfinder` session invoked against the map.
 
 ## Provenance: GitHub Issues migration (2026-08-07)
 
