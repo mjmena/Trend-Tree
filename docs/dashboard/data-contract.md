@@ -5,7 +5,7 @@
 
 **Purpose:** The full column schema, type, meaning, and an example value for the two dynamic tables the downstream platforms read.
 
-**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`). This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-06-10.
+**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`), `sql/task_recompute_content_matches.sql` (+ `sql/fct_trend_content_matches_ledger.sql`). This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-08-18.
 
 **Example values are real, pulled 2026-06-08** — mostly from the live trend **Hyper-Tactile Interiors** (`c51f1620-a832-4f13-a443-a7df03bf6a99`). A few fields that are null for that trend (geographic hotspots, macrotrend tags, the social-evidence object) use a populated row from another live trend to show the shape. Column names and types are authoritative.
 
@@ -144,6 +144,16 @@ The enrichment agent produces a typed pool of links. The dashboard pre-buckets i
 | `TREND_VECTOR_ARCTIC_EMBED_L_V2_0` | VECTOR(FLOAT, 1024) | Canonical trend embedding (`snowflake-arctic-embed-l-v2.0`), latest enrichment vector scoped to live `FCT_TRENDS`. `NULL` if no enrichment vector. Powers the Trend Hunter B2C feed recommender (distances / clusters / per-user aggregate vectors). The 768-dim GSC space is **not** exposed. | `[0.0123, -0.0456, …]` (1024 floats) |
 
 **Embedding ownership (Trend Hunter B2C).** McClatchy owns this canonical vector space; Trend Hunter builds the per-user vector as an aggregate of these trend vectors so it lives in our space by construction. The model is encoded in the column name; the underlying ledger column stays `TREND_VECTOR`. A model swap / re-embed / retrain will be signalled by changing the wire-facing column name (its `_ARCTIC_EMBED_L_V2_0` suffix is the version marker).
+
+### Content match
+
+| Column | Type | What it is | Example value |
+| --- | --- | --- | --- |
+| `NEAREST_CONTENT` | ARRAY | Top-5 nearest published-content matches (McClatchy's own coverage), cosine desc. Shape: `{ content_id, headline, published_date, score }`. `NULL` if nothing cleared the match threshold (an under-covered trend) or the trend is newer than the latest recompute — never an empty-but-present array. | `[{"content_id":316756311,"headline":"Dollar Store's protein snacks are starting to win over budget-conscious shoppers…","published_date":"2026-07-08","score":0.677}]` |
+
+**Separate vector space from `TREND_VECTOR_ARCTIC_EMBED_L_V2_0` above.** `NEAREST_CONTENT` is powered by a 768-dim `snowflake-arctic-embed-m-v1.5` companion vector (trend name + short summary), cosined against the data team's existing `MCC_RAW.STORY_DATA.CUE_CONTENT_VECTORS.KEY_WORDS_VECTOR` — the same space the data team already embeds published content into, reused as-is (no content re-embedding). This is deliberately isolated from the 1024-dim `arctic-embed-l-v2.0` internal trend-identity space; the two are never compared. Recomputed daily by the `MARKETING_TASK_RECOMPUTE_CONTENT_MATCHES` Snowflake task (CRMA-452) into `FCT_TREND_CONTENT_MATCHES_LEDGER`, which this dashboard reads for the latest generation only (same "latest `CHAIN_ID`" pattern as `DT_TREND_CONNECTIONS`). Calibrated cosine threshold **0.60**, rolling content window **180 days**, top **5** matches per trend — see `sql/task_recompute_content_matches.sql` for the calibration readout.
+
+This is the vector-match **substrate** only — it does not yet feed a Content Gap metric or an AI Match % score (those are separate, forward-looking fields).
 
 ### Timestamps & provenance
 

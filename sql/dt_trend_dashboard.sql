@@ -47,6 +47,16 @@
 -- column; underlying FCT_TREND_ENRICHMENT_LEDGER.TREND_VECTOR unchanged. See
 -- the column's inline note for the explicit-select + O(n²) scale caveats.
 --
+-- 2026-08-18 (CRMA-452 trend -> published-content match): additive
+-- NEAREST_CONTENT column — top-N nearest MCC_RAW.STORY_DATA.CUE_CONTENT_
+-- VECTORS matches per trend, from the latest MARKETING_TASK_RECOMPUTE_
+-- CONTENT_MATCHES generation in the new FCT_TREND_CONTENT_MATCHES_LEDGER
+-- (see that file + task_recompute_content_matches.sql). Computed with a
+-- SEPARATE 768-dim arctic-embed-m-v1.5 companion vector, isolated from the
+-- 1024-dim TREND_VECTOR_ARCTIC_EMBED_L_V2_0 above — the two spaces are never
+-- compared. NULL (not []) when a trend has no row in the latest chain,
+-- matching RELATED_TRENDS' existing null-when-absent convention.
+--
 -- Output column shape preserved for Steeple consumers (minus the two dropped
 -- promotion-* columns and TOP_SIGNALS.pagerank_score).
 
@@ -276,6 +286,34 @@ related_trends AS (
     LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS ft ON ft.TREND_ID = ps.RELATED_ID
     GROUP BY ps.TREND_ID
 ),
+latest_content_match_chain AS (
+    -- CRMA-452: "latest generation" pointer into FCT_TREND_CONTENT_MATCHES_
+    -- LEDGER, same pattern as DT_TREND_CONNECTIONS' CHAIN_ID lookup.
+    SELECT CHAIN_ID
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_CONTENT_MATCHES_LEDGER
+    QUALIFY ROW_NUMBER() OVER (ORDER BY COMPUTED_AT DESC) = 1
+),
+nearest_content AS (
+    -- Top-N nearest published-content matches per trend (already capped +
+    -- threshold-gated by the recompute task, so no re-filtering needed
+    -- here — see task_recompute_content_matches.sql). A trend absent from
+    -- the latest chain (nothing cleared MATCH_THRESHOLD, or newer than the
+    -- last recompute) simply has no row here and NEAREST_CONTENT reads
+    -- NULL downstream.
+    SELECT
+        m.TREND_ID,
+        ARRAY_AGG(
+            OBJECT_CONSTRUCT(
+                'content_id',     m.CONTENT_ID,
+                'headline',       m.HEADLINE,
+                'published_date', m.PUBLISHED_DATE,
+                'score',          m.SCORE
+            )
+        ) WITHIN GROUP (ORDER BY m.MATCH_RANK) AS NEAREST_CONTENT
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_CONTENT_MATCHES_LEDGER m
+    JOIN latest_content_match_chain c ON c.CHAIN_ID = m.CHAIN_ID
+    GROUP BY m.TREND_ID
+),
 trend_base AS (
     -- Sourced from FCT_TRENDS only. Legacy FCT_TREND_METRICS union removed
     -- 2026-04-28 to test dashboard scoped exclusively to agent-promoted trends.
@@ -384,7 +422,11 @@ SELECT
     -- pairwise_similarity (~100M VECTOR_COSINE_SIMILARITY calls/refresh at
     -- ~10k trends), NOT vector storage. Flag for a future VECTOR_SEARCH/ANN
     -- migration. Not a today problem at ~200 trends.
-    tv.TREND_VECTOR                                                       AS TREND_VECTOR_ARCTIC_EMBED_L_V2_0
+    tv.TREND_VECTOR                                                       AS TREND_VECTOR_ARCTIC_EMBED_L_V2_0,
+
+    -- 2026-08-18 (CRMA-452): top-N nearest published-content matches, see
+    -- the nearest_content CTE + fct_trend_content_matches_ledger.sql.
+    nc.NEAREST_CONTENT
 
 FROM trend_base tb
 LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t  ON tb.TREND_ID = t.TREND_ID
@@ -395,4 +437,5 @@ LEFT JOIN top_signals ts                              ON tb.TREND_ID = ts.TREND_
 LEFT JOIN macro_tags mt                               ON tb.TREND_ID = mt.TREND_ID
 LEFT JOIN related_trends r                            ON tb.TREND_ID = r.TREND_ID
 LEFT JOIN trend_vectors tv                            ON tb.TREND_ID = tv.TREND_ID
-LEFT JOIN latest_prediction pred                      ON tb.TREND_ID = pred.TREND_ID;
+LEFT JOIN latest_prediction pred                      ON tb.TREND_ID = pred.TREND_ID
+LEFT JOIN nearest_content nc                          ON tb.TREND_ID = nc.TREND_ID;
