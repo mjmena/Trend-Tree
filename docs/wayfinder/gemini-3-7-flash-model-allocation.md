@@ -71,6 +71,23 @@ Handed to `/to-tickets`. The map does not carry execution.
   single-shot at `temperature 0.3` with no thinking parameter at all.** The 3.7 Flash
   thinking floor therefore lands entirely on the verticals.
   _Source: repo inventory, verified 2026-08-20._
+- **Google has split the API surface.** `ai.google.dev/gemini-api/docs/*` now documents a
+  new **Interactions API** (`POST /v1beta/interactions`). The
+  `v1beta/models/{model}:generateContent` path every workflow here uses is moved to
+  `/docs/generate-content/*` and labelled **"(Legacy)"**. `gemini-3.7-flash` is supported on
+  generateContent and no sunset is published, but `gemini-3-pro-preview` went release to
+  shutdown in ~3.5 months. _Source: [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727) research, 2026-08-20._
+- **`temperature` is deprecated** as of 2026-07-21; the migration checklist says to strip
+  `temperature`, `top_p`, and `top_k`. Every lane here still sends it.
+  _Source: [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727) research, 2026-08-20._
+- **No official source states whether undeclared schema fields are dropped, for either
+  model.** There is no documented behavioural delta between 3.1 Pro and 3.7 Flash, and the
+  structured-output support table does not list 3.7 at all.
+  [CRMA-722](https://mcclatchy.atlassian.net/browse/CRMA-722) remains the only hard evidence
+  and it is empirical. A bare `{type:"object"}` passes contents through unvalidated, which is
+  why the audit agent's shallow schema survived and enrichment's deeply-typed
+  `propose_enrichment` is the more exposed one.
+  _Source: [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727) research, 2026-08-20._
 
 ## Standing constraints
 
@@ -112,6 +129,15 @@ Handed to `/to-tickets`. The map does not carry execution.
   chose `stay`. No announced date, so nothing to plan against yet.
 - **Whether the replay harness outlives the map** as a permanent regression instrument
   rather than a throwaway. Decide once it exists and we know what it cost to build.
+- **Whether the fleet should move to the Interactions API at all.** `generateContent` is now
+  labelled Legacy. That question is larger than a model pin and could subsume this map — but
+  it cannot be phrased sharply until someone measures what the new surface costs to adopt
+  across 18 call sites. Graduates once CRMA-729's harness shows how much of a call site a
+  model swap actually touches.
+- **Whether `functionCallingConfig: VALIDATED` replaces `AUTO`.** All five agent loops pin
+  `AUTO`, opting out of the mode Google says reduces malformed function calls. Relevant to
+  every lane, but the trade-off is unmeasured and it interacts with Search grounding, where
+  mixing grounding with `functionDeclarations` forces `VALIDATED` and is still Preview.
 
 ## Out of scope
 
