@@ -341,6 +341,9 @@ the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 1
 - [Decide: the distillation cluster-reasoning loops](https://mcclatchy.atlassian.net/browse/CRMA-732) — **Decided:** The lead pin (cluster-agent entry.js:453) MOVES to gemini-3.7-flash; the subagent pin splits out to CRMA-759 for lack of evidence. 5/5 clean emissions, no schema loss, topic quality a wash - but 3.7 Flash ran the dedup tools 3/5 where 3.1 Pro ran them 0/5 and proposed a trend it had already promoted.
   **Binds:** Cost is +20% vs Pro at Jan-2027 rates (extra turns eat the per-token win) and that trade is accepted deliberately. Seven changes ship in ONE slice with the pin: RATES_PER_M to 0.75/3.75, DECLARE query on propose_trend_candidate (blocker - QUERY is null on 100% of rows since 2026-08-18 and VALIDATED may hard-drop undeclared args), add thoughtsTokenCount, strip temperature, functionResponse ids, new finishReason values, and persist the run trace. CRMA-757 does NOT block this lane - it is ungrounded.
 
+- [Decide: the promotion gate loop](https://mcclatchy.atlassian.net/browse/CRMA-733) — **Decided:** The promotion pin (run_subagent/entry.js:425) MOVES to gemini-3.7-flash. 7/7 identical decisions and merge targets vs the incumbent re-run, schema clean, and -17.2% cost even at the Jan-2027 rates.
+  **Binds:** The budget-gate trap does NOT bind this lane (max production cost $0.0538 vs a $0.15 budget, ~5x headroom) - the real gate is max_iterations: 6, which has ZERO margin: the incumbent 3.1 Pro already burns all 6 turns and silently DEFERs on 5 of 38 production DEFER rows. Ships in one slice with RATES_PER_M 0.75/3.75, thoughtsTokenCount, strip temperature, functionResponse ids, new finishReason values, PLUS persist turns/stop_reason (no turn telemetry exists) and raise max_iterations or make the no-decision fallback loud.
+
 ## Not yet specified
 
 - **What a 3.7-shaped prompt looks like.** Every prompt in the registry was written against a
