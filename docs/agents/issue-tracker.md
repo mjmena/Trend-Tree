@@ -312,7 +312,7 @@ normally. This repo needs `--default-branch production`; `--help` carries the re
 | Map | Body (markdown) | Open children | State |
 | --- | --- | --- | --- |
 | `CRMA-429` — move the agent fleet off Pipedream to GCP | — | 10 of 19 | **migrated 2026-08-18** → `docs/wayfinder/move-the-agent-fleet-off-pipedream-to.md` on branch `wayfinder/move-the-agent-fleet-off-pipedream-to` |
-| `CRMA-481` — Prediction Pillar Strategy | 6,115 chars | 3 of 9 | migrate on next touch |
+| `CRMA-481` — Prediction Pillar Strategy | — | 3 of 9 | **migrated 2026-08-20** → `docs/wayfinder/prediction-pillar-strategy.md` on branch `wayfinder/prediction-pillar-strategy` |
 | `CRMA-428` — prediction scoring v3 | 4,009 chars | 5 of 5 | migrate on next touch |
 
 Sizes measured 2026-08-18. `CRMA-429` was migrated eagerly that day rather than
