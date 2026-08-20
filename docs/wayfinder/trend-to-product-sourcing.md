@@ -235,8 +235,14 @@ Settled decisions in binding present tense.
   designed and never built (`KIND='refinement'` is passed by nothing). **A catalog restock does
   not re-source anything** — products refresh only when a trend moves, which means when it is
   re-enriched. A periodic re-sweep on catalog change is additive and deliberately deferred.
-- Fall-through between tiers is a **similarity floor**, never a match count. A trend the store
-  does not stock returns nothing rather than the five least-irrelevant items in the catalog.
+- Tiers compose by **top-up in commercial-preference order**: while total selector picks are
+  under `MAX_SOURCED_PRODUCTS` (5) and a live lower tier exists, that tier is consulted — one
+  retrieval and **one selector call per consulted tier**, never one call over a mixed pool.
+  The per-tier similarity floor is **never relaxed to fill the quota**: the count triggers
+  consultation, the floor gates entry, and a trend no catalog stocks returns nothing rather
+  than the least-irrelevant items. Cross-tier `SEMANTIC_SCORE`s are never compared — order is
+  tier block first, then score within a tier. *Amended 2026-08-20 at CRMA-755.* The original
+  constraint consulted a lower tier only when the tier above yielded nothing above its floor.
 - **"Processed, nothing matched" is a distinct state** from "not yet sourced", and must stay
   distinguishable downstream.
 - Category adjacency anchors on **`CATEGORY`** (the 14-value enum). `SUBCATEGORY` is signal for
@@ -260,7 +266,10 @@ Settled decisions in binding present tense.
   **Binds:** CRMA-751's ledger must carry three states (not sourced / processed-nothing-matched / sourcing failed) and should be written by a PROC_SOURCING_APPLY mirroring PROC_ENRICHMENT_APPLY. The poll condition must exclude promotion_seed rows and needs an in-flight guard. Backfill is solved — the ~484 existing trends match the poll on tick one. The ecomm agent needs custom_response ON at creation (write-once) plus both an hi_ HTTP trigger and a dc_ cron.
 
 - [Decide: the sourced-products ledger — schema, the no-match state, and dashboard exposure](https://mcclatchy.atlassian.net/browse/CRMA-751) — **Decided:** Two tables — FCT_TREND_SOURCING_LEDGER (header: one row per trend, tier and run, carrying the three states) and FCT_TREND_SOURCING_CANDIDATES (every candidate the selector saw, not just its picks); SEMANTIC_SCORE (cosine, reproducible) and REASONED_FIT (strong/partial/weak enum) live in separate columns and are never blended.
-  **Binds:** CRMA-753 calibrates SEMANTIC_THRESHOLD against the stored rejects and owns EMBED_DOC_VERSION. CRMA-754 must present the candidate list in SEMANTIC_SCORE-descending order — otherwise a stored rank column has to come back — and must define what strong/partial/weak mean. CRMA-755 inherits which tier wins when two headers matched. The DDL establishes this repo's first computed-but-empty row and needs a staleness rule for headers stuck in 'running'; PROC_SOURCING_APPLY mirrors PROC_ENRICHMENT_APPLY; DT_TREND_DASHBOARD gains SOURCING_STATUS, SOURCED_PRODUCTS and SOURCED_AT.
+  **Binds:** CRMA-753 calibrates SEMANTIC_THRESHOLD against the stored rejects and owns EMBED_DOC_VERSION. CRMA-754 must present the candidate list in SEMANTIC_SCORE-descending order within a tier (tier-block ordering settled at CRMA-755) — otherwise a stored rank column has to come back — and must define what strong/partial/weak mean. The DDL establishes this repo's first computed-but-empty row and needs a staleness rule for headers stuck in 'running'; PROC_SOURCING_APPLY mirrors PROC_ENRICHMENT_APPLY; DT_TREND_DASHBOARD gains SOURCING_STATUS, SOURCED_PRODUCTS and SOURCED_AT.
+
+- [Decide: the multi-tier contract — how a second product source plugs in](https://mcclatchy.atlassian.net/browse/CRMA-755) — **Decided:** A tier participates with a stable CATALOG_PRODUCT_ID, title + one descriptive text field (matchable — each tier authors its own embed doc and owns its EMBED_DOC_VERSION) and title + URL (renderable — image and price optional, so Amazon qualifies), plus its own calibrated floor and a declared hydration mode (live/static); tiers top up selector picks to MAX_SOURCED_PRODUCTS (5) in preference order, one selector call per consulted tier, floors never relaxed; the tier registry is a TIERS constant in ecomm-agent code, the tier stored as lowercase text on the header.
+  **Binds:** CRMA-754's ordering is tier block first, then SEMANTIC_SCORE within a tier, and its selector call takes a slots-remaining input. Reads take the latest completed run outright, concatenating its matched tiers in preference order — a run can hold several matched headers, and an older run's products never linger. The spec must carry the Decision Page's text-only-card obligation, the per-tier calibration onboarding step, and the note that a live second tier is hot path, not fallback.
 
 ## Not yet specified
 

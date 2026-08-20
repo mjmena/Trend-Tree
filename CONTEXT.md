@@ -112,7 +112,7 @@ A [sourcing] candidate the selector took. Most candidate rows are *not* sourced 
 _Avoid_: calling every candidate row a sourced product.
 
 **Tier**:
-One product catalog [sourcing] can draw from, **ranked by commercial preference** — not merely a label saying where a product came from. Shopify is the only implemented tier; the multi-tier contract exists so the matching design does not over-fit one catalog. The ranking is what makes it a tier: given a Shopify item at lower similarity and an Amazon item at higher similarity, a tier system prefers Shopify. Fall-through between tiers is a similarity floor, never a match count — a trend the catalog does not stock returns nothing rather than the least-irrelevant items in it.
+One product catalog [sourcing] can draw from, **ranked by commercial preference** — not merely a label saying where a product came from. Shopify is the only implemented tier; the multi-tier contract exists so the matching design does not over-fit one catalog. The ranking is what makes it a tier: given a Shopify item at lower similarity and an Amazon item at higher similarity, a tier system prefers Shopify. Tiers compose by top-up: consulted sequentially in preference order while [sourced product] picks are under the cap (`MAX_SOURCED_PRODUCTS`, 5), each consulted tier getting its own selector call. The per-tier similarity floor is never relaxed to fill the quota — a trend no catalog stocks returns nothing rather than the least-irrelevant items in it. Cross-tier similarity scores are never compared: order is tier block first, then score within a tier.
 _Avoid_: "source" — that word is taken by [Source], a signal's platform of origin. Product identity columns are named `CATALOG_*` for the same reason.
 
 **Ecomm agent**:
