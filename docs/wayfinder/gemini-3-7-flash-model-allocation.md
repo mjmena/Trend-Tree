@@ -145,6 +145,9 @@ Handed to `/to-tickets`. The map does not carry execution.
 - [Research: gemini-3.7-flash API deltas and migration hazards vs gemini-3.1-pro-preview](https://mcclatchy.atlassian.net/browse/CRMA-727) — **Decided:** Migration risk sits in the call sites, not the model: 14 hazards with a six-line pre-flight per call site; three are live defects on today's 3.1 Pro setup, and whether undeclared schema fields are dropped is undocumented for BOTH models, so only replay can answer it.
   **Binds:** Every lane that answers 'move' pairs the pin change with its RATES_PER_M fix in the same slice (the budget gate trips ~3x early otherwise). The thinking floor lands entirely on the four discovery verticals. CRMA-729's harness must measure field-dropping empirically per lane, deepest schemas first.
 
+- [Decide: sequencing an enrichment model change against the descriptor embedding work (ADR-0003)](https://mcclatchy.atlassian.net/browse/CRMA-728) — **Decided:** The two efforts split: CRMA-463 proceeds now (its comparison is already run, green, and NOT confounded - the sweep postdates the Sonnet->Gemini move), while CRMA-464 waits for CRMA-735 because deleting the legacy embed-doc branch is the one irreversible act.
+  **Binds:** CRMA-735 does not wait for the descriptor work - it waits for the harness. CRMA-729 must carry a descriptor-neighbor axis (embed candidate descriptor.statement, compare top-k neighbors, scratch table only, never the ledger) and must read the live enrichment prompt from DIM_LLM_PROMPT, since no repo file holds the active v7 template. CRMA-464's gate is a re-run of the comparison at full active-set coverage under the settled model.
+
 ## Not yet specified
 
 - **Interaction effects.** If several lanes move, does the composite pipeline degrade even
