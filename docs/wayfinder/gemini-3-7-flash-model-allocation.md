@@ -48,9 +48,8 @@ are recorded on the ticket; its allocation verdict does not.
 [CRMA-731](https://mcclatchy.atlassian.net/browse/CRMA-731) was re-scoped mid-flight for the
 same reason, with its full drop-in comparison recorded on the ticket.
 
-**Unchanged and still binding:** everything under Established facts, the five held defects
-plus the new sixth, the harness, and
-[CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 14 hazards.
+**Unchanged and still binding:** everything under Established facts, the eight held defects,
+the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 14 hazards.
 
 ## Established facts
 
@@ -171,6 +170,34 @@ plus the new sixth, the harness, and
   evidence behind them. The feared thinking-floor cost never materialised: 0–721 thinking
   tokens, sub-cent either way. Measured as a **drop-in**, Pro-era prompt held constant.
   _Source: [CRMA-730](https://mcclatchy.atlassian.net/browse/CRMA-730), 2026-08-20._
+- **On the ungrounded distillation lead, 3.7 Flash emits cleanly and dedups where 3.1 Pro
+  does not.** Five historical clusters, both models fired today on identical inputs: 5/5
+  `finishReason: STOP`, no fields lost, no missing required fields, 8–9 of 9 declared leaf
+  paths populated, and undeclared keys inside the bare-`{type:"object"}` `source_breakdown`
+  survived every run. Topic quality is a wash — both models independently coined
+  "coolcationing" and both landed on "cottage cheese flatbread". The separation is tool use:
+  3.1 Pro ran the identical minimal sequence 5/5 (`query_signals_window →
+  query_trend_neighbors → propose_trend_candidate`, 4 turns) and never called
+  `validate_dedupe_pair`, `query_trend_metrics`, or `validate_url_canonical`; 3.7 Flash
+  called `validate_dedupe_pair` in 3/5 and returned `DUPLICATE_OF ea7cffc2` on a trend the
+  incumbent's own proposal had created. **No head truncation appeared — this lane sends no
+  `google_search`.** _Source: [CRMA-732](https://mcclatchy.atlassian.net/browse/CRMA-732)
+  replay with `--rerun-incumbent`, 2026-08-20._
+- **The extra turns are what invert the cost.** 3.7 Flash ran 4–7 turns against the
+  incumbent's flat 4, re-sending a growing context: $0.1196 vs $0.1987 across five cases —
+  40% cheaper today, but **+20% against 3.1 Pro at the 2027-01-01 rates**. The extra turns
+  are the dedup calls, so the premium buys a guardrail that does not currently run.
+  `candidates_excludes_thinking` reconciled on all ten runs; deployed cost math understates
+  this lane 20–27%. _Source: [CRMA-732](https://mcclatchy.atlassian.net/browse/CRMA-732), 2026-08-20._
+- **`STG_TREND_CANDIDATES` self-reported `specificity_score` is not a decision axis.** Across
+  357 rows in 30 days it never leaves 0.7–1.0, mean 0.90, and 357 of 359 carry
+  `VERDICT = REAL_TREND`. The model grades its own homework, so the judgeable rubric is the
+  prose bar and worked examples in `distillation.lead.system` v7, not the number.
+  _Source: [CRMA-732](https://mcclatchy.atlassian.net/browse/CRMA-732), 2026-08-20._
+- **The distillation lane's real work is small clusters.** Only four candidates in the last
+  21 days carried more than 5 supporting signals, and the largest carried 7; 3-signal
+  clusters dominate. Volume is 3–6 sessions and 7–21 candidates a day, 3–10 promoted.
+  _Source: [CRMA-732](https://mcclatchy.atlassian.net/browse/CRMA-732), 2026-08-20._
 - **The grounded-lane noise floor is large.** On `discovery.gemini.search` the incumbent's own
   usable-citation rate moved 45% → 32% (15 → 11 of ~33) between two runs an hour apart. A lane
   decision on a grounded lane needs a gap bigger than that.
@@ -258,6 +285,28 @@ plus the new sixth, the harness, and
      lose a third of its yield with nothing in the warehouse showing it. Added by
      [CRMA-731](https://mcclatchy.atlassian.net/browse/CRMA-731). **This one is also a
      prerequisite** — until it is fixed, no model change on this lane can be evaluated.
+  7. **The distillation candidate `query` is null and the tool schema has no slot for it.**
+     `propose_trend_candidate` (`distillation-cluster-agent-p_YyC89Ke/run_lead_agent/entry.js`)
+     declares nine properties and `query` is not among them, yet `commit_candidates`
+     (`distillation-p_mkCBBqb/workflow.yaml:145`) selects `cand.j:query::STRING` and the v7
+     prompt tells the agent to author one per candidate. The model was emitting it as an
+     **undeclared** argument, and that has decayed to nothing: main path 30 of 130 rows over
+     14 days, falling to **0 since 2026-08-18**; revisit path 0 of 49, ever. `BUCKET` is null
+     on all 179 rows for the same reason. ADR-0004's atomic query is the join key an external
+     keyword catalog is looked up by, so the channel is silently starved. Added by
+     [CRMA-732](https://mcclatchy.atlassian.net/browse/CRMA-732). **This one is also a
+     prerequisite** — CRMA-756 showed `VALIDATED` is the implicit default when
+     `functionDeclarations` meet built-in tools, so a swap could hard-drop what today merely
+     limps. Declaring `query` ships in the same slice as the pin change.
+  8. **The distillation lane persists no run trace at all.** `REASONING_TRACE` is null on
+     179 of 179 rows in 14 days, from two independent causes. Per candidate,
+     `c.reasoning_trace` is `undefined` because the tool schema has no such property
+     (`run_lead_agent/entry.js:771`). Run-level, the trace **is** built, capped, and POSTed
+     across the wire (`entry.js:790` → `respond/entry.js:38`), then dropped by
+     `distillation-p_mkCBBqb/parse_cluster_result/entry.mjs`, which passes through only
+     `proposed_candidates`. No model id, per-run cost, turn count, or dispatch count is
+     stored anywhere. Added by [CRMA-732](https://mcclatchy.atlassian.net/browse/CRMA-732).
+     This is the "detection, not rollback" constraint biting a specific lane.
 
   Related and also held: **`temperature` was deprecated 2026-07-21** and every lane still
   sends it. Full hazard list with sources is on CRMA-727.
@@ -311,7 +360,10 @@ plus the new sixth, the harness, and
   date, so nothing to plan against yet.
 - **Whether `functionCallingConfig: VALIDATED` replaces `AUTO`.** All five agent loops pin
   `AUTO`, overriding what CRMA-756 shows is the API's implicit default when functionDeclarations
-  meet built-in tools. Relevant to every loop lane; the trade-off is unmeasured.
+  meet built-in tools. Relevant to every loop lane; the trade-off is unmeasured. Defect 7 is
+  the first live instance of what rides on it — a lane depending on an **undeclared**
+  argument surviving the call — so the fleet-wide question is now "which other lanes read a
+  field their tool schema never declared?", still too coarse to ticket.
 
 ## Out of scope
 
