@@ -1,12 +1,21 @@
 <!-- map: CRMA-726 -->
 
-# Gemini 3.7 Flash — per-lane model allocation across the agent fleet
+# Gemini 3.7 Flash — migrating the agent fleet
+
+> **Destination redrawn 2026-08-20.** This map began as a per-lane allocation question —
+> *for each pin, does a drop-in swap to 3.7 Flash beat the incumbent?* Two lanes answered
+> "no", and in both cases the loss traced to the call shape and to Pro-era prompts rather
+> than to the model being worse at the task. The effort is now a **migration**: the target
+> is 3.7 Flash, and the question is what it takes to get there. See **What the redraw
+> changed** below before reading anything written earlier.
 
 ## Destination
 
-A replacement spec that supersedes [CRMA-471](https://mcclatchy.atlassian.net/browse/CRMA-471),
-deciding **per lane** whether each in-scope model pin moves to `gemini-3.7-flash` or stays.
-Handed to `/to-tickets`. The map does not carry execution.
+A **migration spec** for moving the agent fleet to `gemini-3.7-flash` — naming, per lane,
+the prompt changes, call-shape changes, and telemetry needed to make the lane viable on
+3.7, or the evidence that the lane cannot get there. Supersedes
+[CRMA-471](https://mcclatchy.atlassian.net/browse/CRMA-471). Handed to `/to-tickets`.
+The map does not carry execution.
 
 ## Notes
 
@@ -15,10 +24,33 @@ Handed to `/to-tickets`. The map does not carry execution.
 - **Skills**: `pipedream-synced-project` for anything touching a workflow or a deploy;
   `/domain-modeling` when the model-pin vs registry-driven distinction gets its glossary entry.
 - **One instrument, built inside the map.** The replay harness is a `task` ticket, not a
-  deliverable. This is a deliberate, scoped exception to plan-don't-do: nine decision
-  tickets are unanswerable without it. Nothing else in this map executes.
+  deliverable. This is a deliberate, scoped exception to plan-don't-do. Nothing else in this
+  map executes — including the prompt and call-shape changes the destination now covers.
+  The map decides what they must be; `/to-tickets` ships them.
 - **Never commit this map to `production`.** A commit to the default branch is a Pipedream
   deploy of every changed workflow.
+
+## What the redraw changed
+
+<!-- Read this before trusting anything written under the old destination. -->
+
+**In scope now, out of scope before:** prompt rewrites, call-shape changes (thinking level,
+structured output, `maxOutputTokens`, response parsing), and the choice of API surface.
+The old constraint "exactly one variable changes per lane" bounded the *comparison*; it no
+longer bounds the *work*.
+
+**The default flipped.** `stay` was the default and a lane moved only if replay showed it
+better. Now 3.7 Flash is the target and a lane stays only if it cannot be made to work.
+
+**Re-opened:** [CRMA-730](https://mcclatchy.atlassian.net/browse/CRMA-730) closed as "all
+five `gemini-3-flash-preview` pins STAY" on drop-in evidence. Its **measurements stand** and
+are recorded on the ticket; its allocation verdict does not.
+[CRMA-731](https://mcclatchy.atlassian.net/browse/CRMA-731) was re-scoped mid-flight for the
+same reason, with its full drop-in comparison recorded on the ticket.
+
+**Unchanged and still binding:** everything under Established facts, the five held defects
+plus the new sixth, the harness, and
+[CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 14 hazards.
 
 ## Established facts
 
@@ -36,6 +68,17 @@ Handed to `/to-tickets`. The map does not carry execution.
   has no `run_lead_agent` namespace. The lead clusters in SQL and dispatches to the shared
   cluster agent; the file is dead code. This shrinks CRMA-732's scope.
   _Source: repo inventory 2026-08-20, corrected by [CRMA-729](https://mcclatchy.atlassian.net/browse/CRMA-729) re-measurement 2026-08-20._
+- **`gemini-3.7-flash` silently drops the head of its answer on grounded calls.** With
+  `tools: [{google_search:{}}]` and `temperature` only — production's exact shape — the model
+  emits its fence and then begins mid-object, the array opener absent. Measured on the **raw
+  API**, ~**1 call in 5**. Token accounting is exact (4,647 + 1,423 + 3,191 = 9,261), so
+  nothing is lost in transit; `parts.length` is 1, so it is **not** a client-extraction bug;
+  `groundingMetadata` is present with segment offsets indexing into the already-truncated
+  text; `finishReason` is `STOP`. Matched A/B over 24 calls: `includeThoughts` off 9/12
+  clean, on 10/12 — **not a fix**, and its failures rule out a thought/answer boundary
+  explanation. Per-model: `gemini-2.5-flash` 0, `gemini-3-flash-preview` 0/6,
+  `gemini-3.6-flash` 4/5 (forum), `gemini-3.7-flash` ~1 in 5.
+  _Source: [CRMA-731](https://mcclatchy.atlassian.net/browse/CRMA-731) raw-API capture, 2026-08-20._
 - **`candidatesTokenCount` EXCLUDES thinking tokens**, on both `gemini-3.1-pro-preview` and
   `gemini-3.7-flash`. Measured by arithmetic against the API's own `totalTokenCount`:
   `prompt 13 + candidates 8 + thoughts 140 = total 161` (Pro) and
@@ -78,34 +121,32 @@ Handed to `/to-tickets`. The map does not carry execution.
   legal values are `low` / `medium` / `high`, default `medium`. Unlike 3.6 Flash it does not
   expose `minimal`. Every call bills thinking tokens at the output rate.
   _Source: ai.google.dev/gemini-api/docs/thinking, 2026-08-20._
-- **No shutdown date is published** for `gemini-3-flash-preview`, `gemini-2.5-flash`, or
-  `gemini-3.1-pro-preview`. Preview ids here do get retired eventually (`gemini-2.0-flash`
-  went 2026-06-01) but no clock is running today.
-  _Source: ai.google.dev/gemini-api/docs/deprecations, 2026-08-20._
-- **No official 3.7 Flash vs 3.1 Pro head-to-head exists.** Google's model card compares
-  3.7 Flash only against 3.6 Flash and Claude Sonnet 5, beating Sonnet 5 on all four
-  published rows (FrontierCode, DeepSWE, Terminal-bench, GDM-MRCR). Head-to-head figures
-  circulating on aggregator sites are absent from Google's own docs and disagree between
-  providers — treat as unverified. _Source: DeepMind model card + aggregator survey, 2026-08-20._
-- **The nine Pro loops already run `thinking_level: "medium"`. The four verticals run
-  single-shot at `temperature 0.3` with no thinking parameter at all.** The 3.7 Flash
-  thinking floor therefore lands entirely on the verticals.
-  _Source: repo inventory, verified 2026-08-20._
-- **Google has split the API surface.** `ai.google.dev/gemini-api/docs/*` now documents a
-  new **Interactions API** (`POST /v1beta/interactions`). The
-  `v1beta/models/{model}:generateContent` path every workflow here uses is moved to
-  `/docs/generate-content/*` and labelled **"(Legacy)"**. `gemini-3.7-flash` is supported on
-  generateContent and no sunset is published, but `gemini-3-pro-preview` went release to
-  shutdown in ~3.5 months. _Source: [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727) research, 2026-08-20._
+- **No shutdown date is published** for `gemini-3-flash-preview`, `gemini-2.5-flash`,
+  `gemini-3.1-pro-preview`, or `gemini-3.7-flash`. `gemini-3-flash-preview` is not on the
+  deprecations page at all. Preview ids here do get retired eventually (`gemini-3-pro-preview`
+  went release to shutdown in ~3.5 months) but no clock is running today.
+  _Source: ai.google.dev/gemini-api/docs/deprecations, re-confirmed by [CRMA-756](https://mcclatchy.atlassian.net/browse/CRMA-756), 2026-08-20._
+- **`generateContent` is officially "now considered legacy" but "fully supported", with no
+  sunset date published anywhere.** Moving to the Interactions API is therefore a choice, not
+  a deadline. _Source: [CRMA-756](https://mcclatchy.atlassian.net/browse/CRMA-756), 2026-08-20._
+- **The Interactions API returns real publisher URLs** in `url_citation.url`; the legacy
+  surface returns `vertexaisearch.cloud.google.com` redirects and has **no documented way**
+  to get publisher URLs. Interactions carries its own trap: `output_text` excludes text
+  blocks separated by non-text content, so grounded runs must walk `steps` manually.
+  _Source: [CRMA-756](https://mcclatchy.atlassian.net/browse/CRMA-756), 2026-08-20._
+- **Structured output combined with Search grounding is Preview**, and explicitly names
+  `gemini-3.7-flash`. The structured-output support table omitting 3.7 is a stale table,
+  contradicted by the model's own capability page. `functionCallingConfig` accepts
+  `AUTO`/`ANY`/`NONE`/`VALIDATED`; `VALIDATED` is the **implicit default** the API switches to
+  when functionDeclarations are combined with built-in tools or structured outputs.
+  _Source: [CRMA-756](https://mcclatchy.atlassian.net/browse/CRMA-756), 2026-08-20._
 - **`temperature` is deprecated** as of 2026-07-21; the migration checklist says to strip
   `temperature`, `top_p`, and `top_k`. Every lane here still sends it.
   _Source: [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727) research, 2026-08-20._
 - **No official source states whether undeclared schema fields are dropped, for either
-  model.** There is no documented behavioural delta between 3.1 Pro and 3.7 Flash, and the
-  structured-output support table does not list 3.7 at all.
-  [CRMA-722](https://mcclatchy.atlassian.net/browse/CRMA-722) remains the only hard evidence
-  and it is empirical. A bare `{type:"object"}` passes contents through unvalidated, which is
-  why the audit agent's shallow schema survived and enrichment's deeply-typed
+  model.** [CRMA-722](https://mcclatchy.atlassian.net/browse/CRMA-722) remains the only hard
+  evidence and it is empirical. A bare `{type:"object"}` passes contents through unvalidated,
+  which is why the audit agent's shallow schema survived and enrichment's deeply-typed
   `propose_enrichment` is the more exposed one.
   _Source: [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727) research, 2026-08-20._
 - **No lane in this repo declares a `responseSchema`.** The only structured-output
@@ -115,6 +156,9 @@ Handed to `/to-tickets`. The map does not carry execution.
   hazard H8 actually applies to. `propose_enrichment` declares **39 leaf paths** and remains
   the most exposed lane; `propose_audit_report` is the shallow contrast.
   _Source: [CRMA-729](https://mcclatchy.atlassian.net/browse/CRMA-729) call-site survey, 2026-08-20._
+- **The nine Pro loops already run `thinking_level: "medium"`. The four verticals run
+  single-shot at `temperature 0.3` with no thinking parameter at all.**
+  _Source: repo inventory, verified 2026-08-20._
 - **The four verticals run at ~a third of nominal yield, and the model pin is not why.**
   ~60% of proposed trends die on `resolveAndVerify` — candidate 60%, incumbent 63%, fired
   the same day against the same prompts. Production corroborates from its own IP: the
@@ -122,16 +166,42 @@ Handed to `/to-tickets`. The map does not carry execution.
   14 days. Held as **defect 5** below.
   _Source: [CRMA-730](https://mcclatchy.atlassian.net/browse/CRMA-730) paired replay +
   `STG_EXTERNAL_SIGNALS` yield query, 2026-08-20._
+- **On the verticals, 3.7 Flash was worse on usable citations** — live AND deep-link 16% vs
+  26% — because it cites bare homepages that pass URL verification and get stored with no
+  evidence behind them. The feared thinking-floor cost never materialised: 0–721 thinking
+  tokens, sub-cent either way. Measured as a **drop-in**, Pro-era prompt held constant.
+  _Source: [CRMA-730](https://mcclatchy.atlassian.net/browse/CRMA-730), 2026-08-20._
+- **The grounded-lane noise floor is large.** On `discovery.gemini.search` the incumbent's own
+  usable-citation rate moved 45% → 32% (15 → 11 of ~33) between two runs an hour apart. A lane
+  decision on a grounded lane needs a gap bigger than that.
+  _Source: [CRMA-731](https://mcclatchy.atlassian.net/browse/CRMA-731), 2026-08-20._
+- **`STG_LLM_PROMPT_LOGS` has no writer anywhere in the repo** — DDL only. Per-lane before/after
+  by prompt version cannot be run. The observable substitute is
+  `STG_EXTERNAL_SIGNALS.METADATA:source_model_full`, which carries the exact model id (verified
+  21 days), alongside `rerank_score` (stable 0.653–0.698) and yield (9–28 signals/day).
+  _Source: [CRMA-731](https://mcclatchy.atlassian.net/browse/CRMA-731), 2026-08-20._
+- **The discovery lane discards unresolvable grounding-redirect citations.** 17 of ~67
+  incumbent proposals across two runs cited a `vertexaisearch.cloud.google.com` URL that did
+  not resolve, dropped at `canonicalize_and_validate/entry.js:199`. Same family as defect 5.
+  By contrast `gemini-3-flash-preview` lost 38% to dead 404s and 3.7 Flash produced four
+  fabricated deep links in one shard — a dropped redirect is recoverable downstream, a
+  fabricated URL is not.
+  _Source: [CRMA-731](https://mcclatchy.atlassian.net/browse/CRMA-731), 2026-08-20._
 
 ## Standing constraints
 
 <!-- Settled decisions in binding present tense. Overturned only by another decision. -->
 
-- **The motive is capability, not cost.** A lane moves because it does the job better.
-- **Cost is a non-regression constraint, not a gate.** A lane may move when quality improves
-  and cost does not materially rise; a large cost rise needs a deliberate "yes, worth it".
-  No numeric threshold — the rate tables disagree with each other and fixing them is not
-  this map's job.
+- **The target is `gemini-3.7-flash`, and the question per lane is what it takes to get
+  there.** A lane stays only when the work required is shown to be infeasible or not worth
+  it — not merely because a drop-in swap lost.
+- **A lane may change its prompt, its call shape, and its parsing.** What it may not change
+  is the job the lane does. A rewritten prompt that quietly redefines the lane's output
+  contract is a different lane, not a migrated one.
+- **Cost is a non-regression constraint, not a gate.** A large cost rise needs a deliberate
+  "yes, worth it". No numeric threshold — the rate tables disagree with each other and fixing
+  them is not this map's job. **3.7 Flash pricing is introductory through 2026-12-31 and
+  doubles on 2027-01-01**; size any cost argument against the January number.
 - **Scope is the 9 Pro pins, the 5 `gemini-3-flash-preview` pins, and the 3 Anthropic pins.**
   Grok is out: `grok-live-search` is X-only live search, so the model *is* the data source.
 - **Evidence is offline replay.** Historical inputs pulled from the ledgers, fired at the
@@ -141,11 +211,13 @@ Handed to `/to-tickets`. The map does not carry execution.
   branch — `node scripts/replay/replay.mjs <lane> --model gemini-3.7-flash`. Ten lanes, one
   per lane ticket. A lane decision cites a run artifact under `scripts/replay/out/`, not an
   impression. Read `scripts/replay/README.md` **before** reading a diff: each lane carries
-  named limits (grounded lanes are not reproducible, `audit` has no historical binding,
-  `daily-digest` persists nothing, `distillation` reconstructs its cluster hint), and a
-  decision made without them is a decision made on an artifact of the harness.
-- **Allocation is per-lane and `stay` is the default.** A lane moves only when replay shows
-  it better. Uniformity is not a goal.
+  named limits, and a decision made without them is a decision made on an artifact of the
+  harness. Grounded lanes compare **re-run vs re-run** — the harness does this automatically
+  for any lane declaring `requiresRerun`.
+- **The grounded head-truncation blocks every grounded lane.** Until there is a call shape
+  that returns a complete answer, no grounded lane can move. That is
+  [CRMA-757](https://mcclatchy.atlassian.net/browse/CRMA-757), and both grounded lane tickets
+  are blocked on it.
 - **The switch targets Pipedream now.** It does not wait for
   [CRMA-429](https://mcclatchy.atlassian.net/browse/CRMA-429); model ids are configuration
   and travel with the code to Cloud Run.
@@ -153,11 +225,10 @@ Handed to `/to-tickets`. The map does not carry execution.
   slice structure, gate design, and registry-migration pattern are worth lifting.
 - **Rate-table hygiene rides in the spec, not on the map.** It is not a decision, but the
   spec must say what happens to the 13 tables or an implementer ships a wrong cost number.
-- **The three live defects found by [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)
-  are held for the eventual epic, not filed separately.** They are defects on today's
-  `gemini-3.1-pro-preview` setup and bite whether or not any lane moves, but filing them as
-  lone tickets scatters work that belongs in one place. The spec **must** carry them as
-  remediation items, and `/to-tickets` turns them into stories under the epic:
+- **The live defects found while mapping are held for the eventual epic, not filed
+  separately.** They bite whether or not any lane moves, but filing them as lone tickets
+  scatters work that belongs in one place. The spec **must** carry them as remediation items,
+  and `/to-tickets` turns them into stories under the epic:
   1. **`functionResponse` carries no `id`** at `agents/lib/gemini_loop.mjs:192`,
      `audit:356`, `enrichment:717`, `promotion:574`, `lifecycle-subagent:437`. Google's docs
      are now normative that results map back by `id`. Failure mode is swapped tool results
@@ -170,17 +241,23 @@ Handed to `/to-tickets`. The map does not carry execution.
      The loops assign `stop_reason = finishReason` and break, so these land as silent
      no-emission.
   4. **`FCT_TREND_ENRICHMENT_LEDGER.MODEL_USED` records the wrong model** (see Established
-     facts). Added by [CRMA-729](https://mcclatchy.atlassian.net/browse/CRMA-729). Same
-     family as the other three — telemetry that reads clean and is not. It matters because
-     the audit agent groups per-model cost by that column, so the fleet's own cost report is
-     wrong about which vendor enrichment spend belongs to.
-
+     facts). Added by [CRMA-729](https://mcclatchy.atlassian.net/browse/CRMA-729). It matters
+     because the audit agent groups per-model cost by that column, so the fleet's own cost
+     report is wrong about which vendor enrichment spend belongs to.
   5. **~60% of what the four verticals propose dies on `resolveAndVerify`** and is dropped
      before it reaches `STG_EXTERNAL_SIGNALS` (see Established facts). Added by
      [CRMA-730](https://mcclatchy.atlassian.net/browse/CRMA-730). Model-independent, so no
-     pin choice fixes it. It matters more than any single lane allocation on this map: the
-     verticals emit about a third of what they should whatever model runs them. The spec
-     must carry it, or an implementer corrects the pins and ships a still-starved lane.
+     pin choice fixes it. The verticals emit about a third of what they should whatever model
+     runs them. The spec must carry the URL-death fix or the lane stays starved.
+  6. **The discovery Gemini lane silently loses shards.** `discover_gemini/entry.js:114`
+     reads only `parts[0].text`, and `gemini-2.5-flash` returned two parts in 2 of 6 sweep
+     calls — production drops the second part's proposals. The step sends no
+     `maxOutputTokens` and 2.5 Flash hit `MAX_TOKENS` in 1 of 6, losing the shard.
+     `entry.js:144-147` swallows a failed shard and the lane only errors when all six fail;
+     `shards_succeeded` reaches the HTTP response but is never persisted. Net: this lane can
+     lose a third of its yield with nothing in the warehouse showing it. Added by
+     [CRMA-731](https://mcclatchy.atlassian.net/browse/CRMA-731). **This one is also a
+     prerequisite** — until it is fixed, no model change on this lane can be evaluated.
 
   Related and also held: **`temperature` was deprecated 2026-07-21** and every lane still
   sends it. Full hazard list with sources is on CRMA-727.
@@ -190,13 +267,18 @@ Handed to `/to-tickets`. The map does not carry execution.
   silently defaults to DEFER, lifecycle silently emits an empty decisions array so status
   freezes, and enrichment returns null. Every lane ticket that answers "move" must pair the
   pin change with its rate-table correction in the same slice.
+- **Detection, not rollback, is the binding cost of a switch.** Proven on the one lane where
+  rollback is nearly free: no per-model cost telemetry, drop counters shared across all three
+  discovery lanes, and failed shards swallowed silently, against a baseline that already
+  swings 9–28 signals/day. A cheap undo is not a cheap experiment. Any lane that moves needs
+  its before/after observable **before** it moves.
 
 ## Decisions so far
 
 <!-- `resolve` appends here. Do not hand-edit while a session is running. -->
 
 - [Research: gemini-3.7-flash API deltas and migration hazards vs gemini-3.1-pro-preview](https://mcclatchy.atlassian.net/browse/CRMA-727) — **Decided:** Migration risk sits in the call sites, not the model: 14 hazards with a six-line pre-flight per call site; three are live defects on today's 3.1 Pro setup, and whether undeclared schema fields are dropped is undocumented for BOTH models, so only replay can answer it.
-  **Binds:** Every lane that answers 'move' pairs the pin change with its RATES_PER_M fix in the same slice (the budget gate trips ~3x early otherwise). The thinking floor lands entirely on the four discovery verticals. CRMA-729's harness must measure field-dropping empirically per lane, deepest schemas first.
+  **Binds:** Every lane that moves pairs the pin change with its RATES_PER_M fix in the same slice (the budget gate trips ~3x early otherwise). CRMA-729's harness must measure field-dropping empirically per lane, deepest schemas first.
 
 - [Decide: sequencing an enrichment model change against the descriptor embedding work (ADR-0003)](https://mcclatchy.atlassian.net/browse/CRMA-728) — **Decided:** The two efforts split: CRMA-463 proceeds now (its comparison is already run, green, and NOT confounded - the sweep postdates the Sonnet->Gemini move), while CRMA-464 waits for CRMA-735 because deleting the legacy embed-doc branch is the one irreversible act.
   **Binds:** CRMA-735 does not wait for the descriptor work - it waits for the harness. CRMA-729 must carry a descriptor-neighbor axis (embed candidate descriptor.statement, compare top-k neighbors, scratch table only, never the ledger) and must read the live enrichment prompt from DIM_LLM_PROMPT, since no repo file holds the active v7 template. CRMA-464's gate is a re-run of the comparison at full active-set coverage under the settled model.
@@ -204,38 +286,38 @@ Handed to `/to-tickets`. The map does not carry execution.
 - [Build the offline replay harness for per-lane model comparison](https://mcclatchy.atlassian.net/browse/CRMA-729) — **Decided:** Built: scripts/replay/ replays real historical inputs at any model across ten lanes (one per lane ticket), reusing each workflow's own SQL, the deployed entry.js tool schemas and dispatchers, and DIM_LLM_PROMPT — plus the CRMA-728 descriptor axis writing to a scratch table only.
   **Binds:** H8 is measured against functionDeclarations tool-arg schemas, NOT responseSchema — no lane in the repo declares one. Three re-measurements change map facts: candidatesTokenCount EXCLUDES thinking (gemini_loop.mjs:150 is wrong, CRMA-727 defect 2 confirmed); enrichment ledger MODEL_USED is mislabelled claude-sonnet-4-6 (a 4th defect for the epic, and the audit agent groups cost by it); distillation lead entry.js is dead code so the fleet has 17 live pins, not 18.
 
-- [Decide: the four discovery verticals and the prompt-tester default](https://mcclatchy.atlassian.net/browse/CRMA-730) — **Decided:** All five gemini-3-flash-preview pins STAY: 3.7 Flash is no better on this lane and worse on usable citations (live AND deep-link 16% vs 26%), because it cites bare homepages that pass URL verification and get stored with no evidence behind them; the feared thinking-floor cost never materialised (0-721 thinking tokens, sub-cent either way).
-  **Binds:** Cost is settled as a non-issue for single-shot grounded lanes - do not re-litigate it on CRMA-731. The prompt-tester DEFAULT_MODEL is a mirror, not an allocation: the spec states it tracks the vertical pin. Defect 5 for the epic: ~60% of proposals from BOTH models die on resolveAndVerify and production yield sits at ~a third of the 10-15 ask, so the spec must carry the URL-death fix or the lane stays starved whatever model runs it. On grounded lanes compare re-run vs re-run - the harness's stored-row column is post-filter and overstates any candidate 2-3x.
+- [Research: what gemini-3.7-flash supports for API calls](https://mcclatchy.atlassian.net/browse/CRMA-756) — **Decided:** No primary source documents a STOP-with-partial-text failure, so the head-truncation is undocumented behaviour; `generateContent` is "legacy" but fully supported with NO published sunset, so moving surface is a choice; the Interactions API returns real publisher URLs in `url_citation.url` where the legacy surface only returns vertexaisearch redirects.
+  **Binds:** `groundingSupports[].segment` offsets are per-part BYTE offsets, not character offsets into a joined string — any code that concatenates parts then slices is wrong. Structured output combined with grounding is Preview and names 3.7 explicitly, so CRMA-757 can test it. `VALIDATED` is the implicit default when functionDeclarations meet built-in tools, which the five loops' pinned `AUTO` currently overrides. Price the migration against the 2027-01-01 doubling, not today's introductory rate.
 
 ## Not yet specified
 
+- **What a 3.7-shaped prompt looks like.** Every prompt in the registry was written against a
+  Pro-era model, and two lanes have now failed a drop-in in ways that may be prompt-fixable —
+  bare-homepage citations on the verticals, fabricated deep links on discovery. Whether there
+  is one general rewrite pattern or nine lane-specific ones is unknown until a lane tries.
+  The registry-driven lane is the cheapest place to learn it.
+- **Whether the migration ships per lane or as a fleet cutover.** The old map assumed per-lane
+  allocation. A migration might instead land one shared call-layer fix and move many lanes at
+  once. Cannot be phrased sharply until CRMA-757 shows how much of a call site the fix touches.
+- **Telemetry the migration needs to be verifiable at all.** Defect 6 is the discovery lane's
+  instance; the general question — what per-model observability every lane needs *before* it
+  moves — is broader than one defect and not yet sharp.
 - **Interaction effects.** If several lanes move, does the composite pipeline degrade even
-  where each lane passed replay in isolation? Cannot be phrased sharply until we know which
-  lanes actually move.
-- **Prompts tuned for Pro.** Every prompt in the registry was written against a Pro model.
-  A lane may fail replay because of the prompt, not the model. Prompt rewrites are out of
-  scope today; whether that holds depends on how many lanes fail for that reason.
-- **If Gemini 3.5 Pro ships mid-effort**, the per-lane question reopens for the loops that
-  chose `stay`. No announced date, so nothing to plan against yet.
-- **Whether the fleet should move to the Interactions API at all.** `generateContent` is now
-  labelled Legacy. That question is larger than a model pin and could subsume this map — but
-  it cannot be phrased sharply until someone measures what the new surface costs to adopt
-  across 18 call sites. Graduates once CRMA-729's harness shows how much of a call site a
-  model swap actually touches.
+  where each lane passed replay in isolation?
+- **If Gemini 3.5 Pro ships mid-effort**, the question reopens for the loops. No announced
+  date, so nothing to plan against yet.
 - **Whether `functionCallingConfig: VALIDATED` replaces `AUTO`.** All five agent loops pin
-  `AUTO`, opting out of the mode Google says reduces malformed function calls. Relevant to
-  every lane, but the trade-off is unmeasured and it interacts with Search grounding, where
-  mixing grounding with `functionDeclarations` forces `VALIDATED` and is still Preview.
+  `AUTO`, overriding what CRMA-756 shows is the API's implicit default when functionDeclarations
+  meet built-in tools. Relevant to every loop lane; the trade-off is unmeasured.
 
 ## Out of scope
 
 - **[CRMA-725](https://mcclatchy.atlassian.net/browse/CRMA-725) — lanes that compute no cost
-  at all.** A real bug, but it blocks a cost argument and the motive here is capability.
+  at all.** A real bug, but it is its own effort.
 - **`grok-live-search`.** Swapping `grok-4-latest` removes the X lane rather than improving
   reasoning. A separate effort if ever.
-- **Prompt template rewrites and temperature retunes.** Exactly one variable changes per lane.
-  This bounds the **comparison**, not the remediation: defect 5's fix may well touch the
-  vertical prompt, and that is the spec's business, not a lane ticket's.
-- **Execution of the conversion.** The map ends at the spec.
+- **Redefining what a lane does.** Prompts and call shapes are in scope; the lane's output
+  contract is not.
+- **Execution of the migration.** The map ends at the spec.
 - **GCP migration sequencing.** Owned by
   [CRMA-429](https://mcclatchy.atlassian.net/browse/CRMA-429).
