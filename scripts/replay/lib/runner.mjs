@@ -143,10 +143,12 @@ async function invoke(lane, built, model, apiKey) {
       system: built.system,
       contents: built.contents,
       responseSchema: built.responseSchema,
-      thinkingLevel: built.thinkingLevel ?? "medium",
-      maxOutputTokens: built.maxOutputTokens ?? 8192,
+      // hasOwn, not ??, so a lane can say null and mean "omit the key".
+      thinkingLevel: Object.hasOwn(built, "thinkingLevel") ? built.thinkingLevel : "medium",
+      maxOutputTokens: Object.hasOwn(built, "maxOutputTokens") ? built.maxOutputTokens : 8192,
       temperature: built.temperature,
       tools: built.tools,
+      functionCallingMode: Object.hasOwn(built, "functionCallingMode") ? built.functionCallingMode : "AUTO",
     });
     const text = resp.parts.filter((p) => typeof p.text === "string" && p.thought !== true).map((p) => p.text).join("");
     // A lane's parse may be async — the verticals lane resolves grounding

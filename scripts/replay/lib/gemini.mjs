@@ -143,7 +143,12 @@ export async function callGemini({
   if (!apiKey) throw new Error("callGemini: apiKey is required");
   if (!model) throw new Error("callGemini: model is required");
 
-  const generationConfig = { maxOutputTokens };
+  // A lane passes null to mean "production does not send this key". The
+  // discovery lane needs that: its deployed step sends only `temperature`,
+  // so a harness-added cap or thinking level would compare against a call
+  // production never makes.
+  const generationConfig = {};
+  if (maxOutputTokens != null) generationConfig.maxOutputTokens = maxOutputTokens;
 
   // 3.7 Flash cannot disable thinking; asking for a level it lacks is a 400.
   if (NO_THINKING_OFF.has(model) && thinkingLevel === "minimal") {
@@ -165,7 +170,9 @@ export async function callGemini({
   if (system) body.systemInstruction = { parts: [{ text: system }] };
   if (tools?.length) {
     body.tools = tools;
-    body.toolConfig = { functionCallingConfig: { mode: functionCallingMode } };
+    if (functionCallingMode != null) {
+      body.toolConfig = { functionCallingConfig: { mode: functionCallingMode } };
+    }
   }
 
   const ctrl = new AbortController();
