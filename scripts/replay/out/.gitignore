@@ -1,0 +1,5 @@
+# Run artifacts. Each replay writes its full inputs, emissions, and tool calls
+# here so a lane ticket can zoom past the terminal summary. They are large,
+# they contain live enrichment payloads, and they are reproducible — so they
+# stay out of git.
+*.json
