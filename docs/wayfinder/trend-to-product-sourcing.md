@@ -91,6 +91,31 @@ Measured state of the world. Falsified by re-measurement, never by a decision.
   and `PROC_AGGREGATE_AMAZON` LISTAGGs product titles into themes that carry no ASIN, price or
   URL back, because "individual product signals embed poorly against LLM trend signals"
   (`sql/proc_aggregate_amazon.sql:4-7`). Verified 2026-08-20.
+- **Shopify REST `products.json` still works at 2026-04, but it is a frozen surface.** Legacy
+  since 2024-10-01; list/create/update/delete "deprecated as of REST API 2024-04"; in
+  maintenance mode taking only critical updates. **Version 2026-04 is accessible until
+  2027-04-16.** One hard functional limit from the 2024-04 release notes: only custom apps that
+  do **not** need more than 100 variants may keep using the deprecated REST product APIs.
+  Verified 2026-08-20.
+- **The current field whitelist leaves four useful fields on the table, at zero extra cost.**
+  `products.json` accepts `product_type`, `vendor`, `body_html` and `status` in the same
+  `fields` parameter Marcelo already uses — all candidates for the embed doc. **Collection
+  membership is not on the product record.** Two shape gotchas: `body_html` is HTML and needs
+  stripping, and `tags` is a **comma-separated string**, not an array. Verified 2026-08-20.
+- **A full catalog sweep is cheap; metafields are not.** Pagination is cursor-based via the
+  `Link` header at `limit=250` max, and a `page_info` request may carry only `limit` and
+  `fields` — every filter goes on the first request. Rate limit is 40 requests per app per
+  store per minute, restoring at 2/s. So 10,000 products is 40 requests, roughly 20 seconds.
+  **Metafields have no inline form on REST — one request per product**, a 250× multiplier that
+  turns the same 10,000-product catalog into about 83 minutes. Verified 2026-08-20.
+- **Delta sync is achievable, but not on the obvious endpoint.** `updated_at_min` is **not
+  documented** on `products.json` at 2026-04, though that parameter table is provably
+  non-exhaustive (`since_id` is absent yet appears in Shopify's own example) and the sibling
+  count endpoint does document it — so it likely works, pending one live call. Two documented
+  alternatives need no gamble: **`product_listings.json`**, which documents `updated_at_min`,
+  allows `limit` up to **1000**, runs on the `read_product_listings` scope already held, and
+  carries `body_html` / `product_type` / `vendor`; or GraphQL `products(query:
+  "updated_at:>…")`. Verified 2026-08-20.
 - **`insights-agent` reads Snowflake directly, and already holds a privileged credential.**
   Service user `TH_APIUSER` holds `TH_APIROLE`, which carries
   `MCC_PRESENTATION_TREND_AGENT_SFULL` — ownership tier, not read-only — with a login as
@@ -165,6 +190,9 @@ Settled decisions in binding present tense.
 - [Research: how the Decision panel will read sourced products](https://mcclatchy.atlassian.net/browse/CRMA-749) — **Decided:** insights-agent reads Snowflake directly as TH_APIUSER/TH_APIROLE (SFULL tier); future grants make any new ledger readable on creation; it runs in a different GCP project so Secret Manager cannot be shared.
   **Binds:** CRMA-751 needs no grant ticket and need not route through DT_TREND_DASHBOARD for access. CRMA-747 must provision the token on the trend-tree side only — Snowflake is the sole shared substrate. Two frontend-shape questions remain for Marcelo, chiefly whether the panel hydrates price/image live, which decides if the ledger row must be self-sufficient.
 
+- [Research: the Shopify Admin product payload at API version 2026-04](https://mcclatchy.atlassian.net/browse/CRMA-748) — **Decided:** REST products.json is live at 2026-04 but frozen (expires 2027-04-16, >100-variant apps excluded); product_type/vendor/body_html/status are free to add; a full sweep is 40 requests but metafields are 1-per-product; delta sync should use product_listings.json, not an undocumented updated_at_min.
+  **Binds:** CRMA-753's embed doc may draw on product_type/vendor/body_html at no request cost, but must strip HTML and split the comma-separated tags string; collection membership is unavailable on REST. CRMA-752 should sync via product_listings.json (documented updated_at_min, limit 1000, existing scope). If metafields or collections ever enter the embed doc, REST's N+1 breaks the budget and GraphQL must be costed first.
+
 ## Not yet specified
 
 - **Prompt versioning for the selector** — whether its prompt lands in `DIM_LLM_PROMPT` like
@@ -178,6 +206,12 @@ Settled decisions in binding present tense.
 - **Where the Shopify token is held** — Secret Manager in `mcc-crm-automations`, a Pipedream
   connected account, or wherever `insights-agent` already keeps it. Sharpens with the
   provisioning task, which will surface where the token actually ends up.
+- **Whether the sourcing path should be built on GraphQL rather than REST.** REST
+  `products.json` is in maintenance mode and version 2026-04 expires 2027-04-16, so anything
+  built on it inherits a migration. REST is adequate while the embed doc draws only on the
+  product record, and collapses on cost the moment metafields or collection membership enter
+  it — both are inline on the GraphQL `Product` object. Sharpens once the embed doc is settled
+  at the calibration ticket; cost the migration before the doc grows, not after.
 - **Whether the selector's judgement is worth its latency** — a measurable question once the
   calibration ticket produces real candidate lists. If the vector ranking is already good
   enough, the selection stage may reduce to a threshold.
