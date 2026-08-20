@@ -41,7 +41,7 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 | `dispatcher-p_8rCBgnl` | Stateless chain runner — takes `{trend_id}` POST → fires `sources` → `enrichment` → `write` synchronously |
 | `sources-p_7NCy36w` | Per-trend source-metrics fetcher — populates `FCT_TREND_SOURCE_METRICS` |
 | `gtrends-poller-p_13CN9KG` | Per-active-trend Google Trends interest fetcher. 24h cron + HTTP → writes `FCT_TREND_GTRENDS_DAILY` (feeds `INTEREST_PEAK_PCT` / `INTEREST_AVG_PCT`). |
-| `enrichment-p_xMC995w` | Single Claude Sonnet 4.6 agent loop — produces the canonical enrichment record (the lone Anthropic holdout post-Gemini migration) |
+| `enrichment-p_xMC995w` | Single Gemini 3.1 Pro agent loop — produces the canonical enrichment record. Its `run_name_reviewer` step is one of four remaining Sonnet 4.6 (Anthropic) callers; see **Anthropic callers** below |
 | `write-p_o7CWa2K` | Persists enrichment to `FCT_TREND_ENRICHMENT_LEDGER` (append-only ledger; the legacy `DIM_TREND_ENRICHMENT` was retired in the 2026-04-28 agent-owned-ledgers refactor) |
 | `lifecycle-agent-p_JZCz73w` + `lifecycle-subagent-p_gYC562o` | Gemini 3.1 Pro lifecycle agent. Sweeps every hour, re-evaluates trend status (NEW/GROWING/STABLE/DECLINING/DORMANT/RESURGENT/RETIRED) → `FCT_TREND_LIFECYCLE_LEDGER` |
 | `lifecycle-attribution-agent-p_KwCoaap` + `lifecycle-attribution-subagent-p_PACe77B` | Gemini 3.1 Pro attribution agent. Hourly cron sweeps active trends and dispatches subagents that attribute newly-ingested candidate signals to existing trends → appends `FCT_TREND_SIGNALS` links (grows a trend's evidence pool over time). |
@@ -83,7 +83,7 @@ discovery agents (every 2h) → STG_EXTERNAL_SIGNALS
                                   ↓ promotion's fire_enrichment_chain
                           dispatcher (HTTP, per trend)
                                   ↓
-                  sources → enrichment (Sonnet 4.6) → write
+                  sources → enrichment (Gemini 3.1 Pro) → write
                                   ↓
                           FCT_TREND_ENRICHMENT_LEDGER
                                   ↓
@@ -114,13 +114,28 @@ For per-column detail on the dashboard table, see [`docs/dashboard/data-contract
 - Output: synchronous JSON via `$.respond()` — `enrichment_output` (the canonical Phase 3 record), `agent_telemetry`, `llm_token_usage`, `llm_cost_estimate`.
 - Read-only on Snowflake; the `write-p_o7CWa2K` workflow downstream persists to `FCT_TREND_ENRICHMENT_LEDGER`.
 
-Single Sonnet 4.6 agent loop with 4 refinement layers:
+Single Gemini 3.1 Pro agent loop with 4 refinement layers:
 1. Interleaved thinking (intra-turn)
 2. Tool loop with live cultural grounding (Bluesky/GDELT/Grok live search)
 3. In-prompt 5-candidate-per-audience naming with anti-cliché blocklist + corporate-media floor
 4. Post-emission `run_name_reviewer` step (~$0.005 reviewer pass that emits alternates if score < 7)
 
-Cost p95 ~$0.40-0.50/run, ~3-5 min wall-clock. Empirical results across 9 sample trends: 9/9 emit, names cleared corporate-media floor in 8/9 (1 borderline caught by reviewer).
+~3-5 min wall-clock. Empirical results across 9 sample trends: 9/9 emit, names cleared corporate-media floor in 8/9 (1 borderline caught by reviewer).
+
+Measured cost is well below the ~$0.40-0.50/run p95 this section used to claim: over the 30 days to 2026-08-20 the median `LLM_COST_ESTIMATE` on `FCT_TREND_ENRICHMENT_LEDGER` was **$0.15/run** across 167 runs. Only 83 of those rows carry a cost value, so the ledger total undercounts by roughly half (CRMA-442).
+
+### Anthropic callers
+
+The post-Gemini migration left **four** steps on `api.anthropic.com`, all Sonnet 4.6, all sharing the `apn_Oghan1O` connected account:
+
+| Workflow | Step |
+|---|---|
+| `sources-p_7NCy36w` | `generate_search_terms` |
+| `discovery-p_5VCPP3N` | `rerank_claude` |
+| `distillation-revisit-subagent-p_ezCwwKm` | `run_revisit_subagent` |
+| `enrichment-p_xMC995w` | `run_name_reviewer` |
+
+Note that `DIM_LLM_PROMPT.MODEL` still reads `claude-sonnet-4-6` for `enrichment.agent.user`, `enrichment.reviewer.decoder`, and `enrichment.reviewer.verifier`. That column does **not** drive the enrichment loop — `run_enrichment_agent/entry.js` hardcodes `const MODEL = "gemini-3.1-pro-preview"`. Trust the code, not the prompt row.
 
 ## Testing the enrichment workflow
 
