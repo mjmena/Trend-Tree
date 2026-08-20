@@ -91,6 +91,28 @@ Measured state of the world. Falsified by re-measurement, never by a decision.
   and `PROC_AGGREGATE_AMAZON` LISTAGGs product titles into themes that carry no ASIN, price or
   URL back, because "individual product signals embed poorly against LLM trend signals"
   (`sql/proc_aggregate_amazon.sql:4-7`). Verified 2026-08-20.
+- **`insights-agent` reads Snowflake directly, and already holds a privileged credential.**
+  Service user `TH_APIUSER` holds `TH_APIROLE`, which carries
+  `MCC_PRESENTATION_TREND_AGENT_SFULL` — ownership tier, not read-only — with a login as
+  recent as 2026-08-20 05:12 EDT. Its Postgres holds only its own app state. Corroborated by
+  `prediction-scoring-handoff-martin.md` in this repo, whose switchover step is "add the
+  columns to the `SELECT` in `snowflake_service.py`". Verified 2026-08-20.
+- **A new ledger is readable by `insights-agent` the moment it is created.** Future grants on
+  `MCC_PRESENTATION.TREND_AGENT` give `..._SR` SELECT on all new TABLEs and DYNAMIC_TABLEs,
+  and the role chain runs `SR → SRW → SFULL → TH_APIROLE`. Confirmed against
+  `DT_TREND_DASHBOARD` (created 2026-08-18), which carries exactly those auto-applied grants.
+  **No grant ticket is needed, and a sourcing ledger does not have to be surfaced through
+  `DT_TREND_DASHBOARD` to be reachable** — dashboard exposure is a product decision, not an
+  access one. Verified 2026-08-20.
+- **`insights-agent` runs in a different GCP project.** `mcc-crm-automations` owns zero
+  forwarding rules and zero reserved addresses, while the staging host sits behind GCLB
+  `34.117.216.29`; a load-balancer IP the project does not own cannot front a service in it.
+  Its Secret Manager holds only `curacity_coda_api` and `snowflake-private-key` — **no Shopify
+  token**. Consequence: Secret Manager cannot be shared between the two sides, and **Snowflake
+  is the sole shared substrate**. Verified 2026-08-20.
+- **The `insights-agent` repo is not on this machine**, and its staging API is unreachable from
+  here (TLS reset, likely VPN-gated). Anything about its frontend shape must come from Marcelo,
+  not from inspection. Verified 2026-08-20.
 - **Vector cost is not a factor in this design.** A `VECTOR(FLOAT, 1024)` is 4 KB per row, so
   a 250-product catalog is ~1 MB and a 50,000-product catalog ~200 MB. Embedding 250 products
   costs roughly 12,500 tokens, paid once per catalog change. For scale, `FCT_SIGNALS` holds
@@ -139,6 +161,9 @@ Settled decisions in binding present tense.
 ## Decisions so far
 
 <!-- `resolve` appends here. Do not hand-edit while a session is running. -->
+
+- [Research: how the Decision panel will read sourced products](https://mcclatchy.atlassian.net/browse/CRMA-749) — **Decided:** insights-agent reads Snowflake directly as TH_APIUSER/TH_APIROLE (SFULL tier); future grants make any new ledger readable on creation; it runs in a different GCP project so Secret Manager cannot be shared.
+  **Binds:** CRMA-751 needs no grant ticket and need not route through DT_TREND_DASHBOARD for access. CRMA-747 must provision the token on the trend-tree side only — Snowflake is the sole shared substrate. Two frontend-shape questions remain for Marcelo, chiefly whether the panel hydrates price/image live, which decides if the ledger row must be self-sufficient.
 
 ## Not yet specified
 
