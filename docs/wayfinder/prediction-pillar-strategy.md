@@ -1,0 +1,37 @@
+<!-- map: CRMA-481 -->
+
+# Map - Prediction Pillar Strategy
+
+## Destination
+
+A Confluence strategy doc (ATLAS space) defining the prediction pillar — what predictions are, their boundary with Trend Tree and with prediction cards, the scoring philosophy (verdict-based reasoning + retained numerics + saturation stance), the feedback-loop stance — ready for Jason/Marcelo/Josh to bless and `/to-spec` to consume.
+
+## Notes
+
+- **Source**: [ATLAS – Prediction Scoring Polish meeting notes, 2026-08-07](https://docs.google.com/document/d/1Pf32tNS3Omt2gm13U0YKoy58OTOj-9a2XR3fJjuP8UQ/edit) (Jason Smith + Martin Mena, full transcript in doc).
+- **Pre-map alignment from that meeting** (context, not map decisions): verdict-based reasoning will be adopted, starting with the prediction agent; numeric scores (heat index, prediction score) stay in the UI.
+- **Strategy-level only**: decision tickets define what the pillar *is*; implementation hands off via `/to-spec` after the doc.
+- **Current implementation grounding**: `prediction-agent-p_QPCkLP1` — deterministic SQL scorer, six hard AND eligibility gates. See `docs/prediction-contract.md` and `docs/prediction-flow.md` in the trend-tree repo.
+- **Skills**: decision tickets run `/grilling` + `/domain-modeling`.
+- Carried from CRMA-428 (Wayfinder: prediction scoring v3), closed 2026-08-18 as superseded by this map: **the measured v2 baseline** is the empirical case for retiring the deterministic scorer — eligible-set precision ~22.6% vs a 13.5% base (P@10 0.30), zero lift in the Emerging band, half the formula's terms and 3 of 5 gates dead under heat v2, and attribution throughput (~6% of trends/week) capping scorer coverage. Cite this in the strategy doc when it explains why v2 retires.
+
+## Decisions so far
+
+- [Investigate: coverage-signal availability for the prediction feedback loop](https://mcclatchy.atlassian.net/browse/CRMA-484) — Partially exists: no ready-made "covered" flag, but `MCC_RAW.STORY_DATA.CUE_CONTENT_PROCESSED` (near-real-time CMS publish feed, 1.92M stories) + `CUE_CONTENT_VECTORS` (768-dim story embeddings) provide every ingredient; embedding attribution empirically proven in one Cortex SQL query, verbatim name matching is a dead end, public content API irrelevant. Remaining gaps are policy (what counts as coverage, threshold, demotion rule), not data. Write-up: `docs/research/2026-08-08-coverage-signal-availability.md`.
+- [Investigate: saturation-penalizing trend engines and our saturation proxies](https://mcclatchy.atlassian.net/browse/CRMA-483) — Trend Hunter scores White Space as one of 5 weighted factors (no public formula); Exploding Topics classifies `peaked` from time-series shape; Google Trends "Rising" is structural growth-ratio ranking; academic clean form = remaining headroom on a fitted S-curve. Our most viable proxies: ET `peaked` lookup (~67% trend match), GDELT article count (one snapshot only, no curve), GTrends shape (only after re-pointing the poller — 90% of trends sit under Google's noise floor today); cumulative signal curves measure pipeline attention, not world saturation. Four scoring patterns framed (status quo / hard gate / weighted inverse / label-only). Write-up: `docs/research/2026-08-08-saturation-penalizing-engines.md`.
+- [Decide: what the prediction pillar is — boundary with Trend Tree and prediction cards](https://mcclatchy.atlassian.net/browse/CRMA-482) — **Predictions-first**: the agent generates candidate predictions from `FCT_SIGNALS` without reading `FCT_TRENDS`/heat, then compares against current trends — match = corroboration, no-match = white-space prediction (and possible seed back into the trend agent). External lenses (ET API) are a named extension, not the start. Cards: nominate-then-curate is the model, but everything card-side was ruled out of scope.
+- [Decide: scoring philosophy — verdicts, retained numerics, and saturation](https://mcclatchy.atlassian.net/browse/CRMA-485) — **Verdicts are the source of truth; numerics are their projection** (score = calibrated confidence; the deterministic v2 SQL scorer retires; unmatched trends read `NULL`). The Predictions Queue stays trend-facing — white space is recorded in the ledger, not surfaced yet. Saturation (ET `peaked` + GDELT breadth) and all six v2 gates demote to **evidence the verdict must weigh**; only a data-quality floor stays mechanical; the percentile gate and the #33 recalibration follow-up die with the batch scorer. Emission bar: a 4-part falsifiable claim (atomic descriptor subject + directional claim + horizon + observable check). Named trade for the doc: coverage → integrity.
+- [Decide: the verdict record — what a prediction verdict contains and where it lives](https://mcclatchy.atlassian.net/browse/CRMA-486) — **Durable prediction, appended verdicts, new ledger.** `PREDICTION_ID` minted once, 4-part claim frozen at mint as four NOT NULL columns (falsifiability enforced by schema); each evaluation appends `CONFIDENCE` + `PREDICTION_STATUS` (ACTIVE/RESOLVED_TRUE/RESOLVED_FALSE/EXPIRED/WITHDRAWN — change-direction always derived, never stored) into new `FCT_PREDICTION_VERDICT_LEDGER` (nullable `MATCHED_TREND_ID`; old prediction ledger freezes as v1/v2 history). Evidence = contracted `EVIDENCE` VARIANT (source_signals / saturation / trend_context) + `REASONING` / `WHAT_CHANGED` text. Surface: additive dashboard columns from the latest active matched verdict (rendered claim, reasoning, what-changed); evidence stays ledger-only.
+
+## Not yet specified
+
+- Derek's system-grounding methods — the verdict-record decision closed without this input; if the conversation happens in time, it lands as refinement in the strategy-doc draft instead.
+- Marcelo / Josh / Arita (Trend Hunter) input — may sharpen the scoring decisions; not ours to schedule.
+
+## Out of scope
+
+- Verdict rollout to the other agents (lifecycle / promotion / attribution) — prove the pattern on the prediction agent first; the doc notes "designed to generalize" only.
+- Implementation of anything the doc decides — successor `/to-spec` → `/to-tickets` efforts.
+- Atlas UI changes beyond retaining the existing numbers.
+- The coordination meetings themselves (Jason follow-up, Derek, Marcelo/Josh, Arita) — deliberately not task tickets; decisions are made in map sessions and the finished doc is blessed outside the map.
+- [Decide: prediction-card rubric — what earns a card](https://mcclatchy.atlassian.net/browse/CRMA-488) — closed 2026-08-08: cards (nomination queue UX, curation, rubric) sit past the destination; the pillar's deliverable ends at prediction records. Record-level specificity folded into the scoring-philosophy ticket.
