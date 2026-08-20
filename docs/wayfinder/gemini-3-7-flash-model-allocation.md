@@ -115,6 +115,13 @@ Handed to `/to-tickets`. The map does not carry execution.
   hazard H8 actually applies to. `propose_enrichment` declares **39 leaf paths** and remains
   the most exposed lane; `propose_audit_report` is the shallow contrast.
   _Source: [CRMA-729](https://mcclatchy.atlassian.net/browse/CRMA-729) call-site survey, 2026-08-20._
+- **The four verticals run at ~a third of nominal yield, and the model pin is not why.**
+  ~60% of proposed trends die on `resolveAndVerify` — candidate 60%, incumbent 63%, fired
+  the same day against the same prompts. Production corroborates from its own IP: the
+  prompt asks for 10–15 trends and `gemini_wellness` stored 2–5 per run on each of the last
+  14 days. Held as **defect 5** below.
+  _Source: [CRMA-730](https://mcclatchy.atlassian.net/browse/CRMA-730) paired replay +
+  `STG_EXTERNAL_SIGNALS` yield query, 2026-08-20._
 
 ## Standing constraints
 
@@ -168,6 +175,13 @@ Handed to `/to-tickets`. The map does not carry execution.
      the audit agent groups per-model cost by that column, so the fleet's own cost report is
      wrong about which vendor enrichment spend belongs to.
 
+  5. **~60% of what the four verticals propose dies on `resolveAndVerify`** and is dropped
+     before it reaches `STG_EXTERNAL_SIGNALS` (see Established facts). Added by
+     [CRMA-730](https://mcclatchy.atlassian.net/browse/CRMA-730). Model-independent, so no
+     pin choice fixes it. It matters more than any single lane allocation on this map: the
+     verticals emit about a third of what they should whatever model runs them. The spec
+     must carry it, or an implementer corrects the pins and ships a still-starved lane.
+
   Related and also held: **`temperature` was deprecated 2026-07-21** and every lane still
   sends it. Full hazard list with sources is on CRMA-727.
 - **The budget-gate trap binds any lane that moves.** If a model swaps but its `RATES_PER_M`
@@ -220,6 +234,8 @@ Handed to `/to-tickets`. The map does not carry execution.
 - **`grok-live-search`.** Swapping `grok-4-latest` removes the X lane rather than improving
   reasoning. A separate effort if ever.
 - **Prompt template rewrites and temperature retunes.** Exactly one variable changes per lane.
+  This bounds the **comparison**, not the remediation: defect 5's fix may well touch the
+  vertical prompt, and that is the spec's business, not a lane ticket's.
 - **Execution of the conversion.** The map ends at the spec.
 - **GCP migration sequencing.** Owned by
   [CRMA-429](https://mcclatchy.atlassian.net/browse/CRMA-429).
