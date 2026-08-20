@@ -142,6 +142,9 @@ Handed to `/to-tickets`. The map does not carry execution.
 
 <!-- `resolve` appends here. Do not hand-edit while a session is running. -->
 
+- [Research: gemini-3.7-flash API deltas and migration hazards vs gemini-3.1-pro-preview](https://mcclatchy.atlassian.net/browse/CRMA-727) — **Decided:** Migration risk sits in the call sites, not the model: 14 hazards with a six-line pre-flight per call site; three are live defects on today's 3.1 Pro setup, and whether undeclared schema fields are dropped is undocumented for BOTH models, so only replay can answer it.
+  **Binds:** Every lane that answers 'move' pairs the pin change with its RATES_PER_M fix in the same slice (the budget gate trips ~3x early otherwise). The thinking floor lands entirely on the four discovery verticals. CRMA-729's harness must measure field-dropping empirically per lane, deepest schemas first.
+
 ## Not yet specified
 
 - **Interaction effects.** If several lanes move, does the composite pipeline degrade even
