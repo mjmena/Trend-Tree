@@ -112,6 +112,31 @@ Handed to `/to-tickets`. The map does not carry execution.
   slice structure, gate design, and registry-migration pattern are worth lifting.
 - **Rate-table hygiene rides in the spec, not on the map.** It is not a decision, but the
   spec must say what happens to the 13 tables or an implementer ships a wrong cost number.
+- **The three live defects found by [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)
+  are held for the eventual epic, not filed separately.** They are defects on today's
+  `gemini-3.1-pro-preview` setup and bite whether or not any lane moves, but filing them as
+  lone tickets scatters work that belongs in one place. The spec **must** carry them as
+  remediation items, and `/to-tickets` turns them into stories under the epic:
+  1. **`functionResponse` carries no `id`** at `agents/lib/gemini_loop.mjs:192`,
+     `audit:356`, `enrichment:717`, `promotion:574`, `lifecycle-subagent:437`. Google's docs
+     are now normative that results map back by `id`. Failure mode is swapped tool results
+     when one turn calls the same tool twice — silent, not a 400.
+  2. **Cost math reads `candidatesTokenCount` only** at the same five sites, but response
+     pricing is output tokens *plus* thinking tokens. A third independent reason the cost
+     telemetry undercounts, alongside CRMA-725 and the daily-digest rate table.
+  3. **Four new `finishReason` values are treated as clean stops** —
+     `MISSING_THOUGHT_SIGNATURE`, `TOO_MANY_TOOL_CALLS`, `MALFORMED_RESPONSE`, `ESCALATION`.
+     The loops assign `stop_reason = finishReason` and break, so these land as silent
+     no-emission.
+
+  Related and also held: **`temperature` was deprecated 2026-07-21** and every lane still
+  sends it. Full hazard list with sources is on CRMA-727.
+- **The budget-gate trap binds any lane that moves.** If a model swaps but its `RATES_PER_M`
+  stays at Pro's $2.00/$12.00 while running Flash's $0.75/$3.75, the in-loop `budget_usd`
+  gate trips ~3× early, before the terminal `propose_*` call. Audit fails loudly; promotion
+  silently defaults to DEFER, lifecycle silently emits an empty decisions array so status
+  freezes, and enrichment returns null. Every lane ticket that answers "move" must pair the
+  pin change with its rate-table correction in the same slice.
 
 ## Decisions so far
 
