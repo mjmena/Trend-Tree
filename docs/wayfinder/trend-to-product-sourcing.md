@@ -198,6 +198,9 @@ Settled decisions in binding present tense.
 - [Research: the Shopify Admin product payload at API version 2026-04](https://mcclatchy.atlassian.net/browse/CRMA-748) — **Decided:** REST products.json is live at 2026-04 but frozen (expires 2027-04-16, >100-variant apps excluded); product_type/vendor/body_html/status are free to add; a full sweep is 40 requests but metafields are 1-per-product; delta sync should use product_listings.json, not an undocumented updated_at_min.
   **Binds:** CRMA-753's embed doc may draw on product_type/vendor/body_html at no request cost, but must strip HTML and split the comma-separated tags string; collection membership is unavailable on REST. CRMA-752 should sync via product_listings.json (documented updated_at_min, limit 1000, existing scope). If metafields or collections ever enter the embed doc, REST's N+1 breaks the budget and GraphQL must be costed first.
 
+- [Decide: where the sourcing step sits in the chain, and what a failure does](https://mcclatchy.atlassian.net/browse/CRMA-750) — **Decided:** Sourcing is not a chain hop at all — a cron 'ecomm agent' polls Snowflake for trends holding a real enrichment row and no sourcing row, and fires once per answer; the dispatcher is unchanged.
+  **Binds:** CRMA-751's ledger must carry three states (not sourced / processed-nothing-matched / sourcing failed) and should be written by a PROC_SOURCING_APPLY mirroring PROC_ENRICHMENT_APPLY. The poll condition must exclude promotion_seed rows and needs an in-flight guard. Backfill is solved — the ~484 existing trends match the poll on tick one. The ecomm agent needs custom_response ON at creation (write-once) plus both an hi_ HTTP trigger and a dc_ cron.
+
 ## Not yet specified
 
 - **Prompt versioning for the selector** — whether its prompt lands in `DIM_LLM_PROMPT` like
