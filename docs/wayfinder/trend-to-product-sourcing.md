@@ -181,6 +181,20 @@ Measured state of the world. Falsified by re-measurement, never by a decision.
   products, the current substring match has only ever searched the first page. Nobody can
   settle this without the token — which is why token provisioning is the keystone of this map.
   Noted 2026-08-20.
+- **No ledger in this repo records a computed-but-empty result.** `FCT_TREND_CONTENT_MATCHES_LEDGER`
+  and `FCT_TREND_CONNECTIONS_LEDGER` both write nothing below threshold, and both say so outright
+  (`sql/fct_trend_content_matches_ledger.sql:42-45`, `sql/dt_trend_dashboard.sql:299-302`). The
+  richest outcome encoding is `FCT_PROMOTION_AUDIT.DECISION` — one row per candidate evaluated
+  regardless of outcome, coarse enum plus a finer category. The only `STATUS` + `ERROR_MESSAGE`
+  pair in `sql/` is `STG_AGENT_RUN_COSTS`, and it sits in `MCC_RAW.MARKETING_DEV`, out of
+  `insights-agent`'s reach. **The three-state sourcing header establishes this precedent rather
+  than following one.** Verified 2026-08-20.
+- **"Source" is already taken as a word in this pipeline.** `FCT_SIGNALS.SOURCE_NAME` means a
+  signal's platform of origin, `FCT_TREND_SOURCE_METRICS` builds on that meaning, and `CONTEXT.md`
+  carries a **Source** glossary entry plus a flagged ambiguity about it. Product columns therefore
+  take `CATALOG_*`. Separately, "semantic" is already the repo's word for vector matching — across
+  `sql/`, `agents/` and `docs/`: `VECTOR_COSINE_SIMILARITY` 19, "cosine similarity" 15, "nearest
+  neighbor" 8, "semantic match(ing)" 8, "vector search" 2. Verified 2026-08-20.
 - **`FCT_TREND_ENRICHMENT_LEDGER.PAYLOAD` is a VARIANT and accepts unknown keys** — the write
   path serializes the whole dict (`sql/proc_enrichment_apply.sql:114,147`). Recorded because
   it was the obvious place to put products, and this map deliberately chose not to. Consuming
@@ -191,7 +205,20 @@ Measured state of the world. Falsified by re-measurement, never by a decision.
 
 Settled decisions in binding present tense.
 
-- Sourced products live in **their own append-only ledger**, not on the enrichment record.
+- Sourced products live in **their own append-only ledger**, not on the enrichment record. That
+  ledger is **two tables**: a run header, `FCT_TREND_SOURCING_LEDGER`, one row per (trend, tier,
+  run), and its candidate rows, `FCT_TREND_SOURCING_CANDIDATES`. *Settled 2026-08-20 at CRMA-751.*
+- **One header row is one trend, one tier, one run.** The three states live on the header — no
+  header is "not sourced", `STATUS='no_match'` with zero candidates is "processed, nothing
+  matched", `STATUS='failed'` carries the error. A miss writes no candidate rows, so the header is
+  the only place a miss can ever be recorded.
+- The ledger keeps **every candidate the selector was shown**, not only its picks. The rejects are
+  the calibration evidence and the only way to judge whether the selector earns its latency.
+- **A model-authored verdict is an enum, never a numeric score**, and a retrieval score is never
+  blended with a model verdict into one column. `SEMANTIC_SCORE` is geometry and reproducible;
+  `REASONED_FIT` (`strong`/`partial`/`weak`) is judgement and is not.
+- Product identity columns are **catalog-neutral** — `CATALOG_PRODUCT_ID`, `CATALOG_PAYLOAD`.
+  `SOURCE_*` is reserved for signal provenance and must not be reused for products.
 - Retrieval is **vector cosine similarity**; selection is a **Gemini 3.7 Flash** agent reading
   a pre-ranked candidate list. An LLM never computes similarity.
 - **Retrieval is vectors for auditability, not for cost or scale.** Putting the whole catalog
@@ -232,16 +259,19 @@ Settled decisions in binding present tense.
 - [Decide: where the sourcing step sits in the chain, and what a failure does](https://mcclatchy.atlassian.net/browse/CRMA-750) — **Decided:** Sourcing is not a chain hop at all — a cron 'ecomm agent' polls Snowflake for trends holding a real enrichment row and no sourcing row, and fires once per answer; the dispatcher is unchanged.
   **Binds:** CRMA-751's ledger must carry three states (not sourced / processed-nothing-matched / sourcing failed) and should be written by a PROC_SOURCING_APPLY mirroring PROC_ENRICHMENT_APPLY. The poll condition must exclude promotion_seed rows and needs an in-flight guard. Backfill is solved — the ~484 existing trends match the poll on tick one. The ecomm agent needs custom_response ON at creation (write-once) plus both an hi_ HTTP trigger and a dc_ cron.
 
+- [Decide: the sourced-products ledger — schema, the no-match state, and dashboard exposure](https://mcclatchy.atlassian.net/browse/CRMA-751) — **Decided:** Two tables — FCT_TREND_SOURCING_LEDGER (header: one row per trend, tier and run, carrying the three states) and FCT_TREND_SOURCING_CANDIDATES (every candidate the selector saw, not just its picks); SEMANTIC_SCORE (cosine, reproducible) and REASONED_FIT (strong/partial/weak enum) live in separate columns and are never blended.
+  **Binds:** CRMA-753 calibrates SEMANTIC_THRESHOLD against the stored rejects and owns EMBED_DOC_VERSION. CRMA-754 must present the candidate list in SEMANTIC_SCORE-descending order — otherwise a stored rank column has to come back — and must define what strong/partial/weak mean. CRMA-755 inherits which tier wins when two headers matched. The DDL establishes this repo's first computed-but-empty row and needs a staleness rule for headers stuck in 'running'; PROC_SOURCING_APPLY mirrors PROC_ENRICHMENT_APPLY; DT_TREND_DASHBOARD gains SOURCING_STATUS, SOURCED_PRODUCTS and SOURCED_AT.
+
 ## Not yet specified
 
 - **Prompt versioning for the selector** — whether its prompt lands in `DIM_LLM_PROMPT` like
   the rest of the fleet, and what lane name it takes. Sharpens once the selector's contract
   lands.
-- **Cost and telemetry** — sourcing can no longer ride enrichment's cost line, because
-  CRMA-750 put it outside the chain entirely; it owns its own. What remains open is the shape
-  of that record. Sharpens with the ledger schema. Note that only about half of
-  `FCT_TREND_ENRICHMENT_LEDGER` rows carry a cost value at all (`CRMA-442`), so the existing
-  pattern is not a clean model.
+- **Cost telemetry that actually lands.** CRMA-751 settled *where* it goes — `STG_AGENT_RUN_COSTS`
+  already takes one row per Pipedream run, correlated by the header's `AGENT_SESSION_ID`. What is
+  still open is whether the ecomm agent will write it reliably: only about half of
+  `FCT_TREND_ENRICHMENT_LEDGER` rows carry a cost value at all (`CRMA-442`), so the fleet's
+  existing habit is not a clean model to copy.
 - **Where the Shopify token is held** — Secret Manager in `mcc-crm-automations`, a Pipedream
   connected account, or wherever `insights-agent` already keeps it. Sharpens with the
   provisioning task, which will surface where the token actually ends up.
@@ -251,9 +281,11 @@ Settled decisions in binding present tense.
   product record, and collapses on cost the moment metafields or collection membership enter
   it — both are inline on the GraphQL `Product` object. Sharpens once the embed doc is settled
   at the calibration ticket; cost the migration before the doc grows, not after.
-- **Whether the selector's judgement is worth its latency** — a measurable question once the
-  calibration ticket produces real candidate lists. If the vector ranking is already good
-  enough, the selection stage may reduce to a threshold.
+- **Whether the selector's judgement is worth its latency** — still open, but CRMA-751 built the
+  apparatus to answer it: every candidate the selector saw is kept, carrying both `SEMANTIC_SCORE`
+  and `REASONED_FIT`. The measurement is to group by `REASONED_FIT` and inspect the score
+  distribution inside each group; a `strong` ranked below a `weak` is the inversion that justifies
+  the stage. If no such inversions appear, the selection stage may reduce to a threshold.
 
 ## Out of scope
 
