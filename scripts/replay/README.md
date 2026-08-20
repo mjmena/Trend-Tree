@@ -19,6 +19,9 @@ node --test scripts/replay/lib/*.test.mjs
 - `snow` CLI on the `claude` connection. The harness only **reads** production.
   Its one write is the descriptor scratch table below.
 - A Gemini key in the macOS keychain as `gemini-api`, or `GEMINI_API_KEY`.
+- **`EXPLODING_TOPICS_API_KEY` for the `promotion` lane** — without it that
+  lane's corroboration tool is dead and every single-family candidate is forced
+  to REJECT. See the limit below.
 - Nothing else. There is no `package.json` in this repo and the harness installs
   nothing — bare `node`, plus `python3` with PyYAML to read `workflow.yaml`.
 
@@ -125,6 +128,37 @@ is a wrong decision.
   historical candidate's signals as a single community. It answers "what does
   the model propose given these signals?", not "would it have found this cluster
   in the firehose?".
+- **`promotion` replays against a world its own decision created.** A candidate
+  the incumbent PROMOTED is now itself a trend in `FCT_TRENDS`, and it comes back
+  as its own nearest neighbour. Unfiltered, the replay asks "is this candidate a
+  duplicate of itself?" and both models correctly answer MERGE_INTO_EXISTING —
+  which reads as a decisive dedupe win and is nothing of the kind. The lane now
+  drops every trend inserted by the same promotion run. Note the cut is the
+  **run**, not the timestamp: `PROC_PROMOTION_APPLY` writes `DECIDED_AT` *after*
+  inserting the trend, so the self-created trend carries an *earlier*
+  `PROMOTED_AT` than the decision that created it, and a naive
+  `PROMOTED_AT >= DECIDED_AT` filter excludes nothing. `input_notes`
+  reports `neighbors_excluded_as_anachronistic` per case — measured on the
+  CRMA-733 sample, it fired on 4 of 7 cases, including MERGE and REJECT cases,
+  not just the promotes.
+- **`promotion` needs `EXPLODING_TOPICS_API_KEY` or it silently forces REJECT.**
+  `verify_exploding_topics` returns *"Cannot verify — treat the candidate as
+  un-corroborated"* when the key is unset, and that text is an instruction the
+  model obeys. Both models then reject every single-source-family candidate, which
+  looks like agreement and is really the tool being dead. This is not a corner:
+  **28 of 60 PROMOTE_NEW decisions in the last 21 days came through that
+  ET-rescue path**, so without the key roughly half the lane's promotions cannot
+  be replayed at all. The key lives in `.envrc.local` in the main checkout —
+  export it before judging this lane:
+
+  ```sh
+  set -a; . /path/to/trend-tree/.envrc.local; set +a
+  ```
+- **`promotion`'s diff shows three fields the model never emits.**
+  `confidence`, `max_neighbor_sim` and `considered_neighbors` are computed in
+  code (`run_subagent/entry.js:380-396`) or read off the candidate row by
+  `PROC_PROMOTION_APPLY`, so they are always blank on the candidate side. That
+  is a display artifact, not a dropped field — read `schema coverage` instead.
 - **`attribution` sees a shrunken pool.** Signals the incumbent already
   attributed are excluded by the anti-join. Compare acceptance *rate*.
 - **Two prompt bodies are reimplemented, not imported** — enrichment's and

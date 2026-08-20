@@ -57,6 +57,7 @@ export async function cases({ limit = 3, caseId = null }) {
     id: r.CANDIDATE_ID,
     label: `${r.CANDIDATE_TOPIC ?? r.CANDIDATE_ID} · ${r.DECISION} @ ${String(r.DECIDED_AT).slice(0, 16)}`,
     incumbentAt: String(r.DECIDED_AT).slice(0, 10),
+    decidedAt: String(r.DECIDED_AT),
     incumbent: {
       emission: {
         decision: r.DECISION,
@@ -101,11 +102,48 @@ export async function build(c) {
 
   // The lead's own SQL, re-bound to this historical candidate.
   // extract_candidate_ids emits a bare array of id strings (entry.js:39).
-  const combinedRows = runStep(wf, "q_compute_vectors_and_neighbors", {
+  let combinedRows = runStep(wf, "q_compute_vectors_and_neighbors", {
     "steps.extract_candidate_ids.$return_value.selected_ids_json": JSON.stringify([c.id]),
   });
 
-  const neighborIds = [...new Set(combinedRows.map((r) => r.NEIGHBOR_TREND_ID).filter(Boolean))];
+  // Restore the historical neighbour pool. FCT_TRENDS is queried live, so a
+  // candidate the incumbent PROMOTED is now itself a trend, and it scores as
+  // its own nearest neighbour. Replaying such a case unfiltered asks the model
+  // "is this candidate a duplicate of itself?", and the only correct answer is
+  // MERGE_INTO_EXISTING. Both models return exactly that, so the case reads as
+  // a decisive dedupe win when it is really an artifact of replaying against a
+  // world the incumbent's own decision created.
+  //
+  // The discriminator is the promotion RUN, not the timestamp. DECIDED_AT is
+  // written by PROC_PROMOTION_APPLY *after* it inserts the trend, so the trend
+  // a candidate created carries a PROMOTED_AT a few seconds EARLIER than the
+  // ledger row that records the decision — a naive `PROMOTED_AT >= DECIDED_AT`
+  // filter excludes nothing. Every trend inserted by the same apply call was
+  // invisible to every subagent in that run, so the run's apply window is the
+  // correct cut.
+  const allNeighborIds = [...new Set(combinedRows.map((r) => r.NEIGHBOR_TREND_ID).filter(Boolean))];
+  const anachronistic = new Set(
+    allNeighborIds.length
+      ? query(`
+          WITH run AS (
+            SELECT MIN(DECIDED_AT) AS FIRST_AT, MAX(DECIDED_AT) AS LAST_AT
+              FROM MCC_PRESENTATION.TREND_AGENT.FCT_PROMOTION_LEDGER
+             WHERE CHAIN_ID = (
+                     SELECT CHAIN_ID
+                       FROM MCC_PRESENTATION.TREND_AGENT.FCT_PROMOTION_LEDGER
+                      WHERE CANDIDATE_ID = ${sqlStr(c.id)}
+                      QUALIFY ROW_NUMBER() OVER (ORDER BY DECIDED_AT DESC) = 1
+                   )
+          )
+          SELECT t.TREND_ID
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t, run
+           WHERE t.TREND_ID IN (${allNeighborIds.map(sqlStr).join(", ")})
+             AND t.PROMOTED_AT >= DATEADD(minute, -5, run.FIRST_AT)
+        `).map((r) => r.TREND_ID)
+      : [],
+  );
+  combinedRows = combinedRows.filter((r) => !anachronistic.has(r.NEIGHBOR_TREND_ID));
+  const neighborIds = allNeighborIds.filter((id) => !anachronistic.has(id));
   const sampleRows = neighborIds.length
     ? runStep(wf, "q_load_neighbor_signal_samples", {
         "steps.serialize_neighbor_pool.$return_value.neighbor_pool_json": JSON.stringify(
@@ -226,6 +264,7 @@ Be efficient — typical case is one or two compare_topics calls then propose_de
       budget_gate_warning:
         "This lane's budget is measured on the TRUTHFUL cost. Production measures it on the understated one, so a real switch must correct RATES_PER_M in the same slice.",
       reconstructed: "candidate row (q_load_pending_candidates filters on PENDING; a historical candidate is not)",
+      neighbors_excluded_as_anachronistic: anachronistic.size,
       et_rescue: "forced false — ET rescue routing is a lead-side classification the harness does not replay",
     },
   };
