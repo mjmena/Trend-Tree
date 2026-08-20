@@ -169,9 +169,14 @@ Settled decisions in binding present tense.
   thresholded and replayed is the property the pipeline's ledgers already depend on.
   **Revisit trigger**: if calibration shows the vector ranking adds nothing the selector could
   not get from the raw catalog, collapse the retrieval stage.
-- The pass is fired **synchronously off promotion** and recalled by re-enrichment. **A catalog
-  restock does not re-source anything** — products refresh only when a trend moves. A periodic
-  re-sweep is additive and deliberately deferred.
+- Sourcing is **driven by the presence of an enrichment row**, on a poll. A cron asks Snowflake
+  which trends hold an enrichment ledger row and no sourcing row, then fires the ecomm agent
+  once per answer. Sourcing is **not** a hop in the dispatcher chain, and nothing in the chain
+  fires it. *Amended 2026-08-20 at CRMA-750.* The original constraint read "fired synchronously
+  off promotion and recalled by re-enrichment"; it rested on a re-enrichment path that was
+  designed and never built (`KIND='refinement'` is passed by nothing). **A catalog restock does
+  not re-source anything** — products refresh only when a trend moves, which means when it is
+  re-enriched. A periodic re-sweep on catalog change is additive and deliberately deferred.
 - Fall-through between tiers is a **similarity floor**, never a match count. A trend the store
   does not stock returns nothing rather than the five least-irrelevant items in the catalog.
 - **"Processed, nothing matched" is a distinct state** from "not yet sourced", and must stay
