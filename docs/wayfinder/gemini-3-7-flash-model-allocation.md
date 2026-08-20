@@ -1,0 +1,125 @@
+<!-- map: CRMA-726 -->
+
+# Gemini 3.7 Flash — per-lane model allocation across the agent fleet
+
+## Destination
+
+A replacement spec that supersedes [CRMA-471](https://mcclatchy.atlassian.net/browse/CRMA-471),
+deciding **per lane** whether each in-scope model pin moves to `gemini-3.7-flash` or stays.
+Handed to `/to-tickets`. The map does not carry execution.
+
+## Notes
+
+- **Domain**: read `CONTEXT.md` before writing about signals, trends, or the descriptor.
+  Tracker contract is `docs/agents/issue-tracker.md`.
+- **Skills**: `pipedream-synced-project` for anything touching a workflow or a deploy;
+  `/domain-modeling` when the model-pin vs registry-driven distinction gets its glossary entry.
+- **One instrument, built inside the map.** The replay harness is a `task` ticket, not a
+  deliverable. This is a deliberate, scoped exception to plan-don't-do: nine decision
+  tickets are unanswerable without it. Nothing else in this map executes.
+- **Never commit this map to `production`.** A commit to the default branch is a Pipedream
+  deploy of every changed workflow.
+
+## Established facts
+
+<!-- Measured state of the world. Falsified by RE-MEASUREMENT, never by a decision. -->
+
+- **18 live model pins across the workflows** — 9 on `gemini-3.1-pro-preview` (audit,
+  daily-digest, cluster-agent, distillation lead, distillation subagent, enrichment,
+  lifecycle subagent, lifecycle-attribution subagent, promotion); 5 on
+  `gemini-3-flash-preview` (4 verticals + prompt-tester default); 3 Anthropic
+  (`run_name_reviewer` and `run_revisit_subagent` on `claude-sonnet-4-6`,
+  `generate_search_terms` on `claude-haiku-4-5-20251001`); 1 on `grok-4-latest`.
+  `agents/lib/*.mjs` holds two more as reference copies, not deployed.
+  _Source: repo inventory, verified 2026-08-20._
+- **Only the four `discovery-p_5VCPP3N` lanes are registry-driven.** Everywhere else
+  `DIM_LLM_PROMPT.MODEL` is telemetry and the code const wins at runtime.
+  _Source: repo inventory + `CLAUDE.md:129`, verified 2026-08-20._
+- **13 hardcoded per-million rate tables, no shared constant.** Twelve price
+  `gemini-3.1-pro-preview` at $2.00/$12.00; `daily-digest-p_vQCkwgV/generate_intro/entry.mjs:26-27`
+  prices the same pinned model at $1.25/$10.00, under-reporting that lane ~40%.
+  _Source: repo inventory, verified 2026-08-20._
+- **Several lanes compute no cost at all** — the five `ingestion/LLM/*` workflows,
+  `grok-live-search`, `generate_search_terms`, and all four `discovery-p_5VCPP3N` steps
+  emit raw token counts only. This is [CRMA-725](https://mcclatchy.atlassian.net/browse/CRMA-725)
+  seen from the code side. _Source: repo inventory, verified 2026-08-20._
+- **`gemini-3.7-flash` is GA**, released 2026-08-13. 1,048,576 input tokens, 65,536 output,
+  knowledge cutoff March 2026. Structured output, function calling, and Search grounding
+  all supported. _Source: ai.google.dev/gemini-api/docs/models, DeepMind model card, 2026-08-20._
+- **Pricing**: $0.75 in / $3.75 out per 1M through 2026-12-31, then $1.50 / $7.50 from
+  2027-01-01. Batch API is a flat 50% discount. Context caching $0.075/1M plus
+  $0.50/1M/hour storage. Search grounding $14 per 1,000 requests after 5,000 free per
+  month, shared across all Gemini 3.x models. _Source: ai.google.dev/gemini-api/docs/pricing, 2026-08-20._
+- **`gemini-3.1-pro-preview` is still the newest Pro model**, released 2026-02-19 and still
+  preview six months on. Gemini 3.5 Pro was announced but has not shipped. At $2.00/$12.00
+  (≤200k prompt), 3.7 Flash is ~2.7× cheaper in and ~3.2× cheaper out, with no long-prompt
+  price tier. _Source: ai.google.dev/gemini-api/docs/models + deprecations, 2026-08-20._
+- **Thinking cannot be turned off on `gemini-3.7-flash`.** The parameter is `thinking_level`;
+  legal values are `low` / `medium` / `high`, default `medium`. Unlike 3.6 Flash it does not
+  expose `minimal`. Every call bills thinking tokens at the output rate.
+  _Source: ai.google.dev/gemini-api/docs/thinking, 2026-08-20._
+- **No shutdown date is published** for `gemini-3-flash-preview`, `gemini-2.5-flash`, or
+  `gemini-3.1-pro-preview`. Preview ids here do get retired eventually (`gemini-2.0-flash`
+  went 2026-06-01) but no clock is running today.
+  _Source: ai.google.dev/gemini-api/docs/deprecations, 2026-08-20._
+- **No official 3.7 Flash vs 3.1 Pro head-to-head exists.** Google's model card compares
+  3.7 Flash only against 3.6 Flash and Claude Sonnet 5, beating Sonnet 5 on all four
+  published rows (FrontierCode, DeepSWE, Terminal-bench, GDM-MRCR). Head-to-head figures
+  circulating on aggregator sites are absent from Google's own docs and disagree between
+  providers — treat as unverified. _Source: DeepMind model card + aggregator survey, 2026-08-20._
+- **The nine Pro loops already run `thinking_level: "medium"`. The four verticals run
+  single-shot at `temperature 0.3` with no thinking parameter at all.** The 3.7 Flash
+  thinking floor therefore lands entirely on the verticals.
+  _Source: repo inventory, verified 2026-08-20._
+
+## Standing constraints
+
+<!-- Settled decisions in binding present tense. Overturned only by another decision. -->
+
+- **The motive is capability, not cost.** A lane moves because it does the job better.
+- **Cost is a non-regression constraint, not a gate.** A lane may move when quality improves
+  and cost does not materially rise; a large cost rise needs a deliberate "yes, worth it".
+  No numeric threshold — the rate tables disagree with each other and fixing them is not
+  this map's job.
+- **Scope is the 9 Pro pins, the 5 `gemini-3-flash-preview` pins, and the 3 Anthropic pins.**
+  Grok is out: `grok-live-search` is X-only live search, so the model *is* the data source.
+- **Evidence is offline replay.** Historical inputs pulled from the ledgers, fired at the
+  candidate model, compared side by side against what the incumbent actually produced,
+  judged per lane, with human review of the diff. Not shadow-running, not sequential A/B.
+- **Allocation is per-lane and `stay` is the default.** A lane moves only when replay shows
+  it better. Uniformity is not a goal.
+- **The switch targets Pipedream now.** It does not wait for
+  [CRMA-429](https://mcclatchy.atlassian.net/browse/CRMA-429); model ids are configuration
+  and travel with the code to Cloud Run.
+- **CRMA-471 closes as superseded only when the replacement spec lands** — not before. Its
+  slice structure, gate design, and registry-migration pattern are worth lifting.
+- **Rate-table hygiene rides in the spec, not on the map.** It is not a decision, but the
+  spec must say what happens to the 13 tables or an implementer ships a wrong cost number.
+
+## Decisions so far
+
+<!-- `resolve` appends here. Do not hand-edit while a session is running. -->
+
+## Not yet specified
+
+- **Interaction effects.** If several lanes move, does the composite pipeline degrade even
+  where each lane passed replay in isolation? Cannot be phrased sharply until we know which
+  lanes actually move.
+- **Prompts tuned for Pro.** Every prompt in the registry was written against a Pro model.
+  A lane may fail replay because of the prompt, not the model. Prompt rewrites are out of
+  scope today; whether that holds depends on how many lanes fail for that reason.
+- **If Gemini 3.5 Pro ships mid-effort**, the per-lane question reopens for the loops that
+  chose `stay`. No announced date, so nothing to plan against yet.
+- **Whether the replay harness outlives the map** as a permanent regression instrument
+  rather than a throwaway. Decide once it exists and we know what it cost to build.
+
+## Out of scope
+
+- **[CRMA-725](https://mcclatchy.atlassian.net/browse/CRMA-725) — lanes that compute no cost
+  at all.** A real bug, but it blocks a cost argument and the motive here is capability.
+- **`grok-live-search`.** Swapping `grok-4-latest` removes the X lane rather than improving
+  reasoning. A separate effort if ever.
+- **Prompt template rewrites and temperature retunes.** Exactly one variable changes per lane.
+- **Execution of the conversion.** The map ends at the spec.
+- **GCP migration sequencing.** Owned by
+  [CRMA-429](https://mcclatchy.atlassian.net/browse/CRMA-429).
