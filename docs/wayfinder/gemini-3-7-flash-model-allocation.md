@@ -159,7 +159,11 @@ Handed to `/to-tickets`. The map does not carry execution.
 - **If Gemini 3.5 Pro ships mid-effort**, the per-lane question reopens for the loops that
   chose `stay`. No announced date, so nothing to plan against yet.
 - **Whether the replay harness outlives the map** as a permanent regression instrument
-  rather than a throwaway. Decide once it exists and we know what it cost to build.
+  rather than a throwaway. Decide once it exists and we know what it cost to build. Now
+  leaning permanent: [CRMA-728](https://mcclatchy.atlassian.net/browse/CRMA-728) gave it a
+  second standing consumer outside this map — the descriptor neighbor-quality comparison,
+  which [CRMA-464](https://mcclatchy.atlassian.net/browse/CRMA-464) must re-run at full
+  active-set coverage and which exists today only as prose.
 - **Whether the fleet should move to the Interactions API at all.** `generateContent` is now
   labelled Legacy. That question is larger than a model pin and could subsume this map — but
   it cannot be phrased sharply until someone measures what the new surface costs to adopt
