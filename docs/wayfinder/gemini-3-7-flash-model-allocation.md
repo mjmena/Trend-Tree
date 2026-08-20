@@ -148,6 +148,9 @@ Handed to `/to-tickets`. The map does not carry execution.
 - [Decide: sequencing an enrichment model change against the descriptor embedding work (ADR-0003)](https://mcclatchy.atlassian.net/browse/CRMA-728) — **Decided:** The two efforts split: CRMA-463 proceeds now (its comparison is already run, green, and NOT confounded - the sweep postdates the Sonnet->Gemini move), while CRMA-464 waits for CRMA-735 because deleting the legacy embed-doc branch is the one irreversible act.
   **Binds:** CRMA-735 does not wait for the descriptor work - it waits for the harness. CRMA-729 must carry a descriptor-neighbor axis (embed candidate descriptor.statement, compare top-k neighbors, scratch table only, never the ledger) and must read the live enrichment prompt from DIM_LLM_PROMPT, since no repo file holds the active v7 template. CRMA-464's gate is a re-run of the comparison at full active-set coverage under the settled model.
 
+- [Build the offline replay harness for per-lane model comparison](https://mcclatchy.atlassian.net/browse/CRMA-729) — **Decided:** Built: scripts/replay/ replays real historical inputs at any model across ten lanes (one per lane ticket), reusing each workflow's own SQL, the deployed entry.js tool schemas and dispatchers, and DIM_LLM_PROMPT — plus the CRMA-728 descriptor axis writing to a scratch table only.
+  **Binds:** H8 is measured against functionDeclarations tool-arg schemas, NOT responseSchema — no lane in the repo declares one. Three re-measurements change map facts: candidatesTokenCount EXCLUDES thinking (gemini_loop.mjs:150 is wrong, CRMA-727 defect 2 confirmed); enrichment ledger MODEL_USED is mislabelled claude-sonnet-4-6 (a 4th defect for the epic, and the audit agent groups cost by it); distillation lead entry.js is dead code so the fleet has 17 live pins, not 18.
+
 ## Not yet specified
 
 - **Interaction effects.** If several lanes move, does the composite pipeline degrade even
