@@ -9,6 +9,7 @@ A Confluence strategy doc (ATLAS space) defining the prediction pillar — what 
 ## Notes
 
 - **Source**: [ATLAS – Prediction Scoring Polish meeting notes, 2026-08-07](https://docs.google.com/document/d/1Pf32tNS3Omt2gm13U0YKoy58OTOj-9a2XR3fJjuP8UQ/edit) (Jason Smith + Martin Mena, full transcript in doc).
+- **Source**: ["Trends vs. Predictions" — Trend Hunter / ATLAS methodology doc](https://docs.google.com/document/d/1noBCUR4W-cS-fmbMRLNV2cpHMBc2VA5VfPIdeYSyYqk/edit?tab=t.395xtj66s4jp) (received 2026-08-20). Stakeholder methodology for the prediction layer: trend/prediction boundary language, the core formula (evidence + cultural implication + white space + plausible outcome), five emergence paths with convergence as a confidence multiplier — never an eligibility gate, a six-dimension scoring framework with per-prediction horizons, Correct / Early–Late / Incorrect resolution with a visible track record, and a human editorial publish gate. Folded into the open tickets: CRMA-487 (resolution vocabulary, human gate, horizons), CRMA-489 (synthesis source + the card-framing tension vs CRMA-488), CRMA-498 (white space as a primary dimension).
 - **Pre-map alignment from that meeting** (context, not map decisions): verdict-based reasoning will be adopted, starting with the prediction agent; numeric scores (heat index, prediction score) stay in the UI.
 - **Strategy-level only**: decision tickets define what the pillar *is*; implementation hands off via `/to-spec` after the doc.
 - **Current implementation grounding**: `prediction-agent-p_QPCkLP1` — deterministic SQL scorer, six hard AND eligibility gates. See `docs/prediction-contract.md` and `docs/prediction-flow.md` in the trend-tree repo.
@@ -26,7 +27,7 @@ A Confluence strategy doc (ATLAS space) defining the prediction pillar — what 
 ## Not yet specified
 
 - Derek's system-grounding methods — the verdict-record decision closed without this input; if the conversation happens in time, it lands as refinement in the strategy-doc draft instead.
-- Marcelo / Josh / Arita (Trend Hunter) input — may sharpen the scoring decisions; not ours to schedule.
+- Marcelo / Josh / Arita (Trend Hunter) input — may sharpen the scoring decisions; not ours to schedule. Partially landed 2026-08-20 as the "Trends vs. Predictions" methodology doc (see Notes); further input remains theirs to schedule.
 
 ## Out of scope
 
