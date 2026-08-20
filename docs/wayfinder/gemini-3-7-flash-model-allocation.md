@@ -214,6 +214,35 @@ the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 1
   fabricated deep links in one shard — a dropped redirect is recoverable downstream, a
   fabricated URL is not.
   _Source: [CRMA-731](https://mcclatchy.atlassian.net/browse/CRMA-731), 2026-08-20._
+- **On the promotion gate, 3.7 Flash and 3.1 Pro decide identically, and the incumbent is
+  the one that fails.** Seven historical candidates stratified across every decision class,
+  both models fired today: **7/7 identical `decision` and identical `target_trend_id`** on
+  every merge. `decision_category` differs on 2 of 7 and is noise — on one case the
+  incumbent's own re-run drifted from its own ledger record while 3.7 Flash matched it.
+  Schema clean 7/7 (10 declared leaf paths, no fields lost, none missing required, nothing
+  undeclared emitted). Turns 3–6 against the incumbent's 3–6, so **this lane does not show
+  the turn inflation that inverted distillation's cost**: −58.6% today and **−17.2% at the
+  2027-01-01 rates**, worst case $0.0690 against a $0.15 budget.
+  _Source: [CRMA-733](https://mcclatchy.atlassian.net/browse/CRMA-733) replay with
+  `--rerun-incumbent`, 2026-08-20._
+- **The silent-DEFER failure mode is already live on `gemini-3.1-pro-preview`.** On the
+  hardest replayed candidate the incumbent burned all 6 turns on ET lookups and never
+  called `propose_decision` (`emission: null`, `finish: max_iterations`); 3.7 Flash on the
+  identical input emitted a clean REJECT. Production carries **5 of 38 DEFER rows** from
+  that fallback path, all `gemini-3.1-pro-preview`. **Production stores no subagent turn
+  count** — `FCT_PROMOTION_LEDGER.ITERATION` is the lead's retry counter (values 1 and 2
+  only) — so the lane's one real failure mode is invisible today.
+  _Source: [CRMA-733](https://mcclatchy.atlassian.net/browse/CRMA-733), 2026-08-20._
+- **The promotion replay was measuring an artifact until 2026-08-20.** Two harness defects,
+  both fixed in `e864045`. (1) A candidate the incumbent PROMOTED is now itself a row in
+  `FCT_TRENDS` and returned as its own nearest neighbour, so the replay asked "is this
+  candidate a duplicate of itself?" — it fired on **4 of 7 cases**, including MERGE and
+  REJECT cases. The cut is the promotion **run**: `PROC_PROMOTION_APPLY` writes `DECIDED_AT`
+  *after* inserting the trend, so a `PROMOTED_AT >= DECIDED_AT` filter excludes nothing.
+  (2) `EXPLODING_TOPICS_API_KEY` was unset, so `verify_exploding_topics` returned "treat the
+  candidate as un-corroborated" and both models rejected every single-family candidate —
+  and **28 of 60 promotions in 21 days run through that ET-rescue path**.
+  _Source: [CRMA-733](https://mcclatchy.atlassian.net/browse/CRMA-733), 2026-08-20._
 
 ## Standing constraints
 
@@ -308,14 +337,40 @@ the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 1
      stored anywhere. Added by [CRMA-732](https://mcclatchy.atlassian.net/browse/CRMA-732).
      This is the "detection, not rollback" constraint biting a specific lane.
 
+  9. **The promotion prompt promises a defer cap that does not exist, and the lane
+     silently DEFERs when the agent runs out of turns.** Two mechanisms that
+     compound. `sql/seed_prompts_promotion.sql:83` tells the model *"cap defers at 3
+     per candidate (the system tracks this and will eventually force REJECT)"* —
+     nothing tracks it. There is no `DEFER_COUNT` anywhere in the repo and
+     `STG_TREND_CANDIDATES` carries only `DEFERRED_UNTIL` and `DEFER_REASON`; one
+     candidate has deferred **7 times** (`cand-6nm5r52smodzwq5t`, 2026-04-26 →
+     2026-05-08). Separately, when the loop exhausts `max_iterations` without a
+     terminal call, `run_subagent/entry.js:713-717` defaults to DEFER behind a bare
+     `console.log`. That is not hypothetical: **5 of 38 production DEFER rows carry
+     `AMBIGUOUS_TOPIC_JUDGMENT` with rationale "agent did not call
+     propose_decision"**, all five `gemini-3.1-pro-preview`, clustered on two
+     candidates that each looped. A candidate the agent cannot resolve therefore
+     re-enters the queue every 48h forever, costing a run each time and never
+     reaching a verdict. Added by
+     [CRMA-733](https://mcclatchy.atlassian.net/browse/CRMA-733). Model-independent —
+     no pin choice fixes it.
+
   Related and also held: **`temperature` was deprecated 2026-07-21** and every lane still
   sends it. Full hazard list with sources is on CRMA-727.
-- **The budget-gate trap binds any lane that moves.** If a model swaps but its `RATES_PER_M`
-  stays at Pro's $2.00/$12.00 while running Flash's $0.75/$3.75, the in-loop `budget_usd`
-  gate trips ~3× early, before the terminal `propose_*` call. Audit fails loudly; promotion
+- **The budget-gate trap binds any lane that moves — but check the headroom before
+  calling it the lane's real gate.** If a model swaps but its `RATES_PER_M` stays at
+  Pro's $2.00/$12.00 while running Flash's $0.75/$3.75, the in-loop `budget_usd` gate
+  trips ~3× early, before the terminal `propose_*` call. Audit fails loudly; promotion
   silently defaults to DEFER, lifecycle silently emits an empty decisions array so status
-  freezes, and enrichment returns null. Every lane ticket that answers "move" must pair the
-  pin change with its rate-table correction in the same slice.
+  freezes, and enrichment returns null. Every lane ticket that answers "move" must still
+  pair the pin change with its rate-table correction in the same slice — the cost
+  telemetry is wrong otherwise.
+  **Measured on promotion, the gate does not trip.** That lane was named as where the
+  trap bites first, on the strength of having the tightest budget in the fleet ($0.15).
+  Its worst production run in 21 days cost $0.0538, leaving ~5× headroom even with the
+  rates wrong. The gate that actually bit was **`max_iterations`**, and it has zero
+  margin. Size the headroom per lane rather than assuming the tightest budget is the
+  first to fail. _Source: [CRMA-733](https://mcclatchy.atlassian.net/browse/CRMA-733)._
 - **Detection, not rollback, is the binding cost of a switch.** Proven on the one lane where
   rollback is nearly free: no per-model cost telemetry, drop counters shared across all three
   discovery lanes, and failed shards swallowed silently, against a baseline that already
@@ -354,9 +409,12 @@ the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 1
 - **Whether the migration ships per lane or as a fleet cutover.** The old map assumed per-lane
   allocation. A migration might instead land one shared call-layer fix and move many lanes at
   once. Cannot be phrased sharply until CRMA-757 shows how much of a call site the fix touches.
-- **Telemetry the migration needs to be verifiable at all.** Defect 6 is the discovery lane's
-  instance; the general question — what per-model observability every lane needs *before* it
-  moves — is broader than one defect and not yet sharp.
+- **Telemetry the migration needs to be verifiable at all.** Now three instances, not one:
+  defect 6 (discovery loses shards silently), defect 8 (distillation persists no run trace),
+  and CRMA-733's finding that promotion stores no subagent turn count while `max_iterations`
+  is its binding gate. The shape is repeating — **every loop lane is missing turn count,
+  stop reason, and per-run model id** — but whether that becomes one shared call-layer
+  change or a per-lane fix depends on CRMA-757, so it is still not sharp enough to ticket.
 - **Interaction effects.** If several lanes move, does the composite pipeline degrade even
   where each lane passed replay in isolation?
 - **If Gemini 3.5 Pro ships mid-effort**, the question reopens for the loops. No announced
