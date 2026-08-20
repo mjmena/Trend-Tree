@@ -24,14 +24,34 @@ Handed to `/to-tickets`. The map does not carry execution.
 
 <!-- Measured state of the world. Falsified by RE-MEASUREMENT, never by a decision. -->
 
-- **18 live model pins across the workflows** — 9 on `gemini-3.1-pro-preview` (audit,
-  daily-digest, cluster-agent, distillation lead, distillation subagent, enrichment,
-  lifecycle subagent, lifecycle-attribution subagent, promotion); 5 on
+- **17 live model pins across the workflows** — 8 on `gemini-3.1-pro-preview` (audit,
+  daily-digest, cluster-agent, distillation subagent, enrichment, lifecycle subagent,
+  lifecycle-attribution subagent, promotion); 5 on
   `gemini-3-flash-preview` (4 verticals + prompt-tester default); 3 Anthropic
   (`run_name_reviewer` and `run_revisit_subagent` on `claude-sonnet-4-6`,
   `generate_search_terms` on `claude-haiku-4-5-20251001`); 1 on `grok-4-latest`.
   `agents/lib/*.mjs` holds two more as reference copies, not deployed.
-  _Source: repo inventory, verified 2026-08-20._
+  **The "distillation lead" pin is NOT live** — `distillation-p_mkCBBqb/run_lead_agent/entry.js`
+  pins `gemini-3.1-pro-preview` at line 577, but `distillation-p_mkCBBqb/workflow.yaml`
+  has no `run_lead_agent` namespace. The lead clusters in SQL and dispatches to the shared
+  cluster agent; the file is dead code. This shrinks CRMA-732's scope.
+  _Source: repo inventory 2026-08-20, corrected by [CRMA-729](https://mcclatchy.atlassian.net/browse/CRMA-729) re-measurement 2026-08-20._
+- **`candidatesTokenCount` EXCLUDES thinking tokens**, on both `gemini-3.1-pro-preview` and
+  `gemini-3.7-flash`. Measured by arithmetic against the API's own `totalTokenCount`:
+  `prompt 13 + candidates 8 + thoughts 140 = total 161` (Pro) and
+  `13 + 10 + 147 = 170` (3.7 Flash). This **confirms CRMA-727 defect 2** and makes the
+  comment at `agents/lib/gemini_loop.mjs:150` — "candidatesTokenCount already includes
+  thinking tokens — do NOT add thoughtsTokenCount" — factually wrong at all five call sites
+  that copy it. The understatement is large, not marginal: a real enrichment replay booked
+  2,713 thinking tokens against 2,425 output tokens.
+  _Source: [CRMA-729](https://mcclatchy.atlassian.net/browse/CRMA-729) live measurement, 2026-08-20._
+- **`FCT_TREND_ENRICHMENT_LEDGER.MODEL_USED` is mislabelled.** Every row for the last 21 days
+  reads `claude-sonnet-4-6` while `PAYLOAD:agent_telemetry.model` reads
+  `gemini-3.1-pro-preview`. The telemetry is the truthful one — enrichment **does** run
+  Gemini, so `CLAUDE.md`'s "lone Anthropic holdout" line is stale. Not cosmetic:
+  `audit-agent-p_xMC9nm3/workflow.yaml:323,347` groups per-model cost by that column, so the
+  audit agent attributes enrichment spend to the wrong vendor.
+  _Source: [CRMA-729](https://mcclatchy.atlassian.net/browse/CRMA-729) re-measurement, 2026-08-20._
 - **Only the four `discovery-p_5VCPP3N` lanes are registry-driven.** Everywhere else
   `DIM_LLM_PROMPT.MODEL` is telemetry and the code const wins at runtime.
   _Source: repo inventory + `CLAUDE.md:129`, verified 2026-08-20._
@@ -88,6 +108,13 @@ Handed to `/to-tickets`. The map does not carry execution.
   why the audit agent's shallow schema survived and enrichment's deeply-typed
   `propose_enrichment` is the more exposed one.
   _Source: [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727) research, 2026-08-20._
+- **No lane in this repo declares a `responseSchema`.** The only structured-output
+  declaration anywhere is `responseMimeType: "application/json"` at
+  `daily-digest-p_vQCkwgV/generate_intro/entry.mjs:155`. Every deep schema is a
+  `functionDeclarations` **parameter schema on a terminal emit tool**, so that is the surface
+  hazard H8 actually applies to. `propose_enrichment` declares **39 leaf paths** and remains
+  the most exposed lane; `propose_audit_report` is the shallow contrast.
+  _Source: [CRMA-729](https://mcclatchy.atlassian.net/browse/CRMA-729) call-site survey, 2026-08-20._
 
 ## Standing constraints
 
@@ -103,6 +130,13 @@ Handed to `/to-tickets`. The map does not carry execution.
 - **Evidence is offline replay.** Historical inputs pulled from the ledgers, fired at the
   candidate model, compared side by side against what the incumbent actually produced,
   judged per lane, with human review of the diff. Not shadow-running, not sequential A/B.
+- **The instrument exists, and every lane ticket uses it.** `scripts/replay/` on this
+  branch — `node scripts/replay/replay.mjs <lane> --model gemini-3.7-flash`. Ten lanes, one
+  per lane ticket. A lane decision cites a run artifact under `scripts/replay/out/`, not an
+  impression. Read `scripts/replay/README.md` **before** reading a diff: each lane carries
+  named limits (grounded lanes are not reproducible, `audit` has no historical binding,
+  `daily-digest` persists nothing, `distillation` reconstructs its cluster hint), and a
+  decision made without them is a decision made on an artifact of the harness.
 - **Allocation is per-lane and `stay` is the default.** A lane moves only when replay shows
   it better. Uniformity is not a goal.
 - **The switch targets Pipedream now.** It does not wait for
@@ -128,6 +162,11 @@ Handed to `/to-tickets`. The map does not carry execution.
      `MISSING_THOUGHT_SIGNATURE`, `TOO_MANY_TOOL_CALLS`, `MALFORMED_RESPONSE`, `ESCALATION`.
      The loops assign `stop_reason = finishReason` and break, so these land as silent
      no-emission.
+  4. **`FCT_TREND_ENRICHMENT_LEDGER.MODEL_USED` records the wrong model** (see Established
+     facts). Added by [CRMA-729](https://mcclatchy.atlassian.net/browse/CRMA-729). Same
+     family as the other three — telemetry that reads clean and is not. It matters because
+     the audit agent groups per-model cost by that column, so the fleet's own cost report is
+     wrong about which vendor enrichment spend belongs to.
 
   Related and also held: **`temperature` was deprecated 2026-07-21** and every lane still
   sends it. Full hazard list with sources is on CRMA-727.
@@ -161,12 +200,6 @@ Handed to `/to-tickets`. The map does not carry execution.
   scope today; whether that holds depends on how many lanes fail for that reason.
 - **If Gemini 3.5 Pro ships mid-effort**, the per-lane question reopens for the loops that
   chose `stay`. No announced date, so nothing to plan against yet.
-- **Whether the replay harness outlives the map** as a permanent regression instrument
-  rather than a throwaway. Decide once it exists and we know what it cost to build. Now
-  leaning permanent: [CRMA-728](https://mcclatchy.atlassian.net/browse/CRMA-728) gave it a
-  second standing consumer outside this map — the descriptor neighbor-quality comparison,
-  which [CRMA-464](https://mcclatchy.atlassian.net/browse/CRMA-464) must re-run at full
-  active-set coverage and which exists today only as prose.
 - **Whether the fleet should move to the Interactions API at all.** `generateContent` is now
   labelled Legacy. That question is larger than a model pin and could subsume this map — but
   it cannot be phrased sharply until someone measures what the new surface costs to adopt
