@@ -274,7 +274,16 @@ export function report(run) {
       continue;
     }
 
-    const rows = lane.compareRows(r.case.incumbent, r.candidate, r);
+    // A lane that declares requiresRerun has no usable stored incumbent —
+    // it is grounded, so the ledger row was produced against a different
+    // day's web. Its left column must be the re-run, or the diff compares
+    // the candidate against nothing. CRMA-730 hit this and worked around it
+    // by reading artifacts by hand.
+    const left =
+      lane.requiresRerun && r.incumbentRerun && !r.incumbentRerun.error
+        ? r.incumbentRerun
+        : r.case.incumbent;
+    const rows = lane.compareRows(left, r.candidate, r);
     out.push(
       diff.sideBySide({
         leftLabel: `INCUMBENT — ${lane.incumbentModel}${r.case.incumbentAt ? ` (${r.case.incumbentAt})` : ""}`,

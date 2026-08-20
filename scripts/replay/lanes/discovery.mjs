@@ -184,11 +184,14 @@ export async function build(c) {
       // entry.js:121-123 — a proposal without a topic never leaves the step.
       const proposals = parsed.filter((x) => x && typeof x === "object" && x.topic);
       const nowMs = Date.now();
-      const verified = [];
-      for (const prop of proposals) {
-        const v = await verifyProposal(verifier, prop, nowMs);
-        verified.push({ ...prop, deep_link: isDeepLink(prop.evidence_url || ""), verify: v });
-      }
+      // entry.js:293 verifies in parallel; sequential here would time out.
+      const verified = await Promise.all(
+        proposals.map(async (prop) => ({
+          ...prop,
+          deep_link: isDeepLink(prop.evidence_url || ""),
+          verify: await verifyProposal(verifier, prop, nowMs),
+        })),
+      );
       return { proposals: verified };
     },
     promptProvenance: provenance(loaded),
