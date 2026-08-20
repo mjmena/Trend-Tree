@@ -6,9 +6,9 @@
 
 A locked, handoff-ready **spec** for resolving a trend to purchasable products, handed to
 `/to-spec` → `/to-tickets`. Vectors retrieve candidates; a Gemini 3.7 Flash selector picks.
-Results append to their own ledger, written by a chain step fired off promotion and recalled
-by re-enrichment. Shopify is the only implemented tier; the multi-tier contract is specified,
-not built.
+Results append to their own ledger, written by a cron-driven **ecomm agent** that polls for
+trends carrying a real enrichment row and no sourcing row. Shopify is the only implemented
+tier; the multi-tier contract is specified, not built.
 
 The map ends at the spec. It does not carry execution.
 
@@ -28,11 +28,15 @@ The map ends at the spec. It does not carry execution.
   the fleet). The selector is a new Flash pin. Coordinate rather than decide it twice.
 - **Settled during charting** (no tickets behind these): the destination is a spec, not a
   build; scope is trend→product sourcing with Shopify the only implemented tier; trend-tree
-  owns the match and `insights-agent` reads the result; the Decision panel is the only
+  owns the match and `insights-agent` reads the result; the Decision Page is the only
   consumer surface; retrieval is vectors and selection is an agent; sourcing is its own pass
-  with its own ledger, not a field on the enrichment record; the pass is fired synchronously
-  off promotion and recalled by re-enrichment; selection runs on Gemini 3.7 Flash in the
-  chain, not on Cortex inside Snowflake.
+  with its own ledger, not a field on the enrichment record; selection runs on Gemini 3.7
+  Flash in the ecomm agent, not on Cortex inside Snowflake. *The charting-time clause "the
+  pass is fired synchronously off promotion and recalled by re-enrichment" was amended at
+  CRMA-750 — see Standing constraints.*
+- **Vocabulary**: the new step is **sourcing**; the workflow that performs it is the **ecomm
+  agent**. `CONTEXT.md` calls the consumer surface the **Decision Page**, not "Decision panel"
+  — the earlier spelling survives only in CRMA-749's ticket title.
 
 ## Established facts
 
@@ -65,9 +69,36 @@ Measured state of the world. Falsified by re-measurement, never by a decision.
   auditable. Rows below threshold are simply not written — an under-covered trend gets zero
   rows, not five weak ones (`sql/fct_trend_content_matches_ledger.sql:27-34`). Measured ~45s
   over a 40-trend sample. Verified 2026-08-20.
-- **Snowflake cannot query Shopify mid-statement.** Reaching an external API needs an external
-  access integration, which requires `ACCOUNTADMIN`; this pipeline's role is
-  `MARKETING_ENGINEER` — the same grant wall `CRMA-534` hit. Verified 2026-08-20.
+- **Snowflake cannot reach *any* external endpoint, Shopify or otherwise.** Reaching an
+  external API needs an external access integration, which requires `ACCOUNTADMIN`; this
+  pipeline's role is `MARKETING_ENGINEER` — the same grant wall `CRMA-534` hit. Re-measured at
+  CRMA-750: `SHOW INTEGRATIONS` returns exactly one, `PYPI_ACCESS_INTEGRATION` (created
+  2026-06-12), whose `ALLOWED_NETWORK_RULES` is Snowflake's built-in PyPI rule; `CURRENT_ROLE()`
+  is `MARKETING_ENGINEER`. **A Snowflake task can compute work but cannot push it** — so a
+  proc/task cannot call a workflow endpoint, only leave a condition for a poller to find.
+  Verified 2026-08-20.
+- **No dispatcher hop throws.** Every hop in `dispatcher-p_8rCBgnl` catches, returns an
+  `error_message`, and short-circuits the chain; `respond` returns HTTP 500 while the run
+  itself succeeds (`orchestrate/entry.js:114-165`). Nothing persists that `error_message` —
+  the `mark_failed` step it was written for died with `STG_ENRICHMENT_QUEUE` on 2026-04-27,
+  though the comment at `orchestrate/entry.js:14-18` still describes it. **No hop failure
+  reaches `$errors`.** This falsifies the premise stated on CRMA-750. Verified 2026-08-20.
+- **There is no re-enrichment path.** `WRITTEN_BY='lifecycle_request'` derives from
+  `KIND='refinement'` (`sql/proc_enrichment_apply.sql:142`), and nothing in the repo passes
+  that kind — the sole caller hard-codes `'initial'` (`write-p_o7CWa2K/workflow.yaml:48`). The
+  lifecycle subagent's `request_re_enrichment` flag is persisted and never acted on;
+  `commit_decision` is a pure SQL step with no HTTP fire. **Promotion is the only automated
+  firer of the chain; everything else is a human `curl`.** Verified 2026-08-20.
+- **The trend vector is created by the write hop, not before it.** `PROC_ENRICHMENT_APPLY`
+  computes `TREND_VECTOR` server-side over `FN_TREND_EMBED_DOC` when the workflow passes NULL,
+  which is the normal path (`sql/proc_enrichment_apply.sql:6-9`). `FCT_TRENDS.TREND_VECTOR` is
+  retired — `sql/proc_promotion_apply.sql:261` states it outright. **Every trend also receives a
+  `promotion_seed` ledger row at promotion carrying a topic-only vector**
+  (`sql/proc_promotion_apply.sql:257-281`), so "has an enrichment row" is not the same
+  condition as "has been enriched". Verified 2026-08-20. **Not yet measured:** how many of the
+  ~484 trends hold a *non-seed* enrichment row. That number is the true size of the first poll
+  tick, and it is ≤ 484. Queries against `FCT_TREND_ENRICHMENT_LEDGER` timed out repeatedly on
+  2026-08-20; re-run before sizing the backfill.
 - **The taxonomy Marcelo asks for does not exist.** He specifies a "tertiary URL taxonomy
   subcategory". There is no URL taxonomy anywhere in this pipeline and no third level. What
   exists, both frozen at first enrichment on `FCT_TRENDS`: `CATEGORY`, a closed 14-value enum
@@ -206,11 +237,11 @@ Settled decisions in binding present tense.
 - **Prompt versioning for the selector** — whether its prompt lands in `DIM_LLM_PROMPT` like
   the rest of the fleet, and what lane name it takes. Sharpens once the selector's contract
   lands.
-- **Cost and telemetry** — whether sourcing carries its own cost line or rides enrichment's.
-  Sharpens with the ledger schema. Note that only about half of `FCT_TREND_ENRICHMENT_LEDGER`
-  rows carry a cost value at all (`CRMA-442`), so the existing pattern is not a clean model.
-- **Backfill** — roughly 484 trends already exist and will not re-enrich soon. Firing off
-  promotion sources none of them. Sharpens once chain placement and the ledger land.
+- **Cost and telemetry** — sourcing can no longer ride enrichment's cost line, because
+  CRMA-750 put it outside the chain entirely; it owns its own. What remains open is the shape
+  of that record. Sharpens with the ledger schema. Note that only about half of
+  `FCT_TREND_ENRICHMENT_LEDGER` rows carry a cost value at all (`CRMA-442`), so the existing
+  pattern is not a clean model.
 - **Where the Shopify token is held** — Secret Manager in `mcc-crm-automations`, a Pipedream
   connected account, or wherever `insights-agent` already keeps it. Sharpens with the
   provisioning task, which will surface where the token actually ends up.
@@ -230,7 +261,7 @@ Settled decisions in binding present tense.
   out explicitly in the handoff.
 - **Reviving `ingestion/amazon-p_rvC71gN`** — dormant since 2026-05-15, brittle regex-over-HTML
   scrape, and it carries no product image. Building the Amazon tier is a separate effort.
-- **The published collection-page surface** — the Decision panel is the only consumer this map
+- **The published collection-page surface** — the Decision Page is the only consumer this map
   designs for. Sourced rows can be reused later without this map guessing at that surface's
   needs.
 - **Reusing `all-MiniLM-L6-v2` from `insights-agent`'s `correlation_service.py`**, as the
