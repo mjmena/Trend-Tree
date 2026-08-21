@@ -290,5 +290,13 @@ if [[ "$PROMOTE" == "1" ]]; then
     --to-revisions "${CANDIDATE_REVISION}=100"
   log "Deployed: ${URL}"
 else
-  log "Skipping promote (--no-promote); candidate is live at ${CANDIDATE_URL}, serving 0% of traffic."
+  # Do NOT claim 0% here unconditionally. On the bootstrap path above, gcloud
+  # rejects --no-traffic on a brand-new service, so the first revision is
+  # unavoidably serving 100% — saying otherwise tells the operator the exact
+  # opposite of what is true at the moment they decide whether to stop.
+  if [[ -z "$SERVICE_EXISTS" ]]; then
+    log "Skipping promote (--no-promote). NOTE: this was the first-ever deploy of ${SERVICE}, so the new revision is serving 100% of traffic — Cloud Run does not allow --no-traffic on service creation. Nothing was displaced (there was no prior revision). Candidate URL: ${CANDIDATE_URL}"
+  else
+    log "Skipping promote (--no-promote); candidate is live at ${CANDIDATE_URL}, serving 0% of traffic."
+  fi
 fi
