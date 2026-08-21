@@ -1,0 +1,45 @@
+[project]
+name = "trend-tree-prediction"
+version = "0.1.0"
+description = "Prediction pillar service skeleton (CRMA-762): an authenticated Cloud Run endpoint that writes verdict rows through the shared retrying Snowflake client. See docs/prd/prediction-pillar-v1.md."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "pydantic>=2.9",
+    "snowflake-connector-python>=3.14",
+    "cryptography>=43",
+    "tenacity>=9.0",
+    "google-auth>=2.35",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.28",
+    "ruff>=0.9",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["prediction_service*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# tt_services_lib (services/lib) is a sibling source tree, not an installed
+# dependency -- see services/lib/tests for its own unit coverage, and this
+# service's deploy/deploy.sh + Dockerfile for how it lands next to
+# prediction_service in the deployed image (both copied under /app, resolved
+# via CWD-based sys.path, matching prism's pattern for its own first-party
+# code). Adding it to pythonpath here gives local pytest runs the same shape.
+pythonpath = ["../lib", "."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

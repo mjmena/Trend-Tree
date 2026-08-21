@@ -1,0 +1,36 @@
+[project]
+name = "tt-services-lib"
+version = "0.1.0"
+description = "Shared library for Trend Tree's services/ namespace (CRMA-762): a retrying Snowflake client and Google OIDC ingress verification, so later agent extractions under services/ don't each reinvent them."
+requires-python = ">=3.12"
+dependencies = [
+    "snowflake-connector-python>=3.14",
+    "cryptography>=43",
+    "tenacity>=9.0",
+    "google-auth>=2.35",
+    "fastapi>=0.115",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.9",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["tt_services_lib*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
