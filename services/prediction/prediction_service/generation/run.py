@@ -14,10 +14,11 @@ region entirely.
 
 What this phase does NOT do, deliberately:
 
-* **match against trends** -- CRMA-764. Every verdict minted here carries
+* **match against trends** -- that is the compare step, ``POST /match``
+  (matching/run.py), and it stays off this call path so a trend read can
+  never appear inside a generation run. Every verdict minted here carries
   ``MATCHED_TREND_ID = NULL``, which the strategy's §2 vocabulary calls a
   white-space prediction: a call the trend pipeline has not made yet.
-  Ledger-only in v1.
 * **saturation evidence** -- CRMA-765. ``EVIDENCE.saturation`` is present
   (the key's presence is the contract, per domain.claim) and null.
 * **re-evaluation / what-changed** -- CRMA-766. Every row here is a first

@@ -1,0 +1,32 @@
+[
+  {
+    "TREND_ID": "3956205c-8896-4184-9e2c-f4b70f8e9b9c",
+    "TREND_TOPIC": "Rucking as everyday exercise — weighted vests worn on ordinary walks",
+    "DESCRIPTOR_QUERY": "rucking vest",
+    "DESCRIPTOR_STATEMENT": "Adults are wearing adjustable weighted vests during ordinary walks and errands rather than in the gym, buying them for bone density and longevity rather than for strength training. The distinguishing axis against general weighted-vest training is the everyday, low-intensity context. Domain: fitness and wellness.",
+    "SIMILARITIES": {
+      "rucking vests": 0.7421,
+      "probiotic nasal spray": 0.1204
+    }
+  },
+  {
+    "TREND_ID": "b6a1f0d2-4c3e-4b7a-9f11-2d8c5e6a7b40",
+    "TREND_TOPIC": "Adopting probiotic intimate sprays and washes for microbiome health",
+    "DESCRIPTOR_QUERY": "probiotic body spray",
+    "DESCRIPTOR_STATEMENT": "Shoppers are replacing conventional cleansers with live-culture sprays and washes marketed on microbiome balance. The distinguishing axis against probiotic skincare is the body-care aisle rather than the face-care aisle. Domain: personal care.",
+    "SIMILARITIES": {
+      "rucking vests": 0.0912,
+      "probiotic nasal spray": 0.5699
+    }
+  },
+  {
+    "TREND_ID": "c07e3b91-55aa-4f26-8d10-71b4c9e2f338",
+    "TREND_TOPIC": "Freeze-Dried Snack Revival",
+    "DESCRIPTOR_QUERY": "freeze dried candy",
+    "DESCRIPTOR_STATEMENT": "Home freeze-dryer owners are selling crunch-transformed candy through social marketplaces, and mass retailers are beginning to stock the format. The distinguishing axis against general candy trends is the texture transformation itself. Domain: food and drink.",
+    "SIMILARITIES": {
+      "rucking vests": 0.0731,
+      "probiotic nasal spray": 0.1817
+    }
+  }
+]

@@ -191,6 +191,7 @@ def build_verdict(
     prediction_eval_id: str | None = None,
     chain_id: str | None = None,
     minted_at: datetime | None = None,
+    horizon_at: datetime | None = None,
 ) -> Verdict:
     """Mint a new verdict row for ``claim``. Re-evaluations of the same
     prediction call this again with the same ``prediction_id`` and the same
@@ -198,6 +199,13 @@ def build_verdict(
     is the caller's responsibility today (the generation/matching pipeline
     that would enforce it is later scope), so this only validates the shape
     of a single row.
+
+    ``horizon_at`` exists for that re-evaluation case. HORIZON_AT is one of
+    the four frozen claim columns, and deriving it from ``minted_at`` on a
+    later evaluation would quietly push back the date the claim is due to be
+    judged -- a frozen claim that moves. A re-evaluation passes the value the
+    ledger already holds (see matching/run.py); a first mint omits it and
+    gets the band's derivation.
     """
     missing = [k for k in REQUIRED_EVIDENCE_KEYS if k not in evidence]
     if missing:
@@ -223,7 +231,7 @@ def build_verdict(
         prediction_eval_id=prediction_eval_id or str(uuid.uuid4()),
         chain_id=chain_id,
         claim=claim,
-        horizon_at=derive_horizon_at(claim.horizon_band, minted),
+        horizon_at=horizon_at or derive_horizon_at(claim.horizon_band, minted),
         confidence=confidence,
         status=status,  # type: ignore[arg-type]
         matched_trend_id=matched_trend_id,
