@@ -11,6 +11,17 @@
 -- no cross-row CHECK), so it is the writing service's contract -- see
 -- services/prediction/prediction_service/domain/claim.py.
 --
+-- Idempotency: PREDICTION_EVAL_ID keeps its DEFAULT UUID_STRING() for
+-- ad-hoc/manual inserts, but the service ALWAYS supplies it and writes with
+-- MERGE ... WHEN NOT MATCHED (domain/ledger.py), never a bare INSERT. That
+-- matters because Snowflake's PRIMARY KEY is informational and enforces
+-- nothing: a retried DML whose first attempt had already committed (the
+-- shared client retries transport-shaped failures) would otherwise append a
+-- second row under a fresh server-side UUID, with no constraint to catch it.
+-- A caller-minted id turns that retry into a matched no-op.
+-- No schema change is needed for this -- the column already exists and the
+-- default is unchanged.
+--
 -- Mirrors the one-ledger-per-agent convention (FCT_TREND_LIFECYCLE_LEDGER,
 -- FCT_TREND_CONNECTIONS_LEDGER, and the now-frozen FCT_TREND_PREDICTION_LEDGER
 -- v1/v2 this table supersedes -- that table takes no new writes as of this
@@ -21,7 +32,7 @@
 -- and read only by the prediction service and, later, the dashboard
 -- projection's additive columns.
 CREATE TABLE IF NOT EXISTS MCC_PRESENTATION.TREND_AGENT.FCT_PREDICTION_VERDICT_LEDGER (
-  PREDICTION_EVAL_ID   VARCHAR(64)   DEFAULT UUID_STRING() PRIMARY KEY,
+  PREDICTION_EVAL_ID   VARCHAR(64)   DEFAULT UUID_STRING() PRIMARY KEY  COMMENT 'this row''s identity; supplied by the writing service so a retried write MERGEs into a no-op instead of duplicating (the PK is informational in Snowflake and enforces nothing)',
   PREDICTION_ID        VARCHAR(64)   NOT NULL                COMMENT 'minted at first emission; stable across every re-evaluation of the same prediction',
   EVALUATED_AT         TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
   CHAIN_ID             VARCHAR(64)                           COMMENT 'pred-verdict-chain-{8-char random}, one value per run/generation pass',

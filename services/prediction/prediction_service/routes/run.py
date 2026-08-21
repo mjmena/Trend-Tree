@@ -12,6 +12,7 @@ generation logic exists.
 from __future__ import annotations
 
 import logging
+import uuid
 from collections.abc import Callable
 from typing import Literal
 
@@ -22,8 +23,8 @@ from tt_services_lib.auth import CallerIdentity
 from tt_services_lib.snowflake_client import SnowflakeClient
 
 from ..config import Settings
-from ..domain.claim import Claim, HorizonBand, InvalidClaim, build_verdict
-from ..domain.ledger import INSERT_VERDICT, insert_params
+from ..domain.claim import MAX_LENGTHS, Claim, HorizonBand, InvalidClaim, build_verdict
+from ..domain.ledger import MERGE_VERDICT, insert_params
 
 log = logging.getLogger(__name__)
 
@@ -52,10 +53,14 @@ _DEFAULT_REASONING = (
 
 
 class ClaimIn(BaseModel):
-    subject_descriptor: str
-    directional_claim: str
+    # max_length mirrors the ledger's column widths (domain.claim.MAX_LENGTHS,
+    # itself mirroring the DDL) so an over-long field is a 422 from pydantic
+    # here, or a 400 from the domain layer for anything pydantic can't see --
+    # never a Snowflake "String is too long" surfacing as a 500.
+    subject_descriptor: str = Field(max_length=MAX_LENGTHS["subject_descriptor"])
+    directional_claim: str = Field(max_length=MAX_LENGTHS["directional_claim"])
     horizon_band: HorizonBand
-    observable_check: str
+    observable_check: str = Field(max_length=MAX_LENGTHS["observable_check"])
 
 
 class RunRequest(BaseModel):
@@ -64,12 +69,24 @@ class RunRequest(BaseModel):
         description="Omit to use the built-in smoke-test claim (a capped, single-row test run).",
     )
     confidence: float = Field(default=40.0, ge=0, le=100)
-    reasoning: str = Field(default=_DEFAULT_REASONING)
+    reasoning: str = Field(default=_DEFAULT_REASONING, max_length=MAX_LENGTHS["reasoning"])
 
 
 class RunResponse(BaseModel):
     prediction_id: str
+    #: This row's ledger identity -- minted here, not by the warehouse, so the
+    #: write is idempotent under retry (see domain/ledger.py).
+    prediction_eval_id: str
+    chain_id: str
     status: Literal["ACTIVE"]
+    #: Rows the MERGE actually affected, straight from the client -- not an
+    #: assumption. 1 on a normal write.
+    rows_written: int
+    #: ``rows_written > 0``. False with ``rows_written == 0`` means the MERGE
+    #: matched an existing PREDICTION_EVAL_ID: a retried attempt whose
+    #: predecessor had already committed. The ledger holds exactly one row for
+    #: this verdict either way -- this attempt just isn't the one that put it
+    #: there. A genuine write failure is a 502, never a 200 with written=false.
     written: bool
 
 
@@ -86,6 +103,10 @@ def run_router(
         caller: CallerIdentity = Depends(require_caller),  # noqa: B008 - FastAPI's own DI pattern
     ) -> RunResponse:
         claim_in = body.claim
+        # One value per run/generation pass (DDL comment on CHAIN_ID). The
+        # skeleton's run is a single verdict, so it is one row per chain
+        # today; the real three-phase run will emit several under one.
+        chain_id = f"pred-verdict-chain-{uuid.uuid4().hex[:8]}"
         try:
             claim = (
                 Claim(
@@ -102,18 +123,52 @@ def run_router(
                 confidence=body.confidence,
                 reasoning=body.reasoning,
                 evidence=dict(_EMPTY_EVIDENCE),
+                chain_id=chain_id,
             )
         except InvalidClaim as err:
             raise HTTPException(status_code=400, detail=str(err)) from err
 
         log.info(
             "prediction verdict run",
-            extra={"caller": caller.email, "prediction_id": verdict.prediction_id},
+            extra={
+                "caller": caller.email,
+                "prediction_id": verdict.prediction_id,
+                "prediction_eval_id": verdict.prediction_eval_id,
+                "chain_id": verdict.chain_id,
+            },
         )
-        snowflake.execute(
-            INSERT_VERDICT.format(table=settings.qualify("FCT_PREDICTION_VERDICT_LEDGER")),
-            insert_params(verdict),
+        try:
+            rows_written = snowflake.execute(
+                MERGE_VERDICT.format(table=settings.qualify("FCT_PREDICTION_VERDICT_LEDGER")),
+                insert_params(verdict),
+            )
+        except Exception as err:
+            # The shared client has already exhausted its retries by now, so
+            # this is a real failure, not a blip. 502: the dependency failed,
+            # the request itself was fine -- and never a 200 claiming a write
+            # that did not happen.
+            log.exception(
+                "verdict write failed",
+                extra={"prediction_eval_id": verdict.prediction_eval_id},
+            )
+            raise HTTPException(
+                status_code=502, detail=f"verdict write failed: {err}"
+            ) from err
+
+        if rows_written == 0:
+            # The MERGE matched -- a retried attempt whose predecessor had
+            # already committed. The row is there; nothing was duplicated.
+            log.warning(
+                "verdict write was a no-op (already present) -- retry deduplicated",
+                extra={"prediction_eval_id": verdict.prediction_eval_id},
+            )
+        return RunResponse(
+            prediction_id=verdict.prediction_id,
+            prediction_eval_id=verdict.prediction_eval_id,
+            chain_id=chain_id,
+            status="ACTIVE",
+            rows_written=rows_written,
+            written=rows_written > 0,
         )
-        return RunResponse(prediction_id=verdict.prediction_id, status="ACTIVE", written=True)
 
     return router

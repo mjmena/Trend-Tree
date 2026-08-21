@@ -56,6 +56,31 @@ class InvalidClaim(ValueError):
     """A claim, evidence payload, or verdict field fails a structural check."""
 
 
+# Column widths from sql/fct_prediction_verdict_ledger.sql. Checked here so an
+# over-long field is an actionable 400 at the edge of the service rather than
+# a Snowflake "String is too long" surfacing as a 500 after a warehouse
+# round-trip. Keep in sync with the DDL.
+MAX_LENGTHS: dict[str, int] = {
+    "prediction_id": 64,
+    "prediction_eval_id": 64,
+    "chain_id": 64,
+    "subject_descriptor": 256,
+    "directional_claim": 1024,
+    "observable_check": 1024,
+    "horizon_band": 32,
+    "matched_trend_id": 64,
+    "reasoning": 4000,
+    "what_changed": 4000,
+}
+
+
+def check_length(name: str, value: str | None) -> None:
+    """Raise InvalidClaim if ``value`` would overflow its ledger column."""
+    limit = MAX_LENGTHS[name]
+    if value is not None and len(value) > limit:
+        raise InvalidClaim(f"{name} exceeds its column width: {len(value)} > {limit} chars")
+
+
 @dataclass(frozen=True)
 class Claim:
     """The 4-part claim, frozen at mint (strategy doc §2/§6): subject,
@@ -72,6 +97,7 @@ class Claim:
         for name in ("subject_descriptor", "directional_claim", "observable_check"):
             if not getattr(self, name).strip():
                 raise InvalidClaim(f"{name} must be non-empty")
+            check_length(name, getattr(self, name))
         if self.horizon_band not in _HORIZON_BAND_DAYS:
             raise InvalidClaim(
                 f"unknown horizon_band: {self.horizon_band!r} "
@@ -91,6 +117,17 @@ class Verdict:
     narrative, per the record envelope (strategy doc §6)."""
 
     prediction_id: str
+    #: This row's own identity, minted here rather than left to the ledger's
+    #: ``DEFAULT UUID_STRING()``. That default made the write
+    #: non-idempotent: the shared Snowflake client retries a call whose
+    #: response was lost, an already-committed INSERT would then land a
+    #: *second* row under a fresh server-side id, and Snowflake's PRIMARY KEY
+    #: is informational only, so nothing would dedupe it. A caller-supplied
+    #: id lets the write be a MERGE (see domain/ledger.py) that a retry turns
+    #: into a no-op.
+    prediction_eval_id: str
+    #: One value per run/generation pass, per the DDL's comment.
+    chain_id: str | None
     claim: Claim
     horizon_at: datetime
     confidence: float
@@ -112,6 +149,8 @@ def build_verdict(
     matched_trend_id: str | None = None,
     what_changed: str | None = None,
     prediction_id: str | None = None,
+    prediction_eval_id: str | None = None,
+    chain_id: str | None = None,
     minted_at: datetime | None = None,
 ) -> Verdict:
     """Mint a new verdict row for ``claim``. Re-evaluations of the same
@@ -132,10 +171,18 @@ def build_verdict(
         )
     if not reasoning.strip():
         raise InvalidClaim("reasoning must be non-empty")
+    check_length("reasoning", reasoning)
+    check_length("what_changed", what_changed)
+    check_length("matched_trend_id", matched_trend_id)
+    check_length("prediction_id", prediction_id)
+    check_length("prediction_eval_id", prediction_eval_id)
+    check_length("chain_id", chain_id)
 
     minted = minted_at or datetime.now(UTC)
     return Verdict(
         prediction_id=prediction_id or str(uuid.uuid4()),
+        prediction_eval_id=prediction_eval_id or str(uuid.uuid4()),
+        chain_id=chain_id,
         claim=claim,
         horizon_at=derive_horizon_at(claim.horizon_band, minted),
         confidence=confidence,

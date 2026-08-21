@@ -11,6 +11,13 @@ dependencies = [
     "cryptography>=43",
     "tenacity>=9.0",
     "google-auth>=2.35",
+    # Explicit, not transitive: google.oauth2.id_token.verify_token's JWK-Set
+    # branch -- the branch IAP's JWKS endpoint actually takes -- does
+    # `import jwt` at call time. It was only reaching us via
+    # snowflake-connector-python, and because auth.py normalizes any
+    # verification exception into a 401, losing it would look like "IAP
+    # rejects everyone" rather than an ImportError.
+    "pyjwt>=2.9",
 ]
 
 [project.optional-dependencies]

@@ -46,12 +46,17 @@ class FakeConnection:
     outcomes: list[Any] = field(default_factory=list)
     calls: list[tuple[str, Any]] = field(default_factory=list)
     closed: bool = False
+    close_calls: int = 0
 
     def cursor(self, *_args: Any, **_kwargs: Any) -> FakeCursor:
         return FakeCursor(self)
 
     def is_closed(self) -> bool:
         return self.closed
+
+    def close(self) -> None:
+        self.close_calls += 1
+        self.closed = True
 
     def _next_outcome(self) -> Any:
         if not self.outcomes:

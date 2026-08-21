@@ -21,6 +21,12 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 
+class ConfigError(RuntimeError):
+    """Settings that cannot serve traffic. Raised at startup, never per
+    request -- a misconfigured deploy should refuse to come up, not serve
+    401s or 500s that read as "locked down and healthy"."""
+
+
 @dataclass(frozen=True)
 class SnowflakeSettings:
     account: str
@@ -55,6 +61,38 @@ class Settings:
         """``<database>.<schema>.<table>`` -- see the note on
         SnowflakeSettings.database."""
         return f"{self.snowflake.database}.{self.snowflake.schema}.{table}"
+
+    def validate_for_server(self) -> None:
+        """Refuse to boot a server on settings that only *look* like they
+        work. Both checks below otherwise fail late and misleadingly:
+
+        * an empty ``audience`` fails closed -- every request 401s -- so a
+          service that never received PREDICTION_SERVICE_AUDIENCE looks
+          identical from the edge to one that is correctly locked down.
+        * with no key material the Snowflake client falls through to
+          ``externalbrowser``, which in a container blocks for ~120s waiting
+          for a browser that will never open, and then errors -- per request.
+
+        Called from server.py, not from ``settings_from_env``: tests and any
+        non-server caller still build Settings freely.
+        """
+        problems: list[str] = []
+        if not self.audience.strip():
+            problems.append(
+                "PREDICTION_SERVICE_AUDIENCE is empty -- every IAP assertion would fail its "
+                "audience check and every request would 401. Set it to "
+                "/projects/{PROJECT_NUMBER}/locations/{REGION}/services/{SERVICE} "
+                "(deploy/deploy.sh does this)."
+            )
+        if not (self.snowflake.private_key or self.snowflake.private_key_path):
+            problems.append(
+                "no Snowflake key material: neither PREDICTION_SNOWFLAKE_PRIVATE_KEY nor "
+                f"PREDICTION_SNOWFLAKE_PRIVATE_KEY_PATH is set, so the client would fall back "
+                f"to authenticator={self.snowflake.authenticator!r} -- interactive auth, which "
+                "cannot succeed in a server process."
+            )
+        if problems:
+            raise ConfigError("refusing to start: " + "; ".join(problems))
 
 
 def settings_from_env(env: Mapping[str, str] | None = None) -> Settings:

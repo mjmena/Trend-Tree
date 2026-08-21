@@ -18,6 +18,10 @@ from .config import settings_from_env
 logging.basicConfig(level=logging.INFO)
 
 settings = settings_from_env()
+# Raises ConfigError on settings that cannot serve traffic (empty IAP
+# audience, no Snowflake key material) -- the container fails to start rather
+# than coming up and 401-ing or hanging on every request.
+settings.validate_for_server()
 app = create_app(settings=settings, snowflake=RetryingSnowflakeClient(settings.snowflake))
 
 

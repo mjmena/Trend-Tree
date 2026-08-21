@@ -127,3 +127,70 @@ def test_build_verdict_is_deterministic_given_explicit_ids_and_time():
     assert verdict.prediction_id == "fixed-id"
     assert verdict.minted_at == minted
     assert verdict.horizon_at == minted + timedelta(days=180)
+
+
+@pytest.mark.parametrize(
+    "field,limit",
+    [
+        ("subject_descriptor", 256),
+        ("directional_claim", 1024),
+        ("observable_check", 1024),
+    ],
+)
+def test_claim_rejects_a_field_wider_than_its_ledger_column(field, limit):
+    # sql/fct_prediction_verdict_ledger.sql's VARCHAR widths. Without this the
+    # overflow surfaces as a Snowflake error after a warehouse round-trip --
+    # a 500 for what is really a bad request.
+    _claim(**{field: "x" * limit})  # exactly at the limit is fine
+    with pytest.raises(InvalidClaim, match="exceeds its column width"):
+        _claim(**{field: "x" * (limit + 1)})
+
+
+def test_build_verdict_rejects_over_long_reasoning_and_what_changed():
+    with pytest.raises(InvalidClaim, match="exceeds its column width"):
+        build_verdict(
+            _claim(), confidence=50, reasoning="x" * 4001, evidence=dict(_VALID_EVIDENCE)
+        )
+    with pytest.raises(InvalidClaim, match="exceeds its column width"):
+        build_verdict(
+            _claim(),
+            confidence=50,
+            reasoning="ok",
+            evidence=dict(_VALID_EVIDENCE),
+            what_changed="x" * 4001,
+        )
+
+
+def test_build_verdict_mints_a_distinct_row_id_per_call():
+    # PREDICTION_EVAL_ID is the row's identity and must not collide across
+    # evaluations of the same prediction; PREDICTION_ID is what stays stable.
+    first = build_verdict(
+        _claim(),
+        confidence=40,
+        reasoning="test",
+        evidence=dict(_VALID_EVIDENCE),
+        prediction_id="stable",
+    )
+    second = build_verdict(
+        _claim(),
+        confidence=40,
+        reasoning="test",
+        evidence=dict(_VALID_EVIDENCE),
+        prediction_id="stable",
+    )
+
+    assert first.prediction_id == second.prediction_id == "stable"
+    assert first.prediction_eval_id != second.prediction_eval_id
+
+
+def test_build_verdict_accepts_an_explicit_eval_id_and_chain_id():
+    verdict = build_verdict(
+        _claim(),
+        confidence=40,
+        reasoning="test",
+        evidence=dict(_VALID_EVIDENCE),
+        prediction_eval_id="fixed-eval-id",
+        chain_id="pred-verdict-chain-abcd1234",
+    )
+    assert verdict.prediction_eval_id == "fixed-eval-id"
+    assert verdict.chain_id == "pred-verdict-chain-abcd1234"

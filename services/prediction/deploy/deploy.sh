@@ -34,19 +34,41 @@
 # IAP's audience is `/projects/{PROJECT_NUMBER}/locations/{REGION}
 # /services/{SERVICE}` -- static, known before any deploy exists.
 #
-# The smoke test hits the candidate URL *unauthenticated* and expects 401
-# (IAP's own rejection, matching the documented behavior of every other
-# IAP-fronted service in the estate -- see helm/deploy/deploy-helm.sh:114,
-# "401 if hit directly"). This proves IAP is correctly wired in front of the
-# revision; it does not by itself prove the container's own app code is
-# healthy the way an authenticated 200 would (IAP rejects before reaching the
-# backend), so it is a weaker signal than the original design intended -- the
-# real proof is the authenticated capped-scope /run call in CRMA-762's AC4/5,
-# done separately once an IAP-accessor identity is available to call with.
+# The smoke test is TWO probes, and both must pass before any promote:
+#
+#   1. Unauthenticated GET of the candidate's /healthz must return 401 --
+#      IAP's own rejection at the edge (CRMA-762 AC4; matches every other
+#      IAP-fronted service in the estate, see helm/deploy/deploy-helm.sh:114).
+#   2. IAP-authenticated GET of the *same* candidate-tagged /healthz must
+#      return 200 with {"ok":true} from the container itself.
+#
+# Probe 1 alone has no discriminating power over the revision: IAP answers
+# 401 at the edge before the request ever reaches a revision, so a revision
+# that 500s on every single request produces the identical 401 as a healthy
+# one -- and the old gate then promoted it. Only probe 2 actually reaches the
+# candidate's container.
+#
+# Probe 2 needs a caller identity token. If one cannot be obtained, or the
+# probe cannot be made for any other reason, this script EXITS NON-ZERO and
+# does not promote. "Couldn't check" must never read as "passed" -- that is
+# the exact failure mode being fixed here.
+#
+# Token sourcing, in order:
+#   * $IAP_ID_TOKEN, if set -- an already-minted token (the estate has seen
+#     `gcloud auth print-identity-token` rejected by IAP for audience
+#     reasons; a token minted elsewhere, e.g. from a browser session or an
+#     impersonated service account, drops in here without weakening the gate,
+#     because the probe still has to come back 200).
+#   * `gcloud auth print-identity-token`, with `--audiences=$IAP_TOKEN_AUDIENCE`
+#     when that variable is set (required when minting as a service account /
+#     via impersonation).
 #
 #   deploy/deploy.sh                build + push + dark-deploy + smoke test + promote
 #   deploy/deploy.sh --no-build     redeploy the latest pushed image through the same flow
 #   deploy/deploy.sh --no-promote   stop after the smoke test; candidate stays at 0% traffic
+#
+#   IAP_ID_TOKEN=...        use this identity token for the authenticated probe
+#   IAP_TOKEN_AUDIENCE=...  mint the probe token for this audience
 set -euo pipefail
 
 PROJECT=mcc-crm-automations
@@ -80,10 +102,25 @@ for arg in "$@"; do
   esac
 done
 
+# One cleanup handler for everything, registered once. Each `trap ... EXIT`
+# REPLACES the previous handler rather than adding to it, so the build's
+# `trap 'rm -rf "$CTX"'` used to be silently discarded by the env-file trap
+# further down -- leaving $CTX/docker-config/config.json, which holds a live
+# `gcloud auth print-access-token` value, on disk after every run.
+CTX=""
+ENV_FILE=""
+AUTH_HEADER_FILE=""
+cleanup() {
+  [[ -n "$CTX" ]] && rm -rf "$CTX"
+  [[ -n "$ENV_FILE" ]] && rm -f "$ENV_FILE"
+  [[ -n "$AUTH_HEADER_FILE" ]] && rm -f "$AUTH_HEADER_FILE"
+  return 0
+}
+trap cleanup EXIT
+
 if [[ "$BUILD" == "1" ]]; then
   log "Staging /app tree with linux/amd64 wheels..."
   CTX="$(mktemp -d)"
-  trap 'rm -rf "$CTX"' EXIT
   mkdir -p "$CTX/app"
   cp -R "$REPO_ROOT/services/lib/tt_services_lib" "$CTX/app/tt_services_lib"
   cp -R "$SVC_ROOT/prediction_service" "$CTX/app/prediction_service"
@@ -104,7 +141,11 @@ if [[ "$BUILD" == "1" ]]; then
   tar -C "$CTX" -cf "$CTX/layer.tar" app
   export DOCKER_CONFIG="$CTX/docker-config"
   mkdir -p "$DOCKER_CONFIG"
-  "$CRANE" auth login "${REGION}-docker.pkg.dev" -u oauth2accesstoken -p "$(gcloud auth print-access-token)"
+  # Token on stdin, never as an argv element: `-p "$(gcloud auth
+  # print-access-token)"` puts a live OAuth token in the process table, where
+  # any user on the box can read it out of `ps`.
+  gcloud auth print-access-token \
+    | "$CRANE" auth login "${REGION}-docker.pkg.dev" -u oauth2accesstoken --password-stdin
   WITH_LAYER=$("$CRANE" append --platform linux/amd64 -b "$BASE" -f "$CTX/layer.tar" -t "${IMAGE%:*}:layer")
   "$CRANE" mutate "$WITH_LAYER" -t "$IMAGE" \
     --workdir /app \
@@ -119,7 +160,6 @@ PROJECT_NUMBER="$(gcloud projects describe "$PROJECT" --format='value(projectNum
 IAP_AUDIENCE="/projects/${PROJECT_NUMBER}/locations/${REGION}/services/${SERVICE}"
 
 ENV_FILE="$(mktemp -t trend-tree-prediction-env.XXXXXX.yaml)"
-trap 'rm -f "$ENV_FILE"' EXIT
 cat > "$ENV_FILE" <<YAML
 PREDICTION_SNOWFLAKE_ACCOUNT: 'WVB49304-MCCLATCHY_EVAL'
 PREDICTION_SNOWFLAKE_USER: 'CRMBOT_SERVICE_USER'
@@ -162,14 +202,67 @@ deploy_step "--no-traffic"
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT" --format 'value(status.url)')"
 CANDIDATE_URL="https://candidate---$(echo "$URL" | sed 's#https://##')"
 
-log "Smoke-testing candidate at ${CANDIDATE_URL}/healthz (unauthenticated -- expect 401 from IAP)..."
-HTTP_CODE=$(curl -sS -o /tmp/trend-tree-prediction-smoke.json -w '%{http_code}' "${CANDIDATE_URL}/healthz")
+SMOKE_BODY=/tmp/trend-tree-prediction-smoke.json
+
+log "Probe 1/2: ${CANDIDATE_URL}/healthz unauthenticated (expect 401 from IAP)..."
+# `|| echo 000` so a curl-level failure reports as a failed gate rather than
+# tripping `set -e` with no explanation.
+HTTP_CODE=$(curl -sS -o "$SMOKE_BODY" -w '%{http_code}' "${CANDIDATE_URL}/healthz" || echo "000")
 if [[ "$HTTP_CODE" != "401" ]]; then
-  echo "Smoke test failed: expected 401 from IAP, got HTTP ${HTTP_CODE}. Leaving candidate at 0% traffic. Response:" >&2
-  cat /tmp/trend-tree-prediction-smoke.json >&2
+  echo "Smoke test FAILED: expected 401 from IAP, got HTTP ${HTTP_CODE}. Not promoting; candidate stays at 0% traffic. Response:" >&2
+  cat "$SMOKE_BODY" >&2
   exit 1
 fi
-log "Smoke test passed: IAP correctly rejects an unauthenticated request (401)."
+log "Probe 1/2 passed: IAP rejects an unauthenticated request (401)."
+
+# Probe 2 is the one with discriminating power: it reaches the candidate
+# revision's own container. Failing to obtain a token is a FAILURE, not a
+# skip -- an unverifiable revision must never be promoted.
+log "Probe 2/2: ${CANDIDATE_URL}/healthz IAP-authenticated (expect 200 from the candidate revision)..."
+if [[ -n "${IAP_ID_TOKEN:-}" ]]; then
+  ID_TOKEN="$IAP_ID_TOKEN"
+  log "  (using the identity token from \$IAP_ID_TOKEN)"
+else
+  TOKEN_ERR="$(mktemp -t trend-tree-prediction-token.XXXXXX)"
+  if [[ -n "${IAP_TOKEN_AUDIENCE:-}" ]]; then
+    ID_TOKEN="$(gcloud auth print-identity-token --audiences="$IAP_TOKEN_AUDIENCE" 2>"$TOKEN_ERR" || true)"
+  else
+    ID_TOKEN="$(gcloud auth print-identity-token 2>"$TOKEN_ERR" || true)"
+  fi
+  if [[ -z "$ID_TOKEN" ]]; then
+    echo "Smoke test FAILED: could not mint an identity token for the authenticated probe, so the candidate revision's health is UNVERIFIED. Not promoting. gcloud said:" >&2
+    cat "$TOKEN_ERR" >&2
+    echo "Fix by granting this identity roles/iap.httpsResourceAccessor (see the end of this script), setting IAP_TOKEN_AUDIENCE, or passing a pre-minted token in IAP_ID_TOKEN." >&2
+    rm -f "$TOKEN_ERR"
+    exit 1
+  fi
+  rm -f "$TOKEN_ERR"
+fi
+
+# Header from a 0600 file rather than an argv element -- same `ps` exposure
+# the crane login above avoids.
+AUTH_HEADER_FILE="$(mktemp -t trend-tree-prediction-hdr.XXXXXX)"
+chmod 600 "$AUTH_HEADER_FILE"
+printf 'Authorization: Bearer %s\n' "$ID_TOKEN" > "$AUTH_HEADER_FILE"
+
+AUTH_CODE=$(curl -sS -o "$SMOKE_BODY" -w '%{http_code}' -H @"$AUTH_HEADER_FILE" "${CANDIDATE_URL}/healthz" || echo "000")
+rm -f "$AUTH_HEADER_FILE"
+AUTH_HEADER_FILE=""
+
+if [[ "$AUTH_CODE" != "200" ]]; then
+  echo "Smoke test FAILED: authenticated probe of the candidate revision returned HTTP ${AUTH_CODE}, expected 200. Not promoting; candidate stays at 0% traffic. Response:" >&2
+  cat "$SMOKE_BODY" >&2
+  echo >&2
+  echo "  401/403 -> the calling identity lacks roles/iap.httpsResourceAccessor, or the token audience is wrong (set IAP_TOKEN_AUDIENCE / IAP_ID_TOKEN)." >&2
+  echo "  5xx/000 -> the candidate revision itself is unhealthy. Check: gcloud run services logs read ${SERVICE} --region ${REGION} --project ${PROJECT}" >&2
+  exit 1
+fi
+if ! grep -q '"ok"' "$SMOKE_BODY"; then
+  echo "Smoke test FAILED: authenticated probe returned 200 but not the expected /healthz body. Not promoting. Response:" >&2
+  cat "$SMOKE_BODY" >&2
+  exit 1
+fi
+log "Probe 2/2 passed: the candidate revision itself answers /healthz with 200."
 
 if [[ "$PROMOTE" == "1" ]]; then
   log "Promoting candidate to 100% traffic..."
