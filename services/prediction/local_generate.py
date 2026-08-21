@@ -15,6 +15,9 @@ through the local loop").
     --print-prompt   dump the exact system + user prompt this run would send
     --signals PATH   a different corpus fixture
     --reply PATH     a different recorded reply (ignored with --live-llm)
+    --live-subject S a subject already carrying an ACTIVE prediction; repeatable.
+                     The deployed run reads these from the verdict ledger, so this
+                     is how the offline loop exercises the same de-duplication.
     --max-predictions N / --signal-limit N
 
 This never writes to Snowflake in any mode. It prints the verdict rows the
@@ -34,7 +37,7 @@ from prediction_service.generation.run import (
     GenerationScope,
     generate_predictions,
 )
-from prediction_service.generation.signals import FixtureSignalReader
+from prediction_service.generation.signals import FixtureSignalReader, StaticLiveSubjectReader
 
 FIXTURES = Path(__file__).parent / "fixtures"
 DEFAULT_SIGNALS = FIXTURES / "signals.sample.json"
@@ -50,6 +53,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--signal-limit", type=int, default=200)
     parser.add_argument("--lookback-hours", type=int, default=168)
     parser.add_argument("--max-predictions", type=int, default=5)
+    parser.add_argument("--live-subject", action="append", default=[])
     return parser
 
 
@@ -74,6 +78,8 @@ def run(argv: list[str] | None = None, out=sys.stdout) -> int:
         max_predictions=args.max_predictions,
     )
 
+    live = StaticLiveSubjectReader(args.live_subject)
+
     if args.print_prompt:
         # Rebuilt from the same pure builders the run uses -- no side effects,
         # so dumping the prompt cannot change what the run sends.
@@ -85,10 +91,19 @@ def run(argv: list[str] | None = None, out=sys.stdout) -> int:
         print("===== SYSTEM =====", file=out)
         print(build_system_prompt(), file=out)
         print("\n===== USER =====", file=out)
-        print(build_user_prompt(signals, max_predictions=scope.max_predictions), file=out)
+        print(
+            build_user_prompt(
+                signals,
+                max_predictions=scope.max_predictions,
+                live_subjects=live.live_subjects(),
+            ),
+            file=out,
+        )
         print("", file=out)
 
-    result = generate_predictions(reader=reader, llm=build_llm(args), scope=scope)
+    result = generate_predictions(
+        reader=reader, llm=build_llm(args), live_subjects=live, scope=scope
+    )
 
     print(f"chain_id            {result.chain_id}", file=out)
     print(f"model               {result.model}", file=out)

@@ -256,3 +256,47 @@ def test_a_reply_without_a_predictions_key_is_unparseable():
 def test_a_non_list_predictions_value_is_unparseable():
     with pytest.raises(UnparseableResponse, match="must be a list"):
         _parse('{"predictions": {"subject_descriptor": "x"}}')
+
+# --- structural tightening (review findings 12 and 13) ---------------------
+
+
+def test_a_json_object_as_source_signals_is_not_read_as_a_list_of_ids():
+    # `isinstance(x, Iterable)` accepts a dict and then iterates its KEYS, so
+    # {"bluesky:abc": 1} was silently accepted as citing "bluesky:abc". The
+    # prompt asks for an array; an object is a malformed proposal.
+    accepted, rejected = _parse(_reply(_good(source_signals={"bluesky:abc": 1})))
+
+    assert accepted == []
+    assert "no source_signals" in rejected[0].reason
+
+
+def test_a_json_array_of_ids_is_still_accepted():
+    accepted, _ = _parse(_reply(_good(source_signals=["bluesky:abc"])))
+
+    assert accepted[0].source_signals == ("bluesky:abc",)
+
+
+def test_a_stray_brace_in_the_prose_does_not_break_the_fallback():
+    # first-`{`-to-last-`}` slices this to `{you go}: {...}`, which parses as
+    # nothing -- a 502 for a reply that carries a perfectly good object.
+    accepted, _ = _parse(f"Sure! Here {{you go}}: {_reply(_good())}")
+
+    assert len(accepted) == 1
+
+
+def test_a_brace_inside_a_string_literal_does_not_unbalance_the_scan():
+    payload = _reply(_good(subject_descriptor="rucking {vests}"))
+
+    accepted, _ = _parse(f"Here you go:\n{payload}\nHope that helps.")
+
+    assert accepted[0].claim.subject_descriptor == "rucking {vests}"
+
+
+def test_prose_with_no_object_at_all_still_says_so():
+    with pytest.raises(UnparseableResponse, match="no JSON object"):
+        _parse("I have no predictions today.")
+
+
+def test_an_unclosed_object_is_reported_as_malformed_not_as_missing():
+    with pytest.raises(UnparseableResponse):
+        _parse('Here: {"predictions": [{"subject_desc')

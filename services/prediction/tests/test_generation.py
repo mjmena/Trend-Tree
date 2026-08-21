@@ -15,16 +15,16 @@ from pathlib import Path
 
 import pytest
 
-from prediction_service.domain.claim import REQUIRED_EVIDENCE_KEYS, derive_horizon_at
+from prediction_service.domain.claim import REQUIRED_EVIDENCE_KEYS, Claim, derive_horizon_at
 from prediction_service.generation.run import (
     GenerationScope,
     eval_id_for,
     generate_predictions,
     new_chain_id,
 )
-from prediction_service.generation.signals import FixtureSignalReader
+from prediction_service.generation.signals import FixtureSignalReader, StaticLiveSubjectReader
 
-from .fakes import FakePredictionLLM
+from .fakes import FakePredictionLLM, ShufflingPredictionLLM
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 SIGNAL_ROWS = json.loads((FIXTURES / "signals.sample.json").read_text())
@@ -33,12 +33,13 @@ MODEL_REPLY = (FIXTURES / "generation_reply.sample.json").read_text()
 MINTED_AT = datetime(2026, 8, 21, 12, 0, tzinfo=UTC)
 
 
-def _run(reply: str = MODEL_REPLY, *, rows=None, **scope_kwargs):
+def _run(reply: str = MODEL_REPLY, *, rows=None, live=(), **scope_kwargs):
     reader = FixtureSignalReader(SIGNAL_ROWS if rows is None else rows)
     llm = FakePredictionLLM(reply=reply)
     result = generate_predictions(
         reader=reader,
         llm=llm,
+        live_subjects=StaticLiveSubjectReader(live),
         scope=GenerationScope(**scope_kwargs) if scope_kwargs else None,
         chain_id="pred-verdict-chain-test1234",
         minted_at=MINTED_AT,
@@ -74,7 +75,7 @@ def test_the_claim_reads_as_one_falsifiable_sentence():
     )
     assert "rucking vests" in sentence
     assert "mainstream retail adoption expands" in sentence
-    assert "major-retailer catalogs" in sentence
+    assert "Dick's Sporting Goods" in sentence
 
 
 def test_the_run_cap_bounds_how_many_verdicts_are_minted():
@@ -256,15 +257,167 @@ def test_each_prediction_gets_its_own_prediction_id():
     assert len(set(ids)) == len(ids)
 
 
-def test_eval_ids_are_derived_from_the_chain_id_so_a_re_fire_is_idempotent():
-    # Re-firing the same chain_id MERGEs into the rows the first attempt
-    # wrote rather than appending a second copy of the run.
+def test_eval_ids_are_derived_from_the_claim_not_from_its_position():
+    # The whole point of the content hash: the id follows the claim, so it is
+    # the same id whatever ordinal that claim landed on.
     result, _ = _run()
 
     assert [v.prediction_eval_id for v in result.verdicts] == [
-        eval_id_for("pred-verdict-chain-test1234", 0),
-        eval_id_for("pred-verdict-chain-test1234", 1),
+        eval_id_for("pred-verdict-chain-test1234", v.claim) for v in result.verdicts
     ]
+
+
+def test_the_same_claim_in_a_different_position_keeps_its_eval_id():
+    claim = Claim(
+        subject_descriptor="rucking vests",
+        directional_claim="mainstream retail adoption expands",
+        horizon_band="emerging_3_6mo",
+        observable_check="Target lists a house-label weighted vest under 20 lb",
+    )
+
+    assert eval_id_for("chain-a", claim) == eval_id_for("chain-a", claim)
+    # Trivial re-wording of whitespace/case is the same claim...
+    same = Claim(
+        subject_descriptor="Rucking  Vests",
+        directional_claim="Mainstream retail adoption expands",
+        horizon_band="emerging_3_6mo",
+        observable_check="Target lists a house-label weighted vest under 20 lb",
+    )
+    assert eval_id_for("chain-a", same) == eval_id_for("chain-a", claim)
+
+
+def test_a_different_claim_gets_a_different_eval_id():
+    base = Claim(
+        subject_descriptor="rucking vests",
+        directional_claim="mainstream retail adoption expands",
+        horizon_band="emerging_3_6mo",
+        observable_check="Target lists a house-label weighted vest under 20 lb",
+    )
+    moved = Claim(
+        subject_descriptor="rucking vests",
+        directional_claim="mainstream retail adoption stalls",
+        horizon_band="emerging_3_6mo",
+        observable_check="Target lists a house-label weighted vest under 20 lb",
+    )
+
+    assert eval_id_for("chain-a", base) != eval_id_for("chain-a", moved)
+    # ...and the same claim in another chain is another run's row.
+    assert eval_id_for("chain-b", base) != eval_id_for("chain-a", base)
+
+
+def test_a_re_fire_of_a_nondeterministic_model_re_writes_only_what_repeats():
+    # The real failure this replaced. At temperature 1.0 a re-fire proposes
+    # different claims in a different order. Keyed on position, the second
+    # fire MERGE-matched index 0 and silently discarded whatever new claim
+    # landed there. Keyed on content: repeated claims keep their ids (the
+    # MERGE will match), and the genuinely new one arrives with an id of its
+    # own instead of overwriting an unrelated row.
+    repeated = [
+        {
+            "subject_descriptor": "rucking vests",
+            "directional_claim": "mainstream retail adoption expands",
+            "horizon_band": "emerging_3_6mo",
+            "observable_check": "Target lists a house-label weighted vest under 20 lb",
+            "confidence": 68,
+            "reasoning": "convergent evidence across commerce, search and social",
+            "source_signals": ["bluesky:3lqz7a2xk4d2m"],
+        },
+        {
+            "subject_descriptor": "cottage cheese",
+            "directional_claim": "displaces ricotta in home-cooked savory dishes",
+            "horizon_band": "cultural_shift_6_12mo",
+            "observable_check": "Good & Gather lists a 4% milkfat tub in its online catalog",
+            "confidence": 54,
+            "reasoning": "a supply-side change plus an inverted diet framing",
+            "source_signals": ["bluesky:3lqx91mm2c22t"],
+        },
+    ]
+    fresh = {
+        "subject_descriptor": "head spa",
+        "directional_claim": "appointment availability moves from waitlist to same-day",
+        "horizon_band": "near_term_1_3mo",
+        "observable_check": "three named US metro salons list same-day head-spa slots online",
+        "confidence": 61,
+        "reasoning": "a single strong signal with a named, checkable outcome",
+        "source_signals": ["gdelt:20260807:supplement-stack-coverage"],
+    }
+    llm = ShufflingPredictionLLM(replies=repeated, novel=[{}, fresh])
+    reader = FixtureSignalReader(SIGNAL_ROWS)
+
+    def fire():
+        return generate_predictions(
+            reader=reader,
+            llm=llm,
+            scope=GenerationScope(max_predictions=5),
+            chain_id="sched-exec-99",
+            minted_at=MINTED_AT,
+        )
+
+    first = fire()
+    second = fire()
+
+    # The model answered differently, and in a different order.
+    assert [v.claim.subject_descriptor for v in first.verdicts] != [
+        v.claim.subject_descriptor for v in second.verdicts
+    ]
+
+    first_ids = {v.claim.subject_descriptor: v.prediction_eval_id for v in first.verdicts}
+    second_ids = {v.claim.subject_descriptor: v.prediction_eval_id for v in second.verdicts}
+
+    # Every claim that repeated kept its identity, whatever ordinal it took.
+    repeated_subjects = set(first_ids) & set(second_ids)
+    assert repeated_subjects == {"rucking vests", "cottage cheese"}
+    for subject in repeated_subjects:
+        assert first_ids[subject] == second_ids[subject]
+
+    # And the claim only the second fire made is a new row, not an overwrite.
+    assert "head spa" in second_ids
+    assert second_ids["head spa"] not in first_ids.values()
+
+
+def test_two_proposals_that_reduce_to_the_same_claim_are_not_both_minted():
+    duplicate = {
+        "subject_descriptor": "rucking vests",
+        "directional_claim": "mainstream retail adoption expands",
+        "horizon_band": "emerging_3_6mo",
+        "observable_check": "Target lists a house-label weighted vest under 20 lb",
+        "confidence": 68,
+        "reasoning": "convergent evidence across commerce, search and social",
+        "source_signals": ["bluesky:3lqz7a2xk4d2m"],
+    }
+    reply = json.dumps({"predictions": [duplicate, dict(duplicate, confidence=70)]})
+
+    result, _ = _run(reply)
+
+    assert len(result.verdicts) == 1
+    assert any("duplicate of an earlier claim" in r.reason for r in result.rejected)
+
+
+# --- de-duplication against the predictions already live -------------------
+
+
+def test_a_subject_already_under_a_live_prediction_is_not_re_minted():
+    # Fired daily on a rolling 168h window, the same subject would otherwise
+    # come back as a fresh PREDICTION_ID every day.
+    result, _ = _run(live=["Rucking Vests"])
+
+    subjects = [v.claim.subject_descriptor for v in result.verdicts]
+    assert "rucking vests" not in subjects
+    assert "cottage cheese" in subjects
+    assert any("already carries a live ACTIVE prediction" in r.reason for r in result.rejected)
+
+
+def test_the_live_subjects_reach_the_prompt_so_the_model_can_skip_them_itself():
+    _, llm = _run(live=["rucking vests"])
+
+    assert "SUBJECTS ALREADY UNDER A LIVE PREDICTION" in llm.last_user_prompt
+    assert "rucking vests" in llm.last_user_prompt
+
+
+def test_with_no_live_subjects_the_prompt_carries_no_such_section():
+    _, llm = _run()
+
+    assert "SUBJECTS ALREADY UNDER A LIVE PREDICTION" not in llm.last_user_prompt
 
 
 def test_a_chain_id_is_minted_in_the_documented_shape_when_none_is_given():

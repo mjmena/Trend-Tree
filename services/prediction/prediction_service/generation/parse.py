@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -51,6 +51,40 @@ class Rejection:
     subject: str | None
 
 
+def _balanced_objects(text: str) -> Iterator[str]:
+    """Yield each top-level ``{...}`` span in ``text``, brace-balanced.
+
+    A first-``{``-to-last-``}`` slice is not the same thing, and the
+    difference is a 502: ``Sure! Here {you go}: {"predictions": [...]}``
+    slices to ``{you go}: {"predictions": [...]}``, which parses as nothing.
+    Braces inside string literals are skipped -- a claim containing "{" would
+    otherwise unbalance the scan.
+    """
+    depth = 0
+    start = -1
+    in_string = False
+    escaped = False
+    for index, ch in enumerate(text):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch == "{":
+            if depth == 0:
+                start = index
+            depth += 1
+        elif ch == "}" and depth:
+            depth -= 1
+            if depth == 0:
+                yield text[start : index + 1]
+
+
 def extract_json_object(text: str) -> dict[str, Any]:
     """Parse the model's reply into a dict, tolerating a code fence or
     incidental prose around the object."""
@@ -60,16 +94,28 @@ def extract_json_object(text: str) -> dict[str, Any]:
         body = fenced.group(1).strip()
     try:
         parsed = json.loads(body)
-    except json.JSONDecodeError:
-        start, end = body.find("{"), body.rfind("}")
-        if start == -1 or end <= start:
+    except json.JSONDecodeError as first_error:
+        parsed = None
+        last_error: json.JSONDecodeError | None = None
+        saw_candidate = False
+        for span in _balanced_objects(body):
+            saw_candidate = True
+            try:
+                candidate = json.loads(span)
+            except json.JSONDecodeError as err:
+                last_error = err
+                continue
+            if isinstance(candidate, dict):
+                parsed = candidate
+                break
+        if parsed is None:
+            if not saw_candidate:
+                raise UnparseableResponse(
+                    f"no JSON object in the model reply: {body[:200]!r}"
+                ) from first_error
             raise UnparseableResponse(
-                f"no JSON object in the model reply: {body[:200]!r}"
-            ) from None
-        try:
-            parsed = json.loads(body[start : end + 1])
-        except json.JSONDecodeError as err:
-            raise UnparseableResponse(f"malformed JSON in the model reply: {err}") from err
+                f"malformed JSON in the model reply: {last_error or first_error}"
+            ) from (last_error or first_error)
     if not isinstance(parsed, dict):
         raise UnparseableResponse(f"expected a JSON object, got {type(parsed).__name__}")
     return parsed
@@ -165,10 +211,12 @@ def parse_candidates(
             rejected.append(Rejection(index, "no reasoning", subject))
             continue
 
+        # A list, specifically. `isinstance(x, Iterable)` also accepts a
+        # dict, which then iterates as its KEYS -- so `{"s1": 1}` was
+        # silently read as citing "s1". The prompt asks for an array; an
+        # object is a malformed proposal, not a shorthand for one.
         raw_ids = raw.get("source_signals")
-        cited = [] if not isinstance(raw_ids, Iterable) or isinstance(raw_ids, (str, bytes)) else [
-            _text(i) for i in raw_ids
-        ]
+        cited = [_text(i) for i in raw_ids] if isinstance(raw_ids, (list, tuple)) else []
         source_signals = tuple(dict.fromkeys(i for i in cited if i in known))
         if not source_signals:
             rejected.append(

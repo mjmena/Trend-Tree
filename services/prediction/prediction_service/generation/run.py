@@ -1,11 +1,12 @@
 """The generation phase: signal corpus in, ACTIVE verdict rows out (CRMA-763).
 
-Read the signature below before anything else -- it *is* the isolation
-guarantee. ``generate_predictions`` takes a ``SignalReader`` and a
+Read the signature below before anything else. ``generate_predictions`` takes
+a ``SignalReader``, an optional ``LiveSubjectReader``, and a
 ``PredictionLLM``. It takes no ``SnowflakeClient``, no ``Settings``, and no
-trend-side collaborator of any kind, so nothing in this call graph can reach
-``FCT_TRENDS``, heat, or lifecycle -- the PRD's "the generation module has no
-trend-table access", spelled as a type rather than as a promise.
+trend-side collaborator of any kind -- the PRD's "the generation module has
+no trend-table access", written as a signature. What that does and does not
+enforce at runtime is spelled out honestly in blindness.py; the guard that
+actually runs is ``assert_generation_sql``.
 
 The phase ends at built ``Verdict`` objects. Writing them is the caller's
 job (routes/generate.py), which keeps the write capability outside the blind
@@ -20,7 +21,9 @@ What this phase does NOT do, deliberately:
 * **saturation evidence** -- CRMA-765. ``EVIDENCE.saturation`` is present
   (the key's presence is the contract, per domain.claim) and null.
 * **re-evaluation / what-changed** -- CRMA-766. Every row here is a first
-  mint, so ``WHAT_CHANGED`` is NULL by definition.
+  mint, so ``WHAT_CHANGED`` is NULL by definition. Note the difference from
+  the live-subject skip below: this phase declines to re-propose a subject
+  that is already live, but it never re-grades one.
 """
 
 from __future__ import annotations
@@ -30,19 +33,21 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
-from ..domain.claim import InvalidClaim, Verdict, build_verdict
+from ..domain.claim import Claim, InvalidClaim, Verdict, build_verdict
 from .llm import LLMResponse, PredictionLLM
 from .parse import Candidate, Rejection, parse_candidates
-from .prompt import build_system_prompt, build_user_prompt
-from .signals import SignalReader, SignalRecord
+from .prompt import build_system_prompt, build_user_prompt, fit_corpus
+from .signals import LiveSubjectReader, SignalReader, SignalRecord
 
 log = logging.getLogger(__name__)
 
-#: Namespace for deriving a run's PREDICTION_EVAL_IDs from its chain id, so a
-#: caller who supplies a stable chain id (a Cloud Scheduler execution id, say)
-#: gets an idempotent retry: the ledger MERGE matches the already-committed
-#: rows and writes nothing, instead of appending a second copy of the run.
+#: Namespace for deriving a run's PREDICTION_EVAL_IDs. See ``eval_id_for``.
 EVAL_ID_NAMESPACE = uuid.UUID("6b1f4f7c-2f2a-5c26-9f4a-9e3f1c0b7a51")
+
+#: Separator inside the hashed key. A unit separator cannot appear in a claim
+#: field (domain.claim.check_printable rejects control characters), so no two
+#: different claims can collide by re-splitting the same concatenation.
+_KEY_SEP = "\x1f"
 
 
 @dataclass(frozen=True)
@@ -78,8 +83,47 @@ def new_chain_id() -> str:
     return f"pred-verdict-chain-{uuid.uuid4().hex[:8]}"
 
 
-def eval_id_for(chain_id: str, index: int) -> str:
-    return str(uuid.uuid5(EVAL_ID_NAMESPACE, f"{chain_id}:{index}"))
+def normalize_subject(subject: str) -> str:
+    """The comparison form of a subject descriptor: whitespace collapsed,
+    case folded. Used for the live-subject skip, so "Rucking Vests" and
+    "rucking  vests" are the same subject."""
+    return " ".join(subject.split()).casefold()
+
+
+def claim_key(chain_id: str, claim: Claim) -> str:
+    """The identity string a PREDICTION_EVAL_ID is derived from."""
+    return _KEY_SEP.join(
+        (
+            chain_id,
+            normalize_subject(claim.subject_descriptor),
+            normalize_subject(claim.directional_claim),
+            claim.horizon_band,
+            normalize_subject(claim.observable_check),
+        )
+    )
+
+
+def eval_id_for(chain_id: str, claim: Claim) -> str:
+    """This row's ledger identity: a stable hash of the frozen 4-part claim
+    within its chain.
+
+    **Not the claim's ordinal in the run**, which is what this used to be and
+    which is unsound against this model. Generation calls Gemini at
+    ``temperature: 1.0`` (required while thinking is on), so a re-fire
+    proposes different claims in a different order. Keyed on position, a
+    re-fire with the same ``chain_id`` MERGE-matched index 0 and silently
+    discarded whatever new claim happened to land there, wrote genuinely new
+    claims at whichever indexes the first attempt had not used, and reported
+    ids for rows that existed nowhere. "Idempotent" described the id, not the
+    run.
+
+    Keyed on content: an identical claim re-writes the row it already owns
+    (the MERGE matches, nothing changes, which is what idempotent means), and
+    a claim the model worded differently lands as its own row rather than
+    overwriting an unrelated one. The chain id stays in the key so two
+    separate runs that happen to agree still record two runs.
+    """
+    return str(uuid.uuid5(EVAL_ID_NAMESPACE, claim_key(chain_id, claim)))
 
 
 def build_evidence(candidate: Candidate, *, model: str, chain_id: str) -> dict[str, object]:
@@ -111,6 +155,7 @@ def generate_predictions(
     *,
     reader: SignalReader,
     llm: PredictionLLM,
+    live_subjects: LiveSubjectReader | None = None,
     scope: GenerationScope | None = None,
     chain_id: str | None = None,
     minted_at: datetime | None = None,
@@ -120,11 +165,25 @@ def generate_predictions(
     chain = chain_id or new_chain_id()
     minted = minted_at or datetime.now(UTC)
 
-    signals: list[SignalRecord] = reader.recent_signals(
+    read: list[SignalRecord] = reader.recent_signals(
         lookback_hours=scope.lookback_hours, limit=scope.signal_limit
     )
+    # The corpus the model is actually shown, bounded per-field and in total
+    # (prompt.MAX_CORPUS_CHARS). Everything downstream keys off `signals`,
+    # not `read`, so the citable id set never includes a signal that was
+    # dropped for size.
+    signals, _ = fit_corpus(read)
+    if len(signals) < len(read):
+        log.info(
+            "corpus trimmed to the prompt budget",
+            extra={"chain_id": chain, "read": len(read), "shown": len(signals)},
+        )
+
+    live = live_subjects.live_subjects() if live_subjects is not None else []
+    live_index = {normalize_subject(s) for s in live}
+
     system = build_system_prompt()
-    user = build_user_prompt(signals, max_predictions=scope.max_predictions)
+    user = build_user_prompt(signals, max_predictions=scope.max_predictions, live_subjects=live)
 
     response: LLMResponse = llm.complete(system=system, user=user)
 
@@ -135,7 +194,28 @@ def generate_predictions(
     )
 
     verdicts: list[Verdict] = []
+    seen: set[str] = set()
     for index, candidate in enumerate(candidates):
+        subject = candidate.claim.subject_descriptor
+        # Fired daily on a rolling window, the same subject would otherwise
+        # be re-minted under a fresh PREDICTION_ID every day. The prompt asks
+        # the model not to re-propose a live subject; this is the half that
+        # does not depend on the model complying.
+        if normalize_subject(subject) in live_index:
+            rejected.append(
+                Rejection(index, "subject already carries a live ACTIVE prediction", subject)
+            )
+            continue
+
+        eval_id = eval_id_for(chain, candidate.claim)
+        if eval_id in seen:
+            # Two proposals in one reply that reduce to the same claim. They
+            # would MERGE onto one another; saying so is better than a
+            # mystery "written: false" in the response.
+            rejected.append(Rejection(index, "duplicate of an earlier claim in this run", subject))
+            continue
+        seen.add(eval_id)
+
         try:
             verdicts.append(
                 build_verdict(
@@ -151,7 +231,7 @@ def generate_predictions(
                     matched_trend_id=None,
                     # First mint -- nothing has changed yet.
                     what_changed=None,
-                    prediction_eval_id=eval_id_for(chain, index),
+                    prediction_eval_id=eval_id,
                     chain_id=chain,
                     minted_at=minted,
                 )
@@ -160,19 +240,14 @@ def generate_predictions(
             # parse.py already checked the shape; anything left is a limit
             # only the domain layer knows about. Drop the one candidate, keep
             # the run.
-            rejected.append(
-                Rejection(
-                    index,
-                    f"rejected by the domain layer: {err}",
-                    candidate.claim.subject_descriptor,
-                )
-            )
+            rejected.append(Rejection(index, f"rejected by the domain layer: {err}", subject))
 
     log.info(
         "generation pass complete",
         extra={
             "chain_id": chain,
             "signals_considered": len(signals),
+            "live_subjects": len(live_index),
             "predictions": len(verdicts),
             "rejected": len(rejected),
             "model": response.model,

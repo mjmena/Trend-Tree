@@ -2,9 +2,9 @@
   "predictions": [
     {
       "subject_descriptor": "rucking vests",
-      "directional_claim": "mainstream retail adoption expands beyond specialty fitness retailers into mass-market sporting goods and apparel",
+      "directional_claim": "mainstream retail adoption expands beyond specialty fitness retailers into mass-market sporting goods",
       "horizon_band": "emerging_3_6mo",
-      "observable_check": "weighted/rucking vest listings from mass-market house labels in major-retailer catalogs, plus sustained growth in 'rucking vest' search interest outside its origin metros",
+      "observable_check": "weighted/rucking vest listings appear under a house label at Target, Walmart or Dick's Sporting Goods in those retailers' own online catalogs, in the 12-20 lb range, at two or more of the three",
       "confidence": 68,
       "reasoning": "Four independent sources converge: a first-person community observation of local stockouts, four consecutive weeks on Amazon's Sports & Outdoors movers list still dominated by specialty brands, a breakout Google related query with inland regional spread, and lifestyle coverage reframing low-intensity walking as the successor to HIIT. Cultural relevance is high because the styling searches are outrunning the equipment searches, which historically precedes a category leaving the gym; white space is real because the mass-market labels are absent from the movers list today; plausibility is strong because the enabling behavior (walking) needs no skill acquisition; evidence breadth spans commerce, search, social and press; cross-category potential shows in the apparel styling searches; consumer interest is already measurable rather than projected.",
       "emergence_path": "signal convergence",
@@ -17,9 +17,9 @@
     },
     {
       "subject_descriptor": "cottage cheese",
-      "directional_claim": "displaces ricotta as the default soft cheese in home-cooked savory dishes, shifting grocery merchandising from the snack set to the cooking set",
+      "directional_claim": "displaces ricotta as the default soft cheese in home-cooked savory dishes",
       "horizon_band": "cultural_shift_6_12mo",
-      "observable_check": "private-label full-fat tub SKUs merchandised alongside cooking cheeses rather than yogurt, and savory recipe share in published cottage-cheese recipe content",
+      "observable_check": "at least two of Great Value, Good & Gather and 365 by Whole Foods list a full-fat cottage cheese tub at 4% milkfat or higher in their own online grocery catalogs, merchandised under a cooking or cheese category rather than yogurt",
       "confidence": 54,
       "reasoning": "A structural-enabling change plus a pattern break: private-label lines adding higher-fat tubs aimed at cooking is a supply-side condition, and full-fat SKUs outgrowing low-fat ones inverts the category's long-standing diet framing. Cultural relevance sits in the protein-first home-cooking identity; white space is the cooking set, where the category is not merchandised today; plausibility is high because the substitution is cheaper and needs no new technique; evidence breadth is narrower than the vest call, which is why confidence is lower; cross-category potential reaches into baking; consumer interest shows in creator recipe content rather than in search yet.",
       "emergence_path": "structural-enabling change",

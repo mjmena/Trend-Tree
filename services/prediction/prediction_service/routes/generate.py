@@ -6,11 +6,16 @@ claim to FCT_PREDICTION_VERDICT_LEDGER.
 
 **Why this is a separate route from /run.** The two capabilities are not the
 same shape and must not be reachable through one another: this handler is the
-only place a ``SignalReader`` is built, and the generation call it makes
-(``generate_predictions``) receives that reader and the LLM and nothing else.
-The Snowflake client -- the object that can write, and that could read a trend
-table -- stays here, on the *write* side of the boundary, and is used only
-after generation has returned its verdicts. /run keeps its CRMA-762 shape: a
+only place generation's readers are built, and the generation call it makes
+(``generate_predictions``) receives those readers and the LLM and nothing
+else. The write itself happens here, after generation has returned -- the
+verdict MERGE is never reachable from inside the generation call graph.
+
+Note what that does *not* say. The readers wrap this same write-capable
+``SnowflakeClient``; Python does not stop anyone from calling ``execute`` on
+it. What stops a generation-phase statement from reaching a trend table is
+``assert_generation_sql`` (generation/blindness.py), which runs on every
+statement those adapters issue. /run keeps its CRMA-762 shape: a
 hand-authored or smoke claim, one row.
 
 Matching (CRMA-764) is not implemented, so every row written here carries
@@ -41,7 +46,12 @@ from ..generation.run import (
     generate_predictions,
     new_chain_id,
 )
-from ..generation.signals import SIGNALS_TABLE, SnowflakeSignalReader
+from ..generation.signals import (
+    SIGNALS_TABLE,
+    VERDICT_LEDGER_TABLE,
+    SnowflakeLiveSubjectReader,
+    SnowflakeSignalReader,
+)
 
 log = logging.getLogger(__name__)
 
@@ -70,17 +80,24 @@ class GenerateRequest(BaseModel):
         default=None,
         max_length=MAX_LENGTHS["chain_id"],
         description=(
-            "Idempotency key for the whole run. Each row's PREDICTION_EVAL_ID is derived "
-            "from it (chain_id + ordinal), so re-firing with the same chain_id MERGEs into "
-            "the rows the first attempt wrote instead of appending a second copy of the run. "
-            "Omit and one is minted, which makes each POST a new run -- the right default "
-            "for a manual fire."
+            "Idempotency key for the whole run. Each row's PREDICTION_EVAL_ID is a hash of "
+            "this id plus that row's frozen 4-part claim, so re-firing with the same "
+            "chain_id MERGEs any claim identical to one already written into the row it "
+            "already owns, and lands anything genuinely new as a new row. It does NOT "
+            "reproduce the first attempt's output: the model runs at temperature 1.0 and "
+            "may word things differently. Omit and one is minted, which makes each POST a "
+            "new run -- the right default for a manual fire."
         ),
     )
 
 
 class PredictionOut(BaseModel):
-    prediction_id: str
+    #: NULL unless this call wrote the row. A PREDICTION_ID is minted per
+    #: verdict object, so reporting one for a row the ledger does not hold
+    #: (a dry run, or a MERGE that matched an earlier attempt's row) would
+    #: name an id that exists nowhere. The ledger's own id for a matched row
+    #: belongs to the run that wrote it; look it up by PREDICTION_EVAL_ID.
+    prediction_id: str | None
     prediction_eval_id: str
     subject_descriptor: str
     directional_claim: str
@@ -119,7 +136,7 @@ class GenerateResponse(BaseModel):
 def _to_out(result: GenerationResult, *, written: set[str]) -> list[PredictionOut]:
     return [
         PredictionOut(
-            prediction_id=v.prediction_id,
+            prediction_id=v.prediction_id if v.prediction_eval_id in written else None,
             prediction_eval_id=v.prediction_eval_id,
             subject_descriptor=v.claim.subject_descriptor,
             directional_claim=v.claim.directional_claim,
@@ -167,13 +184,18 @@ def generate_router(
             signal_limit=body.signal_limit,
             max_predictions=body.max_predictions,
         )
-        # The blindness boundary, in one expression: the reader is the only
-        # capability generation gets, and it can read exactly one table.
+        # Generation's two reads, each pinned to one object. The client
+        # handed over is the service's own write-capable SnowflakeClient --
+        # the narrowing is in what these adapters will *issue*, enforced by
+        # assert_generation_sql, not in what the object can do. See
+        # generation/blindness.py, which says so rather than claiming a
+        # capability boundary the runtime does not provide.
         reader = SnowflakeSignalReader(snowflake, settings.qualify(SIGNALS_TABLE))
+        live = SnowflakeLiveSubjectReader(snowflake, settings.qualify(VERDICT_LEDGER_TABLE))
 
         try:
             result = generate_predictions(
-                reader=reader, llm=llm, scope=scope, chain_id=chain_id
+                reader=reader, llm=llm, live_subjects=live, scope=scope, chain_id=chain_id
             )
         except BlindnessViolation:
             # A generation-phase statement reached for trend/heat/lifecycle
@@ -238,18 +260,27 @@ def generate_router(
                         status_code=502,
                         detail=(
                             f"verdict write failed after {len(written)} of "
-                            f"{len(result.verdicts)} row(s) landed. Re-fire with "
-                            f"chain_id={chain_id!r} to complete the run idempotently."
+                            f"{len(result.verdicts)} row(s) landed; the ledger keeps them. "
+                            f"Re-firing with chain_id={chain_id!r} re-runs generation from "
+                            "the corpus: any claim identical to one already written MERGEs "
+                            "into it, and any claim the model words differently lands as a "
+                            "new row. It does not replay this run."
                         ),
                     ) from err
                 if rows > 0:
                     written.add(verdict.prediction_eval_id)
                 else:
-                    # The MERGE matched: this run's chain_id was fired before
-                    # and that attempt's row is already in the ledger.
-                    log.warning(
-                        "verdict write was a no-op (already present)",
-                        extra={"prediction_eval_id": verdict.prediction_eval_id},
+                    # The MERGE matched: an earlier fire of this chain_id
+                    # already wrote this exact claim. Idempotent, by design --
+                    # the row in the ledger is the one that run minted, so
+                    # this verdict's PREDICTION_ID is not reported (see
+                    # PredictionOut.prediction_id).
+                    log.info(
+                        "verdict write was a no-op (this claim is already in the ledger)",
+                        extra={
+                            "chain_id": chain_id,
+                            "prediction_eval_id": verdict.prediction_eval_id,
+                        },
                     )
 
         return GenerateResponse(

@@ -81,3 +81,55 @@ class FakePredictionLLM:
     @property
     def last_system_prompt(self) -> str:
         return self.calls[-1][0]
+
+
+@dataclass
+class ShufflingPredictionLLM:
+    """A fake that behaves the way the real one does: **differently every
+    call**.
+
+    Generation calls Gemini at temperature 1.0, so a re-fire does not
+    reproduce the previous run's claims or their order. A deterministic fake
+    cannot show whether idempotency survives that -- it pins a property the
+    real system does not have. This one rotates the order of its replies and
+    swaps in a fresh claim each call, so a test can assert what re-firing the
+    same chain_id actually does.
+
+    ``replies`` is a list of the prediction dicts, in "first call" order.
+    """
+
+    replies: list[dict[str, Any]] = field(default_factory=list)
+    #: Appended (one per call, in order) so each call also emits something
+    #: the previous call did not.
+    novel: list[dict[str, Any]] = field(default_factory=list)
+    model: str = "fake-model"
+    input_tokens: int = 1200
+    output_tokens: int = 300
+    calls: list[tuple[str, str]] = field(default_factory=list)
+
+    def complete(self, *, system: str, user: str) -> LLMResponse:
+        import json as _json
+
+        turn = len(self.calls)
+        self.calls.append((system, user))
+        rotated = self.replies[turn % len(self.replies) :] + self.replies[
+            : turn % len(self.replies)
+        ]
+        predictions = list(rotated)
+        if turn < len(self.novel):
+            predictions.insert(0, self.novel[turn])
+        return LLMResponse(
+            text=_json.dumps({"predictions": predictions}),
+            model=self.model,
+            input_tokens=self.input_tokens,
+            output_tokens=self.output_tokens,
+            cost_usd=estimate_cost_usd(self.input_tokens, self.output_tokens),
+        )
+
+    @property
+    def last_user_prompt(self) -> str:
+        return self.calls[-1][1]
+
+    @property
+    def last_system_prompt(self) -> str:
+        return self.calls[-1][0]

@@ -22,7 +22,7 @@ from prediction_service.domain.claim import REQUIRED_EVIDENCE_KEYS
 from prediction_service.domain.ledger import COMPUTATION_VERSION
 from prediction_service.generation.llm import LLMError
 
-from .fakes import FakePredictionLLM, FakeSnowflake
+from .fakes import FakePredictionLLM, FakeSnowflake, ShufflingPredictionLLM
 
 SERVICE_URL = "https://trend-tree-prediction-tu6gxkvema-uk.a.run.app"
 GOOGLE_ISSUER = "https://accounts.google.com"
@@ -194,7 +194,8 @@ def test_a_dry_run_returns_the_claims_without_writing_them():
 
 def test_re_firing_the_same_chain_id_targets_the_same_ledger_rows():
     # Cloud Scheduler retries (CRMA-766) must not append a second copy of a
-    # run. Eval ids are derived from the chain id, so the MERGE matches.
+    # run. Eval ids hash the claim within the chain, so an identical claim
+    # MERGEs into the row it already owns.
     snowflake = FakeSnowflake(rows=SIGNAL_ROWS)
     client = _client(snowflake, FakePredictionLLM(reply=MODEL_REPLY))
 
@@ -210,6 +211,138 @@ def test_re_firing_the_same_chain_id_targets_the_same_ledger_rows():
         p["prediction_eval_id"] for p in second["predictions"]
     ]
     assert second["predictions_written"] == 0
+
+
+def _shuffling_client(snowflake: FakeSnowflake) -> tuple[TestClient, ShufflingPredictionLLM]:
+    repeated = [
+        {
+            "subject_descriptor": "rucking vests",
+            "directional_claim": "mainstream retail adoption expands",
+            "horizon_band": "emerging_3_6mo",
+            "observable_check": "Target lists a house-label weighted vest under 20 lb",
+            "confidence": 68,
+            "reasoning": "convergent evidence across commerce, search and social",
+            "source_signals": ["bluesky:3lqz7a2xk4d2m"],
+        },
+        {
+            "subject_descriptor": "cottage cheese",
+            "directional_claim": "displaces ricotta in home-cooked savory dishes",
+            "horizon_band": "cultural_shift_6_12mo",
+            "observable_check": "Good & Gather lists a 4% milkfat tub in its online catalog",
+            "confidence": 54,
+            "reasoning": "a supply-side change plus an inverted diet framing",
+            "source_signals": ["bluesky:3lqx91mm2c22t"],
+        },
+    ]
+    fresh = {
+        "subject_descriptor": "head spa",
+        "directional_claim": "appointment availability moves from waitlist to same-day",
+        "horizon_band": "near_term_1_3mo",
+        "observable_check": "three named US metro salons list same-day head-spa slots online",
+        "confidence": 61,
+        "reasoning": "a single strong signal with a named, checkable outcome",
+        "source_signals": ["gdelt:20260807:supplement-stack-coverage"],
+    }
+    llm = ShufflingPredictionLLM(replies=repeated, novel=[{}, fresh])
+    return _client(snowflake, llm), llm
+
+
+def test_a_re_fire_against_a_nondeterministic_model_writes_only_the_new_claims():
+    # The failure the positional scheme hid. This fake answers differently
+    # every call, the way temperature 1.0 does. The second fire must MERGE
+    # the two repeated claims into the rows they already own (rows=0) and
+    # append the one genuinely new claim.
+    snowflake = FakeSnowflake(rows=SIGNAL_ROWS)
+    client, _ = _shuffling_client(snowflake)
+
+    first = client.post(
+        "/generate", json={"chain_id": "sched-exec-77"}, headers=AUTH_HEADERS
+    ).json()
+
+    written_first = {
+        call.params["subject_descriptor"]: call.params["prediction_eval_id"]
+        for call in _writes(snowflake)
+    }
+    assert set(written_first) == {"rucking vests", "cottage cheese"}
+
+    # The ledger now holds those two eval ids; anything else is an insert.
+    class Deduping(FakeSnowflake):
+        def execute(self, sql, params=None):
+            super().execute(sql, params)
+            return 0 if params["prediction_eval_id"] in written_first.values() else 1
+
+    second_sf = Deduping(rows=SIGNAL_ROWS)
+    client2, _ = _shuffling_client(second_sf)
+    client2.post("/generate", json={"chain_id": "sched-exec-77"}, headers=AUTH_HEADERS)
+    second = client2.post(
+        "/generate", json={"chain_id": "sched-exec-77"}, headers=AUTH_HEADERS
+    ).json()
+
+    by_subject = {p["subject_descriptor"]: p for p in second["predictions"]}
+    assert set(by_subject) == {"rucking vests", "cottage cheese", "head spa"}
+    # The repeated claims kept their ids and re-wrote nothing.
+    for subject in ("rucking vests", "cottage cheese"):
+        assert by_subject[subject]["prediction_eval_id"] == written_first[subject]
+        assert by_subject[subject]["written"] is False
+    # The new claim is a new row, not an overwrite of an unrelated one.
+    assert by_subject["head spa"]["prediction_eval_id"] not in written_first.values()
+    assert by_subject["head spa"]["written"] is True
+    assert second["predictions_written"] == 1
+    assert first["chain_id"] == second["chain_id"] == "sched-exec-77"
+
+
+def test_a_prediction_id_is_only_reported_for_a_row_this_call_wrote():
+    # The response must describe the ledger, not the objects this process
+    # happened to build. A PREDICTION_ID is minted per verdict, so reporting
+    # one for a MERGE that matched names a row that exists nowhere.
+    snowflake = FakeSnowflake(rows=SIGNAL_ROWS)
+    client = _client(snowflake, FakePredictionLLM(reply=MODEL_REPLY))
+
+    first = client.post(
+        "/generate", json={"chain_id": "sched-exec-55"}, headers=AUTH_HEADERS
+    ).json()
+    assert all(p["prediction_id"] for p in first["predictions"])
+
+    snowflake.rowcount = 0
+    second = client.post(
+        "/generate", json={"chain_id": "sched-exec-55"}, headers=AUTH_HEADERS
+    ).json()
+
+    assert [p["prediction_id"] for p in second["predictions"]] == [None, None]
+    assert all(p["written"] is False for p in second["predictions"])
+
+
+def test_a_dry_run_reports_no_prediction_id_because_nothing_was_written():
+    snowflake = FakeSnowflake(rows=SIGNAL_ROWS)
+    client = _client(snowflake, FakePredictionLLM(reply=MODEL_REPLY))
+
+    body = client.post("/generate", json={"dry_run": True}, headers=AUTH_HEADERS).json()
+
+    assert body["predictions"]
+    assert all(p["prediction_id"] is None for p in body["predictions"])
+
+
+def test_a_subject_already_live_in_the_ledger_is_not_re_minted():
+    # The route's half of the daily-flood fix: the live-subject read comes
+    # back with a subject the model proposed again, and it does not become a
+    # row.
+    class LiveLedger(FakeSnowflake):
+        def query(self, sql, params=None):
+            super().query(sql, params)
+            if "SUBJECT_DESCRIPTOR" in sql.upper():
+                return [{"SUBJECT_DESCRIPTOR": "rucking vests"}]
+            return list(SIGNAL_ROWS)
+
+    snowflake = LiveLedger()
+    client = _client(snowflake, FakePredictionLLM(reply=MODEL_REPLY))
+
+    body = client.post("/generate", json={}, headers=AUTH_HEADERS).json()
+
+    subjects = [p["subject_descriptor"] for p in body["predictions"]]
+    assert "rucking vests" not in subjects
+    assert "cottage cheese" in subjects
+    reasons = {r["subject"]: r["reason"] for r in body["rejections"]}
+    assert "already carries a live ACTIVE prediction" in reasons["rucking vests"]
 
 
 def test_two_runs_without_a_chain_id_do_not_collide():
@@ -302,6 +435,10 @@ def test_a_write_failure_is_a_502_that_says_how_to_finish_the_run():
     detail = resp.json()["detail"]
     assert "0 of 2 row(s) landed" in detail
     assert "sched-exec-7" in detail
+    # The remediation must not promise a replay it cannot deliver: at
+    # temperature 1.0 a re-fire regenerates, it does not repeat.
+    assert "It does not replay this run." in detail
+    assert "idempotently" not in detail
 
 
 # --- the skeleton route is unchanged ---------------------------------------

@@ -1,18 +1,26 @@
 """Generation-phase blindness to trend, heat and lifecycle state (CRMA-763 AC5).
 
 The PRD calls this "a code-structure guarantee ... not a prompt instruction",
-so nothing here is satisfied by a comment. Three layers get their own
+so nothing here is satisfied by a comment. Three things get their own
 assertions:
 
 1. **The statements actually issued.** A full generation run through the real
    route, with the fake warehouse recording every statement, then an assertion
-   over those statements: the reads name FCT_SIGNALS and nothing trend-shaped.
+   over those statements: the reads name the corpus and the pillar's own
+   verdict ledger, and nothing trend-shaped.
 2. **The guard is not vacuous.** It rejects the queries a regression would
-   introduce -- and rejects a write, since generation reads only.
-3. **The capability boundary.** ``generate_predictions`` cannot be handed a
-   warehouse client at all; its data collaborator is a ``SignalReader``, and
-   no source file in the generation package names a forbidden object outside
-   the denylist itself.
+   introduce, rejects a write (generation reads only), rejects an object
+   nobody thought to denylist, and rejects a second statement riding behind
+   a semicolon.
+3. **The signature.** ``generate_predictions`` has no parameter through which
+   a warehouse client could enter, and no source file in the generation
+   package names a forbidden object outside the denylist itself.
+
+Note what (3) is and is not. It constrains the *shape* of the phase -- and
+widening it fails a test here -- but the readers' Protocols are structural,
+this repo runs no type checker, and in production those readers wrap the
+service's own write-capable client. The enforcement that runs is (2). See
+generation/blindness.py, which says the same thing at greater length.
 """
 
 from __future__ import annotations
@@ -33,7 +41,13 @@ from prediction_service.generation.blindness import (
     BlindnessViolation,
     assert_generation_sql,
 )
-from prediction_service.generation.signals import SIGNAL_QUERY, SnowflakeSignalReader
+from prediction_service.generation.signals import (
+    LIVE_SUBJECTS_QUERY,
+    SIGNAL_QUERY,
+    SIGNALS_TABLE,
+    VERDICT_LEDGER_TABLE,
+    SnowflakeSignalReader,
+)
 
 from .fakes import FakePredictionLLM, FakeSnowflake
 
@@ -44,11 +58,15 @@ FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 SIGNAL_ROWS = json.loads((FIXTURES / "signals.sample.json").read_text())
 MODEL_REPLY = (FIXTURES / "generation_reply.sample.json").read_text()
 
-#: The one object generation is allowed to name.
+#: The corpus -- generation's evidence.
 ALLOWED_TABLE = "FCT_SIGNALS"
-#: What the *write* phase names. It runs after generation has returned, with
-#: the route's own client -- outside the blind region.
+#: The pillar's own verdict ledger. Generation reads it (the live-subject
+#: list, so a daily run does not re-mint yesterday's subjects) and the write
+#: phase writes it, after generation has returned, with the route's own
+#: client.
 LEDGER_TABLE = "FCT_PREDICTION_VERDICT_LEDGER"
+#: Everything a generation-phase statement may name, in either direction.
+ALLOWED_OBJECTS = {ALLOWED_TABLE, LEDGER_TABLE}
 
 
 GOOGLE_ISSUER = "https://accounts.google.com"
@@ -80,8 +98,9 @@ def test_a_generation_run_reads_only_the_signal_corpus():
 
     reads = [call for call in snowflake.calls if call.kind == "query"]
     assert reads, "the run must have read the signal corpus"
+    assert any(ALLOWED_TABLE in call.sql.upper() for call in reads)
     for call in reads:
-        assert ALLOWED_TABLE in call.sql.upper()
+        assert any(name in call.sql.upper() for name in ALLOWED_OBJECTS), call.sql[:120]
 
     # And across the WHOLE run -- reads and the ledger writes alike -- nothing
     # named a trend, heat, lifecycle, candidate or dashboard object.
@@ -102,9 +121,11 @@ def test_the_only_statement_before_the_first_write_is_the_signal_read():
     kinds = [call.kind for call in snowflake.calls]
     first_write = kinds.index("execute")
     before = snowflake.calls[:first_write]
-    assert len(before) == 1
-    assert before[0].kind == "query"
+    # Two reads, both generation's: the corpus and the live-subject list.
+    assert [call.kind for call in before] == ["query", "query"]
     assert ALLOWED_TABLE in before[0].sql.upper()
+    assert LEDGER_TABLE in before[1].sql.upper()
+    assert before[1].sql.strip().upper().startswith("WITH")
     # The writes that follow are the verdict ledger, nothing else.
     for call in snowflake.calls[first_write:]:
         assert LEDGER_TABLE in call.sql.upper()
@@ -117,7 +138,7 @@ def test_a_dry_run_issues_no_write_at_all():
     resp = client.post("/generate", json={"dry_run": True}, headers=AUTH_HEADERS)
 
     assert resp.status_code == 200
-    assert [call.kind for call in snowflake.calls] == ["query"]
+    assert [call.kind for call in snowflake.calls] == ["query", "query"]
 
 
 def test_the_corpus_read_is_bounded_by_the_run_scope():
@@ -167,6 +188,64 @@ def test_the_allowed_signal_query_passes_the_guard():
 def test_the_guard_rejects_trend_heat_and_lifecycle_reads(sql):
     with pytest.raises(BlindnessViolation, match="structurally blind"):
         assert_generation_sql(sql)
+
+
+def test_the_live_subject_query_passes_only_under_its_own_grant():
+    # The verdict ledger read is granted per-statement, at the call site. The
+    # default grant does not include it, so a statement that quietly started
+    # reading the ledger from the corpus adapter would still be rejected.
+    rendered = LIVE_SUBJECTS_QUERY.format(
+        table="MCC_PRESENTATION.TREND_AGENT.FCT_PREDICTION_VERDICT_LEDGER"
+    ) % {"subject_limit": 300}
+
+    assert_generation_sql(rendered, allowed_tables=(VERDICT_LEDGER_TABLE,))
+
+    with pytest.raises(BlindnessViolation, match="structurally blind"):
+        assert_generation_sql(rendered)
+
+
+def test_the_corpus_query_does_not_pass_under_the_ledger_grant():
+    rendered = SIGNAL_QUERY.format(table="MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS") % {
+        "lookback_hours": 168,
+        "signal_limit": 200,
+    }
+
+    assert_generation_sql(rendered, allowed_tables=(SIGNALS_TABLE,))
+
+    with pytest.raises(BlindnessViolation, match="structurally blind"):
+        assert_generation_sql(rendered, allowed_tables=(VERDICT_LEDGER_TABLE,))
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        # No underscore after DIM_TREND, so the DIM_TREND_ denylist entry
+        # never fires -- the allowlist is what catches it.
+        "SELECT * FROM MCC_PRESENTATION.TREND_AGENT.DIM_TRENDS",
+        # A name assembled at runtime: no denylist token appears in the text.
+        "SELECT * FROM IDENTIFIER('FCT_' || 'TRENDS')",
+        # A table nobody thought to forbid because it does not exist yet.
+        "SELECT * FROM MCC_PRESENTATION.TREND_AGENT.FCT_SOMETHING_NEW",
+        # A join that reaches one object too many.
+        "SELECT * FROM FCT_SIGNALS s JOIN DIM_TRENDS t ON t.ID = s.SIGNAL_ID",
+    ],
+)
+def test_the_allowlist_rejects_objects_the_denylist_never_named(sql):
+    with pytest.raises(BlindnessViolation, match="structurally blind"):
+        assert_generation_sql(sql)
+
+
+def test_a_second_statement_cannot_ride_along_behind_a_semicolon():
+    # Every other check here reads the text as a whole, so a `;`-separated
+    # rider would sail past all of them.
+    with pytest.raises(BlindnessViolation, match="one statement at a time"):
+        assert_generation_sql(
+            "SELECT SIGNAL_ID FROM FCT_SIGNALS; SELECT * FROM DIM_TRENDS"
+        )
+
+
+def test_a_trailing_semicolon_is_not_a_second_statement():
+    assert_generation_sql("SELECT SIGNAL_ID FROM FCT_SIGNALS;")
 
 
 def test_a_comment_cannot_smuggle_a_forbidden_table_past_the_guard():
@@ -233,7 +312,14 @@ def test_generate_predictions_takes_no_warehouse_client():
     # which a client that could read a trend table (or write anything) could
     # enter the generation call graph.
     params = inspect.signature(generation_run.generate_predictions).parameters
-    assert set(params) == {"reader", "llm", "scope", "chain_id", "minted_at"}
+    assert set(params) == {
+        "reader",
+        "llm",
+        "live_subjects",
+        "scope",
+        "chain_id",
+        "minted_at",
+    }
     assert "snowflake" not in params
     assert "client" not in params
     assert "settings" not in params
