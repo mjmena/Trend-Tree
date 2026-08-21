@@ -45,6 +45,12 @@ _HORIZON_BAND_DAYS: dict[str, int] = {
     "longer_range_12_24mo": 730,
 }
 
+#: The controlled horizon vocabulary, in ascending window order. Public
+#: because the generation prompt (generation/prompt.py) has to name the exact
+#: strings the domain layer accepts -- a prompt listing a band this module
+#: rejects would produce candidates that can never be minted.
+HORIZON_BANDS: tuple[str, ...] = tuple(_HORIZON_BAND_DAYS)
+
 # The EVIDENCE VARIANT's contracted keys (strategy doc §6) -- required to be
 # *present*, even when a value is legitimately null (e.g. trend_context is
 # NULL for a white-space prediction). The key's presence is the contract, not

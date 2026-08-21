@@ -14,16 +14,46 @@ import uvicorn
 from tt_services_lib.snowflake_client import RetryingSnowflakeClient
 
 from .app import create_app
-from .config import settings_from_env
+from .config import Settings, settings_from_env
+from .generation.llm import GeminiPredictionLLM, PredictionLLM
 
 logging.basicConfig(level=logging.INFO)
+
+log = logging.getLogger(__name__)
+
+
+def build_llm(settings: Settings) -> PredictionLLM | None:
+    """The generation phase's model, or None when no key is configured.
+
+    None is a degraded service, not a dead one: /health, /whoami (the deploy
+    gate's probe) and /run all still work, and only POST /generate answers
+    503. The dead-generation case then surfaces where the PRD wants it --
+    as verdict-ledger staleness in the audit agent's view -- rather than as a
+    container that will not start.
+    """
+    if not settings.gemini.api_key.strip():
+        log.warning(
+            "PREDICTION_GEMINI_API_KEY is not set: POST /generate will answer 503 and this "
+            "service will write no verdicts. Every other route is unaffected."
+        )
+        return None
+    return GeminiPredictionLLM(
+        settings.gemini.api_key,
+        model=settings.gemini.model,
+        timeout_s=settings.gemini.timeout_s,
+    )
+
 
 settings = settings_from_env()
 # Raises ConfigError on settings that cannot serve traffic (empty audience,
 # unknown auth mode, no Snowflake key material) -- the container fails to
 # start rather than coming up and 401-ing or hanging on every request.
 settings.validate_for_server()
-app = create_app(settings=settings, snowflake=RetryingSnowflakeClient(settings.snowflake))
+app = create_app(
+    settings=settings,
+    snowflake=RetryingSnowflakeClient(settings.snowflake),
+    llm=build_llm(settings),
+)
 
 
 def main() -> None:

@@ -31,6 +31,8 @@ from tt_services_lib.auth import (
     DEFAULT_AUTH_MODE,
 )
 
+from .generation.llm import DEFAULT_MODEL as DEFAULT_GEMINI_MODEL
+
 # The prefix an audience must carry in each mode. The two shapes are not
 # interchangeable: an OIDC token's `aud` is this service's URL, an IAP
 # assertion's is the `/projects/{NUM}/locations/{REGION}/services/{SVC}`
@@ -67,8 +69,29 @@ class SnowflakeSettings:
 
 
 @dataclass(frozen=True)
+class GeminiSettings:
+    """The generation phase's LLM (CRMA-763). The fleet runs on Google
+    Gemini; ``model`` defaults to what agents/lib/gemini_loop.mjs uses for
+    the Pipedream agents, so a model bump is one env var, not a redeploy of
+    code.
+
+    ``api_key`` is deliberately NOT part of validate_for_server's refuse-to-
+    boot set: without it the service still serves /health, /whoami (the
+    deploy gate's probe) and /run, and only POST /generate fails -- as a 503
+    that names the missing variable. A dead generation phase then surfaces
+    the way the PRD asks for, as verdict-ledger staleness in the audit
+    agent's view, rather than as a container that will not start.
+    """
+
+    api_key: str
+    model: str
+    timeout_s: float
+
+
+@dataclass(frozen=True)
 class Settings:
     snowflake: SnowflakeSettings
+    gemini: GeminiSettings
     port: int
     # Which ingress-auth layer fronts this service -- `oidc` (Cloud Run IAM,
     # the deployed posture) or `iap`. See tt_services_lib.auth for what each
@@ -155,6 +178,15 @@ class Settings:
             raise ConfigError("refusing to start: " + "; ".join(problems))
 
 
+def _timeout(raw: str) -> float:
+    try:
+        return float(raw)
+    except ValueError as err:
+        raise ConfigError(
+            f"PREDICTION_GEMINI_TIMEOUT_S is {raw!r}, which is not a number"
+        ) from err
+
+
 def _port(raw: str) -> int:
     """A non-numeric PORT is a config problem like any other, so it surfaces
     as ConfigError rather than a bare ValueError from int()."""
@@ -177,6 +209,11 @@ def settings_from_env(env: Mapping[str, str] | None = None) -> Settings:
             authenticator=e.get("PREDICTION_SNOWFLAKE_AUTHENTICATOR", "externalbrowser"),
             private_key_path=e.get("PREDICTION_SNOWFLAKE_PRIVATE_KEY_PATH", ""),
             private_key=e.get("PREDICTION_SNOWFLAKE_PRIVATE_KEY", ""),
+        ),
+        gemini=GeminiSettings(
+            api_key=e.get("PREDICTION_GEMINI_API_KEY", ""),
+            model=e.get("PREDICTION_GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
+            timeout_s=_timeout(e.get("PREDICTION_GEMINI_TIMEOUT_S", "180")),
         ),
         port=_port(e.get("PORT", "8080")),
         # Unset or blank means the deployed posture (Cloud Run IAM). A value

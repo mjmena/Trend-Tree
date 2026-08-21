@@ -1,0 +1,43 @@
+{
+  "predictions": [
+    {
+      "subject_descriptor": "rucking vests",
+      "directional_claim": "mainstream retail adoption expands beyond specialty fitness retailers into mass-market sporting goods and apparel",
+      "horizon_band": "emerging_3_6mo",
+      "observable_check": "weighted/rucking vest listings from mass-market house labels in major-retailer catalogs, plus sustained growth in 'rucking vest' search interest outside its origin metros",
+      "confidence": 68,
+      "reasoning": "Four independent sources converge: a first-person community observation of local stockouts, four consecutive weeks on Amazon's Sports & Outdoors movers list still dominated by specialty brands, a breakout Google related query with inland regional spread, and lifestyle coverage reframing low-intensity walking as the successor to HIIT. Cultural relevance is high because the styling searches are outrunning the equipment searches, which historically precedes a category leaving the gym; white space is real because the mass-market labels are absent from the movers list today; plausibility is strong because the enabling behavior (walking) needs no skill acquisition; evidence breadth spans commerce, search, social and press; cross-category potential shows in the apparel styling searches; consumer interest is already measurable rather than projected.",
+      "emergence_path": "signal convergence",
+      "source_signals": [
+        "bluesky:3lqz7a2xk4d2m",
+        "amazon_trends:sports-outdoors:weighted-vest:2026-08-12",
+        "google_trends_explore:rucking-vest:2026-08-11",
+        "pinterest:trend:weighted-walk:2026-08-09"
+      ]
+    },
+    {
+      "subject_descriptor": "cottage cheese",
+      "directional_claim": "displaces ricotta as the default soft cheese in home-cooked savory dishes, shifting grocery merchandising from the snack set to the cooking set",
+      "horizon_band": "cultural_shift_6_12mo",
+      "observable_check": "private-label full-fat tub SKUs merchandised alongside cooking cheeses rather than yogurt, and savory recipe share in published cottage-cheese recipe content",
+      "confidence": 54,
+      "reasoning": "A structural-enabling change plus a pattern break: private-label lines adding higher-fat tubs aimed at cooking is a supply-side condition, and full-fat SKUs outgrowing low-fat ones inverts the category's long-standing diet framing. Cultural relevance sits in the protein-first home-cooking identity; white space is the cooking set, where the category is not merchandised today; plausibility is high because the substitution is cheaper and needs no new technique; evidence breadth is narrower than the vest call, which is why confidence is lower; cross-category potential reaches into baking; consumer interest shows in creator recipe content rather than in search yet.",
+      "emergence_path": "structural-enabling change",
+      "source_signals": [
+        "gemini_food_drink:2026-08-13:cottage-cheese-savory",
+        "amazon_trends:grocery:cottage-cheese:2026-08-12",
+        "bluesky:3lqx91mm2c22t"
+      ]
+    },
+    {
+      "subject_descriptor": "targeted supplement stacking",
+      "directional_claim": "",
+      "horizon_band": "emerging_3_6mo",
+      "observable_check": "",
+      "confidence": 71,
+      "reasoning": "The wellness press cluster is real and sustained, and I am fairly confident something is happening here, but the coverage names no specific ingredient, product or measurable behavior, so I cannot state what changes or how anyone would check it.",
+      "emergence_path": "high-potential single signal",
+      "source_signals": ["gdelt:20260807:supplement-stack-coverage"]
+    }
+  ]
+}

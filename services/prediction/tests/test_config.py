@@ -207,3 +207,36 @@ def test_a_non_numeric_port_is_a_config_error():
 
 def test_a_numeric_port_is_parsed():
     assert settings_from_env(dict(_SERVER_ENV, PORT="9090")).port == 9090
+
+
+# --- the generation phase's model (CRMA-763) -------------------------------
+
+
+def test_the_gemini_model_defaults_to_the_fleet_standard():
+    assert settings_from_env({}).gemini.model == "gemini-3.1-pro-preview"
+
+
+def test_the_gemini_model_and_timeout_are_overridable_without_a_code_change():
+    settings = settings_from_env(
+        {"PREDICTION_GEMINI_MODEL": "gemini-4-preview", "PREDICTION_GEMINI_TIMEOUT_S": "45"}
+    )
+
+    assert settings.gemini.model == "gemini-4-preview"
+    assert settings.gemini.timeout_s == 45.0
+
+
+def test_a_non_numeric_gemini_timeout_is_a_config_error():
+    with pytest.raises(ConfigError, match="PREDICTION_GEMINI_TIMEOUT_S is 'soon'"):
+        settings_from_env({"PREDICTION_GEMINI_TIMEOUT_S": "soon"})
+
+
+def test_a_missing_gemini_key_does_not_stop_the_service_booting():
+    # Deliberate: without it the service still serves /health, /whoami (the
+    # deploy gate's probe) and /run -- only POST /generate answers 503. A dead
+    # generation phase then surfaces as verdict-ledger staleness in the audit
+    # agent's view, which is where the PRD wants it, rather than as a
+    # container that will not start.
+    settings = settings_from_env(_SERVER_ENV)
+
+    assert settings.gemini.api_key == ""
+    settings.validate_for_server()

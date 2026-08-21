@@ -9,6 +9,8 @@ from tt_services_lib.auth import CallerIdentity, TokenVerifier, require_caller_d
 from tt_services_lib.snowflake_client import SnowflakeClient
 
 from .config import ConfigError, Settings
+from .generation.llm import PredictionLLM
+from .routes.generate import generate_router
 from .routes.run import run_router
 
 
@@ -17,6 +19,7 @@ def create_app(
     snowflake: SnowflakeClient,
     *,
     verify_token: TokenVerifier | None = None,
+    llm: PredictionLLM | None = None,
 ) -> FastAPI:
     # None means "the real verifier for settings.auth_mode" -- so only an
     # injected (test) verifier is exempt from the audience check below.
@@ -85,4 +88,9 @@ def create_app(
     app.get("/whoami")(whoami)
 
     app.include_router(run_router(settings, snowflake, require_caller))
+    # `llm=None` is a service that cannot generate but can still serve
+    # /health, /whoami and /run -- POST /generate answers 503 and says which
+    # variable is missing. See config.GeminiSettings for why that is not a
+    # refuse-to-boot condition.
+    app.include_router(generate_router(settings, snowflake, require_caller, llm))
     return app
