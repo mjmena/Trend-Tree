@@ -260,12 +260,12 @@ YAML
 # answers POST /generate with a 503 naming the variable -- so the pillar's
 # other work is not blocked on an admin ask, and the binding appears
 # automatically on the next deploy once the secret is created:
-#   gcloud secrets create trend-tree-gemini-api-key --project mcc-crm-automations
-#   printf %s "$KEY" | gcloud secrets versions add trend-tree-gemini-api-key \
+#   gcloud secrets create generic-gemini-api-key --project mcc-crm-automations
+#   printf %s "$KEY" | gcloud secrets versions add generic-gemini-api-key \
 #     --project mcc-crm-automations --data-file=-
 # One --update-secrets flag, not two: gcloud treats it as a single dict and a
 # second occurrence replaces the first rather than adding to it.
-GEMINI_SECRET="trend-tree-gemini-api-key"
+GEMINI_SECRET="${PREDICTION_GEMINI_SECRET:-generic-gemini-api-key}"
 secret_bindings() {
   local bindings="PREDICTION_SNOWFLAKE_PRIVATE_KEY=snowflake-private-key:latest"
   if gcloud secrets describe "$GEMINI_SECRET" --project "$PROJECT" >/dev/null 2>&1; then
