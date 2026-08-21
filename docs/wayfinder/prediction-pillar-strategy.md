@@ -30,10 +30,12 @@ A Confluence strategy doc (ATLAS space) defining the prediction pillar — what 
 - [Decide: whether white-space predictions seed the trend agent as discovery input](https://mcclatchy.atlassian.net/browse/CRMA-498) — **Decided:** Distillation-tier hints only — open white-space predictions enter the shared cluster-agent's prompt as recognition context over independently-ingested signals; discovery stays blind; no synthetic rows (evidence purity, now a named CONTEXT.md invariant). Hint provenance + prediction↔trend signal overlap recorded mechanically, weighed verdict-side (no mechanical discount); ships as a named extension gated on the first resolution cycle's track record.
   **Binds:** CRMA-489 writes the stance, the named discovery-tier anti-pattern, and the activation gate into the doc's feedback-loop/white-space sections; /to-spec keeps seeding out of v1 scope; the verdict EVIDENCE contract must carry hint provenance + signal overlap; the hint binds the shared cluster-agent (distillation-revisit included).
 
+- [Draft the prediction pillar strategy doc](https://mcclatchy.atlassian.net/browse/CRMA-489) — **Decided:** Drafted & published: Trend Tree Prediction Pillar Strategy (ATLAS Confluence page 2252832769; canonical docs/prediction-pillar-strategy.md) — the map's destination artifact, synthesizing all five decisions + the Trends-vs-Predictions methodology
+  **Binds:** Jason/Marcelo/Josh bless the Confluence page (revisions land in the repo file first); /to-spec consumes §10's constraints; this map is complete — no open tickets remain
+
 ## Not yet specified
 
-- Derek's system-grounding methods — the verdict-record decision closed without this input; if the conversation happens in time, it lands as refinement in the strategy-doc draft instead.
-- Marcelo / Josh / Arita (Trend Hunter) input — may sharpen the scoring decisions; not ours to schedule. Partially landed 2026-08-20 as the "Trends vs. Predictions" methodology doc (see Notes); further input remains theirs to schedule.
+*Empty — the destination is reached.* Remaining stakeholder input (Derek's system-grounding methods; further Marcelo / Josh / Arita input beyond the 2026-08-20 "Trends vs. Predictions" doc) lands as revisions to the strategy doc during blessing, outside this map.
 
 ## Out of scope
 
