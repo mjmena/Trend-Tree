@@ -154,7 +154,12 @@ function runSnowSql(sqlText, connection) {
   try {
     const out = execFileSync(
       "snow",
-      ["sql", "--format", "json", "-f", tmpFile, "-c", connection],
+      // --enable-templating NONE: generated product text can contain '&' or
+      // '{{'-like sequences (HTML entities, titles) that the snow CLI's
+      // Jinja-style renderer otherwise misreads as template syntax, failing
+      // the batch with an opaque "SQL rendering error". Confirmed live: batch
+      // 5/5 of the real 2026-08-20 seed CSV hit this without the flag.
+      ["sql", "--format", "json", "-f", tmpFile, "-c", connection, "--enable-templating", "NONE"],
       { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
     );
     return parseSnowJson(out);
