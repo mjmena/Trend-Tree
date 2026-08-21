@@ -1,10 +1,16 @@
 -- FCT_TREND_SOURCING_LEDGER (CRMA-774, epic CRMA-772 "Trend-to-product sourcing")
 -- — the run header for the sourcing pass. One row per (trend, tier, run):
 -- PROC_SOURCING_APPLY writes a 'running' row when a run starts, then a later
--- call completes that same row to a terminal STATUS. Mirrors the shape of
--- FCT_TREND_CONNECTIONS_LEDGER / FCT_TREND_PREDICTION_LEDGER (append-only,
--- one agent/pass owns the ledger) but is the first ledger in this repo to
--- deliberately record a computed-but-empty result:
+-- call completes that SAME row in place to a terminal STATUS
+-- (matched/no_match/failed). This is a deliberate, disclosed exception to
+-- this repo's append-only ledger convention (FCT_TREND_CONNECTIONS_LEDGER /
+-- FCT_TREND_PREDICTION_LEDGER never mutate a written row) — the header must
+-- exist and read as 'running' the instant a run starts, which a pure-append
+-- design can't express without a separate "current state" query. Only the
+-- header row is mutated (once, running->terminal); FCT_TREND_SOURCING_CANDIDATES
+-- stays fully append-only — written once by the same 'complete' call, never
+-- updated after. This ledger is also the first in this repo to deliberately
+-- record a computed-but-empty result:
 --
 --   * no header row for a (trend, tier)  -> not sourced yet
 --   * STATUS = 'no_match', zero rows in FCT_TREND_SOURCING_CANDIDATES
