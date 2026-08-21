@@ -176,11 +176,17 @@ Measured state of the world. Falsified by re-measurement, never by a decision.
   date, growing every 5 minutes. The catalog is ~0.2% of that. Cortex *credit* history could
   not be read directly: `SNOWFLAKE.ACCOUNT_USAGE` is closed to `MARKETING_ENGINEER`. Measured
   2026-08-20.
-- **The store's real product count is unknown.** Marcelo's implementation pulls `limit=250`,
-  which is Shopify's **page maximum**, not a measurement. If the store stocks more than 250
-  products, the current substring match has only ever searched the first page. Nobody can
-  settle this without the token — which is why token provisioning is the keystone of this map.
-  Noted 2026-08-20.
+- **The store stocks 187 products — all active, all published.** Measured from a Shopify
+  admin CSV export received 2026-08-20, kept at
+  `~/dev/trend-tree-data/products_export_2026-08-20.csv` and **out of git** — it carries
+  wholesale `Cost per item`. Under the 250-per-page maximum, so Marcelo's `limit=250` pull
+  has been seeing the whole catalog. Field coverage across all 187: `Title`, `Body (HTML)`,
+  `Tags`, `Vendor` and `Image Src` are 100% populated (body median ~1.8K chars, max ~84K);
+  `Type` is unreliable in this store (56 empty, 28 hold the literal string `0`);
+  `Product Category` (Google taxonomy paths, 51 distinct) is present on 119 of 187. It is a
+  multi-vendor Shopify Collective storefront; median price $35, range $5–603. **The export is
+  a usable calibration corpus for the vector-space prototype** — the token remains necessary
+  only for the live sync path, not for calibration. Measured 2026-08-20.
 - **No ledger in this repo records a computed-but-empty result.** `FCT_TREND_CONTENT_MATCHES_LEDGER`
   and `FCT_TREND_CONNECTIONS_LEDGER` both write nothing below threshold, and both say so outright
   (`sql/fct_trend_content_matches_ledger.sql:42-45`, `sql/dt_trend_dashboard.sql:299-302`). The
