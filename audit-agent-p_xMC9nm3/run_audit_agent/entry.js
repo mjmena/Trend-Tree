@@ -3,14 +3,22 @@
 // Single Gemini 3.1 Pro agent loop. Purely observational — no live HTTP,
 // no Snowflake from inside the loop. All inputs prefetched in workflow.yaml
 // (pipeline_freshness, dashboard_freshness, stuck_trends, cost_24h_rows,
-// audit_prompts, pipedream_errors). The four query tools just slice and
-// filter that prefetched data; propose_audit_report is the terminal capture.
+// audit_prompts, pipedream_errors, catalog_freshness). The four query tools
+// just slice and filter that prefetched data; propose_audit_report is the
+// terminal capture.
 //
 // =====================================================================
 // Helper code below is INLINED. Pipedream packages each step as a single
 // self-contained file — cross-file imports fail at deploy. Cross-workflow
 // shared libs don't bundle either. Mirrors lifecycle-subagent's pattern.
+//
+// Exception: ./catalog_freshness.mjs is a sibling in this SAME step dir
+// (the one cross-file import Pipedream's bundler allows) and holds the
+// CRMA-775 catalog-freshness grading as a plain, defineComponent-free
+// module — deterministic, not LLM-judged, and independently unit-testable.
 // =====================================================================
+
+import { gradeCatalogFreshness, buildCatalogFreshnessBlock, applyCatalogFinding } from "./catalog_freshness.mjs";
 
 // ─────────────────────────────────────────────────────────────────────
 // prompt_loader (canonical: agents/lib/prompt_loader.mjs)
@@ -386,6 +394,7 @@ export default defineComponent({
     orphan_trends_rows: { type: "any", optional: true },
     cost_24h_rows: { type: "any" },
     et_rescue_rows: { type: "any", optional: true },
+    catalog_freshness_rows: { type: "any", optional: true },
     pipedream_errors: { type: "any" },
     prompts_rows: { type: "any" },
   },
@@ -410,6 +419,11 @@ export default defineComponent({
     const cost_24h = this.cost_24h_rows || [];
     const et_rescue = (this.et_rescue_rows || [])[0] || {};
     const pipedream_health = this.pipedream_errors || { summary: {}, workflows: [] };
+    // CRMA-775: deterministic catalog-sync freshness grade (GREEN<=3d /
+    // YELLOW<=7d / RED>7d over MAX(LAST_SEEN_AT), per active TIER). Computed
+    // here so it's folded into the report regardless of whether the LLM
+    // loop notices it — see catalog_freshness.mjs for why.
+    const catalogGraded = gradeCatalogFreshness(this.catalog_freshness_rows || []);
 
     // Load + render prompts
     const prompts = loadPrompts(this.prompts_rows);
@@ -428,6 +442,7 @@ export default defineComponent({
       `(live trends whose FCT_TREND_SIGNALS all point at SIGNAL_IDs not in FCT_SIGNALS — ` +
       `distillation-agent leak. Migration backlog was purged 2026-05-26; this should stay near 0.)`;
     const cost24hBlock = fmtJson(cost_24h);
+    const catalogFreshnessBlock = buildCatalogFreshnessBlock(catalogGraded);
     // ET corroboration-oracle rescue funnel (ADR-0004). Single prefetched row.
     const etr = et_rescue;
     const n = (v) => Number(v || 0);
@@ -469,6 +484,7 @@ export default defineComponent({
       stuck_trends_block: stuckTrendsBlock,
       orphan_trends_block: orphanTrendsBlock,
       et_rescue_block: etRescueBlock,
+      catalog_freshness_block: catalogFreshnessBlock,
       cost_24h_block: cost24hBlock,
       pipedream_health_block: pipedreamHealthBlock,
     });
@@ -501,27 +517,28 @@ export default defineComponent({
       thinking_level: sysParams.thinking_level || LOOP_DEFAULTS.thinking_level,
     });
 
-    const report = context.proposed_report;
-    if (!report) {
-      // Loop ended without terminal-tool call. Synthesize a YELLOW with a meta-alert
-      // so the operator notices instead of silently writing nothing.
-      const fallback = {
-        overall_status: "YELLOW",
-        alerts: [{
-          severity: "WARN",
-          area: "audit-agent",
-          summary: "Agent did not call propose_audit_report — possible prompt drift or budget cap",
-          evidence: `stop_reason=${loop.stop_reason} turns=${loop.turns} cost_usd=${loop.cost_usd}`,
-        }],
-        slack_summary_md: "*Audit YELLOW*: agent loop ended without emitting a report. Investigate prompts / budget.",
-        reasoning: "Fallback emission — no propose_audit_report call observed.",
-      };
-      return {
-        report: fallback,
-        telemetry: { tokens: loop.tokens, cost_usd: loop.cost_usd, model: loop.model, stop_reason: loop.stop_reason, turns: loop.turns, run_duration_ms: Date.now() - started },
-        synthesized_fallback: true,
-      };
-    }
+    const llmReport = context.proposed_report;
+    const synthesized_fallback = !llmReport;
+    // Loop ended without terminal-tool call. Synthesize a YELLOW with a meta-alert
+    // so the operator notices instead of silently writing nothing.
+    const baseReport = llmReport || {
+      overall_status: "YELLOW",
+      alerts: [{
+        severity: "WARN",
+        area: "audit-agent",
+        summary: "Agent did not call propose_audit_report — possible prompt drift or budget cap",
+        evidence: `stop_reason=${loop.stop_reason} turns=${loop.turns} cost_usd=${loop.cost_usd}`,
+      }],
+      slack_summary_md: "*Audit YELLOW*: agent loop ended without emitting a report. Investigate prompts / budget.",
+      reasoning: "Fallback emission — no propose_audit_report call observed.",
+    };
+
+    // CRMA-775: fold the deterministic catalog-freshness grade in last, on
+    // BOTH paths (LLM-emitted or fallback) — a dead catalog sync must be
+    // noticed even if the rest of the agent loop misbehaves. Escalates
+    // (never de-escalates) overall_status, so the existing post_to_slack /
+    // commit_audit_ledger non-GREEN gating picks it up with no changes.
+    const report = applyCatalogFinding(baseReport, catalogGraded);
 
     return {
       report,
@@ -533,7 +550,7 @@ export default defineComponent({
         turns: loop.turns,
         run_duration_ms: Date.now() - started,
       },
-      synthesized_fallback: false,
+      synthesized_fallback,
     };
   },
 });

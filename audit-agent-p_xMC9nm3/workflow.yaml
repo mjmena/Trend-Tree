@@ -386,6 +386,40 @@ steps:
         WHERE IS_ACTIVE = TRUE
           AND PROMPT_KEY IN ('audit.system', 'audit.report_rubric')
     params: []
+- namespace: q_catalog_freshness
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        -- CRMA-775: catalog sync freshness guard. One row per sourcing TIER
+        -- (only 'shopify' exists today, but a future Amazon/other tier would
+        -- get its own row here rather than being silently averaged into it).
+        -- MINUTES_SINCE_LAST_SEEN precomputed in SQL, same rationale as
+        -- q_pipeline_freshness above: Snowflake TIMESTAMP_NTZ serializes
+        -- without a TZ marker and gets mis-interpreted as UTC by the JS layer.
+        SELECT
+          TIER,
+          MAX(LAST_SEEN_AT)                                                  AS LAST_SEEN_AT_MAX,
+          TIMESTAMPDIFF(MINUTE, MAX(LAST_SEEN_AT), CURRENT_TIMESTAMP())      AS MINUTES_SINCE_LAST_SEEN,
+          COUNT(*)                                                          AS ACTIVE_PRODUCT_COUNT
+        FROM MCC_PRESENTATION.TREND_AGENT.DIM_CATALOG_PRODUCT
+        WHERE CATALOG_STATUS = 'active'
+        GROUP BY TIER
+        ORDER BY TIER
+      query: |-
+        SELECT
+          TIER,
+          MAX(LAST_SEEN_AT)                                                  AS LAST_SEEN_AT_MAX,
+          TIMESTAMPDIFF(MINUTE, MAX(LAST_SEEN_AT), CURRENT_TIMESTAMP())      AS MINUTES_SINCE_LAST_SEEN,
+          COUNT(*)                                                          AS ACTIVE_PRODUCT_COUNT
+        FROM MCC_PRESENTATION.TREND_AGENT.DIM_CATALOG_PRODUCT
+        WHERE CATALOG_STATUS = 'active'
+        GROUP BY TIER
+        ORDER BY TIER
+    params: []
 - namespace: fetch_pipedream_errors
   runtime: nodejs20.x
   uses: "./fetch_pipedream_errors/entry.js"
@@ -439,6 +473,7 @@ steps:
     orphan_trends_rows: "{{steps.q_orphan_trends.$return_value}}"
     cost_24h_rows: "{{steps.q_cost_24h.$return_value}}"
     et_rescue_rows: "{{steps.q_et_rescue.$return_value}}"
+    catalog_freshness_rows: "{{steps.q_catalog_freshness.$return_value}}"
     pipedream_errors: "{{steps.fetch_pipedream_errors.$return_value}}"
     prompts_rows: "{{steps.q_audit_prompts.$return_value}}"
 - namespace: commit_audit_ledger
