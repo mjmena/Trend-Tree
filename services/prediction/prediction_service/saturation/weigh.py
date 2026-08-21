@@ -22,6 +22,34 @@ the lookups are keyed by the *subject descriptor*, which does not exist until
 the model has proposed it. One batched call weighs every surviving candidate
 in a run, so the pass costs one extra request, not one per prediction.
 
+**The binding key is the PREDICTION_ID, not the subject** (CRMA-765, found
+during CRMA-766's review). A restatement has to be bound to the call it is
+about, and SUBJECT_DESCRIPTOR is not an identity: generation dedupes on the
+whole four-part claim (``generation/run.py``), so one reply can legitimately
+mint two candidates that share a subject and differ in their directional
+claim, and ``generation/parse.py`` enforces no subject uniqueness. Bound by
+subject alone, a reply that returned those two entries swapped or renumbered
+would write each call with the other's confidence and the other's reasoning
+-- exactly the silent mislabelling this binding exists to prevent. So the
+weighing turn is shown each call's PREDICTION_ID, which is an identity by
+construction, and echoes it back. Same rule sweep/parse.py applies to the
+re-evaluation reply, for the same reason.
+
+One difference from the sweep, and it is deliberate. There the id is
+mandatory; here an entry that echoes only the subject still binds **when that
+subject is unique in the batch**, because then the subject identifies the
+call exactly as well as the id does. It has to: a PREDICTION_ID is minted
+fresh (uuid4) on the pass this turn is weighing, so a *recorded* reply -- the
+offline loop's fixture, a route test's canned answer -- cannot possibly echo
+one, and requiring it would make the whole pass permanently unexercisable
+offline. When two calls in a batch do share a subject, the subject
+distinguishes nothing and only the PREDICTION_ID binds.
+
+Nothing here can drop, cap, discount or reorder a candidate: an unbound entry
+means "keep generation's own confidence and reasoning", which is the same
+place the pass leaves a call it never restated. The data-quality floor
+(floor.py) remains the only mechanical gate in this package.
+
 Everything here is pure -- no clock, no network, no warehouse -- so the
 prompt is diffable in review and assertable in a test, matching
 generation/prompt.py.
@@ -29,6 +57,7 @@ generation/prompt.py.
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -71,6 +100,10 @@ class WeighingItem:
     """One candidate as the weighing turn sees it: what was claimed, at what
     confidence, and what the two oracles said about the subject."""
 
+    #: The minted verdict's own identity, shown to the model and echoed back.
+    #: This is what binds a restatement to a call; the subject cannot, because
+    #: two calls in one run may share one. See the module docstring.
+    prediction_id: str
     subject_descriptor: str
     directional_claim: str
     horizon_band: str
@@ -262,17 +295,23 @@ OUTPUT
 
   {{
     "weighings": [
-      {{"id": 1, "subject": "<the subject shown for id 1, copied exactly>",
+      {{"id": 1, "prediction_id": "<the prediction_id shown for id 1, copied exactly>",
+        "subject": "<the subject shown for id 1, copied exactly>",
         "confidence": 0-100, "reasoning": "..."}}
     ]
   }}
 
-  The "subject" field is how your restatement is bound to the call it is
-  about. Copy it character for character from the call you are answering. Keep
-  the ids as they were given to you -- do NOT renumber, re-sort or reorder the
-  entries. An entry whose subject does not match the subject shown for its id
-  is DISCARDED, and that call keeps the confidence and reasoning it already
-  had.
+  The "prediction_id" field is how your restatement is bound to the call it is
+  about. Copy it character for character. Two of the calls below can share a
+  subject descriptor -- they can never share a prediction_id, which is why the
+  id is what binds. Copy the subject verbatim too; it is checked against the
+  prediction_id as a second opinion.
+
+  Keep the "id" numbers as they were given to you -- do NOT renumber, re-sort or reorder
+  the entries. An entry whose prediction_id does not match the one shown for
+  its id is DISCARDED, and so is one whose subject does not match the subject
+  shown for its id. A discarded entry is not a rejected call: that call simply
+  keeps the confidence and reasoning it already had.
 
   Omitting an id leaves that call exactly as it was."""
 
@@ -286,7 +325,8 @@ def build_weighing_user_prompt(items: Sequence[WeighingItem]) -> str:
         blocks.append(
             "\n".join(
                 [
-                    f"  [{index}] subject: {item.subject_descriptor}",
+                    f"  [{index}] prediction_id: {item.prediction_id}",
+                    f"      subject: {item.subject_descriptor}",
                     f"      claim: {item.directional_claim}",
                     f"      horizon: {item.horizon_band}",
                     f"      observable check: {item.observable_check}",
@@ -303,10 +343,10 @@ def build_weighing_user_prompt(items: Sequence[WeighingItem]) -> str:
 
 {body}
 
-Restate confidence and reasoning for each id, echoing that id's subject
-verbatim in its entry. Every call is written down either way; a
-"{CLASSIFICATION_PEAKED}" reading argues against high confidence, it does not
-remove anything. An Exploding Topics miss costs nothing.
+Restate confidence and reasoning for each id, echoing that id's prediction_id
+and that id's subject verbatim in its entry. Every call is written down either
+way; a "{CLASSIFICATION_PEAKED}" reading argues against high confidence, it
+does not remove anything. An Exploding Topics miss costs nothing.
 
 JSON only."""
 
@@ -321,20 +361,31 @@ def _confidence(raw: Any) -> float | None:
     return value if 0 <= value <= 100 else None
 
 
-def parse_weighings(text: str, *, subjects: Sequence[str]) -> dict[int, Weighing]:
+def parse_weighings(
+    text: str, *, prediction_ids: Sequence[str], subjects: Sequence[str]
+) -> dict[int, Weighing]:
     """Parse the weighing reply into ``{1-based id: Weighing}``.
 
-    ``subjects`` is the batch in the order it was rendered, so ``subjects[0]``
-    is the subject of id 1. **An entry must echo the subject its id was shown
-    against**, or it is dropped.
+    Both sequences are the batch in the order it was rendered, so element 0 of
+    each belongs to id 1. **An entry must name the call its id was shown
+    against**, or it is dropped: the PREDICTION_ID it echoes must be that
+    call's, the subject it echoes must be that call's, and between them they
+    must actually pick that call out of the batch -- a subject two calls share
+    does not, so those entries bind on the PREDICTION_ID or not at all.
 
     That is not a filter -- it is the only thing binding a restatement to the
     call it is about. Position alone is not: asked to "restate" a list, a
     model may perfectly reasonably return its entries re-sorted by its new
     confidence and renumbered 1..n. Read back by id, that writes each row with
-    another subject's confidence and a REASONING paragraph naming another
-    subject's classification -- every row still written, nothing dropped,
-    nothing detectably wrong downstream. Mislabelled, silently.
+    another call's confidence and a REASONING paragraph making another call's
+    case -- every row still written, nothing dropped, nothing detectably wrong
+    downstream. Mislabelled, silently. And the subject alone is not an
+    identity either: two candidates in one run can share a subject and differ
+    only in their directional claim (see the module docstring).
+
+    An entry whose id and whose echoed identity disagree is dropped rather
+    than reconciled -- choosing which of the two to believe would be the
+    parser inventing a binding.
 
     Anything malformed or mismatched is simply absent from the returned map,
     and an absent id means the caller keeps that verdict exactly as generation
@@ -342,7 +393,19 @@ def parse_weighings(text: str, *, subjects: Sequence[str]) -> dict[int, Weighing
     that invented a number, or that trusted a position, would be the
     mechanical discount (or the silent mislabelling) this design avoids.
     """
+    if len(prediction_ids) != len(subjects):
+        raise ValueError(
+            "prediction_ids and subjects describe the same batch and must be the same "
+            f"length, got {len(prediction_ids)} and {len(subjects)}"
+        )
+    expected_id = {
+        index: str(prediction_id).strip()
+        for index, prediction_id in enumerate(prediction_ids, 1)
+    }
     expected = {index: subject_key(subject) for index, subject in enumerate(subjects, 1)}
+    # How many calls in THIS batch answer to each subject. More than one and
+    # the subject identifies nothing, so only the PREDICTION_ID can bind.
+    shared = Counter(expected.values())
     count = len(subjects)
     payload = extract_json_object(text)
     raw = payload.get("weighings")
@@ -366,12 +429,28 @@ def parse_weighings(text: str, *, subjects: Sequence[str]) -> dict[int, Weighing
             continue
         if not 1 <= index <= count or index in out:
             continue
+        identity = entry.get("prediction_id")
+        named_by_id = identity is not None
+        if named_by_id and (
+            not isinstance(identity, str) or identity.strip() != expected_id[index]
+        ):
+            # The entry names a different call than its id does. Two calls can
+            # share a subject but never a PREDICTION_ID, so this is an
+            # incoherent entry, not a recoverable one -- and keeping
+            # generation's own number is the only option that cannot
+            # mislabel one.
+            continue
         subject = entry.get("subject")
-        if not isinstance(subject, str) or subject_key(subject) != expected[index]:
-            # The restatement does not say which call it is about, or says a
-            # different one. Keep generation's own number for this id rather
-            # than binding a number to a subject on the strength of where it
-            # happened to sit in the list.
+        named_by_subject = subject is not None
+        if named_by_subject and (
+            not isinstance(subject, str) or subject_key(subject) != expected[index]
+        ):
+            continue
+        if not named_by_id and (not named_by_subject or shared[expected[index]] > 1):
+            # Nothing in the entry picks this call out of the batch: either
+            # it never said which call it is about, or it named a subject
+            # that more than one call in this batch answers to. Position is
+            # not evidence that it belongs to any of them.
             continue
         confidence = _confidence(entry.get("confidence"))
         reasoning = entry.get("reasoning")

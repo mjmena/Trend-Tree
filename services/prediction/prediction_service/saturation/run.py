@@ -20,7 +20,11 @@ Order is deliberate and is the answer to "how much mechanism is there":
    costs them nothing.
 3. **The weighing turn** (weigh.py) -- the readings go to the model, which
    restates its own confidence and reasoning. Code copies the number across;
-   it never adjusts one.
+   it never adjusts one, and it binds each restatement to the PREDICTION_ID
+   the entry echoes rather than to where it sat in the list. An entry that
+   binds to nothing leaves that call at generation's own number, which is
+   where a call the model never restated already sits -- so the binding
+   cannot drop a row either.
 4. **Attachment** (evidence.py) -- ``EVIDENCE.saturation`` is merged into the
    evidence dict, leaving ``source_signals``, ``trend_context``, ``coverage``
    and the generation provenance block exactly as they were. A matched
@@ -225,9 +229,13 @@ class SaturationPhase:
                 system=build_weighing_system_prompt(),
                 user=build_weighing_user_prompt(items),
             )
-            # Bound by subject, not by list position: see parse_weighings.
+            # Bound to the call each entry names -- by PREDICTION_ID, with
+            # the subject as a second opinion -- never by list position: see
+            # parse_weighings.
             weighings = parse_weighings(
-                response.text, subjects=[item.subject_descriptor for item in items]
+                response.text,
+                prediction_ids=[item.prediction_id for item in items],
+                subjects=[item.subject_descriptor for item in items],
             )
         except Exception as err:  # noqa: BLE001 - an outage is a miss, not a failed run
             log.warning("saturation weighing pass failed; verdicts stay unweighed: %s", err)
@@ -283,6 +291,7 @@ class SaturationPhase:
         readings = self._read_all([v.claim.subject_descriptor for v, _ in kept])
         items = [
             WeighingItem(
+                prediction_id=verdict.prediction_id,
                 subject_descriptor=verdict.claim.subject_descriptor,
                 directional_claim=verdict.claim.directional_claim,
                 horizon_band=verdict.claim.horizon_band,
@@ -309,8 +318,8 @@ class SaturationPhase:
             if decision is None and provenance.get("weighed"):
                 block["note"] = (
                     "the model returned no usable restatement for this call -- absent, "
-                    "malformed, or not bound to this subject; confidence and reasoning "
-                    "are generation's own, unadjusted"
+                    "malformed, or not bound to this call's prediction_id; confidence "
+                    "and reasoning are generation's own, unadjusted"
                 )
             saturation = build_saturation_evidence(
                 lookup=lookup, reading=reading, floor=assessment, weighing=block
