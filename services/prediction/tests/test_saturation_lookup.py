@@ -13,6 +13,11 @@ import json
 import urllib.error
 
 from prediction_service.saturation.lookup import (
+    BREADTH_NOT_CONSULTED,
+    GDELT_ERROR_NON_JSON,
+    GDELT_ERROR_QUERY_TOO_LONG,
+    GDELT_ERROR_RATE_LIMITED,
+    GDELT_MAX_PHRASE_CHARS,
     MISS_LOOKUP_FAILED,
     MISS_NOT_CONFIGURED,
     MISS_NOT_IN_CATALOG,
@@ -20,6 +25,7 @@ from prediction_service.saturation.lookup import (
     GdeltBreadthReader,
     StaticBreadthReader,
     StaticSaturationOracle,
+    gdelt_phrase,
     load_saturation_fixture,
     normalize_et_response,
     normalize_gdelt_response,
@@ -60,7 +66,39 @@ def test_the_headline_falls_back_to_the_shortest_timeframe_et_reported():
     # months would understate what the oracle said.
     body = {"total": 1, "result": [{"keyword": "head spa", "classifications": {"6": "exploding"}}]}
 
-    assert normalize_et_response("head spa", status=200, body=body).classification == "exploding"
+    lookup = normalize_et_response("head spa", status=200, body=body)
+
+    assert lookup.classification == "exploding"
+    # ...and the fallback travels with the window it came from, because a
+    # 6-month verdict presented as the 12-month one is a different claim
+    # about how far along the world is.
+    assert lookup.classification_timeframe == "6"
+
+
+def test_a_twelve_month_verdict_says_it_is_the_twelve_month_one():
+    assert (
+        normalize_et_response("rucking vests", status=200, body=HIT_BODY).classification_timeframe
+        == "12"
+    )
+
+
+def test_the_fuzzy_candidates_ride_along_with_the_top_result():
+    # Parity with normalizeEtResponse in agents/lib/exploding_topics.mjs:
+    # /database-search is fuzzy, and concept-sameness is the agent's judgment,
+    # so what ELSE ET returned is part of what it judges from.
+    lookup = normalize_et_response("rucking vests", status=200, body=HIT_BODY)
+
+    assert [c["keyword"] for c in lookup.candidates] == ["rucking vest", "weighted vest"]
+    assert lookup.candidates[1]["absolute_volume"] == 90500
+
+
+def test_only_five_candidates_are_carried():
+    body = {
+        "total": 9,
+        "result": [{"keyword": f"vest {n}"} for n in range(9)],
+    }
+
+    assert len(normalize_et_response("vest", status=200, body=body).candidates) == 5
 
 
 def test_the_two_miss_sentinels_come_back_as_not_in_catalog():
@@ -172,8 +210,23 @@ def test_a_rate_limit_sentence_is_unavailable_not_a_reading_of_zero():
     reading = reader.breadth("rucking vests")
 
     assert reading.available is False
-    assert reading.error == "rate_limited"
+    assert reading.error == GDELT_ERROR_RATE_LIMITED
     assert reading.article_count == 0
+
+
+def test_a_rejected_query_is_not_recorded_as_a_throttle():
+    # The other non-JSON 200. Both are "we could not look", but recording a
+    # query GDELT refused as "we were throttled" blames the provider for our
+    # own string -- and this ledger is what the cost and reliability story
+    # will be read from.
+    reader = GdeltBreadthReader(
+        transport=lambda **_kw: "Specified Search String Was Too Short."
+    )
+
+    reading = reader.breadth("rucking vests")
+
+    assert reading.available is False
+    assert reading.error == GDELT_ERROR_NON_JSON
 
 
 def test_a_gdelt_outage_degrades_to_unavailable_rather_than_raising():
@@ -193,6 +246,30 @@ def test_the_gdelt_query_is_phrase_quoted_and_window_bounded():
 
     assert "%22head+spa%22" in url
     assert "timespan=3d" in url
+
+
+def test_a_quote_in_the_subject_cannot_break_the_phrase():
+    # The descriptor is model-authored. An unescaped quote would close the
+    # phrase early (`"head "spa""`) and the reading would be garbage -- and
+    # GDELT has no escape form for a quote inside a phrase, so the syntax is
+    # stripped rather than escaped.
+    assert gdelt_phrase('head "spa"') == "head spa"
+    assert gdelt_phrase("(cottage) cheese") == "cottage cheese"
+
+    url = GdeltBreadthReader()._url(gdelt_phrase('head "spa"'))
+
+    assert "%22head+spa%22" in url
+
+
+def test_an_over_long_phrase_is_an_explicit_miss_not_a_truncated_search():
+    # Truncating would search for a phrase the model never proposed. "We could
+    # not look" is penalty-free; a reading of the wrong string is not.
+    reader = GdeltBreadthReader(transport=lambda **_kw: json.dumps({"articles": []}))
+
+    reading = reader.breadth("x" * (GDELT_MAX_PHRASE_CHARS + 1))
+
+    assert reading.available is False
+    assert reading.error == GDELT_ERROR_QUERY_TOO_LONG
 
 
 def test_an_available_reading_of_zero_articles_is_a_real_answer():
@@ -247,3 +324,7 @@ def test_the_static_breadth_reader_can_model_a_provider_outage():
     reading = StaticBreadthReader(default_available=False).breadth("head spa")
 
     assert reading.available is False
+    # GDELT's own vocabulary, not Exploding Topics' MISS_* one: the two
+    # providers are unrelated and a ledger row should not need to know they
+    # ever shared a constant.
+    assert reading.error == BREADTH_NOT_CONSULTED

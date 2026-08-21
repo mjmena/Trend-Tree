@@ -288,10 +288,13 @@ def test_the_saturation_defaults_are_the_documented_ones():
     saturation = settings_from_env({}).saturation
 
     assert saturation.exploding_topics_api_key == ""
-    assert saturation.exploding_topics_timeout_s == 20.0
+    assert saturation.exploding_topics_timeout_s == 12.0
     assert saturation.gdelt_enabled is True
     assert saturation.gdelt_window_days == 7
-    assert saturation.gdelt_timeout_s == 25.0
+    assert saturation.gdelt_timeout_s == 15.0
+    # The phase-level ceiling the two per-call timeouts sit inside. Sized
+    # against the Cloud Run request timeout -- see saturation/run.py.
+    assert saturation.lookup_budget_s == 150.0
     assert saturation.min_observation_age_hours == 24.0
     assert saturation.min_evidence_chars == 120
 

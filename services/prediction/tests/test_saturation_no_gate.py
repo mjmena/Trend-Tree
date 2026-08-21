@@ -40,7 +40,11 @@ from prediction_service.saturation import (
     StaticBreadthReader,
     StaticSaturationOracle,
 )
-from prediction_service.saturation.lookup import MISS_LOOKUP_FAILED, MISS_NOT_IN_CATALOG
+from prediction_service.saturation.lookup import (
+    ERROR_DEADLINE_EXCEEDED,
+    MISS_LOOKUP_FAILED,
+    MISS_NOT_IN_CATALOG,
+)
 
 from .fakes import FakePredictionLLM, FakeSnowflake
 
@@ -256,8 +260,18 @@ def test_the_weighing_pass_carries_the_models_number_across_verbatim():
     restated = json.dumps(
         {
             "weighings": [
-                {"id": 1, "confidence": 57.5, "reasoning": "ET says peaked; 19 publishers"},
-                {"id": 2, "confidence": 61, "reasoning": "exploding with narrow news breadth"},
+                {
+                    "id": 1,
+                    "subject": "rucking vests",
+                    "confidence": 57.5,
+                    "reasoning": "ET says peaked; 19 publishers",
+                },
+                {
+                    "id": 2,
+                    "subject": "cottage cheese",
+                    "confidence": 61,
+                    "reasoning": "exploding with narrow news breadth",
+                },
             ]
         }
     )
@@ -279,6 +293,7 @@ def test_a_peaked_reading_reaches_the_model_and_lands_in_the_reasoning():
             "weighings": [
                 {
                     "id": 1,
+                    "subject": "rucking vests",
                     "confidence": 57,
                     "reasoning": (
                         "Exploding Topics classifies the matched keyword as peaked at 3 and "
@@ -286,7 +301,12 @@ def test_a_peaked_reading_reaches_the_model_and_lands_in_the_reasoning():
                         "window this call depends on is narrower than the corpus suggested."
                     ),
                 },
-                {"id": 2, "confidence": 54, "reasoning": "peaked reading did not change my view"},
+                {
+                    "id": 2,
+                    "subject": "cottage cheese",
+                    "confidence": 54,
+                    "reasoning": "peaked reading did not change my view",
+                },
             ]
         }
     )
@@ -415,6 +435,20 @@ def test_with_the_floor_relaxed_every_candidate_lands_under_every_reading(lookup
     assert body["rejections"] == []
 
 
+def test_a_floored_subject_still_counts_as_proposed():
+    # `predictions_proposed` is what the model proposed, counted before the
+    # floor runs -- a run that proposed 2 and floored 1 reports 2 proposed and
+    # 1 written, with the floor's skip in `rejections`. Counting it after the
+    # floor made the field report a number nothing had ever proposed.
+    young = [_row("s1", hours_ago=2), _row("s2", hours_ago=6), _row("s3", hours_ago=71)]
+
+    _, body = _fire(_phase(lookup=EXPLODING, reading=NARROW), rows=young)
+
+    assert body["predictions_proposed"] == 2
+    assert body["predictions_written"] == 1
+    assert [r["subject"] for r in body["rejections"]] == ["rucking vests"]
+
+
 def test_the_floor_is_the_only_reason_this_phase_ever_drops_a_row():
     # Every rejection a run can produce, enumerated. Generation's own
     # structural rejections (parse.py) and the run's cap are the others; this
@@ -451,12 +485,148 @@ def test_a_failed_weighing_turn_still_writes_every_row_at_generations_numbers():
     assert _saturation(_writes(snowflake)[0])["exploding_topics"]["classification"] == "peaked"
 
 
+def test_a_renumbered_weighing_reply_never_swaps_two_subjects_numbers():
+    # The mislabelling the subject binding exists to stop, at the seam that
+    # matters: the ledger. The model re-sorted its entries by its new
+    # confidence and renumbered them 1..n -- ordinary behaviour when asked to
+    # restate a list. Read back by position, 'rucking vests' would be written
+    # with cottage cheese's confidence and a REASONING paragraph naming
+    # cottage cheese's classification: every row written, nothing dropped,
+    # unfixable downstream and invisible in the response.
+    renumbered = json.dumps(
+        {
+            "weighings": [
+                {
+                    "id": 1,
+                    "subject": "cottage cheese",
+                    "confidence": 91,
+                    "reasoning": "cottage cheese is exploding, and I am surer of it",
+                },
+                {
+                    "id": 2,
+                    "subject": "rucking vests",
+                    "confidence": 12,
+                    "reasoning": "rucking vests has peaked and I have lost faith",
+                },
+            ]
+        }
+    )
+    snowflake, body = _fire(_phase(lookup=PEAKED, reading=BROAD), weighing_reply=renumbered)
+
+    # Neither entry binds, so both rows keep generation's own number and
+    # reasoning. A skip is not a gate -- every row still lands.
+    assert body["predictions_written"] == 2
+    assert _landed(snowflake) == {"rucking vests": 68.0, "cottage cheese": 54.0}
+    written = {w["subject_descriptor"]: w["reasoning"] for w in _writes(snowflake)}
+    assert "cottage cheese" not in written["rucking vests"]
+    assert "rucking vests" not in written["cottage cheese"]
+
+
+class _FakeClock:
+    """Monotonic seconds a test drives by hand -- no sleeping."""
+
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+class _StallingOracle:
+    """An Exploding Topics that burns wall-clock instead of answering -- the
+    shape a provider takes when it starts timing out rather than 403ing."""
+
+    def __init__(self, clock: _FakeClock, seconds: float) -> None:
+        self._clock = clock
+        self._seconds = seconds
+        self.queries: list[str] = []
+
+    def classify(self, query: str) -> SaturationLookup:
+        self.queries.append(query)
+        self._clock.now += self._seconds
+        return SaturationLookup(query=query, matched=False, miss_reason=MISS_NOT_IN_CATALOG)
+
+
+def test_a_spent_lookup_budget_is_an_explicit_miss_and_still_writes_every_row():
+    # The failure the budget exists for: the lookups are sequential and
+    # max_predictions goes to 25, so a stalling provider could otherwise spend
+    # the whole Cloud Run request AFTER generation had run and been paid for,
+    # and leave zero rows in the ledger. Past the budget a subject carries
+    # "we did not get to look" -- the same penalty-free state an outage
+    # produces -- and its row lands at generation's own confidence.
+    clock = _FakeClock()
+    oracle = _StallingOracle(clock, seconds=12.0)
+    phase = SaturationPhase(
+        oracle=oracle,
+        breadth=StaticBreadthReader(),
+        lookup_budget_s=10.0,
+        clock=clock,
+    )
+
+    snowflake, body = _fire(phase)
+
+    assert body["predictions_written"] == 2
+    assert _landed(snowflake) == {"rucking vests": 68.0, "cottage cheese": 54.0}
+    # The first subject was looked up; the budget was gone before the second.
+    assert oracle.queries == ["rucking vests"]
+    skipped = _saturation(
+        next(w for w in _writes(snowflake) if w["subject_descriptor"] == "cottage cheese")
+    )
+    assert skipped["exploding_topics"]["error"] == ERROR_DEADLINE_EXCEEDED
+    assert skipped["exploding_topics"]["miss_carries_no_penalty"] is True
+    assert skipped["gdelt"]["available"] is False
+    assert skipped["gdelt"]["error"] == ERROR_DEADLINE_EXCEEDED
+
+
+class _ExplodingPhase:
+    """A saturation phase that violates its own no-raise invariant."""
+
+    def weigh(self, result, *, llm, now=None):
+        raise RecursionError("maximum recursion depth exceeded")
+
+
+def test_a_saturation_phase_that_raises_costs_the_run_its_evidence_not_its_rows():
+    # `weigh` is built not to raise, but that is an unenforced invariant
+    # guarding an expensive, already-completed generation pass. Anything
+    # uncaught -- a pathological JSON body, a third-party oracle ignoring the
+    # Protocol's no-raise contract, a future edit -- must not turn a paid-for
+    # run into a 500 with nothing written.
+    snowflake = FakeSnowflake(rows=list(SETTLED_CORPUS))
+    client = _client(snowflake, FakePredictionLLM(reply=REPLY), _ExplodingPhase())
+
+    response = client.post("/generate", json={}, headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["predictions_written"] == 2
+    assert _landed(snowflake) == {"rucking vests": 68.0, "cottage cheese": 54.0}
+    # The rows land without saturation evidence -- the key stays as generation
+    # left it, present and null, which is the contract.
+    assert json.loads(_writes(snowflake)[0]["evidence"])["saturation"] is None
+
+
 def test_a_run_reports_both_turns_of_token_usage():
     _, body = _fire(_phase(lookup=PEAKED, reading=BROAD), weighing_reply='{"weighings": []}')
 
     # The fake bills 1200/300 per call and the run makes two: generation and
     # the weighing turn. Reporting one turn would understate what it spent.
     assert body["llm_token_usage"] == {"input": 2400, "output": 600, "total": 3000}
+
+
+def test_the_weighing_block_says_it_is_a_batch_and_how_big():
+    # ONE call weighs the whole run, and its provenance block is copied onto
+    # every verdict it covered. Anyone summing the cost across ledger rows
+    # would over-count by the batch size, so the row says so in its own field
+    # names -- and the run-level total adds it exactly once.
+    snowflake, body = _fire(
+        _phase(lookup=PEAKED, reading=BROAD), weighing_reply='{"weighings": []}'
+    )
+
+    blocks = [_saturation(w)["weighing"] for w in _writes(snowflake)]
+    assert [b["batch_size"] for b in blocks] == [2, 2]
+    assert {b["batch_cost_usd"] for b in blocks} == {blocks[0]["batch_cost_usd"]}
+    # The response's total counts that one call once, not once per row.
+    assert body["llm_token_usage"]["input"] == 2400
 
 
 def test_a_failed_weighing_turn_does_not_unprice_the_generation_turn():
@@ -497,8 +667,18 @@ def test_the_model_may_raise_confidence_on_a_peaked_reading_and_code_allows_it()
     restated = json.dumps(
         {
             "weighings": [
-                {"id": 1, "confidence": 99.9, "reasoning": "peaked, and I am more sure"},
-                {"id": 2, "confidence": 0, "reasoning": "and I have lost all faith in this one"},
+                {
+                    "id": 1,
+                    "subject": "rucking vests",
+                    "confidence": 99.9,
+                    "reasoning": "peaked, and I am more sure",
+                },
+                {
+                    "id": 2,
+                    "subject": "cottage cheese",
+                    "confidence": 0,
+                    "reasoning": "and I have lost all faith in this one",
+                },
             ]
         }
     )

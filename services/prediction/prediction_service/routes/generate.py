@@ -244,11 +244,28 @@ def generate_router(
                 ),
             ) from err
 
-        # Saturation as evidence, and the data-quality floor (CRMA-765). Never
-        # raises: an oracle outage is an explicit miss on the row, not a failed
-        # run, and the only verdicts this can remove are the ones the floor
-        # skipped. See saturation/run.py.
-        result = saturation_phase.weigh(result, llm=llm)
+        # How many claims survived generation, counted BEFORE the saturation
+        # phase's data-quality floor runs -- "proposed" means what the model
+        # proposed, and the floor's skips are reported as rejections below.
+        proposed = len(result.verdicts)
+
+        # Saturation as evidence, and the data-quality floor (CRMA-765). The
+        # phase is built not to raise -- an oracle outage is an explicit miss
+        # on the row, not a failed run -- and the only verdicts it can remove
+        # are the ones the floor skipped. See saturation/run.py.
+        #
+        # The guard makes that an enforced property rather than a comment.
+        # Generation has already run and already been paid for by this point,
+        # so anything uncaught in an optional second opinion -- a future edit,
+        # a third-party oracle that ignores the Protocol's no-raise contract --
+        # must cost the run its saturation evidence, never its rows.
+        try:
+            result = saturation_phase.weigh(result, llm=llm)
+        except Exception:
+            log.exception(
+                "saturation phase failed; verdicts keep generation's own numbers",
+                extra={"chain_id": chain_id},
+            )
 
         log.info(
             "generation run",
@@ -312,7 +329,7 @@ def generate_router(
             chain_id=chain_id,
             model=result.model,
             signals_considered=result.signals_considered,
-            predictions_proposed=len(result.verdicts),
+            predictions_proposed=proposed,
             predictions_written=len(written),
             dry_run=body.dry_run,
             predictions=_to_out(result, written=written),

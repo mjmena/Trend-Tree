@@ -14,6 +14,7 @@ import json
 import pytest
 
 from prediction_service.saturation.lookup import (
+    ERROR_DEADLINE_EXCEEDED,
     MISS_LOOKUP_FAILED,
     MISS_NOT_CONFIGURED,
     MISS_NOT_IN_CATALOG,
@@ -123,6 +124,24 @@ def test_every_kind_of_miss_is_rendered_as_carrying_no_weight(reason):
     assert "no weight in either direction" in rendered or "NOT evidence against" in rendered
 
 
+def test_a_subject_the_run_never_got_to_is_not_described_as_a_refusal():
+    # The budget-exceeded miss (saturation/run.py) says what actually
+    # happened. Telling the model "the provider refused the request" of our
+    # own spent budget is the same mislabelling the timeframe fix removes.
+    rendered = render_et(
+        SaturationLookup(
+            query="head spa",
+            matched=False,
+            miss_reason=MISS_LOOKUP_FAILED,
+            error=ERROR_DEADLINE_EXCEEDED,
+        )
+    )
+
+    assert "spent its lookup budget" in rendered
+    assert "refused the request" not in rendered
+    assert "no weight in either direction" in rendered
+
+
 def test_an_unavailable_breadth_reading_is_rendered_as_not_a_zero():
     rendered = render_breadth(
         ArticleBreadth(query="x", available=False, error="rate_limited")
@@ -144,32 +163,159 @@ def test_the_user_turn_refuses_an_empty_batch():
         build_weighing_user_prompt([])
 
 
-# --- the parser ------------------------------------------------------------
+def test_the_prompt_demands_the_subject_be_echoed_back():
+    # The binding the parser enforces has to be asked for, or every entry is
+    # skipped and the whole pass silently degrades to "unweighed".
+    system = build_weighing_system_prompt()
 
-
-def test_a_restatement_is_read_back_by_id():
-    reply = json.dumps(
-        {"weighings": [{"id": 2, "confidence": 41.5, "reasoning": "ET says peaked"}]}
+    assert '"subject": "<the subject shown for id 1, copied exactly>"' in system
+    assert "do NOT renumber, re-sort or reorder" in system
+    assert "DISCARDED" in system
+    assert "echoing that id's subject" in build_weighing_user_prompt(
+        [_item(PEAKED, BROAD)]
     )
 
-    weighings = parse_weighings(reply, count=3)
+
+def test_a_fallback_classification_is_labelled_with_the_window_it_came_from():
+    # ET did not report a 12-month verdict here. Rendering the 3-month one as
+    # "12-month" would put a claim about how far along the world is in front
+    # of the model that the oracle never made -- and `peaked` is the exact
+    # word this prompt says argues against high confidence.
+    short = SaturationLookup(
+        query="head spa",
+        matched=True,
+        classification="peaked",
+        classification_timeframe="3",
+        classifications={"3": "peaked", "6": "peaked"},
+        keyword="head spa",
+        total=1,
+    )
+
+    rendered = render_et(short)
+
+    assert "3-month classification: peaked" in rendered
+    assert "12-month classification" not in rendered
+    assert "ET reported no 12-month verdict" in rendered
+
+
+def test_a_twelve_month_classification_is_rendered_as_the_twelve_month_one():
+    assert "12-month classification: peaked" in render_et(
+        SaturationLookup(
+            query="rucking vests",
+            matched=True,
+            classification="peaked",
+            classification_timeframe="12",
+            keyword="rucking vest",
+            total=1,
+        )
+    )
+
+
+def test_the_fuzzy_candidates_reach_the_model_that_is_asked_to_judge_the_match():
+    # weigh.py tells the agent ET's search is FUZZY and asks it to judge
+    # concept-sameness. agents/lib/exploding_topics.mjs surfaces the candidate
+    # list precisely so it can -- one keyword and a bare count is not enough
+    # to judge anything against.
+    with_candidates = SaturationLookup(
+        query="rucking vests",
+        matched=True,
+        classification="peaked",
+        classification_timeframe="12",
+        keyword="rucking vest",
+        candidates=(
+            {"keyword": "rucking vest", "path": "rucking-vest"},
+            {"keyword": "weighted vest", "path": "weighted-vest"},
+            {"keyword": "ruck plate", "path": "ruck-plate"},
+        ),
+        total=3,
+    )
+
+    rendered = render_et(with_candidates)
+
+    assert "'weighted vest'" in rendered
+    assert "'ruck plate'" in rendered
+
+
+# --- the parser ------------------------------------------------------------
+
+SUBJECTS = ["rucking vests", "cottage cheese", "head spa"]
+
+
+def _reply(*entries) -> str:
+    return json.dumps({"weighings": list(entries)})
+
+
+def test_a_restatement_is_read_back_by_id_and_bound_to_its_subject():
+    reply = _reply(
+        {"id": 2, "subject": "cottage cheese", "confidence": 41.5, "reasoning": "ET says peaked"}
+    )
+
+    weighings = parse_weighings(reply, subjects=SUBJECTS)
 
     assert set(weighings) == {2}
     assert weighings[2].confidence == 41.5
     assert weighings[2].reasoning == "ET says peaked"
 
 
+def test_the_subject_is_matched_case_and_whitespace_insensitively():
+    # The binding is on the subject the model was shown, not on its exact
+    # keystrokes -- a re-cased echo is still unambiguously the same call.
+    reply = _reply(
+        {"id": 1, "subject": "Rucking  Vests", "confidence": 40, "reasoning": "same call"}
+    )
+
+    assert parse_weighings(reply, subjects=SUBJECTS)[1].reasoning == "same call"
+
+
+def test_a_resorted_renumbered_reply_swaps_nothing():
+    # The failure this binding exists for. Asked to restate a list, a model
+    # may return its entries sorted by its new confidence and renumbered
+    # 1..n -- ordinary behaviour, and read back by position it would write
+    # 'rucking vests' with cottage cheese's number and a reasoning paragraph
+    # about cottage cheese's classification. Every row still written, nothing
+    # detectably wrong downstream. Mislabelled, silently.
+    reply = _reply(
+        {"id": 1, "subject": "cottage cheese", "confidence": 91, "reasoning": "cc first now"},
+        {"id": 2, "subject": "rucking vests", "confidence": 12, "reasoning": "rv second now"},
+    )
+
+    # Nothing is bound, so both calls keep generation's own confidence and
+    # reasoning. A skip is not a gate: it means "keep your own number".
+    assert parse_weighings(reply, subjects=SUBJECTS) == {}
+
+
+def test_a_restatement_naming_another_subject_is_skipped():
+    reply = _reply(
+        {"id": 1, "subject": "cottage cheese", "confidence": 40, "reasoning": "wrong call"},
+        {"id": 2, "subject": "cottage cheese", "confidence": 44, "reasoning": "right call"},
+    )
+
+    weighings = parse_weighings(reply, subjects=SUBJECTS)
+
+    assert set(weighings) == {2}
+    assert weighings[2].confidence == 44
+
+
+def test_a_restatement_with_no_subject_key_is_skipped():
+    # An entry that does not say what it is about cannot be bound to a call,
+    # and position is not evidence that it belongs to one.
+    reply = _reply({"id": 1, "confidence": 40, "reasoning": "which call is this about?"})
+
+    assert parse_weighings(reply, subjects=SUBJECTS) == {}
+
+
 @pytest.mark.parametrize(
     "entry",
     [
-        {"id": 9, "confidence": 40, "reasoning": "out of range id"},
-        {"id": 0, "confidence": 40, "reasoning": "ids are 1-based"},
-        {"id": 1, "confidence": 140, "reasoning": "confidence outside 0-100"},
-        {"id": 1, "confidence": None, "reasoning": "no confidence"},
-        {"id": 1, "confidence": 40, "reasoning": "   "},
-        {"id": 1, "confidence": 40},
-        {"confidence": 40, "reasoning": "no id"},
-        {"id": True, "confidence": 40, "reasoning": "a bool is not an id"},
+        {"id": 9, "subject": "rucking vests", "confidence": 40, "reasoning": "out of range id"},
+        {"id": 0, "subject": "rucking vests", "confidence": 40, "reasoning": "ids are 1-based"},
+        {"id": 1, "subject": "rucking vests", "confidence": 140, "reasoning": "outside 0-100"},
+        {"id": 1, "subject": "rucking vests", "confidence": None, "reasoning": "no confidence"},
+        {"id": 1, "subject": "rucking vests", "confidence": 40, "reasoning": "   "},
+        {"id": 1, "subject": "rucking vests", "confidence": 40},
+        {"id": 1, "subject": 7, "confidence": 40, "reasoning": "a number is not a subject"},
+        {"subject": "rucking vests", "confidence": 40, "reasoning": "no id"},
+        {"id": True, "subject": "rucking vests", "confidence": 40, "reasoning": "not an id"},
         "not an object",
     ],
 )
@@ -177,37 +323,38 @@ def test_a_malformed_restatement_is_absent_rather_than_invented(entry):
     # Absent means the caller keeps generation's own number. A parser that
     # filled in a default would be the mechanical discount this whole design
     # exists to avoid.
-    assert parse_weighings(json.dumps({"weighings": [entry]}), count=2) == {}
+    assert parse_weighings(json.dumps({"weighings": [entry]}), subjects=SUBJECTS[:2]) == {}
 
 
 def test_the_first_restatement_for_an_id_wins():
-    reply = json.dumps(
-        {
-            "weighings": [
-                {"id": 1, "confidence": 40, "reasoning": "first"},
-                {"id": 1, "confidence": 90, "reasoning": "second"},
-            ]
-        }
+    reply = _reply(
+        {"id": 1, "subject": "rucking vests", "confidence": 40, "reasoning": "first"},
+        {"id": 1, "subject": "rucking vests", "confidence": 90, "reasoning": "second"},
     )
 
-    assert parse_weighings(reply, count=1)[1].reasoning == "first"
+    assert parse_weighings(reply, subjects=SUBJECTS[:1])[1].reasoning == "first"
 
 
 def test_an_over_long_reasoning_is_trimmed_to_its_ledger_column():
-    reply = json.dumps({"weighings": [{"id": 1, "confidence": 50, "reasoning": "x" * 6000}]})
+    reply = _reply(
+        {"id": 1, "subject": "rucking vests", "confidence": 50, "reasoning": "x" * 6000}
+    )
 
-    assert len(parse_weighings(reply, count=1)[1].reasoning) == 4000
+    assert len(parse_weighings(reply, subjects=SUBJECTS[:1])[1].reasoning) == 4000
 
 
 def test_a_reply_without_the_key_is_refused_rather_than_read_as_empty():
     with pytest.raises(UnparseableWeighing, match="no 'weighings' key"):
-        parse_weighings(json.dumps({"predictions": []}), count=1)
+        parse_weighings(json.dumps({"predictions": []}), subjects=SUBJECTS[:1])
 
     with pytest.raises(UnparseableWeighing, match="must be a list"):
-        parse_weighings(json.dumps({"weighings": {"1": {}}}), count=1)
+        parse_weighings(json.dumps({"weighings": {"1": {}}}), subjects=SUBJECTS[:1])
 
 
 def test_a_fenced_reply_is_still_read():
-    reply = '```json\n{"weighings": [{"id": 1, "confidence": 50, "reasoning": "ok"}]}\n```'
+    reply = (
+        '```json\n{"weighings": [{"id": 1, "subject": "rucking vests", '
+        '"confidence": 50, "reasoning": "ok"}]}\n```'
+    )
 
-    assert parse_weighings(reply, count=1)[1].confidence == 50
+    assert parse_weighings(reply, subjects=SUBJECTS[:1])[1].confidence == 50

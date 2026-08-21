@@ -13,7 +13,11 @@ Order is deliberate and is the answer to "how much mechanism is there":
    verdict is requested of the model, and it produces no ledger row.
 2. **The two lookups** (lookup.py) -- Exploding Topics by subject descriptor,
    GDELT article breadth for the same string. Neither can raise; an outage is
-   an explicit miss.
+   an explicit miss. They are also bounded in total by one wall-clock budget
+   (DEFAULT_LOOKUP_BUDGET_S), so a stalling provider cannot spend the whole
+   HTTP request and leave a paid-for generation pass with nothing written --
+   the subjects past the budget carry a ``deadline_exceeded`` miss, which
+   costs them nothing.
 3. **The weighing turn** (weigh.py) -- the readings go to the model, which
    restates its own confidence and reasoning. Code copies the number across;
    it never adjusts one.
@@ -34,7 +38,9 @@ holds that as an exhaustive matrix rather than as a claim.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, replace
+import time
+from collections.abc import Callable
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -46,6 +52,8 @@ from ..generation.signals import SignalRecord
 from .evidence import attach_saturation, build_saturation_evidence
 from .floor import DataQualityFloor, FloorAssessment, assess_floor
 from .lookup import (
+    ERROR_DEADLINE_EXCEEDED,
+    MISS_LOOKUP_FAILED,
     MISS_NOT_CONFIGURED,
     ArticleBreadth,
     BreadthReader,
@@ -68,6 +76,26 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..config import Settings
 
 log = logging.getLogger(__name__)
+
+#: Wall-clock seconds the two lookups may spend across the WHOLE run, not per
+#: subject. Arithmetic, against the deployed request budget:
+#:
+#:   Cloud Run --timeout            600s  (deploy/deploy.sh)
+#:   - generation turn              180s  (PREDICTION_GEMINI_TIMEOUT_S)
+#:   - weighing turn                180s  (same client, same ceiling)
+#:   - the verdict writes            60s  (up to max_predictions MERGEs
+#:                                         through the retrying client)
+#:   - corpus read + serialization   20s
+#:   = 160s left, taken as 150 for margin.
+#:
+#: Why a budget at all: the lookups are sequential and ``max_predictions`` is
+#: caller-settable to 25, so a provider that stalls instead of answering could
+#: otherwise spend 25 x (ET timeout + GDELT timeout) and get the request
+#: killed AFTER generation had run and been paid for, with zero rows written.
+#: When the budget expires the remaining subjects get an explicit
+#: ``deadline_exceeded`` miss -- the same penalty-free state an outage
+#: produces -- and the run writes every row it was going to write.
+DEFAULT_LOOKUP_BUDGET_S = 150.0
 
 
 def corpus_index(signals: Any) -> dict[str, tuple[str | None, str]]:
@@ -94,6 +122,13 @@ class SaturationPhase:
     oracle: SaturationOracle
     breadth: BreadthReader
     floor: DataQualityFloor = DataQualityFloor()
+    #: See DEFAULT_LOOKUP_BUDGET_S. Zero or less means "no budget", which is
+    #: what the offline flavors want: their lookups cannot block.
+    lookup_budget_s: float = DEFAULT_LOOKUP_BUDGET_S
+    #: Monotonic seconds, injectable so a test can breach the budget without
+    #: sleeping. Deliberately not the wall clock: an NTP step must not decide
+    #: whether a subject gets looked up.
+    clock: Callable[[], float] = field(default=time.monotonic)
 
     @classmethod
     def offline(cls, floor: DataQualityFloor | None = None) -> SaturationPhase:
@@ -116,6 +151,46 @@ class SaturationPhase:
     def _lookups(self, subject: str) -> tuple[SaturationLookup, ArticleBreadth]:
         return self.oracle.classify(subject), self.breadth.breadth(subject)
 
+    def _unlooked(self, subject: str) -> tuple[SaturationLookup, ArticleBreadth]:
+        """What a subject the run never got to carries. Both readings say "we
+        did not look" -- which is a miss, and a miss is never a penalty."""
+        return (
+            SaturationLookup(
+                query=subject,
+                matched=False,
+                miss_reason=MISS_LOOKUP_FAILED,
+                error=ERROR_DEADLINE_EXCEEDED,
+            ),
+            ArticleBreadth(query=subject, available=False, error=ERROR_DEADLINE_EXCEEDED),
+        )
+
+    def _read_all(self, subjects: list[str]) -> list[tuple[SaturationLookup, ArticleBreadth]]:
+        """Both oracles for each subject, in order, inside one wall-clock
+        budget. See DEFAULT_LOOKUP_BUDGET_S for the arithmetic and for why the
+        budget exists at all.
+
+        Breaching it is not a gate: the subject still gets a verdict, a row and
+        its own confidence -- it just carries "we did not get to look" instead
+        of a classification, exactly as a provider outage does.
+        """
+        deadline = self.clock() + self.lookup_budget_s if self.lookup_budget_s > 0 else None
+        readings: list[tuple[SaturationLookup, ArticleBreadth]] = []
+        breached = False
+        for subject in subjects:
+            if deadline is not None and self.clock() >= deadline:
+                if not breached:
+                    breached = True
+                    log.warning(
+                        "saturation lookup budget spent; the rest of this run's subjects "
+                        "carry an explicit %s miss and keep their own confidence",
+                        ERROR_DEADLINE_EXCEEDED,
+                        extra={"looked_up": len(readings), "subjects": len(subjects)},
+                    )
+                readings.append(self._unlooked(subject))
+                continue
+            readings.append(self._lookups(subject))
+        return readings
+
     def _weighings(
         self, items: list[WeighingItem], llm: PredictionLLM | None
     ) -> tuple[dict[int, Weighing], dict[str, Any]]:
@@ -135,7 +210,10 @@ class SaturationPhase:
                 system=build_weighing_system_prompt(),
                 user=build_weighing_user_prompt(items),
             )
-            weighings = parse_weighings(response.text, count=len(items))
+            # Bound by subject, not by list position: see parse_weighings.
+            weighings = parse_weighings(
+                response.text, subjects=[item.subject_descriptor for item in items]
+            )
         except Exception as err:  # noqa: BLE001 - an outage is a miss, not a failed run
             log.warning("saturation weighing pass failed; verdicts stay unweighed: %s", err)
             return {}, {
@@ -146,9 +224,15 @@ class SaturationPhase:
         return weighings, {
             "weighed": True,
             "model": response.model,
-            "input_tokens": response.input_tokens,
-            "output_tokens": response.output_tokens,
-            "cost_usd": response.cost_usd,
+            # ONE batched call weighs the whole run, and this same block is
+            # copied onto every verdict it covered -- so the token and cost
+            # fields are named for the batch. Summing `batch_cost_usd` across
+            # ledger rows over-counts by `batch_size`; the run-level total is
+            # GenerationResult.cost_usd, which adds this once (see _add_cost).
+            "batch_size": len(items),
+            "batch_input_tokens": response.input_tokens,
+            "batch_output_tokens": response.output_tokens,
+            "batch_cost_usd": response.cost_usd,
         }
 
     def weigh(
@@ -181,7 +265,7 @@ class SaturationPhase:
         if not kept:
             return replace(result, verdicts=[], rejected=[*result.rejected, *skipped])
 
-        readings = [self._lookups(v.claim.subject_descriptor) for v, _ in kept]
+        readings = self._read_all([v.claim.subject_descriptor for v, _ in kept])
         items = [
             WeighingItem(
                 subject_descriptor=verdict.claim.subject_descriptor,
@@ -208,7 +292,11 @@ class SaturationPhase:
                 verdict.confidence if decision is None else decision.confidence
             )
             if decision is None and provenance.get("weighed"):
-                block["note"] = "the model returned no restatement for this call"
+                block["note"] = (
+                    "the model returned no usable restatement for this call -- absent, "
+                    "malformed, or not bound to this subject; confidence and reasoning "
+                    "are generation's own, unadjusted"
+                )
             saturation = build_saturation_evidence(
                 lookup=lookup, reading=reading, floor=assessment, weighing=block
             )
@@ -233,9 +321,9 @@ class SaturationPhase:
             result,
             verdicts=weighed,
             rejected=[*result.rejected, *skipped],
-            input_tokens=result.input_tokens + int(provenance.get("input_tokens") or 0),
-            output_tokens=result.output_tokens + int(provenance.get("output_tokens") or 0),
-            cost_usd=_add_cost(result.cost_usd, provenance.get("cost_usd")),
+            input_tokens=result.input_tokens + int(provenance.get("batch_input_tokens") or 0),
+            output_tokens=result.output_tokens + int(provenance.get("batch_output_tokens") or 0),
+            cost_usd=_add_cost(result.cost_usd, provenance.get("batch_cost_usd")),
         )
 
 
@@ -290,4 +378,9 @@ def build_saturation_phase(settings: Settings) -> SaturationPhase:
         if saturation.gdelt_enabled
         else StaticBreadthReader(default_available=False)
     )
-    return SaturationPhase(oracle=oracle, breadth=breadth, floor=floor_from_settings(settings))
+    return SaturationPhase(
+        oracle=oracle,
+        breadth=breadth,
+        floor=floor_from_settings(settings),
+        lookup_budget_s=saturation.lookup_budget_s,
+    )

@@ -47,7 +47,9 @@ from .floor import (
     build_evidence_record,
 )
 from .lookup import (
+    BREADTH_NOT_CONSULTED,
     CLASSIFICATION_PEAKED,
+    ERROR_DEADLINE_EXCEEDED,
     MISS_LOOKUP_FAILED,
     MISS_NOT_CONFIGURED,
     MISS_NOT_IN_CATALOG,
@@ -63,7 +65,13 @@ from .lookup import (
     normalize_et_response,
     normalize_gdelt_response,
 )
-from .run import SaturationPhase, build_saturation_phase, corpus_index, floor_from_settings
+from .run import (
+    DEFAULT_LOOKUP_BUDGET_S,
+    SaturationPhase,
+    build_saturation_phase,
+    corpus_index,
+    floor_from_settings,
+)
 from .weigh import (
     WEIGHING_MARKER,
     UnparseableWeighing,
@@ -75,7 +83,10 @@ from .weigh import (
 )
 
 __all__ = [
+    "BREADTH_NOT_CONSULTED",
     "CLASSIFICATION_PEAKED",
+    "DEFAULT_LOOKUP_BUDGET_S",
+    "ERROR_DEADLINE_EXCEEDED",
     "MIN_EVIDENCE_CHARS",
     "MIN_OBSERVATION_AGE_HOURS",
     "MISS_LOOKUP_FAILED",
@@ -84,6 +95,7 @@ __all__ = [
     "SATURATION_KEY",
     "TOO_SPARSE",
     "TOO_YOUNG",
+    "WEIGHING_MARKER",
     "ArticleBreadth",
     "BreadthReader",
     "DataQualityFloor",
@@ -97,7 +109,6 @@ __all__ = [
     "StaticBreadthReader",
     "StaticSaturationOracle",
     "UnparseableWeighing",
-    "WEIGHING_MARKER",
     "Weighing",
     "WeighingItem",
     "assess_floor",
@@ -110,8 +121,8 @@ __all__ = [
     "build_weighing_user_prompt",
     "corpus_index",
     "et_evidence",
-    "load_saturation_fixture",
     "floor_from_settings",
+    "load_saturation_fixture",
     "normalize_et_response",
     "normalize_gdelt_response",
     "parse_weighings",

@@ -54,6 +54,51 @@ def test_the_payload_carries_the_classification_and_the_breadth():
     assert payload["gdelt"]["distinct_domains"] == 19
 
 
+def test_the_payload_names_the_window_the_classification_came_from():
+    # A 3-month `peaked` recorded as the 12-month verdict is a materially
+    # different claim about how far along the world is -- and this row is what
+    # the track record will be judged from.
+    payload = build_saturation_evidence(
+        lookup=SaturationLookup(
+            query="head spa",
+            matched=True,
+            classification="peaked",
+            classification_timeframe="3",
+            classifications={"3": "peaked", "6": "peaked"},
+            keyword="head spa",
+            total=1,
+        ),
+        reading=BROAD,
+    )
+
+    assert payload["exploding_topics"]["classification"] == "peaked"
+    assert payload["exploding_topics"]["classification_timeframe"] == "3"
+
+
+def test_the_payload_carries_the_fuzzy_candidates_the_agent_judged_from():
+    # Parity with agents/lib/exploding_topics.mjs: the row records what ET
+    # offered, not just what it matched, because concept-sameness was the
+    # agent's judgment and this is what it judged from.
+    payload = build_saturation_evidence(
+        lookup=SaturationLookup(
+            query="rucking vests",
+            matched=True,
+            keyword="rucking vest",
+            candidates=(
+                {"keyword": "rucking vest", "absolute_volume": 40500},
+                {"keyword": "weighted vest", "absolute_volume": 90500},
+            ),
+            total=2,
+        ),
+        reading=BROAD,
+    )
+
+    assert [c["keyword"] for c in payload["exploding_topics"]["candidates"]] == [
+        "rucking vest",
+        "weighted vest",
+    ]
+
+
 def test_a_miss_is_spelled_out_rather_than_left_absent():
     # "ET does not know this subject" is a fact about the world worth
     # reading, and the payload says in its own body that it costs nothing --

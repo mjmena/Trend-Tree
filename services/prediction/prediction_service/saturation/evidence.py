@@ -56,11 +56,20 @@ def et_evidence(lookup: SaturationLookup) -> dict[str, Any]:
         "query": lookup.query,
         "matched": lookup.matched,
         "classification": lookup.classification,
+        # Which window the classification above came from. ET does not always
+        # report a 12-month verdict, and reading a 3-month `peaked` as the
+        # 12-month one is a materially different claim about how far along the
+        # world is -- so the row says which one it is rather than implying.
+        "classification_timeframe": lookup.classification_timeframe,
         "classifications": _jsonable(lookup.classifications),
         "growth": _jsonable(lookup.growth),
         "matched_keyword": lookup.keyword,
         "path": lookup.path,
         "absolute_volume": lookup.absolute_volume,
+        # The other fuzzy results, as agents/lib/exploding_topics.mjs records
+        # them: /database-search is fuzzy, and concept-sameness is the agent's
+        # judgment, so the near-misses are part of what it was judging from.
+        "candidates": [_jsonable(candidate) for candidate in lookup.candidates],
         "result_count": lookup.total,
         "miss_reason": lookup.miss_reason,
         "error": lookup.error,

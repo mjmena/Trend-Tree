@@ -70,7 +70,18 @@ ET_MISS_MESSAGES = ("No meta trends found.", "No topic found.")
 ET_HEADLINE_TIMEFRAME = "12"
 
 ET_DEFAULT_TIMEFRAME = "last_12_months"
-ET_DEFAULT_TIMEOUT_S = 20.0
+#: Lowered from 20s with the phase-level lookup budget (see run.py): the two
+#: lookups run per surviving subject, so the per-call ceiling is what decides
+#: how many subjects a stalling provider can eat before the budget expires and
+#: the rest degrade to explicit misses. ET answers a search in well under a
+#: second when it answers at all.
+ET_DEFAULT_TIMEOUT_S = 12.0
+
+#: How many of ET's fuzzy results ride along as candidates. Same slice
+#: ``normalizeEtResponse`` takes in agents/lib/exploding_topics.mjs, and for
+#: the same reason: /database-search is fuzzy, so the near-misses are what let
+#: the agent judge whether the top match is genuinely the same concept.
+ET_CANDIDATE_LIMIT = 5
 
 #: The classification the strategy singles out: "``peaked`` argues against
 #: high confidence; nothing is mechanically excluded". Named here so the
@@ -87,6 +98,12 @@ CLASSIFICATION_PEAKED = "peaked"
 MISS_NOT_IN_CATALOG = "not_in_catalog"
 MISS_NOT_CONFIGURED = "not_configured"
 MISS_LOOKUP_FAILED = "lookup_failed"
+
+#: ``error`` on a lookup the phase never got to: the run spent its lookup
+#: budget on earlier subjects (see run.py). A miss, like every other one here,
+#: and it carries no penalty -- it says "we did not get to look", which is the
+#: honest reading and is exactly what an outage says.
+ERROR_DEADLINE_EXCEEDED = "deadline_exceeded"
 
 
 @dataclass(frozen=True)
@@ -105,11 +122,22 @@ class SaturationLookup:
     query: str
     matched: bool
     classification: str | None = None
+    #: Which timeframe ``classification`` actually came from ("12" normally;
+    #: the shortest window ET reported when it had no 12-month verdict). Kept
+    #: because a 3-month ``peaked`` and a 12-month ``peaked`` are materially
+    #: different claims about how far along the world is, and the prompt and
+    #: the ledger both have to say which one they are showing.
+    classification_timeframe: str | None = None
     classifications: Mapping[str, Any] | None = None
     growth: Mapping[str, Any] | None = None
     keyword: str | None = None
     path: str | None = None
     absolute_volume: int | None = None
+    #: Up to ``ET_CANDIDATE_LIMIT`` of the fuzzy results, top one included --
+    #: what agents/lib/exploding_topics.mjs calls ``candidates``, carried for
+    #: the same reason: the model is asked to judge whether ET matched the
+    #: same concept, and it can only do that if it sees what else ET offered.
+    candidates: tuple[Mapping[str, Any], ...] = ()
     total: int = 0
     #: Set on every non-match. See the MISS_* constants.
     miss_reason: str | None = None
@@ -135,33 +163,57 @@ def _as_int(value: Any) -> int | None:
         return None
 
 
-def _headline_classification(classifications: Any) -> str | None:
-    """The 12-month verdict, or the shortest timeframe ET did return.
+def _headline_classification(classifications: Any) -> tuple[str | None, str | None]:
+    """``(classification, timeframe)`` -- the 12-month verdict, or the shortest
+    timeframe ET did return, **and which one it was**.
 
     Falling back to the shortest available window rather than to None is the
     honest default: a topic ET classified at 3 and 6 months but not at 12 has
     a classification, and reporting "no classification" would understate what
-    the oracle actually said.
+    the oracle actually said. But the fallback has to travel with its
+    timeframe: "peaked at 3 months" and "peaked at 12 months" are different
+    claims about how far along the world is, and ``peaked`` is the exact word
+    the weighing prompt says argues against high confidence. Rendering a
+    3-month reading as the 12-month one would put a claim in the model's --
+    and the ledger's -- mouth that the oracle never made.
     """
     if not isinstance(classifications, Mapping):
-        return None
+        return None, None
     headline = classifications.get(ET_HEADLINE_TIMEFRAME)
     if isinstance(headline, str) and headline.strip():
-        return headline.strip()
+        return headline.strip(), ET_HEADLINE_TIMEFRAME
     numeric = sorted(
-        (int(k), v)
+        (int(k), str(k), v)
         for k, v in classifications.items()
         if str(k).isdigit() and isinstance(v, str) and v.strip()
     )
-    return numeric[0][1].strip() if numeric else None
+    if not numeric:
+        return None, None
+    _, timeframe, value = numeric[0]
+    return value.strip(), timeframe
+
+
+def _candidates(results: list[Mapping[str, Any]]) -> tuple[Mapping[str, Any], ...]:
+    """ET's fuzzy result list, reduced to what the model needs to judge
+    concept-sameness. Mirrors ``normalizeEtResponse``'s ``candidates``."""
+    return tuple(
+        {
+            "keyword": str(r.get("keyword")) if r.get("keyword") else None,
+            "path": str(r.get("path")) if r.get("path") else None,
+            "absolute_volume": _as_int(r.get("absolute_volume")),
+            "categories": r.get("categories") if r.get("categories") else None,
+        }
+        for r in results[:ET_CANDIDATE_LIMIT]
+    )
 
 
 def normalize_et_response(query: str, *, status: int | None, body: Any) -> SaturationLookup:
     """Pure. Turn a raw ``/database-search`` reply into a ``SaturationLookup``.
 
     Mirrors ``normalizeEtResponse`` in agents/lib/exploding_topics.mjs -- same
-    miss sentinels, same "top result plus up to five candidates" reading, same
-    refusal to treat ``total > 0`` as corroboration.
+    miss sentinels, same "top result plus up to five candidates" reading (see
+    ``candidates`` below), same refusal to treat ``total > 0`` as
+    corroboration.
     """
     if status is not None and status != 200:
         return SaturationLookup(
@@ -189,15 +241,18 @@ def normalize_et_response(query: str, *, status: int | None, body: Any) -> Satur
     top = results[0]
     classifications = top.get("classifications")
     growth = top.get("growth")
+    classification, timeframe = _headline_classification(classifications)
     return SaturationLookup(
         query=query,
         matched=True,
-        classification=_headline_classification(classifications),
+        classification=classification,
+        classification_timeframe=timeframe,
         classifications=classifications if isinstance(classifications, Mapping) else None,
         growth=growth if isinstance(growth, Mapping) else None,
         keyword=str(top.get("keyword")) if top.get("keyword") else None,
         path=str(top.get("path")) if top.get("path") else None,
         absolute_volume=_as_int(top.get("absolute_volume")),
+        candidates=_candidates(results),
         total=total,
     )
 
@@ -290,7 +345,59 @@ GDELT_UA = "Mozilla/5.0 (compatible; TrendTreeBot/1.0; +https://mcclatchy.com)"
 #: three publishers or thirty have written about the subject.
 GDELT_MAX_RECORDS = 75
 GDELT_DEFAULT_WINDOW_DAYS = 7
-GDELT_DEFAULT_TIMEOUT_S = 25.0
+#: Lowered from 25s alongside ET's, for the reason in ET_DEFAULT_TIMEOUT_S:
+#: the phase-level budget (run.py) is what protects the request, and a lower
+#: per-call ceiling is what lets more subjects fit inside it when GDELT starts
+#: stalling rather than answering.
+GDELT_DEFAULT_TIMEOUT_S = 15.0
+
+#: Characters GDELT's DOC query language treats as syntax. The phrase we build
+#: comes from a model-authored descriptor, so they are stripped rather than
+#: escaped -- the API has no escape form for a double quote inside a phrase,
+#: and a subject containing one would otherwise close the phrase early
+#: (``"head "spa""``) and turn the reading into garbage.
+GDELT_QUERY_SYNTAX_CHARS = '"()'
+
+#: Longest phrase we will send. GDELT rejects an over-long query outright, and
+#: truncating a phrase mid-subject would search for something the model never
+#: proposed -- so an over-long descriptor is an explicit "we could not look"
+#: rather than a reading of a different string. A descriptor this long is
+#: already outside ADR-0003's atomic-term register.
+GDELT_MAX_PHRASE_CHARS = 120
+
+#: The two ways a 200 can come back as prose instead of JSON. GDELT answers
+#: its own rate limit that way, and it answers a malformed or unsupported
+#: query that way too -- recording the second as the first would put "we were
+#: throttled" in the ledger for what was really our own bad query.
+GDELT_ERROR_RATE_LIMITED = "rate_limited"
+GDELT_ERROR_NON_JSON = "non_json_response"
+GDELT_ERROR_QUERY_TOO_LONG = "query_too_long"
+GDELT_ERROR_EMPTY_QUERY = "empty_query"
+
+#: Substrings that identify the throttle reply. GDELT has worded it several
+#: ways ("Your query rate is too high", "rate limit exceeded"); anything else
+#: non-JSON is our query's problem, not our request rate's.
+_GDELT_RATE_LIMIT_MARKERS = ("rate limit", "query rate", "too many requests", "throttl")
+
+#: The GDELT-side "we were not consulted" string. Deliberately not ET's
+#: ``MISS_LOOKUP_FAILED``: the two providers have unrelated vocabularies and a
+#: reader of a ledger row should not have to know they were ever shared.
+BREADTH_NOT_CONSULTED = "not_consulted"
+
+
+def gdelt_phrase(query: str) -> str:
+    """The subject as a GDELT phrase term -- syntax stripped, whitespace
+    collapsed. Pure, and the only place the query string is built."""
+    cleaned = "".join(" " if ch in GDELT_QUERY_SYNTAX_CHARS else ch for ch in query)
+    return " ".join(cleaned.split())
+
+
+def gdelt_non_json_error(text: str) -> str:
+    """Which of the two non-JSON 200s this is. See the constants above."""
+    lowered = text.lower()
+    if any(marker in lowered for marker in _GDELT_RATE_LIMIT_MARKERS):
+        return GDELT_ERROR_RATE_LIMITED
+    return GDELT_ERROR_NON_JSON
 
 #: How many publisher domains the evidence names. The rest are counted, not
 #: listed -- the model needs the shape of the coverage, not a directory.
@@ -371,13 +478,16 @@ class GdeltBreadthReader:
         self._timeout_s = timeout_s
         self._transport = transport
 
-    def _url(self, query: str) -> str:
+    def _url(self, phrase: str) -> str:
+        """``phrase`` must already have been through ``gdelt_phrase``."""
         params = urllib.parse.urlencode(
             {
                 # Quoted so a multi-word subject is one phrase, not an OR of
                 # its words -- an unquoted "head spa" counts every article
-                # containing "head".
-                "query": f'"{query}" sourcelang:english',
+                # containing "head". The phrase itself carries no quote or
+                # bracket by then (gdelt_phrase), so the quoting cannot be
+                # broken from inside by a model-authored descriptor.
+                "query": f'"{phrase}" sourcelang:english',
                 "mode": "ArtList",
                 "format": "json",
                 "maxrecords": str(GDELT_MAX_RECORDS),
@@ -388,14 +498,25 @@ class GdeltBreadthReader:
 
     def breadth(self, query: str) -> ArticleBreadth:
         subject = (query or "").strip()
-        if not subject:
+        phrase = gdelt_phrase(subject)
+        if not phrase:
             return ArticleBreadth(
                 query=query,
                 available=False,
                 window_days=self._window_days,
-                error="empty_query",
+                error=GDELT_ERROR_EMPTY_QUERY,
             )
-        url = self._url(subject)
+        if len(phrase) > GDELT_MAX_PHRASE_CHARS:
+            # Not a gate: an unreadable breadth reading is exactly as
+            # penalty-free as an outage, and saying "we could not look" beats
+            # searching for a truncated phrase the model never proposed.
+            return ArticleBreadth(
+                query=subject,
+                available=False,
+                window_days=self._window_days,
+                error=GDELT_ERROR_QUERY_TOO_LONG,
+            )
+        url = self._url(phrase)
         try:
             if self._transport is not None:
                 text = self._transport(url=url, timeout_s=self._timeout_s)
@@ -413,12 +534,17 @@ class GdeltBreadthReader:
             if not stripped.startswith(("{", "[")):
                 # GDELT answers its own rate limit with HTTP 200 and a plain
                 # sentence. Reading that as an empty article list would
-                # report "nobody is covering this" for "we were throttled".
+                # report "nobody is covering this" for "we were throttled" --
+                # and reading a rejected query as a throttle would blame the
+                # provider for our own string. Both are unavailable; the
+                # evidence says which.
+                error = gdelt_non_json_error(stripped)
+                log.warning("gdelt returned a non-JSON body for %r: %s", subject, error)
                 return ArticleBreadth(
                     query=subject,
                     available=False,
                     window_days=self._window_days,
-                    error="rate_limited",
+                    error=error,
                 )
             body = json.loads(stripped)
         except urllib.error.HTTPError as err:
@@ -486,7 +612,7 @@ class StaticBreadthReader:
         return ArticleBreadth(
             query=query,
             available=self.default_available,
-            error=None if self.default_available else MISS_LOOKUP_FAILED,
+            error=None if self.default_available else BREADTH_NOT_CONSULTED,
         )
 
 
@@ -508,15 +634,23 @@ def load_saturation_fixture(
         et = entry.get("exploding_topics")
         if isinstance(et, Mapping):
             classifications = et.get("classifications")
+            classification, timeframe = _headline_classification(classifications)
+            raw_candidates = et.get("candidates")
             lookups[subject] = SaturationLookup(
                 query=subject,
                 matched=bool(et.get("matched")),
-                classification=_headline_classification(classifications),
+                classification=classification,
+                classification_timeframe=timeframe,
                 classifications=classifications if isinstance(classifications, Mapping) else None,
                 growth=et.get("growth") if isinstance(et.get("growth"), Mapping) else None,
                 keyword=et.get("keyword"),
                 path=et.get("path"),
                 absolute_volume=_as_int(et.get("absolute_volume")),
+                candidates=_candidates(
+                    [c for c in raw_candidates if isinstance(c, Mapping)]
+                    if isinstance(raw_candidates, list)
+                    else []
+                ),
                 total=_as_int(et.get("total")) or 0,
                 miss_reason=et.get("miss_reason")
                 or (None if et.get("matched") else MISS_NOT_IN_CATALOG),

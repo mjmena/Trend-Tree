@@ -124,6 +124,11 @@ class SaturationSettings:
     gdelt_enabled: bool
     gdelt_window_days: int
     gdelt_timeout_s: float
+    #: Wall-clock seconds the two lookups may spend across a whole run. Not a
+    #: gate: subjects past it get an explicit ``deadline_exceeded`` miss and
+    #: keep their own confidence. See saturation/run.py for the arithmetic
+    #: against the Cloud Run request timeout.
+    lookup_budget_s: float
     min_observation_age_hours: float
     min_evidence_chars: int
 
@@ -274,7 +279,7 @@ def settings_from_env(env: Mapping[str, str] | None = None) -> Settings:
             exploding_topics_api_key=e.get("PREDICTION_EXPLODING_TOPICS_API_KEY", ""),
             exploding_topics_timeout_s=_number(
                 "PREDICTION_EXPLODING_TOPICS_TIMEOUT_S",
-                e.get("PREDICTION_EXPLODING_TOPICS_TIMEOUT_S", "20"),
+                e.get("PREDICTION_EXPLODING_TOPICS_TIMEOUT_S", "12"),
             ),
             # A kill switch, not a tuning knob: GDELT is unauthenticated and
             # rate-limits by IP, so a run that starts getting throttled can be
@@ -287,7 +292,14 @@ def settings_from_env(env: Mapping[str, str] | None = None) -> Settings:
                 _number("PREDICTION_GDELT_WINDOW_DAYS", e.get("PREDICTION_GDELT_WINDOW_DAYS", "7"))
             ),
             gdelt_timeout_s=_number(
-                "PREDICTION_GDELT_TIMEOUT_S", e.get("PREDICTION_GDELT_TIMEOUT_S", "25")
+                "PREDICTION_GDELT_TIMEOUT_S", e.get("PREDICTION_GDELT_TIMEOUT_S", "15")
+            ),
+            # The phase-level ceiling the two per-call timeouts sit inside.
+            # Sized against the Cloud Run request timeout in saturation/run.py;
+            # a value of 0 or less turns the budget off.
+            lookup_budget_s=_number(
+                "PREDICTION_SATURATION_LOOKUP_BUDGET_S",
+                e.get("PREDICTION_SATURATION_LOOKUP_BUDGET_S", "150"),
             ),
             min_observation_age_hours=_number(
                 "PREDICTION_FLOOR_MIN_OBSERVATION_AGE_HOURS",

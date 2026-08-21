@@ -37,6 +37,8 @@ from ..domain.claim import MAX_LENGTHS
 from ..generation.parse import extract_json_object
 from .lookup import (
     CLASSIFICATION_PEAKED,
+    ERROR_DEADLINE_EXCEEDED,
+    ET_HEADLINE_TIMEFRAME,
     MISS_LOOKUP_FAILED,
     MISS_NOT_CONFIGURED,
     MISS_NOT_IN_CATALOG,
@@ -49,6 +51,14 @@ from .lookup import (
 #: being asked, and matching on a named constant is better than matching on a
 #: sentence someone will later reword.
 WEIGHING_MARKER = "saturation weighing pass"
+
+
+def subject_key(subject: str) -> str:
+    """The comparison form of a subject descriptor -- whitespace collapsed,
+    case folded. Same rule generation/run.py's ``normalize_subject`` uses;
+    spelled out here rather than imported so this module keeps its one
+    property: pure, with no dependency on the generation phase."""
+    return " ".join((subject or "").split()).casefold()
 
 
 class UnparseableWeighing(ValueError):
@@ -98,10 +108,25 @@ _MISS_WORDING = {
 }
 
 
+#: A lookup the run never got to (the phase spent its wall-clock budget on
+#: earlier subjects, see run.py). Worded separately from the transport failure
+#: above because saying "the provider refused the request" of our own budget
+#: would be the same kind of mislabelling the timeframe fix removes.
+_DEADLINE_WORDING = (
+    "Exploding Topics was not consulted for this subject: this run spent its lookup "
+    "budget on earlier subjects. This is a MISS -- we did not look -- and it carries "
+    "no weight in either direction."
+)
+
+
 def render_et(lookup: SaturationLookup) -> str:
     if not lookup.matched:
-        wording = _MISS_WORDING.get(
-            lookup.miss_reason or MISS_NOT_IN_CATALOG, _MISS_WORDING[MISS_NOT_IN_CATALOG]
+        wording = (
+            _DEADLINE_WORDING
+            if lookup.error == ERROR_DEADLINE_EXCEEDED
+            else _MISS_WORDING.get(
+                lookup.miss_reason or MISS_NOT_IN_CATALOG, _MISS_WORDING[MISS_NOT_IN_CATALOG]
+            )
         )
         detail = f" [{lookup.error}]" if lookup.error else ""
         return f"    exploding topics: MISS{detail}. {wording}"
@@ -110,7 +135,7 @@ def render_et(lookup: SaturationLookup) -> str:
         f"    exploding topics: matched {lookup.keyword!r}"
         f" ({lookup.total} fuzzy result(s) for {lookup.query!r})"
     ]
-    lines.append(f"      12-month classification: {lookup.classification or 'unreported'}")
+    lines.append(_classification_line(lookup))
     if lookup.classifications:
         per_timeframe = ", ".join(
             f"{k}mo={v}" for k, v in lookup.classifications.items() if isinstance(v, str)
@@ -122,11 +147,40 @@ def render_et(lookup: SaturationLookup) -> str:
         lines.append(f"      growth: {growth}")
     if lookup.absolute_volume is not None:
         lines.append(f"      searches last month: {lookup.absolute_volume}")
+    others = [
+        str(c.get("keyword"))
+        for c in lookup.candidates
+        if c.get("keyword") and str(c.get("keyword")) != (lookup.keyword or "")
+    ]
+    if others:
+        listed = ", ".join(repr(other) for other in others)
+        lines.append(f"      other fuzzy matches ET returned: {listed}")
     lines.append(
         "      ET's search is FUZZY. Judge whether the matched keyword is genuinely "
         "the same concept as the subject before you let it move anything."
     )
     return "\n".join(lines)
+
+
+def _classification_line(lookup: SaturationLookup) -> str:
+    """The headline classification, labelled with the timeframe it came from.
+
+    ET does not always report a 12-month verdict, and ``lookup`` falls back to
+    the shortest window it did report. Rendering that as "12-month" would put
+    a claim about how far along the world is in front of the model that the
+    oracle never made -- and ``peaked`` is the exact word this prompt says
+    argues against high confidence.
+    """
+    if not lookup.classification:
+        return "      classification: unreported"
+    timeframe = lookup.classification_timeframe or ET_HEADLINE_TIMEFRAME
+    line = f"      {timeframe}-month classification: {lookup.classification}"
+    if timeframe != ET_HEADLINE_TIMEFRAME:
+        line += (
+            f" (ET reported no {ET_HEADLINE_TIMEFRAME}-month verdict; this is the "
+            "shortest window it did report)"
+        )
+    return line
 
 
 def render_breadth(reading: ArticleBreadth) -> str:
@@ -203,13 +257,22 @@ REASONING
 
 OUTPUT
   Reply with JSON only -- a single object, no prose around it, no code fence.
-  One entry per call you were shown, using the same id:
+  One entry per call you were shown, using the same id AND echoing that call's
+  subject back verbatim:
 
   {{
     "weighings": [
-      {{"id": 1, "confidence": 0-100, "reasoning": "..."}}
+      {{"id": 1, "subject": "<the subject shown for id 1, copied exactly>",
+        "confidence": 0-100, "reasoning": "..."}}
     ]
   }}
+
+  The "subject" field is how your restatement is bound to the call it is
+  about. Copy it character for character from the call you are answering. Keep
+  the ids as they were given to you -- do NOT renumber, re-sort or reorder the
+  entries. An entry whose subject does not match the subject shown for its id
+  is DISCARDED, and that call keeps the confidence and reasoning it already
+  had.
 
   Omitting an id leaves that call exactly as it was."""
 
@@ -240,9 +303,10 @@ def build_weighing_user_prompt(items: Sequence[WeighingItem]) -> str:
 
 {body}
 
-Restate confidence and reasoning for each id. Every call is written down
-either way; a "{CLASSIFICATION_PEAKED}" reading argues against high confidence,
-it does not remove anything. An Exploding Topics miss costs nothing.
+Restate confidence and reasoning for each id, echoing that id's subject
+verbatim in its entry. Every call is written down either way; a
+"{CLASSIFICATION_PEAKED}" reading argues against high confidence, it does not
+remove anything. An Exploding Topics miss costs nothing.
 
 JSON only."""
 
@@ -257,14 +321,29 @@ def _confidence(raw: Any) -> float | None:
     return value if 0 <= value <= 100 else None
 
 
-def parse_weighings(text: str, *, count: int) -> dict[int, Weighing]:
+def parse_weighings(text: str, *, subjects: Sequence[str]) -> dict[int, Weighing]:
     """Parse the weighing reply into ``{1-based id: Weighing}``.
 
-    Anything malformed is simply absent from the returned map, and an absent
-    id means the caller keeps that verdict exactly as generation left it --
-    which is the only safe degradation: a parser that invented a number would
-    be the mechanical discount this whole design is avoiding.
+    ``subjects`` is the batch in the order it was rendered, so ``subjects[0]``
+    is the subject of id 1. **An entry must echo the subject its id was shown
+    against**, or it is dropped.
+
+    That is not a filter -- it is the only thing binding a restatement to the
+    call it is about. Position alone is not: asked to "restate" a list, a
+    model may perfectly reasonably return its entries re-sorted by its new
+    confidence and renumbered 1..n. Read back by id, that writes each row with
+    another subject's confidence and a REASONING paragraph naming another
+    subject's classification -- every row still written, nothing dropped,
+    nothing detectably wrong downstream. Mislabelled, silently.
+
+    Anything malformed or mismatched is simply absent from the returned map,
+    and an absent id means the caller keeps that verdict exactly as generation
+    left it -- which is the only safe degradation, and costs nothing: a parser
+    that invented a number, or that trusted a position, would be the
+    mechanical discount (or the silent mislabelling) this design avoids.
     """
+    expected = {index: subject_key(subject) for index, subject in enumerate(subjects, 1)}
+    count = len(subjects)
     payload = extract_json_object(text)
     raw = payload.get("weighings")
     if raw is None:
@@ -286,6 +365,13 @@ def parse_weighings(text: str, *, count: int) -> dict[int, Weighing]:
         except (TypeError, ValueError):
             continue
         if not 1 <= index <= count or index in out:
+            continue
+        subject = entry.get("subject")
+        if not isinstance(subject, str) or subject_key(subject) != expected[index]:
+            # The restatement does not say which call it is about, or says a
+            # different one. Keep generation's own number for this id rather
+            # than binding a number to a subject on the strength of where it
+            # happened to sit in the list.
             continue
         confidence = _confidence(entry.get("confidence"))
         reasoning = entry.get("reasoning")
