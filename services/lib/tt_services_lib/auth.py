@@ -335,11 +335,17 @@ def require_caller_dependency(
                     audience=audience,
                     verify=verify_token,
                 )
-            return verify_oidc_token(
-                bearer_token(request.headers.get(AUTHORIZATION_HEADER)),
-                audience=audience,
-                verify=verify_token,
-            )
+            if mode == AUTH_MODE_OIDC:
+                return verify_oidc_token(
+                    bearer_token(request.headers.get(AUTHORIZATION_HEADER)),
+                    audience=audience,
+                    verify=verify_token,
+                )
+            # Unreachable today -- `mode` was checked against AUTH_MODES at
+            # construction. Spelled out anyway so that adding a third mode to
+            # AUTH_MODES without a branch here fails CLOSED (401) instead of
+            # silently being handled as OIDC, which an `else` would have done.
+            raise AuthError(f"auth mode {mode!r} has no verification path")
         except AuthError as err:
             raise HTTPException(status_code=401, detail=str(err)) from err
 

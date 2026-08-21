@@ -393,3 +393,19 @@ def test_each_mode_defaults_to_its_own_real_verifier():
 
     assert _DEFAULT_VERIFIERS[AUTH_MODE_OIDC] is google_oidc_verifier
     assert _DEFAULT_VERIFIERS[AUTH_MODE_IAP] is google_iap_verifier
+
+
+def test_an_unhandled_future_auth_mode_fails_closed(monkeypatch):
+    # The mode switch inside the dependency is `if IAP ... if OIDC ... raise`,
+    # not `if IAP ... else`. If a third mode is ever added to AUTH_MODES
+    # without a branch, it must 401 rather than being silently verified as a
+    # Cloud Run IAM bearer token, which is what the `else` form did.
+    monkeypatch.setattr(
+        "tt_services_lib.auth.AUTH_MODES", (AUTH_MODE_OIDC, AUTH_MODE_IAP, "future")
+    )
+    dependency = require_caller_dependency(SERVICE_URL, mode="future", verify=_ok_oidc_verifier)
+
+    with pytest.raises(HTTPException) as exc_info:
+        dependency(_FakeRequest(authorization="Bearer good-token"))
+
+    assert exc_info.value.status_code == 401

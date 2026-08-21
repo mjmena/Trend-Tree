@@ -162,3 +162,29 @@ def test_drop_survives_a_connection_that_fails_to_close():
     client = _client(conn, max_attempts=3)
 
     assert client.query("SELECT 1") == [{"X": 1}]
+
+
+def test_a_negative_rowcount_is_reported_as_zero_not_minus_one():
+    # DB-API leaves rowcount at -1 when a statement has no meaningful
+    # affected-row count. Passing that straight through made `execute` return
+    # -1 as "rows written", which routes reading `rows_written > 0` would
+    # report as "not written" -- a worse answer than "unknown".
+    conn = FakeConnection(outcomes=[([], -1)])
+    client = _client(conn)
+
+    assert client.execute("MERGE INTO t ...") == 0
+
+
+def test_a_none_rowcount_is_reported_as_zero():
+    conn = FakeConnection(outcomes=[([], None)])
+    client = _client(conn)
+
+    assert client.execute("MERGE INTO t ...") == 0
+
+
+def test_a_zero_rowcount_is_preserved():
+    # 0 is meaningful, not missing: a MERGE that matched an existing row.
+    conn = FakeConnection(outcomes=[([], 0)])
+    client = _client(conn)
+
+    assert client.execute("MERGE INTO t ...") == 0

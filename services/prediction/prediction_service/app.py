@@ -4,8 +4,8 @@ drive the service over httpx with no server, no network, and no warehouse."""
 
 from __future__ import annotations
 
-from fastapi import FastAPI
-from tt_services_lib.auth import TokenVerifier, require_caller_dependency
+from fastapi import Depends, FastAPI
+from tt_services_lib.auth import CallerIdentity, TokenVerifier, require_caller_dependency
 from tt_services_lib.snowflake_client import SnowflakeClient
 
 from .config import ConfigError, Settings
@@ -61,5 +61,28 @@ def create_app(
         )
     except ValueError as err:
         raise ConfigError(str(err)) from err
+    # The authenticated no-op. /health is unauthenticated by design, so it
+    # proves only that the edge passed a token and the process is up -- it
+    # never runs verify_oidc_token / verify_iap_assertion. A revision whose
+    # audience has the wrong SHAPE for its auth mode (a partly-applied
+    # deploy, or a manual `gcloud run services update --update-env-vars`)
+    # therefore answers /health with 200 while 401-ing every real call.
+    #
+    # This route exists so the deploy gate can exercise the container's own
+    # auth code without side effects: /run appends a real verdict-ledger row,
+    # and a promote gate must not write rows on every deploy. It returns only
+    # what the caller already proved about itself -- no secrets, and nothing
+    # a caller who cleared require_caller does not already know.
+    def whoami(
+        caller: CallerIdentity = Depends(require_caller),  # noqa: B008 - FastAPI's own DI pattern
+    ) -> dict[str, str]:
+        return {
+            "caller": caller.email,
+            "audience": caller.audience,
+            "auth_mode": settings.auth_mode,
+        }
+
+    app.get("/whoami")(whoami)
+
     app.include_router(run_router(settings, snowflake, require_caller))
     return app

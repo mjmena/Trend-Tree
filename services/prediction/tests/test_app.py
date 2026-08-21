@@ -279,6 +279,143 @@ def test_run_returns_502_when_the_ledger_write_fails():
     assert "verdict write failed" in resp.json()["detail"]
 
 
+def test_the_502_body_does_not_echo_the_driver_error():
+    # A Snowflake ProgrammingError's text can carry the rendered statement,
+    # and pyformat binding puts the parameter VALUES in that statement. The
+    # detail belongs in the log, not in an HTTP response body.
+    leaky = RuntimeError(
+        "002003 (42S02): SQL compilation error: MERGE INTO ... VALUES "
+        "('caller-supplied-secret', 'rucking vests')"
+    )
+    client = _client(FakeSnowflake(fail_with=leaky))
+
+    resp = client.post("/run", json={}, headers=_auth_headers("good"))
+
+    detail = resp.json()["detail"]
+    assert resp.status_code == 502
+    assert "caller-supplied-secret" not in detail
+    assert "SQL compilation error" not in detail
+    assert "MERGE INTO" not in detail
+
+
+# --- /whoami: the authenticated no-op the deploy gate probes ---------------
+#
+# /health is unauthenticated at the app level on purpose, so it never runs the
+# container's own token verification. Without this route the deploy gate could
+# only prove "the edge passed my token and the process is up" -- a revision
+# whose audience does not match its auth mode clears that and 401s every real
+# call. /whoami is behind require_caller and writes nothing, so the gate can
+# exercise the auth path on every deploy without appending a ledger row.
+
+
+def test_whoami_requires_a_caller():
+    client = _client(FakeSnowflake())
+
+    assert client.get("/whoami").status_code == 401
+
+
+def test_whoami_rejects_a_token_the_verifier_refuses():
+    client = _client(FakeSnowflake(), verify=_fake_verify_reject)
+
+    assert client.get("/whoami", headers=_auth_headers("bad")).status_code == 401
+
+
+def test_whoami_returns_the_verified_caller_identity():
+    client = _client(FakeSnowflake())
+
+    resp = client.get("/whoami", headers=_auth_headers("good"))
+
+    assert resp.status_code == 200
+    assert resp.json() == {
+        "caller": "caller@x.iam.gserviceaccount.com",
+        "audience": SERVICE_URL,
+        "auth_mode": AUTH_MODE_OIDC,
+    }
+
+
+def test_whoami_writes_nothing():
+    # The whole reason the gate probes this route and not /run.
+    snowflake = FakeSnowflake()
+    client = _client(snowflake)
+
+    client.get("/whoami", headers=_auth_headers("good"))
+
+    assert snowflake.calls == []
+
+
+def test_whoami_works_in_iap_mode_too():
+    client = _client(FakeSnowflake(), mode=AUTH_MODE_IAP)
+
+    resp = client.get("/whoami", headers=_iap_headers("good"))
+
+    assert resp.status_code == 200
+    assert resp.json()["auth_mode"] == AUTH_MODE_IAP
+    assert resp.json()["audience"] == IAP_AUDIENCE
+
+
+# --- caller-supplied idempotency key ---------------------------------------
+
+
+def test_a_caller_supplied_eval_id_is_used_as_the_merge_key():
+    # CRMA-766 puts a Cloud Scheduler cron with automatic retries in front of
+    # /run. Without a caller-supplied key, an HTTP-level retry mints a fresh
+    # eval id and lands a SECOND verdict row -- the in-process MERGE dedupe
+    # only covers retries inside one snowflake.execute call.
+    snowflake = FakeSnowflake()
+    client = _client(snowflake)
+
+    resp = client.post(
+        "/run",
+        json={"prediction_eval_id": "scheduler-exec-1234"},
+        headers=_auth_headers("good"),
+    )
+
+    assert resp.status_code == 200
+    assert resp.json()["prediction_eval_id"] == "scheduler-exec-1234"
+    assert snowflake.last.params["prediction_eval_id"] == "scheduler-exec-1234"
+
+
+def test_two_posts_with_the_same_eval_id_target_the_same_ledger_row():
+    snowflake = FakeSnowflake()
+    client = _client(snowflake)
+
+    for _ in range(2):
+        client.post(
+            "/run",
+            json={"prediction_eval_id": "scheduler-exec-1234"},
+            headers=_auth_headers("good"),
+        )
+
+    keys = [call.params["prediction_eval_id"] for call in snowflake.calls]
+    assert keys == ["scheduler-exec-1234", "scheduler-exec-1234"]
+
+
+def test_an_omitted_eval_id_still_mints_a_fresh_one_per_post():
+    # The default stays "each POST is a new verdict" -- a manual fire must not
+    # collapse into a previous run's row.
+    snowflake = FakeSnowflake()
+    client = _client(snowflake)
+
+    first = client.post("/run", json={}, headers=_auth_headers("good")).json()
+    second = client.post("/run", json={}, headers=_auth_headers("good")).json()
+
+    assert first["prediction_eval_id"] != second["prediction_eval_id"]
+
+
+def test_an_over_long_eval_id_is_rejected_before_the_warehouse():
+    snowflake = FakeSnowflake()
+    client = _client(snowflake)
+
+    resp = client.post(
+        "/run",
+        json={"prediction_eval_id": "x" * 65},
+        headers=_auth_headers("good"),
+    )
+
+    assert resp.status_code == 422
+    assert snowflake.calls == []
+
+
 def test_run_rejects_an_over_long_reasoning_before_the_warehouse():
     # 4001 chars against REASONING VARCHAR(4000): a client-side rejection, not
     # a Snowflake "String is too long" surfacing as a 500.

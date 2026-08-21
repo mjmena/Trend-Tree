@@ -85,7 +85,13 @@ def test_a_blank_auth_mode_is_treated_as_unset():
 
 
 def test_auth_mode_is_case_and_whitespace_insensitive():
-    env = dict(_SERVER_ENV, PREDICTION_SERVICE_AUTH_MODE=" IAP ")
+    # IAP-shaped audience alongside the IAP mode -- the two travel together;
+    # see test_an_audience_of_the_wrong_shape_for_the_mode_is_refused.
+    env = dict(
+        _SERVER_ENV,
+        PREDICTION_SERVICE_AUTH_MODE=" IAP ",
+        PREDICTION_SERVICE_AUDIENCE=IAP_AUDIENCE,
+    )
     settings = settings_from_env(env)
     assert settings.auth_mode == AUTH_MODE_IAP
     settings.validate_for_server()
@@ -122,3 +128,82 @@ def test_the_empty_audience_message_names_the_shape_the_mode_needs():
     assert "/projects/{PROJECT_NUMBER}/locations/{REGION}/services/{SERVICE}" in str(
         exc_info.value
     )
+
+
+# --- audience shape vs. mode ----------------------------------------------
+#
+# The pairing is the point: the two audience shapes are not interchangeable,
+# and getting them crossed is *invisible* from outside. The container boots,
+# the edge still rejects unauthenticated callers exactly as it should, an
+# authenticated probe of the unauthenticated /health still returns 200 -- and
+# every real call 401s. A half-applied deploy or a hand-run
+# `gcloud run services update --update-env-vars` produces precisely this.
+
+
+def test_an_iap_shaped_audience_under_oidc_mode_is_refused():
+    env = dict(_SERVER_ENV, PREDICTION_SERVICE_AUDIENCE=IAP_AUDIENCE)  # mode defaults to oidc
+
+    with pytest.raises(ConfigError) as exc_info:
+        settings_from_env(env).validate_for_server()
+
+    message = str(exc_info.value)
+    assert "not the shape" in message
+    assert "'https://'" in message
+
+
+def test_a_url_shaped_audience_under_iap_mode_is_refused():
+    env = dict(_SERVER_ENV, PREDICTION_SERVICE_AUTH_MODE=AUTH_MODE_IAP)  # audience is the URL
+
+    with pytest.raises(ConfigError) as exc_info:
+        settings_from_env(env).validate_for_server()
+
+    message = str(exc_info.value)
+    assert "not the shape" in message
+    assert "'/projects/'" in message
+
+
+def test_a_matching_shape_passes_in_both_modes():
+    settings_from_env(_SERVER_ENV).validate_for_server()
+    settings_from_env(
+        dict(
+            _SERVER_ENV,
+            PREDICTION_SERVICE_AUTH_MODE=AUTH_MODE_IAP,
+            PREDICTION_SERVICE_AUDIENCE=IAP_AUDIENCE,
+        )
+    ).validate_for_server()
+
+
+def test_an_http_only_audience_is_refused_under_oidc():
+    # Cloud Run URLs are https; an http:// audience is a typo, and one that
+    # would make every token's `aud` comparison fail.
+    env = dict(_SERVER_ENV, PREDICTION_SERVICE_AUDIENCE="http://trend-tree-prediction.a.run.app")
+
+    with pytest.raises(ConfigError, match="not the shape"):
+        settings_from_env(env).validate_for_server()
+
+
+def test_an_unknown_mode_does_not_also_report_a_shape_problem():
+    # One actionable error, not two: with the mode itself unrecognized there
+    # is no shape to check the audience against.
+    env = dict(_SERVER_ENV, PREDICTION_SERVICE_AUTH_MODE="oid")
+
+    with pytest.raises(ConfigError) as exc_info:
+        settings_from_env(env).validate_for_server()
+
+    message = str(exc_info.value)
+    assert "PREDICTION_SERVICE_AUTH_MODE is 'oid'" in message
+    assert "not the shape" not in message
+
+
+# --- PORT ------------------------------------------------------------------
+
+
+def test_a_non_numeric_port_is_a_config_error():
+    # Not a bare ValueError: every other bad setting in this module surfaces
+    # as ConfigError, and server.py's startup path reports that shape.
+    with pytest.raises(ConfigError, match="PORT is 'eighty-eighty'"):
+        settings_from_env(dict(_SERVER_ENV, PORT="eighty-eighty"))
+
+
+def test_a_numeric_port_is_parsed():
+    assert settings_from_env(dict(_SERVER_ENV, PORT="9090")).port == 9090

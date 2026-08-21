@@ -221,7 +221,15 @@ class RetryingSnowflakeClient:
         with conn.cursor(snowflake.connector.DictCursor) as cursor:
             cursor.execute(sql, dict(params) if params else None)
             rows = cursor.fetchall() if cursor.description else []
-            return list(rows), cursor.rowcount or 0
+            # DB-API leaves rowcount at -1 (and the connector at None) when the
+            # statement has no meaningful affected-row count. Callers read this
+            # as "rows written", where a negative number is worse than useless
+            # -- routes/run.py's `written = rows_written > 0` would report a
+            # -1 as "not written" while the SQL may well have written a row.
+            # Clamp anything that is not a non-negative int to 0.
+            rowcount = cursor.rowcount
+            affected = rowcount if isinstance(rowcount, int) and rowcount > 0 else 0
+            return list(rows), affected
 
     def _before_sleep(self, retry_state: Any) -> None:
         exc = retry_state.outcome.exception() if retry_state.outcome else None

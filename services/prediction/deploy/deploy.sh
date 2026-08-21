@@ -50,7 +50,11 @@
 #   * `gcloud run deploy --no-traffic` is rejected when creating a brand-new
 #     service (there is no prior revision to protect) -- on a first-ever deploy
 #     this script creates the service without --no-traffic, then falls through
-#     to the normal dark-deploy flow for every step after.
+#     to the normal dark-deploy flow for every step after. That branch is
+#     taken ONLY when gcloud authoritatively reports the service missing; if
+#     the describe call merely FAILS, the deploy aborts rather than guessing
+#     (see deploy/lib.sh -- running the bootstrap branch against an existing,
+#     serving service would promote an unprobed revision to 100% traffic).
 #   * in `oidc` mode the audience IS the service URL, which does not exist
 #     until the service does. The bootstrap revision therefore gets a
 #     deliberately unmatchable placeholder audience (it fails CLOSED -- every
@@ -58,7 +62,7 @@
 #     deploy, one step later, carries the real URL. `iap` mode has no such
 #     dance: its audience is static and known before any deploy exists.
 #
-# The smoke test is TWO probes, and both must pass before any promote:
+# The smoke test is THREE probes, and all three must pass before any promote:
 #
 #   1. Unauthenticated GET of the candidate's /health must be REJECTED at the
 #      edge -- 403 under Cloud Run IAM, 401 under IAP (CRMA-762 AC4; matches
@@ -66,20 +70,27 @@
 #      the authorization layer is not bound and the gate fails.
 #   2. Authenticated GET of the *same* candidate-tagged /health must return
 #      200 with {"ok":true} from the container itself.
+#   3. Authenticated GET of the candidate's /whoami -- the only probe that
+#      runs the container's own token verification, because /health is
+#      deliberately registered without the require_caller dependency. A
+#      revision whose PREDICTION_SERVICE_AUDIENCE has the wrong shape for its
+#      AUTH_MODE passes probes 1 and 2 and 401s every real call; only this
+#      one catches it. /whoami is a side-effect-free no-op route on purpose:
+#      /run would append a real verdict-ledger row on every deploy.
 #
-# Both probes hit /health, NOT the conventional /healthz: Google's edge
+# The health probes hit /health, NOT the conventional /healthz: Google's edge
 # intercepts the exact path `/healthz` on *.run.app hostnames and returns its
 # own generic 404 before the request reaches Cloud Run or IAP (measured
-# 2026-08-21). On /healthz both probes fail for a reason that has nothing to
+# 2026-08-21). On /healthz both of them fail for a reason that has nothing to
 # do with the candidate revision's health. Leave these on /health.
 #
 # Probe 1 alone has no discriminating power over the revision: the edge
 # rejects before the request ever reaches a revision, so a revision that 500s
 # on every single request produces the identical rejection as a healthy one --
-# and the old gate then promoted it. Only probe 2 actually reaches the
-# candidate's container.
+# and the old gate then promoted it. Only probes 2 and 3 actually reach the
+# candidate's container, and only probe 3 reaches its auth code.
 #
-# Probe 2 needs a caller identity token. If one cannot be obtained, or the
+# Probes 2 and 3 need a caller identity token. If one cannot be obtained, or the
 # probe cannot be made for any other reason, this script EXITS NON-ZERO and
 # does not promote. "Couldn't check" must never read as "passed" -- that is
 # the exact failure mode being fixed here.
@@ -128,6 +139,9 @@ SVC_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 log() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
 
+# shellcheck source=lib.sh
+source "$(dirname "$0")/lib.sh"
+
 BUILD=1
 PROMOTE=1
 AUTH_MODE="${PREDICTION_AUTH_MODE:-oidc}"
@@ -153,10 +167,14 @@ esac
 CTX=""
 ENV_FILE=""
 AUTH_HEADER_FILE=""
+SMOKE_BODY=""
+TOKEN_ERR=""
 cleanup() {
   [[ -n "$CTX" ]] && rm -rf "$CTX"
   [[ -n "$ENV_FILE" ]] && rm -f "$ENV_FILE"
   [[ -n "$AUTH_HEADER_FILE" ]] && rm -f "$AUTH_HEADER_FILE"
+  [[ -n "$SMOKE_BODY" ]] && rm -f "$SMOKE_BODY"
+  [[ -n "$TOKEN_ERR" ]] && rm -f "$TOKEN_ERR"
   return 0
 }
 trap cleanup EXIT
@@ -202,9 +220,21 @@ fi
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
 IAP_AUDIENCE="/projects/${PROJECT_NUMBER}/locations/${REGION}/services/${SERVICE}"
 
-service_url() {
-  gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT" \
-    --format 'value(status.url)' 2>/dev/null || true
+# Sets $URL to the service's URL, or to empty if the service genuinely does
+# not exist yet -- and ABORTS the deploy if gcloud could not answer the
+# question at all. See deploy/lib.sh: "couldn't check" must never read as
+# "does not exist", because the not-exist branch below deploys WITHOUT
+# --no-traffic and (in oidc mode) with an unmatchable bootstrap audience.
+#
+# Assigns rather than echoing, deliberately: `URL="$(service_url)"` would run
+# the abort inside a command substitution, where `exit 1` only leaves the
+# subshell and the caller sails on with an empty URL -- reproducing the exact
+# bug this guards against.
+set_service_url() {
+  if ! URL="$(resolve_service_url "$SERVICE" "$REGION" "$PROJECT")"; then
+    echo "Aborting: could not determine whether ${SERVICE} exists in ${PROJECT}/${REGION} (gcloud's error is above). Refusing to guess -- treating a failed describe as 'the service does not exist' would deploy an unprobed revision straight to 100% traffic on an existing, healthy service." >&2
+    exit 1
+  fi
 }
 
 ENV_FILE="$(mktemp -t trend-tree-prediction-env.XXXXXX.yaml)"
@@ -247,7 +277,8 @@ deploy_step() {
     --env-vars-file "$ENV_FILE"
 }
 
-URL="$(service_url)"
+URL=""
+set_service_url
 
 # The audience the container will verify incoming tokens against.
 if [[ "$AUTH_MODE" == "iap" ]]; then
@@ -265,7 +296,7 @@ if [[ -z "$URL" ]]; then
   fi
   write_env_file "$AUDIENCE"
   deploy_step ""
-  URL="$(service_url)"
+  set_service_url
   if [[ -z "$URL" ]]; then
     echo "Bootstrap deploy reported success but the service has no URL. Not continuing." >&2
     exit 1
@@ -280,7 +311,14 @@ deploy_step "--no-traffic"
 
 CANDIDATE_URL="https://candidate---$(echo "$URL" | sed 's#https://##')"
 
-SMOKE_BODY=/tmp/trend-tree-prediction-smoke.json
+# mktemp, not a fixed /tmp path: `curl -o` follows an existing symlink, so a
+# predictable name is a local user's lever to have this script overwrite a
+# file of their choosing. Registered in cleanup() above like every other temp.
+SMOKE_BODY="$(mktemp -t trend-tree-prediction-smoke.XXXXXX)"
+# probe_body_reset -- empty the shared body file before each curl, so a
+# transport failure (curl writes nothing) shows an empty response rather than
+# the *previous* probe's body, which reads as a wildly misleading diagnostic.
+probe_body_reset() { : > "$SMOKE_BODY"; }
 
 if [[ "$AUTH_MODE" == "iap" ]]; then
   REJECT_CODES="401"
@@ -292,9 +330,10 @@ else
   REJECT_CODES="401|403"
 fi
 
-log "Probe 1/2: ${CANDIDATE_URL}/health unauthenticated (expect ${REJECT_CODES} from the edge)..."
+log "Probe 1/3: ${CANDIDATE_URL}/health unauthenticated (expect ${REJECT_CODES} from the edge)..."
 # `|| echo 000` so a curl-level failure reports as a failed gate rather than
 # tripping `set -e` with no explanation.
+probe_body_reset
 HTTP_CODE=$(curl -sS -o "$SMOKE_BODY" -w '%{http_code}' "${CANDIDATE_URL}/health" || echo "000")
 if [[ ! "$HTTP_CODE" =~ ^(${REJECT_CODES})$ ]]; then
   echo "Smoke test FAILED: expected ${REJECT_CODES} from the edge, got HTTP ${HTTP_CODE}. Not promoting; candidate stays at 0% traffic. Response:" >&2
@@ -305,12 +344,12 @@ if [[ ! "$HTTP_CODE" =~ ^(${REJECT_CODES})$ ]]; then
   fi
   exit 1
 fi
-log "Probe 1/2 passed: the edge rejects an unauthenticated request (${HTTP_CODE})."
+log "Probe 1/3 passed: the edge rejects an unauthenticated request (${HTTP_CODE})."
 
 # Probe 2 is the one with discriminating power: it reaches the candidate
 # revision's own container. Failing to obtain a token is a FAILURE, not a
 # skip -- an unverifiable revision must never be promoted.
-log "Probe 2/2: ${CANDIDATE_URL}/health authenticated (expect 200 from the candidate revision)..."
+log "Probe 2/3: ${CANDIDATE_URL}/health authenticated (expect 200 from the candidate revision)..."
 PRESET_ID_TOKEN="${PROBE_ID_TOKEN:-${IAP_ID_TOKEN:-}}"
 # In oidc mode the token's audience must be exactly what the container checks
 # (PREDICTION_SERVICE_AUDIENCE = the service URL). In iap mode, gcloud's
@@ -324,7 +363,7 @@ if [[ -n "$PRESET_ID_TOKEN" ]]; then
   ID_TOKEN="$PRESET_ID_TOKEN"
   log "  (using the identity token from \$PROBE_ID_TOKEN/\$IAP_ID_TOKEN)"
 else
-  TOKEN_ERR="$(mktemp -t trend-tree-prediction-token.XXXXXX)"
+  TOKEN_ERR="$(mktemp -t trend-tree-prediction-token.XXXXXX)"  # in cleanup()
   if [[ -n "$TOKEN_AUDIENCE" ]]; then
     ID_TOKEN="$(gcloud auth print-identity-token --audiences="$TOKEN_AUDIENCE" 2>"$TOKEN_ERR" || true)"
   else
@@ -335,9 +374,11 @@ else
     cat "$TOKEN_ERR" >&2
     echo "Fix by granting this identity the caller role (see the end of this script), setting PROBE_TOKEN_AUDIENCE, or passing a pre-minted token in PROBE_ID_TOKEN." >&2
     rm -f "$TOKEN_ERR"
+    TOKEN_ERR=""
     exit 1
   fi
   rm -f "$TOKEN_ERR"
+  TOKEN_ERR=""
 fi
 
 # Header from a 0600 file rather than an argv element -- same `ps` exposure
@@ -346,9 +387,8 @@ AUTH_HEADER_FILE="$(mktemp -t trend-tree-prediction-hdr.XXXXXX)"
 chmod 600 "$AUTH_HEADER_FILE"
 printf 'Authorization: Bearer %s\n' "$ID_TOKEN" > "$AUTH_HEADER_FILE"
 
+probe_body_reset
 AUTH_CODE=$(curl -sS -o "$SMOKE_BODY" -w '%{http_code}' -H @"$AUTH_HEADER_FILE" "${CANDIDATE_URL}/health" || echo "000")
-rm -f "$AUTH_HEADER_FILE"
-AUTH_HEADER_FILE=""
 
 if [[ "$AUTH_CODE" != "200" ]]; then
   echo "Smoke test FAILED: authenticated probe of the candidate revision returned HTTP ${AUTH_CODE}, expected 200. Not promoting; candidate stays at 0% traffic. Response:" >&2
@@ -358,17 +398,50 @@ if [[ "$AUTH_CODE" != "200" ]]; then
     echo "  401/403 -> the calling identity lacks roles/iap.httpsResourceAccessor, or the token audience is wrong (set PROBE_TOKEN_AUDIENCE / PROBE_ID_TOKEN)." >&2
   else
     echo "  403 -> the calling identity lacks roles/run.invoker on ${SERVICE}." >&2
-    echo "  401 -> the token reached the container but failed its own check: its aud must be exactly '${AUDIENCE}' (PREDICTION_SERVICE_AUDIENCE) and its iss https://accounts.google.com. Override with PROBE_TOKEN_AUDIENCE / PROBE_ID_TOKEN." >&2
+    echo "  401 -> the EDGE rejected the token (this route has no container-side auth check -- that is probe 3): check its aud and that its iss is https://accounts.google.com. Override with PROBE_TOKEN_AUDIENCE / PROBE_ID_TOKEN." >&2
   fi
   echo "  5xx/000 -> the candidate revision itself is unhealthy. Check: gcloud run services logs read ${SERVICE} --region ${REGION} --project ${PROJECT}" >&2
   exit 1
 fi
-if ! grep -q '"ok"' "$SMOKE_BODY"; then
+if ! grep -qE '"ok"[[:space:]]*:[[:space:]]*true' "$SMOKE_BODY"; then
   echo "Smoke test FAILED: authenticated probe returned 200 but not the expected /health body. Not promoting. Response:" >&2
   cat "$SMOKE_BODY" >&2
   exit 1
 fi
-log "Probe 2/2 passed: the candidate revision itself answers /health with 200."
+log "Probe 2/3 passed: the candidate revision itself answers /health with 200."
+
+# Probe 3 is the only one that runs the container's OWN auth code. /health is
+# deliberately registered without the require_caller dependency, so probes 1
+# and 2 together prove "the edge let my token through and the process is up"
+# -- and nothing about whether verify_oidc_token/verify_iap_assertion inside
+# the container agree with the edge. A revision carrying an audience of the
+# wrong SHAPE for its AUTH_MODE (a partly-applied deploy, or a manual
+# `gcloud run services update --update-env-vars`) passes both and then 401s
+# every real call, while looking correctly locked down from outside.
+#
+# /whoami, not /run: /run appends a real row to FCT_PREDICTION_VERDICT_LEDGER,
+# and a deploy gate must not write ledger rows on every deploy. /whoami sits
+# behind the same require_caller dependency and does nothing else.
+log "Probe 3/3: ${CANDIDATE_URL}/whoami authenticated (expect 200 -- the container's own auth check)..."
+probe_body_reset
+WHOAMI_CODE=$(curl -sS -o "$SMOKE_BODY" -w '%{http_code}' -H @"$AUTH_HEADER_FILE" "${CANDIDATE_URL}/whoami" || echo "000")
+rm -f "$AUTH_HEADER_FILE"
+AUTH_HEADER_FILE=""
+
+if [[ "$WHOAMI_CODE" != "200" ]]; then
+  echo "Smoke test FAILED: authenticated probe of ${CANDIDATE_URL}/whoami returned HTTP ${WHOAMI_CODE}, expected 200. Not promoting; candidate stays at 0% traffic. Response:" >&2
+  cat "$SMOKE_BODY" >&2
+  echo >&2
+  echo "  401 here while /health returned 200 means the EDGE accepted the token but the CONTAINER rejected it -- almost always PREDICTION_SERVICE_AUDIENCE not matching AUTH_MODE=${AUTH_MODE}. This revision would 401 every real /run call. Expected audience for this mode: '${AUDIENCE}'." >&2
+  echo "  404 means the candidate revision predates /whoami; redeploy from a build that includes it." >&2
+  exit 1
+fi
+if ! grep -q '"caller"' "$SMOKE_BODY"; then
+  echo "Smoke test FAILED: /whoami returned 200 but not the expected identity body. Not promoting. Response:" >&2
+  cat "$SMOKE_BODY" >&2
+  exit 1
+fi
+log "Probe 3/3 passed: the container verified the caller itself ($(cat "$SMOKE_BODY"))."
 
 if [[ "$PROMOTE" == "1" ]]; then
   log "Promoting candidate to 100% traffic..."

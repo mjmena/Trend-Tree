@@ -24,7 +24,23 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from tt_services_lib.auth import AUTH_MODE_IAP, AUTH_MODES, DEFAULT_AUTH_MODE
+from tt_services_lib.auth import (
+    AUTH_MODE_IAP,
+    AUTH_MODE_OIDC,
+    AUTH_MODES,
+    DEFAULT_AUTH_MODE,
+)
+
+# The prefix an audience must carry in each mode. The two shapes are not
+# interchangeable: an OIDC token's `aud` is this service's URL, an IAP
+# assertion's is the `/projects/{NUM}/locations/{REGION}/services/{SVC}`
+# string. Pairing one mode with the other's audience produces a container
+# that boots, answers the unauthenticated /health probe exactly like a
+# healthy one, and 401s every real call -- see validate_for_server.
+_AUDIENCE_PREFIXES: dict[str, str] = {
+    AUTH_MODE_OIDC: "https://",
+    AUTH_MODE_IAP: "/projects/",
+}
 
 
 class ConfigError(RuntimeError):
@@ -88,6 +104,14 @@ class Settings:
           identical from the edge to one that is correctly locked down. An
           unrecognized ``auth_mode`` is the same class of problem, and is
           refused here rather than at the first request.
+        * an ``audience`` of the wrong *shape* for the mode fails exactly the
+          same way, and is the more likely accident: a half-applied deploy or
+          a hand-run ``gcloud run services update --update-env-vars`` can pair
+          ``auth_mode=oidc`` with an IAP-shaped audience. Nothing downstream
+          notices -- the container boots, the unauthenticated health probe is
+          rejected at the edge as usual, the authenticated one returns 200 --
+          and every real call 401s while the service looks correctly locked
+          down from outside.
         * with no key material the Snowflake client falls through to
           ``externalbrowser``, which in a container blocks for ~120s waiting
           for a browser that will never open, and then errors -- per request.
@@ -96,16 +120,29 @@ class Settings:
         non-server caller still build Settings freely.
         """
         problems: list[str] = []
-        if self.auth_mode not in AUTH_MODES:
+        mode_known = self.auth_mode in AUTH_MODES
+        if not mode_known:
             problems.append(
                 f"PREDICTION_SERVICE_AUTH_MODE is {self.auth_mode!r}, not one of "
                 f"{list(AUTH_MODES)}. Leave it unset for {DEFAULT_AUTH_MODE!r} (Cloud Run IAM)."
             )
-        if not self.audience.strip():
+        audience = self.audience.strip()
+        if not audience:
             problems.append(
                 "PREDICTION_SERVICE_AUDIENCE is empty -- every token would fail its audience "
                 "check and every request would 401. Set it to "
                 f"{self.expected_audience_shape()} (deploy/deploy.sh does this)."
+            )
+        elif mode_known and not audience.startswith(_AUDIENCE_PREFIXES[self.auth_mode]):
+            # Shape only, not identity: whether the URL is *this* service's is
+            # not knowable from inside the container. This catches the
+            # mode/audience mismatch, which is the failure that hides.
+            problems.append(
+                f"PREDICTION_SERVICE_AUDIENCE is {self.audience!r}, which is not the shape "
+                f"PREDICTION_SERVICE_AUTH_MODE={self.auth_mode!r} needs (expected it to start "
+                f"with {_AUDIENCE_PREFIXES[self.auth_mode]!r} -- "
+                f"{self.expected_audience_shape()}). Every request would 401 while the "
+                "service looked locked down from outside."
             )
         if not (self.snowflake.private_key or self.snowflake.private_key_path):
             problems.append(
@@ -116,6 +153,15 @@ class Settings:
             )
         if problems:
             raise ConfigError("refusing to start: " + "; ".join(problems))
+
+
+def _port(raw: str) -> int:
+    """A non-numeric PORT is a config problem like any other, so it surfaces
+    as ConfigError rather than a bare ValueError from int()."""
+    try:
+        return int(raw)
+    except ValueError as err:
+        raise ConfigError(f"PORT is {raw!r}, which is not an integer") from err
 
 
 def settings_from_env(env: Mapping[str, str] | None = None) -> Settings:
@@ -132,7 +178,7 @@ def settings_from_env(env: Mapping[str, str] | None = None) -> Settings:
             private_key_path=e.get("PREDICTION_SNOWFLAKE_PRIVATE_KEY_PATH", ""),
             private_key=e.get("PREDICTION_SNOWFLAKE_PRIVATE_KEY", ""),
         ),
-        port=int(e.get("PORT", "8080")),
+        port=_port(e.get("PORT", "8080")),
         # Unset or blank means the deployed posture (Cloud Run IAM). A value
         # that is set but unrecognized is kept verbatim so validate_for_server
         # can refuse it -- a typo must not silently fall back to a default.

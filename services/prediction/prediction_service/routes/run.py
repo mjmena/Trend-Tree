@@ -70,12 +70,28 @@ class RunRequest(BaseModel):
     )
     confidence: float = Field(default=40.0, ge=0, le=100)
     reasoning: str = Field(default=_DEFAULT_REASONING, max_length=MAX_LENGTHS["reasoning"])
+    prediction_eval_id: str | None = Field(
+        default=None,
+        max_length=MAX_LENGTHS["prediction_eval_id"],
+        description=(
+            "Idempotency key for this write: the ledger row's own PREDICTION_EVAL_ID. "
+            "Omit and the service mints one, which makes each POST a NEW verdict row -- "
+            "the right default for a manual fire. Supply a stable id (e.g. derived from a "
+            "scheduler job's execution id) and a retry of the SAME logical run is deduplicated "
+            "by the ledger MERGE: the second call returns 200 with rows_written=0 and written="
+            "false instead of appending a duplicate verdict. Without it, idempotency only "
+            "covers retries inside a single request; an HTTP-level retry (Cloud Scheduler's, "
+            "CRMA-766) mints a fresh id and lands a second row."
+        ),
+    )
 
 
 class RunResponse(BaseModel):
     prediction_id: str
-    #: This row's ledger identity -- minted here, not by the warehouse, so the
-    #: write is idempotent under retry (see domain/ledger.py).
+    #: This row's ledger identity -- the caller's, if the request supplied one,
+    #: otherwise minted here. Either way it comes from the client side rather
+    #: than the warehouse, so the write is idempotent under retry (see
+    #: domain/ledger.py).
     prediction_eval_id: str
     chain_id: str
     status: Literal["ACTIVE"]
@@ -124,6 +140,9 @@ def run_router(
                 reasoning=body.reasoning,
                 evidence=dict(_EMPTY_EVIDENCE),
                 chain_id=chain_id,
+                # None -> minted here. A caller-supplied value is what makes an
+                # HTTP-level retry idempotent; see RunRequest.
+                prediction_eval_id=body.prediction_eval_id,
             )
         except InvalidClaim as err:
             raise HTTPException(status_code=400, detail=str(err)) from err
@@ -151,8 +170,17 @@ def run_router(
                 "verdict write failed",
                 extra={"prediction_eval_id": verdict.prediction_eval_id},
             )
+            # Deliberately generic: a Snowflake ProgrammingError's text can
+            # carry the rendered statement, and with pyformat binding that
+            # statement contains the interpolated parameter values. The detail
+            # stays in the log line above (log.exception), which is not
+            # returned to the caller.
             raise HTTPException(
-                status_code=502, detail=f"verdict write failed: {err}"
+                status_code=502,
+                detail=(
+                    "verdict write failed; the ledger write did not complete. "
+                    f"See the service log for prediction_eval_id {verdict.prediction_eval_id}."
+                ),
             ) from err
 
         if rows_written == 0:
