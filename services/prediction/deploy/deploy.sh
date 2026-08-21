@@ -266,10 +266,23 @@ YAML
 # One --update-secrets flag, not two: gcloud treats it as a single dict and a
 # second occurrence replaces the first rather than adding to it.
 GEMINI_SECRET="${PREDICTION_GEMINI_SECRET:-generic-gemini-api-key}"
+# The saturation phase's Exploding Topics key (CRMA-765), bound the same
+# conditional way and for a stronger reason: ET is an ORACLE, not a gate, so a
+# service deployed without the key still writes every verdict it would have
+# written -- each one recording an explicit `not_configured` miss, which the
+# strategy says carries no penalty. Create it when access is provisioned:
+#   gcloud secrets create exploding-topics-api-key --project mcc-crm-automations
+#   printf %s "$KEY" | gcloud secrets versions add exploding-topics-api-key \
+#     --project mcc-crm-automations --data-file=-
+# GDELT needs no credential, so nothing here binds for it.
+ET_SECRET="${PREDICTION_EXPLODING_TOPICS_SECRET:-exploding-topics-api-key}"
 secret_bindings() {
   local bindings="PREDICTION_SNOWFLAKE_PRIVATE_KEY=snowflake-private-key:latest"
   if gcloud secrets describe "$GEMINI_SECRET" --project "$PROJECT" >/dev/null 2>&1; then
     bindings="${bindings},PREDICTION_GEMINI_API_KEY=${GEMINI_SECRET}:latest"
+  fi
+  if gcloud secrets describe "$ET_SECRET" --project "$PROJECT" >/dev/null 2>&1; then
+    bindings="${bindings},PREDICTION_EXPLODING_TOPICS_API_KEY=${ET_SECRET}:latest"
   fi
   printf %s "$bindings"
 }

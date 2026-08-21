@@ -16,6 +16,7 @@ from tt_services_lib.snowflake_client import RetryingSnowflakeClient
 from .app import create_app
 from .config import Settings, settings_from_env
 from .generation.llm import GeminiPredictionLLM, PredictionLLM
+from .saturation import build_saturation_phase
 
 logging.basicConfig(level=logging.INFO)
 
@@ -63,6 +64,11 @@ app = create_app(
     settings=settings,
     snowflake=RetryingSnowflakeClient(settings.snowflake),
     llm=build_llm(settings),
+    # The saturation phase's real Exploding Topics and GDELT adapters
+    # (CRMA-765). Built here rather than inside create_app so that the only
+    # process which reaches the network is the deployed one; every other
+    # caller gets SaturationPhase.offline(), whose misses are explicit.
+    saturation=build_saturation_phase(settings),
 )
 
 

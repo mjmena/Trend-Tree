@@ -279,3 +279,53 @@ def test_a_missing_gemini_key_does_not_stop_the_service_booting():
 
     assert settings.gemini.api_key == ""
     settings.validate_for_server()
+
+
+# --- the saturation phase's settings (CRMA-765) ----------------------------
+
+
+def test_the_saturation_defaults_are_the_documented_ones():
+    saturation = settings_from_env({}).saturation
+
+    assert saturation.exploding_topics_api_key == ""
+    assert saturation.exploding_topics_timeout_s == 20.0
+    assert saturation.gdelt_enabled is True
+    assert saturation.gdelt_window_days == 7
+    assert saturation.gdelt_timeout_s == 25.0
+    assert saturation.min_observation_age_hours == 24.0
+    assert saturation.min_evidence_chars == 120
+
+
+def test_a_missing_exploding_topics_key_is_not_a_refuse_to_boot_condition():
+    # ET is an oracle, not a gate: the PRD calls its access "an assumption
+    # with an owner (a miss is never a penalty)", so a service without the
+    # key still writes every verdict, each recording an explicit miss.
+    settings_from_env(_SERVER_ENV).validate_for_server()
+
+
+def test_the_gdelt_kill_switch_reads_the_usual_falsey_words():
+    for value in ("0", "false", "FALSE", "no", "off", " Off "):
+        assert settings_from_env({"PREDICTION_GDELT_ENABLED": value}).saturation.gdelt_enabled is (
+            False
+        )
+    for value in ("1", "true", "yes", ""):
+        assert settings_from_env(
+            {"PREDICTION_GDELT_ENABLED": value or "1"}
+        ).saturation.gdelt_enabled is True
+
+
+def test_the_floor_thresholds_are_overridable_per_deploy():
+    settings = settings_from_env(
+        {
+            "PREDICTION_FLOOR_MIN_OBSERVATION_AGE_HOURS": "48",
+            "PREDICTION_FLOOR_MIN_EVIDENCE_CHARS": "200",
+        }
+    )
+
+    assert settings.saturation.min_observation_age_hours == 48.0
+    assert settings.saturation.min_evidence_chars == 200
+
+
+def test_a_non_numeric_saturation_setting_names_itself():
+    with pytest.raises(ConfigError, match="PREDICTION_GDELT_TIMEOUT_S"):
+        settings_from_env({"PREDICTION_GDELT_TIMEOUT_S": "soon"})

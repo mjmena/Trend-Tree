@@ -21,6 +21,14 @@ hand-authored or smoke claim, one row.
 Matching (CRMA-764) is not implemented, so every row written here carries
 MATCHED_TREND_ID = NULL -- a white-space prediction in the strategy's §2
 vocabulary, ledger-only in v1.
+
+Between generation and the write sits the saturation phase (CRMA-765):
+``SaturationPhase.weigh`` applies the data-quality floor -- the pillar's one
+mechanical gate, so a subject too young or too sparse to judge never reaches
+the ledger -- looks the surviving subjects up in Exploding Topics and GDELT,
+and lets the model restate its own confidence with those readings in view.
+It runs outside ``generate_predictions`` for the same reason the write does:
+the generation call graph stays exactly as narrow as blindness.py describes.
 """
 
 from __future__ import annotations
@@ -52,6 +60,7 @@ from ..generation.signals import (
     SnowflakeLiveSubjectReader,
     SnowflakeSignalReader,
 )
+from ..saturation import SaturationPhase, floor_from_settings
 
 log = logging.getLogger(__name__)
 
@@ -161,8 +170,15 @@ def generate_router(
     snowflake: SnowflakeClient,
     require_caller: Callable[..., CallerIdentity],
     llm: PredictionLLM | None,
+    saturation: SaturationPhase | None = None,
 ) -> APIRouter:
     router = APIRouter()
+    # None means the offline phase -- no outbound call, both oracles an
+    # explicit miss -- with the configured data-quality floor still applied.
+    # The deployed phase is built in server.py and injected, mirroring how the
+    # Gemini client arrives: nothing that reaches the network is constructed
+    # by default, so a caller that did not ask for it cannot get one.
+    saturation_phase = saturation or SaturationPhase.offline(floor_from_settings(settings))
 
     @router.post("/generate", response_model=GenerateResponse)
     def generate(
@@ -227,6 +243,12 @@ def generate_router(
                     f"See the log for {chain_id}."
                 ),
             ) from err
+
+        # Saturation as evidence, and the data-quality floor (CRMA-765). Never
+        # raises: an oracle outage is an explicit miss on the row, not a failed
+        # run, and the only verdicts this can remove are the ones the floor
+        # skipped. See saturation/run.py.
+        result = saturation_phase.weigh(result, llm=llm)
 
         log.info(
             "generation run",
