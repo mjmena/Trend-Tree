@@ -234,18 +234,22 @@ UNION ALL SELECT 'trend B: highest-scoring candidate (b-01) score rounds to 0.90
 -- Print the report (visible in snow sql output).
 SELECT check_name, pass FROM _retrieval_results ORDER BY check_name;
 
--- Force a non-zero exit if anything failed.
-SELECT CASE WHEN (SELECT COUNT_IF(NOT pass OR pass IS NULL) FROM _retrieval_results) = 0
-            THEN 'ALL SOURCING RETRIEVAL TESTS PASS'
-            ELSE TO_VARCHAR(1/0)  -- deliberate error -> snow sql exits non-zero
-       END AS result;
-
 -- ---------------------------------------------------------------------------
 -- Cleanup this file's own fixtures so re-runs stay idempotent and the real
--- Shopify catalog / enrichment ledger are never left polluted.
+-- Shopify catalog / enrichment ledger are never left polluted. Runs BEFORE
+-- the forced-failure trigger below, not after — `snow sql -f` stops at the
+-- first error, so if cleanup were the last statements, a failing assertion
+-- would abort the script before they ever ran, leaving zztest-* rows stuck
+-- in the real DIM_CATALOG_PRODUCT / FCT_TREND_ENRICHMENT_LEDGER tables.
 -- ---------------------------------------------------------------------------
 DELETE FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
 WHERE TREND_ID LIKE 'zztest-retrieval-%';
 DELETE FROM MCC_PRESENTATION.TREND_AGENT.DIM_CATALOG_PRODUCT
 WHERE CATALOG_PRODUCT_ID LIKE 'zztest-%';
 DROP FUNCTION IF EXISTS _zz_vec2(FLOAT, FLOAT);
+
+-- Force a non-zero exit if anything failed (cleanup above has already run).
+SELECT CASE WHEN (SELECT COUNT_IF(NOT pass OR pass IS NULL) FROM _retrieval_results) = 0
+            THEN 'ALL SOURCING RETRIEVAL TESTS PASS'
+            ELSE TO_VARCHAR(1/0)  -- deliberate error -> snow sql exits non-zero
+       END AS result;

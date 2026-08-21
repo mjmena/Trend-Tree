@@ -31,11 +31,16 @@ export default defineComponent({
       warnings: r.warnings ?? [],
       selector_telemetry: r.selector_telemetry ?? null,
       catalog_age_days: r.catalog_age_days ?? null,
+      cost_row_error: r.cost_row_error ?? null,
     };
 
+    // outcome==="failed" also covers decision==="completed" (e.g. no
+    // sourceable vector for the trend) — that path never hits
+    // decision==="failed" but still needs its real error_message surfaced
+    // here, not swallowed behind a generic "N picked" summary.
     const summary =
       r.decision === "declined" ? `declined: ${r.reason}` :
-      r.decision === "failed" ? `failed: ${r.error_message}` :
+      (r.decision === "failed" || r.outcome === "failed") ? `failed: ${body.error_message}` :
       `${body.outcome}: ${body.selected_count ?? 0} picked`;
 
     console.log(`ecomm-agent respond: trend=${evt.trend_id} ${summary}`);

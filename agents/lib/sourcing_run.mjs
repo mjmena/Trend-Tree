@@ -12,10 +12,13 @@
 // =====================================================================
 // IMPORTANT: This file is the SOURCE OF TRUTH. Pipedream GitHub-synced
 // workflows do not bundle cross-file imports (see the pipedream-synced-
-// project skill), so the deployed copy is INLINED in the workflow step:
-//   - ecomm-agent/run_sourcing/entry.mjs
-// Keep the two in exact sync. This module exists so the core logic can be
-// unit-tested (sourcing_run.test.mjs) without the Pipedream runtime,
+// project skill), so the deployed copy is INLINED in two places:
+//   - ecomm-agent/run_sourcing/entry.mjs (the whole module: floor/TOP_N,
+//     buildSourcingRunPlan, prompt formatting)
+//   - ecomm-agent/fetch_context/entry.mjs (just checkCatalogFreshness,
+//     as checkFreshness())
+// Keep all three in exact sync. This module exists so the core logic can
+// be unit-tested (sourcing_run.test.mjs) without the Pipedream runtime,
 // mirroring agents/lib/promotion_gate.mjs's role for the promotion lead.
 // =====================================================================
 //

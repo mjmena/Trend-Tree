@@ -62,8 +62,11 @@ async function runWithRetry(connOpts, sqlText, binds) {
     try {
       conn = await connect(connOpts);
       connected = true;
-      return await execute(conn, sqlText, binds);
+      const rows = await execute(conn, sqlText, binds);
+      await destroy(conn);
+      return rows;
     } catch (err) {
+      if (conn) await destroy(conn); // destroy the broken connection BEFORE backing off, not after
       const transient = !connected || TRANSIENT.test(String(err.message || err));
       if (!transient || attempt >= MAX_ATTEMPTS) {
         err.message = `Snowflake ${connected ? "execute" : "connect"} failed (attempt ${attempt}/${MAX_ATTEMPTS}): ${err.message}`;
@@ -72,8 +75,6 @@ async function runWithRetry(connOpts, sqlText, binds) {
       const backoff = BACKOFF_MS[attempt - 1] ?? 3000;
       console.log(`Transient Snowflake error on attempt ${attempt}/${MAX_ATTEMPTS}: ${err.message}; retrying in ${backoff}ms`);
       await sleep(backoff);
-    } finally {
-      if (conn) await destroy(conn);
     }
   }
 }
@@ -130,14 +131,23 @@ const Q_RETRIEVAL = `
   LIMIT 10
 `;
 
+// ORDER BY VERSION DESC LIMIT 1: defense in depth against a seed re-run
+// ever leaving two IS_ACTIVE=TRUE rows for this key (DIM_LLM_PROMPT's
+// PRIMARY KEY is informational-only in Snowflake, not enforced) — always
+// deterministically pick the newest version rather than an arbitrary row.
 const Q_PROMPT = `
   SELECT TEMPLATE, MODEL, MODEL_PARAMS
   FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
   WHERE PROMPT_KEY = 'sourcing.selector' AND IS_ACTIVE = TRUE
+  ORDER BY VERSION DESC
+  LIMIT 1
 `;
 
+// Inlined copy of agents/lib/sourcing_run.mjs's checkCatalogFreshness —
+// keep in sync (see that file for CATALOG_FRESHNESS_MAX_DAYS and the
+// canonical implementation this mirrors).
 function checkFreshness(maxLastSeenAt, now = new Date()) {
-  if (!maxLastSeenAt) {
+  if (maxLastSeenAt === null || maxLastSeenAt === undefined || maxLastSeenAt === "") {
     return { fresh: false, ageDays: null, reason: "catalog has no active rows (MAX(LAST_SEEN_AT) is null)" };
   }
   const seenAt = maxLastSeenAt instanceof Date ? maxLastSeenAt : new Date(maxLastSeenAt);
@@ -210,8 +220,15 @@ export default defineComponent({
       runWithRetry(connOpts, Q_PROMPT, []),
     ]);
 
+    // product_handle: the Shopify tier's CATALOG_PRODUCT_ID IS the product
+    // handle (sql/dim_catalog_product.sql: "shopify tier: the product
+    // Handle"; DIM_CATALOG_PRODUCT carries no separate handle column). A
+    // future non-Shopify tier whose CATALOG_PRODUCT_ID is NOT the handle
+    // (e.g. an ASIN) would need to fetch/derive PRODUCT_HANDLE separately
+    // here — this assumption is tier-scoped, not a general truth.
     const pool = (retrievalRows || []).map((r) => ({
       catalog_product_id: r.CATALOG_PRODUCT_ID,
+      product_handle: r.CATALOG_PRODUCT_ID,
       product_title: r.PRODUCT_TITLE ?? null,
       vendor: r.VENDOR ?? null,
       product_type: r.PRODUCT_TYPE ?? null,
@@ -224,7 +241,8 @@ export default defineComponent({
       let modelParams = {};
       try {
         modelParams = typeof promptRows[0].MODEL_PARAMS === "string" ? JSON.parse(promptRows[0].MODEL_PARAMS) : (promptRows[0].MODEL_PARAMS || {});
-      } catch {
+      } catch (e) {
+        console.log(`ecomm-agent fetch_context: sourcing.selector MODEL_PARAMS failed to parse, falling back to {} (selector call will use its hardcoded defaults): ${e.message}`);
         modelParams = {};
       }
       prompt = { template: promptRows[0].TEMPLATE, model: promptRows[0].MODEL, params: modelParams };

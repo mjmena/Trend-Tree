@@ -27,6 +27,13 @@
 --
 -- No `temperature` key in MODEL_PARAMS — deprecated fleet-wide as of
 -- 2026-07-21 (CRMA-726 strips it fleet-wide); this lane is born without it.
+--
+-- Idempotency: DIM_LLM_PROMPT's PRIMARY KEY (PROMPT_KEY, VERSION) is
+-- informational-only in Snowflake (not enforced), so a re-run of this file
+-- without a guard would insert a SECOND IS_ACTIVE=TRUE row for
+-- ('sourcing.selector', 1) — fetch_context's Q_PROMPT query would then
+-- pick between them nondeterministically. The WHERE NOT EXISTS below makes
+-- re-applying this file a safe no-op instead.
 
 INSERT INTO MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
   (PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS, IS_ACTIVE, CONTENT_HASH, CREATED_BY, NOTES)
@@ -65,4 +72,8 @@ $$,
   TRUE,
   SHA2(CONCAT('sourcing.selector.v1', CURRENT_TIMESTAMP()::STRING)),  -- placeholder hash, matches this repo's existing insert-file convention
   'crma776_ecomm_agent',
-  'CRMA-776/CRMA-772: Shopify-tier product selector. Ungrounded gemini-3.7-flash, forced-function mode=ANY on propose_product_selection, thinkingLevel=low, no temperature param. Filter, never a ranker — no rank field in the emit schema. Validated live during the CRMA-754 prototype (docs/wayfinder/assets/crma-754-selector-contract.md).';
+  'CRMA-776/CRMA-772: Shopify-tier product selector. Ungrounded gemini-3.7-flash, forced-function mode=ANY on propose_product_selection, thinkingLevel=low, no temperature param. Filter, never a ranker — no rank field in the emit schema. Validated live during the CRMA-754 prototype (docs/wayfinder/assets/crma-754-selector-contract.md).'
+WHERE NOT EXISTS (
+  SELECT 1 FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
+  WHERE PROMPT_KEY = 'sourcing.selector' AND VERSION = 1
+);

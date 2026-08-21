@@ -191,6 +191,9 @@ function buildSourcingRunPlan({ pool, selectorEmit, slots = MAX_SOURCED_PRODUCTS
 // Gemini agent loop (canonical: agents/lib/gemini_loop.mjs — keep in sync)
 // ---------------------------------------------------------------------------
 
+const GEMINI_DEFAULT_MODEL = "gemini-3.1-pro-preview";
+const GEMINI_DEFAULT_RATES_PER_M = { input: 2.0, output: 12.0 };
+
 const GEMINI_DEFAULTS = {
   max_iterations: 12,
   budget_usd: 5.0,
@@ -215,10 +218,10 @@ async function runAgentLoop({
   budget_usd = GEMINI_DEFAULTS.budget_usd,
   per_call_max_tokens = GEMINI_DEFAULTS.per_call_max_tokens,
   thinking_level = GEMINI_DEFAULTS.thinking_level,
-  model,
+  model = GEMINI_DEFAULT_MODEL,
   function_calling_mode = GEMINI_DEFAULTS.function_calling_mode,
   temperature = GEMINI_DEFAULTS.temperature,
-  rates_per_m,
+  rates_per_m = GEMINI_DEFAULT_RATES_PER_M,
 }) {
   if (!google_gemini?.$auth?.api_key) throw new Error("google_gemini app prop missing $auth.api_key");
   if (!Array.isArray(tool_names) || tool_names.length === 0) throw new Error("tool_names is required");
@@ -319,13 +322,31 @@ async function runAgentLoop({
       const out = await dispatchTool(fc.name, fc.args || {}, context);
       const duration_ms = Date.now() - started;
       tool_calls.push({ turn, name: fc.name, input: fc.args || {}, output: out, duration_ms });
-      reasoning_trace.push({ turn, kind: "tool_result", name: fc.name, output_preview: fc.name });
+      reasoning_trace.push({ turn, kind: "tool_result", name: fc.name, output_preview: previewOutput(out) });
       responseParts.push({ functionResponse: { name: fc.name, response: out && typeof out === "object" ? out : { result: out } } });
     }
     contents.push({ role: "user", parts: responseParts });
   }
 
+  if (turn >= max_iterations && stop_reason === "max_iterations") {
+    reasoning_trace.push({ turn, kind: "stop", reason: "max_iterations" });
+  }
+
   return { stop_reason, turns: turn, tokens, cost_usd: Math.round(cost_usd * 10000) / 10000, reasoning_trace, tool_calls, final_text, model };
+}
+
+function previewOutput(out) {
+  if (!out || typeof out !== "object") return String(out).slice(0, 240);
+  const keys = Object.keys(out);
+  const summary = {};
+  for (const k of keys.slice(0, 8)) {
+    const v = out[k];
+    if (Array.isArray(v)) summary[k] = `[array, len=${v.length}]`;
+    else if (typeof v === "string" && v.length > 200) summary[k] = v.slice(0, 200) + "…";
+    else if (typeof v === "object" && v !== null) summary[k] = `{object, keys=${Object.keys(v).length}}`;
+    else summary[k] = v;
+  }
+  return summary;
 }
 
 // ---------------------------------------------------------------------------
@@ -340,31 +361,37 @@ async function runAgentLoop({
 const SELECTOR_MODEL = "gemini-3.7-flash";
 const SELECTOR_RATES_PER_M = { input: 0.30, output: 2.50 }; // ESTIMATE — see comment above
 
-const PROPOSE_PRODUCT_SELECTION_SCHEMA = {
-  name: "propose_product_selection",
-  description: "Emit the sourcing pass's product selection for this trend. Call this exactly once.",
-  input_schema: {
-    type: "object",
-    properties: {
-      outcome: { type: "string", enum: ["matched", "no_match"], description: "matched if at least one product genuinely serves the trend; no_match otherwise." },
-      picks: {
-        type: "array",
-        description: "Up to {slots} picks. Empty when outcome=no_match.",
-        items: {
-          type: "object",
-          properties: {
-            catalog_product_id: { type: "string", description: "Echoed verbatim from the shown candidate pool." },
-            reasoned_fit: { type: "string", enum: ["strong", "partial", "weak"] },
-            rationale: { type: "string", description: "One sentence, max 25 words, operator-facing. No scores, no hedging." },
+// Built per-call (not a static constant) so the `{slots}` placeholder in
+// picks.description is actually rendered — it must match the slots count
+// stated in the (separately rendered) system prompt, not leak the literal
+// template text into what Gemini reads as its own tool schema.
+function buildProposeProductSelectionSchema(slots) {
+  return {
+    name: "propose_product_selection",
+    description: "Emit the sourcing pass's product selection for this trend. Call this exactly once.",
+    input_schema: {
+      type: "object",
+      properties: {
+        outcome: { type: "string", enum: ["matched", "no_match"], description: "matched if at least one product genuinely serves the trend; no_match otherwise." },
+        picks: {
+          type: "array",
+          description: `Up to ${slots} picks. Empty when outcome=no_match.`,
+          items: {
+            type: "object",
+            properties: {
+              catalog_product_id: { type: "string", description: "Echoed verbatim from the shown candidate pool." },
+              reasoned_fit: { type: "string", enum: ["strong", "partial", "weak"] },
+              rationale: { type: "string", description: "One sentence, max 25 words, operator-facing. No scores, no hedging." },
+            },
+            required: ["catalog_product_id", "reasoned_fit", "rationale"],
           },
-          required: ["catalog_product_id", "reasoned_fit", "rationale"],
         },
+        pool_note: { type: "string", description: "One sentence on the pool overall — what was rejected and why, or why nothing matched." },
       },
-      pool_note: { type: "string", description: "One sentence on the pool overall — what was rejected and why, or why nothing matched." },
+      required: ["outcome", "picks", "pool_note"],
     },
-    required: ["outcome", "picks", "pool_note"],
-  },
-};
+  };
+}
 
 async function dispatchSelectorTool() {
   return { accepted: true };
@@ -392,21 +419,24 @@ async function callSelector({ google_gemini, prompt, trend, pool, slots = MAX_SO
   const user_message = buildSelectorUserMessage(trend, pool);
   const params = prompt.params || {};
 
+  // ?? (not ||): a deliberate falsy override in MODEL_PARAMS — e.g.
+  // budget_usd:0 as an incident kill-switch — must take effect, not get
+  // silently discarded by a truthiness fallback.
   const result = await runAgentLoop({
     google_gemini,
     tool_names: ["propose_product_selection"],
-    all_schemas: { propose_product_selection: PROPOSE_PRODUCT_SELECTION_SCHEMA },
+    all_schemas: { propose_product_selection: buildProposeProductSelectionSchema(slots) },
     system,
     user_message,
     context: {},
     dispatchTool: dispatchSelectorTool,
     model: SELECTOR_MODEL,
-    function_calling_mode: params.function_calling_mode || "ANY",
-    thinking_level: params.thinking_level || "low",
+    function_calling_mode: params.function_calling_mode ?? "ANY",
+    thinking_level: params.thinking_level ?? "low",
     temperature: null, // deprecated fleet-wide — never sent for this lane
-    max_iterations: params.max_iterations || 1,
-    budget_usd: params.budget_usd || 0.02,
-    per_call_max_tokens: params.per_call_max_tokens || 1024,
+    max_iterations: params.max_iterations ?? 1,
+    budget_usd: params.budget_usd ?? 0.02,
+    per_call_max_tokens: params.per_call_max_tokens ?? 1024,
     rates_per_m: SELECTOR_RATES_PER_M,
   });
 
@@ -439,6 +469,10 @@ function destroy(conn) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// General-purpose retry: safe for reads and for PROC_SOURCING_APPLY
+// 'complete' (which has its own double-completion guard, so a retried
+// complete() after a lost response is a harmless no-op, not a duplicate
+// write). NOT used for 'open' — see runOpenWithConnectRetryOnly below.
 async function runWithRetry(connOpts, sqlText, binds) {
   for (let attempt = 1; ; attempt++) {
     let conn;
@@ -446,8 +480,11 @@ async function runWithRetry(connOpts, sqlText, binds) {
     try {
       conn = await connect(connOpts);
       connected = true;
-      return await execute(conn, sqlText, binds);
+      const rows = await execute(conn, sqlText, binds);
+      await destroy(conn);
+      return rows;
     } catch (err) {
+      if (conn) await destroy(conn); // destroy the broken connection BEFORE backing off, not after
       const transient = !connected || TRANSIENT.test(String(err.message || err));
       if (!transient || attempt >= MAX_ATTEMPTS) {
         err.message = `Snowflake ${connected ? "execute" : "connect"} failed (attempt ${attempt}/${MAX_ATTEMPTS}): ${err.message}`;
@@ -456,8 +493,38 @@ async function runWithRetry(connOpts, sqlText, binds) {
       const backoff = BACKOFF_MS[attempt - 1] ?? 3000;
       console.log(`Transient Snowflake error on attempt ${attempt}/${MAX_ATTEMPTS}: ${err.message}; retrying in ${backoff}ms`);
       await sleep(backoff);
-    } finally {
+    }
+  }
+}
+
+// PROC_SOURCING_APPLY('open', ...) has NO idempotency key — SOURCING_RUN_ID
+// is generated server-side (uuid4()) and the proc deliberately does not
+// dedupe concurrent 'running' headers for the same (TREND_ID, TIER) (see
+// sql/proc_sourcing_apply.sql's own header comment — that's the future
+// poll cron's job). Retrying an 'open' call whose execute() already
+// reached the server (response merely lost in transit) would silently
+// insert a SECOND 'running' header. So this only retries a CONNECT-phase
+// failure (nothing was sent yet, safe to retry) — once execute() has been
+// attempted, any failure propagates immediately, no retry.
+async function runOpenWithConnectRetryOnly(connOpts, sqlText, binds) {
+  for (let attempt = 1; ; attempt++) {
+    let conn;
+    let connected = false;
+    try {
+      conn = await connect(connOpts);
+      connected = true;
+      const rows = await execute(conn, sqlText, binds);
+      await destroy(conn);
+      return rows;
+    } catch (err) {
       if (conn) await destroy(conn);
+      if (connected || attempt >= MAX_ATTEMPTS) {
+        err.message = `Snowflake ${connected ? "execute" : "connect"} failed (attempt ${attempt}/${MAX_ATTEMPTS}): ${err.message}`;
+        throw err;
+      }
+      const backoff = BACKOFF_MS[attempt - 1] ?? 3000;
+      console.log(`Transient Snowflake CONNECT error on attempt ${attempt}/${MAX_ATTEMPTS} (open, connect-phase only): ${err.message}; retrying in ${backoff}ms`);
+      await sleep(backoff);
     }
   }
 }
@@ -484,7 +551,7 @@ const INSERT_COST_ROW = `
 `;
 
 async function callProcOpen(connOpts, evt) {
-  const rows = await runWithRetry(connOpts, CALL_OPEN, [
+  const rows = await runOpenWithConnectRetryOnly(connOpts, CALL_OPEN, [
     evt.trend_id, evt.tier, SEMANTIC_THRESHOLD, SELECTOR_MODEL, "v1", "v1", evt.agent_session_id,
   ]);
   const receipt = rows?.[0]?.[Object.keys(rows[0])[0]];
@@ -592,23 +659,36 @@ export default defineComponent({
         throw new Error(`PROC_SOURCING_APPLY complete failed: ${JSON.stringify(completeResult)}`);
       }
 
+      // The run is DONE and successful as far as PROC_SOURCING_APPLY is
+      // concerned (header + candidate rows are already committed). From
+      // here on, a cost-row write failure must NEVER downgrade this
+      // response to "failed" — that would discard a real, already-
+      // persisted matched/no_match/failed outcome and misreport a
+      // successful run as broken. Isolate it in its own try/catch instead
+      // of letting it fall into the outer catch below.
       const endedAt = new Date();
-      await insertCostRow(connOpts, {
-        run_id: cryptoRandomId("ecomm-cost-"),
-        agent_session_id: evt.agent_session_id,
-        chain_id: evt.chain_id,
-        started_at: startedAt.toISOString(),
-        ended_at: endedAt.toISOString(),
-        duration_ms: endedAt.getTime() - startedAt.getTime(),
-        model: selectorTelemetry ? SELECTOR_MODEL : null,
-        input_tokens: selectorTelemetry?.tokens?.input ?? 0,
-        output_tokens: selectorTelemetry?.tokens?.output ?? 0,
-        tool_call_count: selectorTelemetry?.tool_calls?.length ?? 0,
-        turn_count: selectorTelemetry?.turns ?? 0,
-        cost_usd: selectorTelemetry?.cost_usd ?? 0,
-        status: "OK",
-        error_message: null,
-      });
+      let costRowError = null;
+      try {
+        await insertCostRow(connOpts, {
+          run_id: cryptoRandomId("ecomm-cost-"),
+          agent_session_id: evt.agent_session_id,
+          chain_id: evt.chain_id,
+          started_at: startedAt.toISOString(),
+          ended_at: endedAt.toISOString(),
+          duration_ms: endedAt.getTime() - startedAt.getTime(),
+          model: selectorTelemetry ? SELECTOR_MODEL : null,
+          input_tokens: selectorTelemetry?.tokens?.input ?? 0,
+          output_tokens: selectorTelemetry?.tokens?.output ?? 0,
+          tool_call_count: selectorTelemetry?.tool_calls?.length ?? 0,
+          turn_count: selectorTelemetry?.turns ?? 0,
+          cost_usd: selectorTelemetry?.cost_usd ?? 0,
+          status: "OK",
+          error_message: null,
+        });
+      } catch (costErr) {
+        costRowError = costErr.message;
+        console.log(`ecomm-agent run_sourcing: cost-row insert failed (the sourcing run itself still succeeded) sourcing_run_id=${sourcingRunId}: ${costErr.message}`);
+      }
 
       console.log(`ecomm-agent run_sourcing: COMPLETE sourcing_run_id=${sourcingRunId} outcome=${plan.outcome} selected=${plan.candidates.filter((c) => c.selected).length}/${plan.candidates.length} warnings=${plan.warnings.length}`);
       $.export("$summary", `${evt.trend_id}: ${plan.outcome} (${plan.candidates.filter((c) => c.selected).length} picked)`);
@@ -626,6 +706,7 @@ export default defineComponent({
         selector_telemetry: selectorTelemetry
           ? { model: SELECTOR_MODEL, turns: selectorTelemetry.turns, tokens: selectorTelemetry.tokens, cost_usd: selectorTelemetry.cost_usd, stop_reason: selectorTelemetry.stop_reason }
           : null,
+        cost_row_error: costRowError,
       };
     } catch (err) {
       console.log(`ecomm-agent run_sourcing: ERROR trend=${evt.trend_id} sourcing_run_id=${sourcingRunId}: ${err.message}`);
