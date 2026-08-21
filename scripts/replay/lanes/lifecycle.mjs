@@ -53,6 +53,7 @@ export async function cases({ limit = 3, caseId = null }) {
     id: r.TREND_ID,
     label: `${r.TREND_TOPIC ?? r.TREND_ID} · ${r.PRIOR_STATUS}→${r.NEW_STATUS} @ ${String(r.EVALUATED_AT).slice(0, 16)}`,
     incumbentAt: String(r.EVALUATED_AT).slice(0, 10),
+    evaluatedAt: String(r.EVALUATED_AT),
     incumbent: {
       emission: variant(r.DECISION_PAYLOAD) || {},
       committed: {
@@ -91,6 +92,31 @@ export async function build(c) {
   const metricsRow = metrics_rows[0];
   if (!metricsRow) throw new Error(`no FCT_TRENDS row for trend_id ${c.id}`);
 
+  // ── the replayed evaluation must not be visible to the model ─────────
+  // q_metrics' `lc` CTE and q_lifecycle_history both read the NEWEST ledger
+  // rows with no time cut, and cases() picks each trend's LATEST evaluation.
+  // Together those fed the candidate the incumbent's own answer — the status
+  // it chose, the heat it wrote, its own timestamp, and its full reasoning
+  // text as history entry #1 — and then asked it to decide. Every case was a
+  // tautology, and the agreement it produced measured nothing.
+  //
+  // Same defect class as the promotion lane's self-neighbour (CRMA-733). The
+  // cut is the replayed row's EVALUATED_AT: everything strictly before it is
+  // what production actually fed the incumbent.
+  const cutAt = c.evaluatedAt ? new Date(c.evaluatedAt).getTime() : null;
+  const beforeCut = (ts) => cutAt === null || (ts && new Date(ts).getTime() < cutAt);
+
+  const priorLedger = cutAt === null
+    ? []
+    : query(`
+        SELECT NEW_HEAT_SMOOTHED, EVALUATED_AT
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+         WHERE TREND_ID = ${sqlStr(c.id)}
+           AND EVALUATED_AT < ${sqlStr(c.evaluatedAt)}
+         ORDER BY EVALUATED_AT DESC
+         LIMIT 1
+      `);
+
   const { ALL_TOOL_NAMES, toFunctionDeclarations, getToolSchemas, dispatchTool, computeHeatBase, fmtJson, parseVariant } =
     await loadStep(ENTRY, [
       "ALL_TOOL_NAMES",
@@ -106,16 +132,20 @@ export async function build(c) {
   const metrics = {
     trend_id: metricsRow.TREND_ID,
     trend_topic: metricsRow.TREND_TOPIC,
-    lifecycle_status: metricsRow.LIFECYCLE_STATUS,
+    // PRIOR_STATUS/PRIOR_HEAT on the replayed row are exactly the state
+    // production handed the incumbent — use them, not today's post-decision row.
+    lifecycle_status: c.incumbent?.committed?.prior_status ?? metricsRow.LIFECYCLE_STATUS,
     total_cluster_size: metricsRow.TOTAL_CLUSTER_SIZE,
     distinct_source_count: metricsRow.DISTINCT_SOURCE_COUNT,
     confidence: metricsRow.CONFIDENCE,
     specificity_score: metricsRow.SPECIFICITY_SCORE,
-    trend_heat_index: metricsRow.TREND_HEAT_INDEX,
-    trend_heat_index_smoothed: metricsRow.TREND_HEAT_INDEX_SMOOTHED,
+    trend_heat_index: c.incumbent?.committed?.prior_heat ?? metricsRow.TREND_HEAT_INDEX,
+    trend_heat_index_smoothed:
+      cutAt === null ? metricsRow.TREND_HEAT_INDEX_SMOOTHED : (priorLedger[0]?.NEW_HEAT_SMOOTHED ?? null),
     promoted_at: metricsRow.PROMOTED_AT,
     last_update_at: metricsRow.LAST_UPDATE_AT,
-    last_lifecycle_eval_at: metricsRow.LAST_LIFECYCLE_EVAL_AT,
+    last_lifecycle_eval_at:
+      cutAt === null ? metricsRow.LAST_LIFECYCLE_EVAL_AT : (priorLedger[0]?.EVALUATED_AT ?? null),
     trend_name_b2b: metricsRow.TREND_NAME_B2B,
     trend_name_b2c: metricsRow.TREND_NAME_B2C,
     category: metricsRow.CATEGORY,
@@ -133,7 +163,9 @@ export async function build(c) {
       .map((r) => [r.DOMAIN, Number(r.SIGNAL_COUNT)]),
   );
 
-  const lifecycle_history = lifecycle_history_rows.map((r) => ({
+  const lifecycle_history = lifecycle_history_rows
+    .filter((r) => beforeCut(r.EVALUATED_AT))
+    .map((r) => ({
     evaluated_at: r.EVALUATED_AT,
     prior_status: r.PRIOR_STATUS,
     new_status: r.NEW_STATUS,
@@ -325,6 +357,11 @@ Status heat factor is FIXED and applied at commit: GROWING/RESURGENT +10%, STABL
       recent_signals: recent_signals.length,
       candidate_signals: candidate_signals.length,
       neighbors: neighbor_pool.length,
+      replayed_eval_at: c.evaluatedAt ?? null,
+      prior_state_restored: `status=${metrics.lifecycle_status} heat=${metrics.trend_heat_index}`,
+      history_entries_after_cut_dropped: lifecycle_history_rows.length - lifecycle_history.length,
+      answer_leak_cut:
+        "the replayed evaluation and everything after it are hidden: status, heat and history come from BEFORE it, so the model is not shown the incumbent's own answer",
       recomputed_now:
         "heat_base and the signal windows are recomputed against TODAY, so they differ from the incumbent's evaluation",
     },
@@ -335,11 +372,23 @@ export function compareRows(incumbent, candidate) {
   const a = incumbent?.emission ?? {};
   const b = candidate?.emission ?? {};
   const seq = (calls) => (Array.isArray(calls) ? calls.map((t) => t.name || t.tool || "?").join(" → ") : "—");
+  // Field names must match propose_lifecycle_decision's ACTUAL schema
+  // (run_subagent/entry.js): status, retirement_reason, next_eval_in_hours,
+  // request_re_enrichment, re_enrichment_reason, reasoning. Four axes here
+  // previously read ledger column names instead — new_status,
+  // requested_re_enrichment, retirement_proposal — so the candidate column
+  // rendered "—" on every case while the incumbent column fell back to
+  // `committed` and populated. The diff looked like the candidate had
+  // emitted nothing when it had emitted a full, valid decision.
+  //
+  // heat_modifier_pct is deliberately NOT compared: ADR-0005 removed it from
+  // the schema, and PROC_LIFECYCLE_APPLY now derives the factor from status.
+  // It is not the model's to pick, so a diff on it only restates the status.
   return [
-    { field: "new_status", left: a.new_status ?? incumbent?.committed?.new_status, right: b.new_status },
-    { field: "heat_modifier_pct", left: a.heat_modifier_pct ?? incumbent?.committed?.heat_modifier_pct, right: b.heat_modifier_pct },
-    { field: "requested_re_enrichment", left: a.requested_re_enrichment, right: b.requested_re_enrichment },
-    { field: "retirement_proposal", left: a.retirement_proposal, right: b.retirement_proposal },
+    { field: "status", left: a.status ?? incumbent?.committed?.new_status, right: b.status },
+    { field: "next_eval_in_hours", left: a.next_eval_in_hours, right: b.next_eval_in_hours },
+    { field: "request_re_enrichment", left: a.request_re_enrichment, right: b.request_re_enrichment },
+    { field: "retirement_reason", left: a.retirement_reason, right: b.retirement_reason },
     {
       field: "tool sequence",
       left: seq(incumbent?.tool_calls),

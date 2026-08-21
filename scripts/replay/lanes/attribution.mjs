@@ -34,6 +34,18 @@ export const summary =
 export const incumbentModel = "gemini-3.1-pro-preview";
 export const ticket = "CRMA-734";
 
+// The stored incumbent record is NOT comparable, so the left column must be a
+// re-run. This lane is not grounded — the reason is a pool mismatch. cases()
+// reports the signals a trend has EVER had attributed, while build() assembles
+// the pool production would see now: signals from the last 24 hours that are
+// not yet linked (q_candidate_signals, lookback_hours 24, anti-joined against
+// FCT_TREND_SIGNALS). The two sides are different signals over different
+// windows, so "12 attributed historically vs 3 of 9 today" compares nothing —
+// not even as a rate, since the incumbent's original pool size was never
+// recorded. Firing both models at today's identical pool is the only sound
+// comparison this lane supports.
+export const requiresRerun = true;
+
 /** Trends that recently received attributed links, and so have a live pool. */
 export async function cases({ limit = 3, caseId = null }) {
   const where = caseId ? `AND ts.TREND_ID = ${sqlStr(caseId)}` : "";
@@ -180,22 +192,34 @@ export function compareRows(incumbent, candidate, result) {
   const pool = result?.built?.input_notes?.candidates_today ?? null;
   const ids = (x) => (Array.isArray(x) ? x : []).map((r) => r.signal_id).join("\n") || "—";
   const rate = (n) => (pool ? `${n} of ${pool} (${Math.round((100 * n) / pool)}%)` : String(n));
+  const agreement = (x, y) => {
+    const sx = new Set((Array.isArray(x) ? x : []).map((r) => r.signal_id));
+    const sy = new Set((Array.isArray(y) ? y : []).map((r) => r.signal_id));
+    const both = [...sx].filter((id) => sy.has(id)).length;
+    return `${both} shared · ${sx.size - both} incumbent-only · ${sy.size - both} candidate-only`;
+  };
 
   return [
     {
       field: "attributions accepted",
-      left: a.length,
+      left: rate(a.length),
       right: rate(b.length),
-      note: "incumbent count is historical; the candidate saw a different pool",
+      note: "both sides fired at the SAME pool today (requiresRerun) — directly comparable",
     },
     { field: "signal_ids", left: ids(a), right: ids(b) },
     {
-      field: "rejected (candidate)",
+      field: "agreement",
       left: "—",
+      right: agreement(a, b),
+      note: "same pool, so row identity is meaningful here — read the disagreements",
+    },
+    {
+      field: "rejected",
+      left: pool != null ? pool - a.length : "—",
       right: pool != null ? pool - b.length : "—",
       note: "precision matters more than recall — a false positive inflates heat",
     },
   ];
 }
 
-export default { name, summary, incumbentModel, ticket, cases, build, compareRows };
+export default { name, summary, incumbentModel, ticket, requiresRerun, cases, build, compareRows };

@@ -42,7 +42,12 @@ const OUT_DIR = join(HARNESS_ROOT, "out");
  * @param {boolean} [opts.dryRun] Assemble inputs, make no model calls.
  */
 export async function runLane(lane, opts) {
-  const { model, limit, rerunIncumbent = false, caseId = null, dryRun = false } = opts;
+  const { model, limit, caseId = null, dryRun = false } = opts;
+  // A lane that declares requiresRerun has no comparable stored incumbent, so
+  // the re-run is not optional for it. Without this, omitting --rerun-incumbent
+  // silently fell back to `case.incumbent` in the left column and printed a
+  // confident diff against a record the lane itself says cannot be compared.
+  const rerunIncumbent = opts.rerunIncumbent || !!lane.requiresRerun;
   const apiKey = dryRun ? null : geminiKey();
   const startedAt = new Date();
   const runId = `${lane.name}_${startedAt.toISOString().replace(/[:.]/g, "-")}`;
