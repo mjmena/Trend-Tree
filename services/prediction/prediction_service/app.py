@@ -13,6 +13,7 @@ from .generation.llm import PredictionLLM
 from .routes.generate import generate_router
 from .routes.match import match_router
 from .routes.run import run_router
+from .saturation import SaturationPhase
 
 
 def create_app(
@@ -21,6 +22,7 @@ def create_app(
     *,
     verify_token: TokenVerifier | None = None,
     llm: PredictionLLM | None = None,
+    saturation: SaturationPhase | None = None,
 ) -> FastAPI:
     # None means "the real verifier for settings.auth_mode" -- so only an
     # injected (test) verifier is exempt from the audience check below.
@@ -93,7 +95,14 @@ def create_app(
     # /health, /whoami and /run -- POST /generate answers 503 and says which
     # variable is missing. See config.GeminiSettings for why that is not a
     # refuse-to-boot condition.
-    app.include_router(generate_router(settings, snowflake, require_caller, llm))
+    # `saturation=None` is the offline phase (CRMA-765): both oracles an
+    # explicit miss, no outbound call, and the configured data-quality floor
+    # still applied. The deployed phase -- the real Exploding Topics and GDELT
+    # adapters -- is built in server.py and passed in, so that constructing an
+    # app never by itself reaches the network.
+    app.include_router(
+        generate_router(settings, snowflake, require_caller, llm, saturation)
+    )
     # The compare step (CRMA-764). Its own route, not a tail on /generate:
     # matching reads the trend tables generation is structurally blind to, so
     # keeping it off the generation call path is what keeps that blindness a

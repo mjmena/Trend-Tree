@@ -19,8 +19,11 @@ What this phase does NOT do, deliberately:
   never appear inside a generation run. Every verdict minted here carries
   ``MATCHED_TREND_ID = NULL``, which the strategy's §2 vocabulary calls a
   white-space prediction: a call the trend pipeline has not made yet.
-* **saturation evidence** -- CRMA-765. ``EVIDENCE.saturation`` is present
-  (the key's presence is the contract, per domain.claim) and null.
+* **saturation evidence** -- built here as a present-and-null key (the key's
+  presence is the contract, per domain.claim) and filled in *after* this
+  phase returns, by ``saturation.SaturationPhase`` (CRMA-765), which also
+  applies the data-quality floor. Keeping it out of this call is what lets
+  the phase keep the signature below: no oracle enters it.
 * **re-evaluation / what-changed** -- CRMA-766. Every row here is a first
   mint, so ``WHAT_CHANGED`` is NULL by definition. Note the difference from
   the live-subject skip below: this phase declines to re-propose a subject
@@ -79,6 +82,11 @@ class GenerationResult:
     output_tokens: int = 0
     #: None when llm.py does not price this model. Unknown, not free.
     cost_usd: float | None = None
+    #: The corpus rows the model was actually shown, after fit_corpus. Carried
+    #: out of the phase so the saturation pass's data-quality floor (CRMA-765)
+    #: can measure a subject's observation record against the same rows the
+    #: claim was made from, without a second warehouse read.
+    corpus: tuple[SignalRecord, ...] = ()
 
 
 def new_chain_id() -> str:
@@ -135,8 +143,9 @@ def build_evidence(candidate: Candidate, *, model: str, chain_id: str) -> dict[s
     All four required keys are present -- the presence is the contract, the
     value need not be (domain.claim.REQUIRED_EVIDENCE_KEYS). ``trend_context``
     is null because this verdict is unmatched *and* because generation could
-    not have read heat or lifecycle to fill it in; ``saturation`` and
-    ``coverage`` are null pending CRMA-765 and the coverage detector.
+    not have read heat or lifecycle to fill it in; ``saturation`` is filled in
+    after this phase returns (saturation/run.py, CRMA-765); ``coverage`` is
+    null pending the coverage detector.
     """
     return {
         "source_signals": list(candidate.source_signals),
@@ -266,4 +275,5 @@ def generate_predictions(
         input_tokens=response.input_tokens,
         output_tokens=response.output_tokens,
         cost_usd=response.cost_usd,
+        corpus=tuple(signals),
     )

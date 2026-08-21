@@ -24,6 +24,14 @@ through the local loop").
     --live-subject S a subject already carrying an ACTIVE prediction; repeatable.
                      The deployed run reads these from the verdict ledger, so this
                      is how the offline loop exercises the same de-duplication.
+    --saturation PATH  recorded Exploding Topics / GDELT readings per subject.
+                     The deployed run calls both providers; this is the offline
+                     stand-in, so the data-quality floor and the saturation
+                     weighing pass (CRMA-765) run here exactly as they do live.
+                     A subject the file omits is an explicit ET miss, which is
+                     the normal path and costs nothing.
+    --weighing-reply PATH  the recorded reply to the weighing turn (ignored with
+                     --live-llm, where the real model answers both turns).
     --max-predictions N / --signal-limit N
 
 This never writes to Snowflake in any mode. It prints the verdict rows the
@@ -49,10 +57,17 @@ from prediction_service.generation.run import (
     generate_predictions,
 )
 from prediction_service.generation.signals import FixtureSignalReader, StaticLiveSubjectReader
+from prediction_service.saturation import (
+    DataQualityFloor,
+    SaturationPhase,
+    load_saturation_fixture,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures"
 DEFAULT_SIGNALS = FIXTURES / "signals.sample.json"
 DEFAULT_REPLY = FIXTURES / "generation_reply.sample.json"
+DEFAULT_SATURATION = FIXTURES / "saturation.sample.json"
+DEFAULT_WEIGHING_REPLY = FIXTURES / "weighing_reply.sample.json"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -69,6 +84,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--lookback-hours", type=int, default=168)
     parser.add_argument("--max-predictions", type=int, default=5)
     parser.add_argument("--live-subject", action="append", default=[])
+    parser.add_argument("--saturation", type=Path, default=DEFAULT_SATURATION)
+    parser.add_argument("--weighing-reply", type=Path, default=DEFAULT_WEIGHING_REPLY)
     return parser
 
 
@@ -115,9 +132,23 @@ def run(argv: list[str] | None = None, out=sys.stdout) -> int:
         )
         print("", file=out)
 
-    result = generate_predictions(
-        reader=reader, llm=build_llm(args), live_subjects=live, scope=scope
+    llm = build_llm(args)
+    result = generate_predictions(reader=reader, llm=llm, live_subjects=live, scope=scope)
+
+    # Saturation as evidence, plus the data-quality floor (CRMA-765). The same
+    # phase the deployed route runs, against recorded readings instead of the
+    # two providers -- so a subject skipped by the floor, a `peaked`
+    # classification and an Exploding Topics miss are all visible here without
+    # a deploy or a network call.
+    oracle, breadth = load_saturation_fixture(json.loads(args.saturation.read_text()))
+    phase = SaturationPhase(oracle=oracle, breadth=breadth, floor=DataQualityFloor())
+    # In replay mode the weighing turn gets its own recorded reply: it is a
+    # different question, and a fake that answered the generation reply to
+    # both would only ever exercise the degraded path.
+    weighing_llm = llm if args.live_llm else ReplayLLM(
+        args.weighing_reply.read_text(), model=f"replay:{args.weighing_reply.name}"
     )
+    result = phase.weigh(result, llm=weighing_llm)
 
     print(f"chain_id            {result.chain_id}", file=out)
     print(f"model               {result.model}", file=out)
@@ -140,6 +171,36 @@ def run(argv: list[str] | None = None, out=sys.stdout) -> int:
         print(f"  CONFIDENCE         {verdict.confidence}", file=out)
         print(f"  STATUS             {verdict.status}", file=out)
         print(f"  SOURCE_SIGNALS     {verdict.evidence['source_signals']}", file=out)
+        saturation = verdict.evidence.get("saturation") or {}
+        et = saturation.get("exploding_topics") or {}
+        gdelt = saturation.get("gdelt") or {}
+        weighing = saturation.get("weighing") or {}
+        print(
+            "  ET                 "
+            + (
+                f"{et.get('classification')} ({et.get('matched_keyword')!r}, "
+                f"vol {et.get('absolute_volume')})"
+                if et.get("matched")
+                else f"MISS [{et.get('miss_reason')}] -- no penalty"
+            ),
+            file=out,
+        )
+        print(
+            "  GDELT BREADTH      "
+            + (
+                f"{gdelt.get('article_count')} article(s) / "
+                f"{gdelt.get('distinct_domains')} publisher(s) in "
+                f"{gdelt.get('window_days')}d"
+                if gdelt.get("available")
+                else f"unavailable [{gdelt.get('error')}]"
+            ),
+            file=out,
+        )
+        print(
+            f"  SATURATION WEIGHED {weighing.get('weighed')} "
+            f"({weighing.get('confidence_before')} -> {weighing.get('confidence_after')})",
+            file=out,
+        )
 
     for rejection in result.rejected:
         print(f"\n  DROPPED {rejection.subject!r}: {rejection.reason}", file=out)

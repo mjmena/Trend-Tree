@@ -1,0 +1,17 @@
+{
+  "weighings": [
+    {
+      "id": 1,
+      "subject": "rucking vests",
+      "confidence": 57,
+      "reasoning": "Four independent corpus signals converge on rucking vests -- a first-person stockout observation, four consecutive weeks on Amazon's Sports & Outdoors movers list still dominated by specialty brands, a breakout Google related query with inland regional spread, and lifestyle coverage reframing low-intensity walking. The saturation evidence cuts against the timing rather than the substance: Exploding Topics classifies the matched keyword 'rucking vest' as peaked at 3, 6 and 12 months (exploding only at 24), and GDELT shows 44 articles across 19 distinct publishers in the last week, including national general-interest titles. The world has largely piled on, so the white space this call depends on is narrower than the corpus alone suggested and the runway to the mass-market catalog listing is shorter. The mechanism is unchanged and plausible, so the call stands, but at 57 rather than 68.",
+      "_comment": "A peaked classification argues against high confidence -- and the model, not the code, is what moved the number."
+    },
+    {
+      "id": 2,
+      "subject": "cottage cheese",
+      "confidence": 58,
+      "reasoning": "Cottage cheese displacing ricotta rests on a supply-side change, an inverted diet framing and a marketplace movers listing. The saturation evidence supports the call rather than undercutting it: Exploding Topics classifies 'cottage cheese recipes' as exploding across 3, 6 and 12 months at 165,000 searches last month, and GDELT shows only 6 articles across 4 food-vertical publishers in the last week -- real consumer demand that mainstream news coverage has not caught up with, which is what being early looks like. Cross-category potential is genuine and consumer interest is measured rather than projected, so confidence rises modestly from 54 to 58."
+    }
+  ]
+}

@@ -102,9 +102,42 @@ class GeminiSettings:
 
 
 @dataclass(frozen=True)
+class SaturationSettings:
+    """The saturation phase's two external oracles and the data-quality floor
+    (CRMA-765).
+
+    **No value here can refuse a boot.** The PRD lists Exploding Topics access
+    as "an assumption with an owner (a miss is never a penalty)", so a missing
+    key degrades that oracle to an explicit ``not_configured`` miss and the
+    run carries on -- the same stance GeminiSettings takes on its key, with
+    more force: an unavailable oracle must not stop the pillar writing
+    verdicts, because saturation is evidence, not a gate.
+
+    The floor's thresholds are settings for the same reason the strategy
+    insists it is the *only* mechanical gate: re-tuning the pillar's one gate
+    should be a visible, deliberate change. See saturation/floor.py for how
+    the defaults were measured.
+    """
+
+    exploding_topics_api_key: str
+    exploding_topics_timeout_s: float
+    gdelt_enabled: bool
+    gdelt_window_days: int
+    gdelt_timeout_s: float
+    #: Wall-clock seconds the two lookups may spend across a whole run. Not a
+    #: gate: subjects past it get an explicit ``deadline_exceeded`` miss and
+    #: keep their own confidence. See saturation/run.py for the arithmetic
+    #: against the Cloud Run request timeout.
+    lookup_budget_s: float
+    min_observation_age_hours: float
+    min_evidence_chars: int
+
+
+@dataclass(frozen=True)
 class Settings:
     snowflake: SnowflakeSettings
     gemini: GeminiSettings
+    saturation: SaturationSettings
     port: int
     # Which ingress-auth layer fronts this service -- `oidc` (Cloud Run IAM,
     # the deployed posture) or `iap`. See tt_services_lib.auth for what each
@@ -210,6 +243,15 @@ def _timeout(raw: str) -> float:
         ) from err
 
 
+def _number(name: str, raw: str) -> float:
+    """A numeric env var, or a ConfigError naming it. Same class of failure as
+    _timeout, generalized because the saturation phase carries several."""
+    try:
+        return float(raw)
+    except ValueError as err:
+        raise ConfigError(f"{name} is {raw!r}, which is not a number") from err
+
+
 def _port(raw: str) -> int:
     """A non-numeric PORT is a config problem like any other, so it surfaces
     as ConfigError rather than a bare ValueError from int()."""
@@ -232,6 +274,43 @@ def settings_from_env(env: Mapping[str, str] | None = None) -> Settings:
             authenticator=e.get("PREDICTION_SNOWFLAKE_AUTHENTICATOR", "externalbrowser"),
             private_key_path=e.get("PREDICTION_SNOWFLAKE_PRIVATE_KEY_PATH", ""),
             private_key=e.get("PREDICTION_SNOWFLAKE_PRIVATE_KEY", ""),
+        ),
+        saturation=SaturationSettings(
+            exploding_topics_api_key=e.get("PREDICTION_EXPLODING_TOPICS_API_KEY", ""),
+            exploding_topics_timeout_s=_number(
+                "PREDICTION_EXPLODING_TOPICS_TIMEOUT_S",
+                e.get("PREDICTION_EXPLODING_TOPICS_TIMEOUT_S", "12"),
+            ),
+            # A kill switch, not a tuning knob: GDELT is unauthenticated and
+            # rate-limits by IP, so a run that starts getting throttled can be
+            # turned off without a code change. Off means "unavailable", which
+            # the evidence renders as "we could not look" -- never as "nobody
+            # is writing about this".
+            gdelt_enabled=(e.get("PREDICTION_GDELT_ENABLED", "1").strip().lower()
+                           not in ("0", "false", "no", "off")),
+            gdelt_window_days=int(
+                _number("PREDICTION_GDELT_WINDOW_DAYS", e.get("PREDICTION_GDELT_WINDOW_DAYS", "7"))
+            ),
+            gdelt_timeout_s=_number(
+                "PREDICTION_GDELT_TIMEOUT_S", e.get("PREDICTION_GDELT_TIMEOUT_S", "15")
+            ),
+            # The phase-level ceiling the two per-call timeouts sit inside.
+            # Sized against the Cloud Run request timeout in saturation/run.py;
+            # a value of 0 or less turns the budget off.
+            lookup_budget_s=_number(
+                "PREDICTION_SATURATION_LOOKUP_BUDGET_S",
+                e.get("PREDICTION_SATURATION_LOOKUP_BUDGET_S", "150"),
+            ),
+            min_observation_age_hours=_number(
+                "PREDICTION_FLOOR_MIN_OBSERVATION_AGE_HOURS",
+                e.get("PREDICTION_FLOOR_MIN_OBSERVATION_AGE_HOURS", "24"),
+            ),
+            min_evidence_chars=int(
+                _number(
+                    "PREDICTION_FLOOR_MIN_EVIDENCE_CHARS",
+                    e.get("PREDICTION_FLOOR_MIN_EVIDENCE_CHARS", "120"),
+                )
+            ),
         ),
         gemini=GeminiSettings(
             api_key=e.get("PREDICTION_GEMINI_API_KEY", ""),

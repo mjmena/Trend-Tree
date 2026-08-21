@@ -8,6 +8,21 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from prediction_service.generation.llm import DEFAULT_MODEL, LLMResponse, estimate_cost_usd
+from prediction_service.saturation.weigh import WEIGHING_MARKER
+
+#: The saturation phase (CRMA-765) asks the same model a second question per
+#: run, so a fake that answered the generation reply to both would look like a
+#: model that had lost the plot. This is the "I have nothing to restate"
+#: answer: every verdict keeps generation's own confidence and reasoning,
+#: which is what most tests want to hold still while they assert something
+#: else. A test about the weighing turn itself passes its own reply.
+NO_RESTATEMENT = '{"weighings": []}'
+
+
+def is_weighing_turn(system: str) -> bool:
+    """Which of the two turns a fake is being asked. The real model tells them
+    apart by reading the prompt; so does this."""
+    return WEIGHING_MARKER in system
 
 
 @dataclass
@@ -55,6 +70,10 @@ class FakePredictionLLM:
     a test can assert the corpus reached the prompt."""
 
     reply: str = "{\"predictions\": []}"
+    #: What the saturation weighing turn gets. Defaults to "nothing to
+    #: restate", so a test that only cares about generation sees the
+    #: confidences it wrote.
+    weighing_reply: str = NO_RESTATEMENT
     #: Set to make complete() raise -- exercises the failure path.
     fail_with: Exception | None = None
     model: str = "fake-model"
@@ -67,7 +86,7 @@ class FakePredictionLLM:
         if self.fail_with:
             raise self.fail_with
         return LLMResponse(
-            text=self.reply,
+            text=self.weighing_reply if is_weighing_turn(system) else self.reply,
             model=self.model,
             input_tokens=self.input_tokens,
             output_tokens=self.output_tokens,
@@ -113,10 +132,26 @@ class ShufflingPredictionLLM:
     output_tokens: int = 300
     calls: list[tuple[str, str]] = field(default_factory=list)
 
+    #: See FakePredictionLLM.weighing_reply. A weighing turn does NOT advance
+    #: the rotation -- the shuffling this fake exists to model is generation's
+    #: nondeterminism, one rotation per generation pass.
+    weighing_reply: str = NO_RESTATEMENT
+
     def complete(self, *, system: str, user: str) -> LLMResponse:
         import json as _json
 
-        turn = len(self.calls)
+        if is_weighing_turn(system):
+            self.calls.append((system, user))
+            return LLMResponse(
+                text=self.weighing_reply,
+                model=self.model,
+                input_tokens=self.input_tokens,
+                output_tokens=self.output_tokens,
+                cost_usd=estimate_cost_usd(
+                    self.input_tokens, self.output_tokens, model=DEFAULT_MODEL
+                ),
+            )
+        turn = sum(1 for system_prompt, _ in self.calls if not is_weighing_turn(system_prompt))
         self.calls.append((system, user))
         rotated = self.replies[turn % len(self.replies) :] + self.replies[
             : turn % len(self.replies)

@@ -145,7 +145,12 @@ def test_the_response_describes_the_run_it_just_did():
     assert body["signals_considered"] == len(SIGNAL_ROWS)
     assert body["model"] == "fake-model"
     assert body["chain_id"].startswith("pred-verdict-chain-")
-    assert body["llm_token_usage"] == {"input": 1200, "output": 300, "total": 1500}
+    # Both turns of the run: generation, then the saturation weighing pass
+    # (CRMA-765), which asks the same model to restate its calls with the
+    # Exploding Topics and GDELT readings in view. The fake bills each turn
+    # identically, so the reported usage is exactly twice one call -- a run
+    # that reported only the first turn would understate what it spent.
+    assert body["llm_token_usage"] == {"input": 2400, "output": 600, "total": 3000}
     assert body["llm_cost_estimate"] > 0
     assert all(p["written"] for p in body["predictions"])
 

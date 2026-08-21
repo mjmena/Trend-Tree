@@ -23,6 +23,14 @@ prediction in the strategy's §2 vocabulary. That is not a gap: generation
 never saw a trend to match against, and it must not. The compare step
 (CRMA-764) is its own request, ``POST /match``, precisely so that its reads
 of the trend tables can never appear inside a generation run.
+
+Between generation and the write sits the saturation phase (CRMA-765):
+``SaturationPhase.weigh`` applies the data-quality floor -- the pillar's one
+mechanical gate, so a subject too young or too sparse to judge never reaches
+the ledger -- looks the surviving subjects up in Exploding Topics and GDELT,
+and lets the model restate its own confidence with those readings in view.
+It runs outside ``generate_predictions`` for the same reason the write does:
+the generation call graph stays exactly as narrow as blindness.py describes.
 """
 
 from __future__ import annotations
@@ -54,6 +62,7 @@ from ..generation.signals import (
     SnowflakeLiveSubjectReader,
     SnowflakeSignalReader,
 )
+from ..saturation import SaturationPhase, floor_from_settings
 
 log = logging.getLogger(__name__)
 
@@ -163,8 +172,15 @@ def generate_router(
     snowflake: SnowflakeClient,
     require_caller: Callable[..., CallerIdentity],
     llm: PredictionLLM | None,
+    saturation: SaturationPhase | None = None,
 ) -> APIRouter:
     router = APIRouter()
+    # None means the offline phase -- no outbound call, both oracles an
+    # explicit miss -- with the configured data-quality floor still applied.
+    # The deployed phase is built in server.py and injected, mirroring how the
+    # Gemini client arrives: nothing that reaches the network is constructed
+    # by default, so a caller that did not ask for it cannot get one.
+    saturation_phase = saturation or SaturationPhase.offline(floor_from_settings(settings))
 
     @router.post("/generate", response_model=GenerateResponse)
     def generate(
@@ -230,6 +246,29 @@ def generate_router(
                 ),
             ) from err
 
+        # How many claims survived generation, counted BEFORE the saturation
+        # phase's data-quality floor runs -- "proposed" means what the model
+        # proposed, and the floor's skips are reported as rejections below.
+        proposed = len(result.verdicts)
+
+        # Saturation as evidence, and the data-quality floor (CRMA-765). The
+        # phase is built not to raise -- an oracle outage is an explicit miss
+        # on the row, not a failed run -- and the only verdicts it can remove
+        # are the ones the floor skipped. See saturation/run.py.
+        #
+        # The guard makes that an enforced property rather than a comment.
+        # Generation has already run and already been paid for by this point,
+        # so anything uncaught in an optional second opinion -- a future edit,
+        # a third-party oracle that ignores the Protocol's no-raise contract --
+        # must cost the run its saturation evidence, never its rows.
+        try:
+            result = saturation_phase.weigh(result, llm=llm)
+        except Exception:
+            log.exception(
+                "saturation phase failed; verdicts keep generation's own numbers",
+                extra={"chain_id": chain_id},
+            )
+
         log.info(
             "generation run",
             extra={
@@ -292,7 +331,7 @@ def generate_router(
             chain_id=chain_id,
             model=result.model,
             signals_considered=result.signals_considered,
-            predictions_proposed=len(result.verdicts),
+            predictions_proposed=proposed,
             predictions_written=len(written),
             dry_run=body.dry_run,
             predictions=_to_out(result, written=written),
