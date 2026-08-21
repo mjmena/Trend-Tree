@@ -412,12 +412,15 @@ the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 1
 - **Whether the migration ships per lane or as a fleet cutover.** The old map assumed per-lane
   allocation. A migration might instead land one shared call-layer fix and move many lanes at
   once. Cannot be phrased sharply until CRMA-757 shows how much of a call site the fix touches.
-- **Telemetry the migration needs to be verifiable at all.** Now three instances, not one:
+- **Telemetry the migration needs to be verifiable at all.** Three instances:
   defect 6 (discovery loses shards silently), defect 8 (distillation persists no run trace),
   and CRMA-733's finding that promotion stores no subagent turn count while `max_iterations`
-  is its binding gate. The shape is repeating — **every loop lane is missing turn count,
-  stop reason, and per-run model id** — but whether that becomes one shared call-layer
-  change or a per-lane fix depends on CRMA-757, so it is still not sharp enough to ticket.
+  is its binding gate. **The "every loop lane is missing it" framing is now falsified.**
+  CRMA-734 found `FCT_TREND_LIFECYCLE_LEDGER` already persists `TOOL_CALLS_JSON`,
+  `STOP_REASON`, `MODEL_USED` and per-run cost — the fleet's only recorded tool trace. So
+  this is not a gap to design a shape for; it is a shape to **copy from lifecycle** to the
+  lanes that lack it. What is still unsharp is the mechanism: whether that becomes one
+  shared call-layer change or a per-lane ledger fix depends on CRMA-757.
 - **Interaction effects.** If several lanes move, does the composite pipeline degrade even
   where each lane passed replay in isolation?
 - **If Gemini 3.5 Pro ships mid-effort**, the question reopens for the loops. No announced
