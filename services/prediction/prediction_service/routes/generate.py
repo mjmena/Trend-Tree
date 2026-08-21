@@ -18,9 +18,11 @@ it. What stops a generation-phase statement from reaching a trend table is
 statement those adapters issue. /run keeps its CRMA-762 shape: a
 hand-authored or smoke claim, one row.
 
-Matching (CRMA-764) is not implemented, so every row written here carries
-MATCHED_TREND_ID = NULL -- a white-space prediction in the strategy's §2
-vocabulary, ledger-only in v1.
+Every row written here carries MATCHED_TREND_ID = NULL -- a white-space
+prediction in the strategy's §2 vocabulary. That is not a gap: generation
+never saw a trend to match against, and it must not. The compare step
+(CRMA-764) is its own request, ``POST /match``, precisely so that its reads
+of the trend tables can never appear inside a generation run.
 
 Between generation and the write sits the saturation phase (CRMA-765):
 ``SaturationPhase.weigh`` applies the data-quality floor -- the pillar's one
@@ -115,8 +117,8 @@ class PredictionOut(BaseModel):
     observable_check: str
     confidence: float
     status: str
-    #: NULL until the matching phase (CRMA-764) exists -- every prediction
-    #: minted here is a white-space prediction.
+    #: Always NULL here -- every prediction minted by generation is a
+    #: white-space prediction. POST /match is what resolves one to a trend.
     matched_trend_id: str | None
     source_signals: list[str]
     written: bool

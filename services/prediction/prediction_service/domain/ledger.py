@@ -16,6 +16,19 @@ from .claim import Verdict
 # inserted rather than of the code that produced it. Written explicitly.
 COMPUTATION_VERSION = "v1"
 
+# EVALUATED_AT is written, not defaulted.
+#
+# The column's DDL default is CURRENT_TIMESTAMP(), which Snowflake evaluates
+# in the *session* timezone, while HORIZON_AT is written by this service from
+# an aware UTC datetime and therefore lands as UTC wall clock. Both are
+# TIMESTAMP_NTZ, so nothing in the type system flags the mismatch -- it shows
+# up as the two columns being four hours apart on rows minted in the same
+# instant (America/New_York), and it would show up again as a resolution
+# sweep grading a UTC horizon against a local clock. Writing it here from
+# Verdict.minted_at puts both columns on one clock.
+#
+# Rows written before this change carry the old session-local values.
+
 # MERGE, not INSERT, and on a caller-supplied PREDICTION_EVAL_ID.
 #
 # The shared Snowflake client retries a call whose failure looks
@@ -31,12 +44,12 @@ MERGE INTO {table} AS ledger
 USING (SELECT %(prediction_eval_id)s AS PREDICTION_EVAL_ID) AS incoming
   ON ledger.PREDICTION_EVAL_ID = incoming.PREDICTION_EVAL_ID
 WHEN NOT MATCHED THEN INSERT (
-  PREDICTION_EVAL_ID, PREDICTION_ID, CHAIN_ID,
+  PREDICTION_EVAL_ID, PREDICTION_ID, EVALUATED_AT, CHAIN_ID,
   SUBJECT_DESCRIPTOR, DIRECTIONAL_CLAIM, HORIZON_AT, HORIZON_BAND,
   OBSERVABLE_CHECK, CONFIDENCE, PREDICTION_STATUS, MATCHED_TREND_ID, EVIDENCE,
   REASONING, WHAT_CHANGED, COMPUTATION_VERSION
 ) VALUES (
-  %(prediction_eval_id)s, %(prediction_id)s, %(chain_id)s,
+  %(prediction_eval_id)s, %(prediction_id)s, %(evaluated_at)s, %(chain_id)s,
   %(subject_descriptor)s, %(directional_claim)s, %(horizon_at)s, %(horizon_band)s,
   %(observable_check)s, %(confidence)s, %(status)s,
   %(matched_trend_id)s, PARSE_JSON(%(evidence)s), %(reasoning)s, %(what_changed)s,
@@ -49,6 +62,8 @@ def insert_params(verdict: Verdict) -> dict[str, Any]:
     return {
         "prediction_eval_id": verdict.prediction_eval_id,
         "prediction_id": verdict.prediction_id,
+        # Aware UTC, exactly like horizon_at -- see the note above MERGE_VERDICT.
+        "evaluated_at": verdict.minted_at,
         "chain_id": verdict.chain_id,
         "subject_descriptor": verdict.claim.subject_descriptor,
         "directional_claim": verdict.claim.directional_claim,
