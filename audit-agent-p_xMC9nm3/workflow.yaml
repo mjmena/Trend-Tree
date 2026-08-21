@@ -395,30 +395,54 @@ steps:
     sql:
       value: |-
         -- CRMA-775: catalog sync freshness guard. One row per sourcing TIER
-        -- (only 'shopify' exists today, but a future Amazon/other tier would
-        -- get its own row here rather than being silently averaged into it).
+        -- EVER SEEN (not just tiers with active rows today) — a tier whose
+        -- entire product set has been soft-delisted (CATALOG_STATUS never
+        -- deleted, per DIM_CATALOG_PRODUCT's design) would otherwise vanish
+        -- from a plain WHERE CATALOG_STATUS='active' GROUP BY and silently
+        -- stop being graded instead of flagging RED. Only 'shopify' exists
+        -- today, but a future Amazon/other tier gets its own row here rather
+        -- than being silently averaged into (or dropped out of) it.
         -- MINUTES_SINCE_LAST_SEEN precomputed in SQL, same rationale as
         -- q_pipeline_freshness above: Snowflake TIMESTAMP_NTZ serializes
         -- without a TZ marker and gets mis-interpreted as UTC by the JS layer.
+        -- NULL LAST_SEEN_AT_MAX (a tier that exists but has zero active rows)
+        -- is intentional — catalog_freshness.mjs treats a NULL/missing
+        -- minutes value as fail-safe RED, not as "0 minutes ago".
+        WITH all_tiers AS (
+          SELECT DISTINCT TIER FROM MCC_PRESENTATION.TREND_AGENT.DIM_CATALOG_PRODUCT
+        ),
+        active_stats AS (
+          SELECT TIER, MAX(LAST_SEEN_AT) AS LAST_SEEN_AT_MAX, COUNT(*) AS ACTIVE_PRODUCT_COUNT
+          FROM MCC_PRESENTATION.TREND_AGENT.DIM_CATALOG_PRODUCT
+          WHERE CATALOG_STATUS = 'active'
+          GROUP BY TIER
+        )
         SELECT
-          TIER,
-          MAX(LAST_SEEN_AT)                                                  AS LAST_SEEN_AT_MAX,
-          TIMESTAMPDIFF(MINUTE, MAX(LAST_SEEN_AT), CURRENT_TIMESTAMP())      AS MINUTES_SINCE_LAST_SEEN,
-          COUNT(*)                                                          AS ACTIVE_PRODUCT_COUNT
-        FROM MCC_PRESENTATION.TREND_AGENT.DIM_CATALOG_PRODUCT
-        WHERE CATALOG_STATUS = 'active'
-        GROUP BY TIER
-        ORDER BY TIER
+          t.TIER,
+          a.LAST_SEEN_AT_MAX,
+          TIMESTAMPDIFF(MINUTE, a.LAST_SEEN_AT_MAX, CURRENT_TIMESTAMP()) AS MINUTES_SINCE_LAST_SEEN,
+          COALESCE(a.ACTIVE_PRODUCT_COUNT, 0)                           AS ACTIVE_PRODUCT_COUNT
+        FROM all_tiers t
+        LEFT JOIN active_stats a ON a.TIER = t.TIER
+        ORDER BY t.TIER
       query: |-
+        WITH all_tiers AS (
+          SELECT DISTINCT TIER FROM MCC_PRESENTATION.TREND_AGENT.DIM_CATALOG_PRODUCT
+        ),
+        active_stats AS (
+          SELECT TIER, MAX(LAST_SEEN_AT) AS LAST_SEEN_AT_MAX, COUNT(*) AS ACTIVE_PRODUCT_COUNT
+          FROM MCC_PRESENTATION.TREND_AGENT.DIM_CATALOG_PRODUCT
+          WHERE CATALOG_STATUS = 'active'
+          GROUP BY TIER
+        )
         SELECT
-          TIER,
-          MAX(LAST_SEEN_AT)                                                  AS LAST_SEEN_AT_MAX,
-          TIMESTAMPDIFF(MINUTE, MAX(LAST_SEEN_AT), CURRENT_TIMESTAMP())      AS MINUTES_SINCE_LAST_SEEN,
-          COUNT(*)                                                          AS ACTIVE_PRODUCT_COUNT
-        FROM MCC_PRESENTATION.TREND_AGENT.DIM_CATALOG_PRODUCT
-        WHERE CATALOG_STATUS = 'active'
-        GROUP BY TIER
-        ORDER BY TIER
+          t.TIER,
+          a.LAST_SEEN_AT_MAX,
+          TIMESTAMPDIFF(MINUTE, a.LAST_SEEN_AT_MAX, CURRENT_TIMESTAMP()) AS MINUTES_SINCE_LAST_SEEN,
+          COALESCE(a.ACTIVE_PRODUCT_COUNT, 0)                           AS ACTIVE_PRODUCT_COUNT
+        FROM all_tiers t
+        LEFT JOIN active_stats a ON a.TIER = t.TIER
+        ORDER BY t.TIER
     params: []
 - namespace: fetch_pipedream_errors
   runtime: nodejs20.x
@@ -462,7 +486,7 @@ steps:
     params: []
 - namespace: run_audit_agent
   runtime: nodejs20.x
-  uses: "./run_audit_agent/entry.js"
+  uses: "./run_audit_agent/entry.mjs"
   props:
     google_gemini:
       authProvisionId: apn_EOhp9DY

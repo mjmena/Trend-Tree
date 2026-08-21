@@ -16,6 +16,9 @@
 // (the one cross-file import Pipedream's bundler allows) and holds the
 // CRMA-775 catalog-freshness grading as a plain, defineComponent-free
 // module — deterministic, not LLM-judged, and independently unit-testable.
+// This file is named entry.mjs (not entry.js, unlike this workflow's other
+// steps) BECAUSE it does this sibling import — a hand-authored .js step
+// cannot use sibling .mjs imports (pipedream-synced-project skill).
 // =====================================================================
 
 import { gradeCatalogFreshness, buildCatalogFreshnessBlock, applyCatalogFinding } from "./catalog_freshness.mjs";
@@ -505,32 +508,61 @@ export default defineComponent({
     // Apply prompt-defined model_params if present (max_iterations, budget_usd, etc.)
     const sysParams = mustGet(prompts, SYSTEM_PROMPT_KEY).params || {};
 
-    const loop = await runAgentLoop({
-      google_gemini: this.google_gemini,
-      tool_names: ALL_TOOL_NAMES,
-      system: renderedSystem,
-      user_message: userMessage,
-      context,
-      max_iterations: Number(sysParams.max_iterations) || LOOP_DEFAULTS.max_iterations,
-      budget_usd: Number(sysParams.budget_usd) || LOOP_DEFAULTS.budget_usd,
-      per_call_max_tokens: Number(sysParams.per_call_max_tokens) || LOOP_DEFAULTS.per_call_max_tokens,
-      thinking_level: sysParams.thinking_level || LOOP_DEFAULTS.thinking_level,
-    });
+    // CRMA-775: a thrown Gemini error (HTTP failure, timeout, etc.) must not
+    // swallow the deterministic catalog-freshness finding — catch it here
+    // and synthesize a minimal loop result so the fallback-report path below
+    // still runs, and the ledger/Slack chain still fires with whatever we DO
+    // know (catalog). Previously an uncaught throw here failed the whole
+    // step and no report — catalog included — ever reached commit/Slack.
+    let loop;
+    try {
+      loop = await runAgentLoop({
+        google_gemini: this.google_gemini,
+        tool_names: ALL_TOOL_NAMES,
+        system: renderedSystem,
+        user_message: userMessage,
+        context,
+        max_iterations: Number(sysParams.max_iterations) || LOOP_DEFAULTS.max_iterations,
+        budget_usd: Number(sysParams.budget_usd) || LOOP_DEFAULTS.budget_usd,
+        per_call_max_tokens: Number(sysParams.per_call_max_tokens) || LOOP_DEFAULTS.per_call_max_tokens,
+        thinking_level: sysParams.thinking_level || LOOP_DEFAULTS.thinking_level,
+      });
+    } catch (e) {
+      loop = {
+        stop_reason: "agent_loop_threw",
+        turns: 0,
+        tokens: { input: 0, output: 0, total: 0 },
+        cost_usd: 0,
+        model: MODEL,
+        error_message: e.message,
+      };
+      context.proposed_report = null;
+    }
 
     const llmReport = context.proposed_report;
     const synthesized_fallback = !llmReport;
-    // Loop ended without terminal-tool call. Synthesize a YELLOW with a meta-alert
-    // so the operator notices instead of silently writing nothing.
+    const loopThrew = loop.stop_reason === "agent_loop_threw";
+    // Loop ended without terminal-tool call (or threw). Synthesize a YELLOW
+    // with a meta-alert so the operator notices instead of silently writing
+    // nothing.
     const baseReport = llmReport || {
       overall_status: "YELLOW",
       alerts: [{
         severity: "WARN",
         area: "audit-agent",
-        summary: "Agent did not call propose_audit_report — possible prompt drift or budget cap",
-        evidence: `stop_reason=${loop.stop_reason} turns=${loop.turns} cost_usd=${loop.cost_usd}`,
+        summary: loopThrew
+          ? "Agent loop threw before completing — Gemini call failed"
+          : "Agent did not call propose_audit_report — possible prompt drift or budget cap",
+        evidence: loopThrew
+          ? `stop_reason=${loop.stop_reason} error=${loop.error_message}`
+          : `stop_reason=${loop.stop_reason} turns=${loop.turns} cost_usd=${loop.cost_usd}`,
       }],
-      slack_summary_md: "*Audit YELLOW*: agent loop ended without emitting a report. Investigate prompts / budget.",
-      reasoning: "Fallback emission — no propose_audit_report call observed.",
+      slack_summary_md: loopThrew
+        ? "*Audit YELLOW*: agent loop failed before emitting a report (Gemini call error). Investigate immediately."
+        : "*Audit YELLOW*: agent loop ended without emitting a report. Investigate prompts / budget.",
+      reasoning: loopThrew
+        ? "Fallback emission — agent loop threw an exception."
+        : "Fallback emission — no propose_audit_report call observed.",
     };
 
     // CRMA-775: fold the deterministic catalog-freshness grade in last, on

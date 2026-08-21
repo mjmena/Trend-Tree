@@ -44,6 +44,11 @@ test("gradeDaysSinceLastSeen: null/undefined/NaN treated as RED, not silently GR
   assert.equal(gradeDaysSinceLastSeen(NaN), "RED");
 });
 
+test("gradeDaysSinceLastSeen: negative days (LAST_SEEN_AT in the future — clock skew / bad data) is RED, not GREEN", () => {
+  assert.equal(gradeDaysSinceLastSeen(-0.01), "RED");
+  assert.equal(gradeDaysSinceLastSeen(-5), "RED");
+});
+
 // ---------------------------------------------------------------------------
 // escalateStatus — worse-wins, never de-escalates
 // ---------------------------------------------------------------------------
@@ -106,6 +111,34 @@ test("gradeCatalogFreshness: tolerates non-array input", () => {
   assert.equal(gradeCatalogFreshness(undefined).status, "RED");
 });
 
+// Regression test: Number(null) === 0 in JS, unlike Number(undefined) ===
+// NaN. A naive `Number(r.MINUTES_SINCE_LAST_SEEN)` would silently read a
+// NULL (tier exists via the LEFT JOIN but has zero active rows today, or an
+// unreadable timestamp) as "0 minutes ago" — perfectly fresh — instead of
+// the fail-safe RED this row actually represents.
+test("gradeCatalogFreshness: a tier with NULL MINUTES_SINCE_LAST_SEEN (LEFT JOIN, no active rows) grades RED, not GREEN", () => {
+  const g = gradeCatalogFreshness([
+    { TIER: "shopify", LAST_SEEN_AT_MAX: null, MINUTES_SINCE_LAST_SEEN: null, ACTIVE_PRODUCT_COUNT: 0 },
+  ]);
+  assert.equal(g.status, "RED");
+  assert.equal(g.tiers[0].status, "RED");
+  assert.equal(g.tiers[0].days_since_last_seen, null);
+});
+
+test("gradeCatalogFreshness: a tier with undefined MINUTES_SINCE_LAST_SEEN also grades RED", () => {
+  const g = gradeCatalogFreshness([{ TIER: "shopify", ACTIVE_PRODUCT_COUNT: 0 }]);
+  assert.equal(g.status, "RED");
+});
+
+test("gradeCatalogFreshness: a fully-delisted tier (present via LEFT JOIN, zero active rows) does not hide behind a healthy tier", () => {
+  const g = gradeCatalogFreshness([
+    { TIER: "amazon", LAST_SEEN_AT_MAX: null, MINUTES_SINCE_LAST_SEEN: null, ACTIVE_PRODUCT_COUNT: 0 },
+    { TIER: "shopify", LAST_SEEN_AT_MAX: "x", MINUTES_SINCE_LAST_SEEN: 60, ACTIVE_PRODUCT_COUNT: 187 },
+  ]);
+  assert.equal(g.status, "RED");
+  assert.deepEqual(g.stale_tiers, ["amazon"]);
+});
+
 // ---------------------------------------------------------------------------
 // buildCatalogFreshnessBlock — narrative text block for the prompt
 // ---------------------------------------------------------------------------
@@ -166,4 +199,56 @@ test("applyCatalogFinding does not mutate the input report", () => {
   applyCatalogFinding(base, graded);
   assert.equal(base.overall_status, "GREEN");
   assert.equal(base.alerts.length, 0);
+});
+
+// A mixed YELLOW+RED multi-tier situation must not collapse into a single
+// alert that hides which tier is actually the RED one.
+test("applyCatalogFinding appends ONE alert PER stale tier, not one combined alert", () => {
+  const base = { overall_status: "GREEN", alerts: [] };
+  const graded = gradeCatalogFreshness([
+    { TIER: "shopify", LAST_SEEN_AT_MAX: "x", MINUTES_SINCE_LAST_SEEN: 4 * 1440, ACTIVE_PRODUCT_COUNT: 187 }, // YELLOW
+    { TIER: "amazon", LAST_SEEN_AT_MAX: "y", MINUTES_SINCE_LAST_SEEN: 10 * 1440, ACTIVE_PRODUCT_COUNT: 50 },  // RED
+  ]);
+  const merged = applyCatalogFinding(base, graded);
+  const catalogAlerts = merged.alerts.filter((a) => a.area === "catalog");
+  assert.equal(catalogAlerts.length, 2);
+  const shopifyAlert = catalogAlerts.find((a) => a.summary.includes("shopify"));
+  const amazonAlert = catalogAlerts.find((a) => a.summary.includes("amazon"));
+  assert.equal(shopifyAlert.severity, "WARN");
+  assert.equal(amazonAlert.severity, "RED");
+  assert.equal(merged.overall_status, "RED");
+});
+
+// post_to_slack/entry.js renders ONLY report.slack_summary_md into the DM
+// body — since the LLM has no visibility into catalog data (the live prompt
+// template doesn't reference a catalog block yet), a catalog-caused
+// escalation must patch slack_summary_md directly or the operator gets a
+// paging emoji with no explanation.
+test("applyCatalogFinding appends a catalog line to slack_summary_md when non-GREEN", () => {
+  const base = { overall_status: "GREEN", alerts: [], slack_summary_md: "*Audit GREEN*: all systems nominal." };
+  const graded = gradeCatalogFreshness([
+    { TIER: "shopify", LAST_SEEN_AT_MAX: "x", MINUTES_SINCE_LAST_SEEN: 4 * 1440, ACTIVE_PRODUCT_COUNT: 187 },
+  ]);
+  const merged = applyCatalogFinding(base, graded);
+  assert.match(merged.slack_summary_md, /all systems nominal/);
+  assert.match(merged.slack_summary_md, /Catalog/);
+  assert.match(merged.slack_summary_md, /shopify/);
+});
+
+test("applyCatalogFinding leaves slack_summary_md untouched when catalog is GREEN", () => {
+  const base = { overall_status: "GREEN", alerts: [], slack_summary_md: "*Audit GREEN*: all systems nominal." };
+  const graded = gradeCatalogFreshness([
+    { TIER: "shopify", LAST_SEEN_AT_MAX: "x", MINUTES_SINCE_LAST_SEEN: 60, ACTIVE_PRODUCT_COUNT: 187 },
+  ]);
+  const merged = applyCatalogFinding(base, graded);
+  assert.equal(merged.slack_summary_md, "*Audit GREEN*: all systems nominal.");
+});
+
+test("buildCatalogFreshnessBlock handles a null-days tier without printing 'nulld'", () => {
+  const g = gradeCatalogFreshness([
+    { TIER: "amazon", LAST_SEEN_AT_MAX: null, MINUTES_SINCE_LAST_SEEN: null, ACTIVE_PRODUCT_COUNT: 0 },
+  ]);
+  const block = buildCatalogFreshnessBlock(g);
+  assert.doesNotMatch(block, /nulld/);
+  assert.match(block, /no active rows/);
 });
