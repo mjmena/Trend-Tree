@@ -11,6 +11,7 @@ from tt_services_lib.snowflake_client import SnowflakeClient
 from .config import ConfigError, Settings
 from .generation.llm import PredictionLLM
 from .routes.generate import generate_router
+from .routes.match import match_router
 from .routes.run import run_router
 
 
@@ -93,4 +94,11 @@ def create_app(
     # variable is missing. See config.GeminiSettings for why that is not a
     # refuse-to-boot condition.
     app.include_router(generate_router(settings, snowflake, require_caller, llm))
+    # The compare step (CRMA-764). Its own route, not a tail on /generate:
+    # matching reads the trend tables generation is structurally blind to, so
+    # keeping it off the generation call path is what keeps that blindness a
+    # property of the run and not just of the prompt. `llm=None` degrades
+    # only the matched verdict's narrative here -- the match itself is
+    # decided without a model -- so unlike /generate this route still works.
+    app.include_router(match_router(settings, snowflake, require_caller, llm))
     return app
