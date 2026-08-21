@@ -90,10 +90,23 @@ the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 1
   was still cut, so no leading byte window is lost. This places the fault in **grounded-answer
   generation**, and it explains why `gemini-2.5-flash` (0/20) and the ungrounded distillation
   lead are clean. _Source: [CRMA-757](https://mcclatchy.atlassian.net/browse/CRMA-757), 2026-08-20._
-- **`generateContent` silently skips grounding on ~22% of calls** — 31 of 40 grounded on
-  production's shape. A discovery lane that believes it is grounded is not, roughly one run in
-  five. Model-independent of the swap and its own defect. The Interactions API grounded
-  **25/25** on the same prompt. _Source: [CRMA-757](https://mcclatchy.atlassian.net/browse/CRMA-757), 2026-08-20._
+- **`generateContent` silently skips grounding, at a rate that depends on BOTH the prompt and
+  the model.** A lane that believes it is grounded is not. On **discovery's** prompt: 3.7 Flash
+  31 of 40 grounded (22.5% skipped), incumbent `gemini-3-flash-preview` 34 of 39 (12.8%
+  skipped) — real on both, so the grounded-or-discard remediation stands for that lane. On the
+  **verticals'** prompt the two models diverge completely: incumbent **40 of 40**, 3.7 Flash
+  **27 of 80 (66% skipped)**. The Interactions API grounded 25/25 on discovery's prompt.
+  **"Model-independent" was the reading before the incumbent was measured; it does not hold.**
+  _Source: [CRMA-757](https://mcclatchy.atlassian.net/browse/CRMA-757) 2026-08-20, corrected and
+  extended by [CRMA-730](https://mcclatchy.atlassian.net/browse/CRMA-730) 2026-08-21._
+- **On the verticals' own call shape, the truncation confirms — and costs the WHOLE run.**
+  160 live calls of production's exact prompt and `generationConfig`, parsed by production's own
+  parser. 3.7 Flash: 7 of 27 grounded calls truncated (25.9%), **0 of 53 ungrounded** — CRMA-757's
+  signature exactly. But the verticals parse with `textContent.match(/\[[\s\S]*\]/)`, which needs
+  the array opener that the cut removes, so **7 of 7 truncated runs stored zero signals** where
+  discovery loses one proposal. Incumbent: 0 truncations in 40, 14.0 signals per run against the
+  candidate's 10.2. Cost is a wash ($0.01083 vs $0.01103).
+  _Source: [CRMA-730](https://mcclatchy.atlassian.net/browse/CRMA-730), 2026-08-21._
 - **No call shape returns a complete grounded answer, on either surface.** Nine shapes over
   ~340 live calls: `thinking_level` low (16/20) and high (14/20), `temperature` stripped
   (14/20), `responseSchema` + grounding (14/20), a sacrificial preamble (12/20), and a wrapper
@@ -414,13 +427,31 @@ the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 1
       training-data proposals — the fabricated-URL family, which CRMA-731 already called
       unrecoverable downstream. Nothing in `discover_gemini/entry.js` inspects
       `groundingMetadata`, and `STG_EXTERNAL_SIGNALS` stores no per-run grounding flag, so
-      the condition is invisible in the warehouse. **Model-independent** — measured on 3.7
-      Flash, but the incumbent shares the call shape and the lane has never checked. The
-      spec must carry a grounded-or-discard check plus a persisted `grounded` flag, or the
+      the condition is invisible in the warehouse. **The incumbent has now been checked and
+      it skips too** — 5 of 39 (12.8%) on this same prompt, against 3.7 Flash's 22.5%. So the
+      defect is real on today's deployed model and the remediation is needed whatever the pin
+      is; what does **not** survive is the "model-independent" label, since the rate turns on
+      both the model and the prompt (on the verticals' prompt the incumbent skips 0 of 40).
+      The spec must carry a grounded-or-discard check plus a persisted `grounded` flag, or the
       lane keeps ingesting uncited proposals whatever model runs it. A secondary, cheaper
       item rides with it: the stale assertion at `discover_gemini/entry.js:7-9` and
       `sql/seed_discovery_prompts.sql:57` citing a memory file that no longer exists.
-      Added by [CRMA-757](https://mcclatchy.atlassian.net/browse/CRMA-757).
+      Added by [CRMA-757](https://mcclatchy.atlassian.net/browse/CRMA-757); incumbent rate and
+      the model-independence correction from
+      [CRMA-730](https://mcclatchy.atlassian.net/browse/CRMA-730).
+
+  11. **A vertical that stores zero signals is indistinguishable from a quiet one.**
+      `ingestion/LLM/gemini-*/fetch_source/entry.js` returns
+      `{ signals, signals_json, count, errors }`, and each `workflow.yaml` consumes **only
+      `signals_json`** (lines 34 and 58). `errors` reaches no table, and neither does `count`.
+      So a total parse failure lands as an empty MERGE that looks exactly like a day with no
+      trends — measured at 8.8% of 3.7 Flash runs, and 0% of the incumbent's, but the blind
+      spot is the pin-independent part. With defect 6 (`parts[0]` only) and defect 5 (URL
+      death) this lane has **three independent silent-loss paths and a counter for none of
+      them**. The spec must persist a per-run `emitted` / `stored` / `grounded` triple for the
+      verticals **whether or not the pin ever moves** — this is the map's "detection, not
+      rollback" constraint landing on a lane that is staying put.
+      Added by [CRMA-730](https://mcclatchy.atlassian.net/browse/CRMA-730).
 
   Related and also held: **`temperature` was deprecated 2026-07-21** and every lane still
   sends it. Full hazard list with sources is on CRMA-727.
@@ -478,10 +509,14 @@ the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 1
 ## Not yet specified
 
 - **What a 3.7-shaped prompt looks like.** Every prompt in the registry was written against a
-  Pro-era model, and two lanes have now failed a drop-in in ways that may be prompt-fixable —
-  bare-homepage citations on the verticals, fabricated deep links on discovery. Whether there
-  is one general rewrite pattern or nine lane-specific ones is unknown until a lane tries.
-  The registry-driven lane is the cheapest place to learn it.
+  Pro-era model, and whether there is one general rewrite pattern or nine lane-specific ones is
+  unknown until a lane tries. **This is now an UNGROUNDED-lane question only.**
+  [CRMA-730](https://mcclatchy.atlassian.net/browse/CRMA-730) closed the grounded half by
+  finding that the two failure modes trade against each other: truncation fires *only* on
+  grounded calls, so a rewrite that succeeds at making the model search raises zero-yield runs
+  toward ~26%. Both the bare-homepage citations and the fabricated deep links trace to the same
+  cause — the model answering from training data rather than from search — and the fix for that
+  is the thing that triggers the truncation. No grounded lane can be prompted out of this.
 - **Whether the migration ships per lane or as a fleet cutover.** The old map assumed per-lane
   allocation. A migration might instead land one shared call-layer fix and move many lanes at
   once. **CRMA-757 has now cut this in half**: there is no shared fix for the grounded problem,
