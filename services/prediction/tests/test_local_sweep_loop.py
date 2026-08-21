@@ -2,9 +2,9 @@
 
 ``local_sweep.py`` is where the status machine and the re-evaluation prompt
 iterate without a commit-to-deploy round trip. The shipped fixture is built
-so one default run crosses all three time regions -- before the horizon,
-inside the grace window, past it -- which is exactly what a reader needs to
-see to believe AC4.
+so one default run shows every state a live call can be in -- before the
+horizon, inside the grace window, at the close (the one final row), and
+already frozen -- which is exactly what a reader needs to see to believe AC4.
 """
 
 from __future__ import annotations
@@ -32,20 +32,25 @@ def test_the_default_invocation_needs_no_key_no_network_and_no_warehouse():
     assert "(nothing was written" in output
 
 
-def test_one_default_run_shows_all_three_regions_of_a_predictions_life():
+def test_one_default_run_shows_every_state_a_live_call_can_be_in():
     output = _run()
     # Before the horizon: still ACTIVE.
     assert "STATUS             ACTIVE -> ACTIVE" in output
     # Past the horizon, inside the grace window, and the truth arrived.
     assert "STATUS             EXPIRED -> RESOLVED_TRUE" in output
-    # Past the grace window: frozen, no row appended.
+    # At the close: one last row, and it says so rather than promising a
+    # re-check nobody will run.
+    assert "STATUS             EXPIRED -> EXPIRED" in output
+    assert "This is the final evaluation of this call" in output
+    # Already frozen -- its final row is in the ledger, so no row is appended.
     assert "SKIPPED" in output
     assert "grace window closed" in output
+    assert "already in the ledger" in output
 
 
 def test_the_grace_window_is_reported_for_every_re_evaluated_row():
     output = _run()
-    assert output.count("GRACE ENDS AT") == 2
+    assert output.count("GRACE ENDS AT") == 3
 
 
 def test_the_frozen_horizon_is_labelled_as_such():
@@ -60,13 +65,23 @@ def test_the_confidence_direction_is_shown_and_is_derived():
 
 def test_what_changed_is_printed_for_every_row():
     output = _run()
-    assert output.count("WHAT_CHANGED") == 2
+    assert output.count("WHAT_CHANGED") == 3
 
 
 def test_capped_scope_runs_a_single_prediction():
     output = _run("--prediction-id", "814a38cb-3935-4ce2-b640-b3154bfa84f4")
     assert "re-evaluated          1" in output
-    assert "capped-scope" in output
+    # The scope goes into the read, so the other three are never looked at --
+    # a capped-scope run says nothing about predictions it was not asked for.
+    assert "predictions read      1" in output
+    assert "skipped               0" in output
+
+
+def test_a_capped_scope_id_that_matches_nothing_is_reported_not_silent():
+    output = _run("--prediction-id", "no-such-prediction")
+    assert "re-evaluated          0" in output
+    assert "SKIPPED            no-such-prediction" in output
+    assert "no live row was found" in output
 
 
 def test_moving_the_clock_moves_a_prediction_across_its_horizon():
@@ -91,8 +106,11 @@ def test_the_shipped_reply_fixture_is_the_shape_the_parser_reads():
     from prediction_service.sweep.parse import parse_reevaluations
 
     payload = (FIXTURES / "sweep_reply.sample.json").read_text()
+    rows = json.loads((FIXTURES / "sweep_predictions.sample.json").read_text())
     answers = parse_reevaluations(
-        payload, subjects=["rucking vests", "probiotic nasal spray"]
+        payload,
+        prediction_ids=[row["PREDICTION_ID"] for row in rows[:2]],
+        subjects=["rucking vests", "probiotic nasal spray"],
     )
     assert set(answers) == {1, 2}
     assert answers[2].observation.outcome == "met"

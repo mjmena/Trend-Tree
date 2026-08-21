@@ -2,6 +2,7 @@
   "reevaluations": [
     {
       "id": 1,
+      "prediction_id": "814a38cb-3935-4ce2-b640-b3154bfa84f4",
       "subject": "rucking vests",
       "observable_check": "not_yet",
       "observation": "No house-label listing has appeared at any of the three named retailers; the shelf is still specialty-brand only.",
@@ -11,6 +12,7 @@
     },
     {
       "id": 2,
+      "prediction_id": "7dfe9315-9934-4f48-9471-6570f0d739ba",
       "subject": "probiotic nasal spray",
       "observable_check": "met",
       "observation": "Both CVS and Walgreens now list microbiome nasal sprays in the year-round wellness planogram rather than only on the seasonal cold-and-flu endcap, which is exactly what the check named.",

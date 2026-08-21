@@ -10,7 +10,9 @@ is exactly what Cloud Scheduler will get.
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -30,6 +32,7 @@ HORIZON = datetime(2027, 2, 14, tzinfo=UTC)
 
 ANSWER = {
     "id": 1,
+    "prediction_id": "814a38cb-3935-4ce2-b640-b3154bfa84f4",
     "subject": "rucking vests",
     "observable_check": "not_yet",
     "observation": "no house-label listing has appeared at any of the three retailers",
@@ -113,8 +116,25 @@ def test_capped_scope_leaves_the_rest_of_the_world_alone():
 
     body = resp.json()
     assert [r["prediction_id"] for r in body["results"]] == ["keep-me"]
-    assert [s["prediction_id"] for s in body["skipped"]] == ["leave-me"]
     assert body["verdicts_written"] == 1
+    # The filter is in the READ, so "leave-me" is never looked at -- a run
+    # that filtered the page the LIMIT returned would miss a requested
+    # prediction that sits past the cap.
+    assert body["predictions_read"] == 1
+    assert body["skipped"] == []
+
+
+def test_a_capped_scope_id_with_no_live_row_is_reported_not_silent():
+    ledger = _ledger(open_prediction_row(prediction_id="keep-me"))
+    body = _client(ledger, SweepLLM()).post(
+        "/sweep",
+        json={"prediction_ids": ["keep-me", "ghost"], "skip_generation": True},
+        headers=AUTH_HEADERS,
+    ).json()
+    assert [r["prediction_id"] for r in body["results"]] == ["keep-me"]
+    (skipped,) = body["skipped"]
+    assert skipped["prediction_id"] == "ghost"
+    assert "no live row was found" in skipped["reason"]
 
 
 def test_a_dry_run_writes_nothing():
@@ -245,19 +265,40 @@ def test_a_truth_arriving_in_the_grace_window_flips_it_to_resolved_true():
     assert "grace window" in result["what_changed"]
 
 
-def test_a_prediction_past_its_grace_window_is_never_written_again():
+def test_the_grace_window_closing_writes_exactly_one_more_row_then_nothing():
+    # AC4's far edge, at the HTTP seam and across two fires -- which is the
+    # only way to prove it, because the second fire reads back the row the
+    # first one wrote. Under a daily cron a prediction is already EXPIRED when
+    # its window closes, so without that one last row no row in the ledger
+    # ever carries final_evaluation: true and the call's last word is a note
+    # promising a re-check that never runs.
     row = open_prediction_row(status="EXPIRED")
     # 400 days past a 180-day band: the grace window closed 220 days ago.
     row["HORIZON_AT"] = _horizon(-400)
     ledger = _ledger(row)
-    resp = _client(ledger, SweepLLM()).post(
+    client = _client(ledger, SweepLLM())
+
+    first = client.post(
         "/sweep", json={"skip_generation": True}, headers=AUTH_HEADERS
-    )
-    body = resp.json()
-    assert body["reevaluated"] == 0
-    assert body["verdicts_written"] == 0
-    assert len(body["skipped"]) == 1
-    assert ledger.writes == []
+    ).json()
+    assert first["reevaluated"] == 1
+    assert first["verdicts_written"] == 1
+    (result,) = first["results"]
+    assert result["status"] == "EXPIRED"
+    assert result["final"] is True
+    assert "final evaluation" in result["what_changed"]
+    written = json.loads(ledger.writes[0].params["evidence"])
+    assert written["reevaluation"]["final_evaluation"] is True
+
+    # ...and the next day's sweep reads that row back and leaves it alone.
+    second = client.post(
+        "/sweep", json={"skip_generation": True}, headers=AUTH_HEADERS
+    ).json()
+    assert second["reevaluated"] == 0
+    assert second["verdicts_written"] == 0
+    assert len(second["skipped"]) == 1
+    assert "already in the ledger" in second["skipped"][0]["reason"]
+    assert len(ledger.writes) == 1
 
 
 def test_a_resolved_prediction_is_not_read_back_by_the_next_sweep():
@@ -393,6 +434,137 @@ def test_re_firing_the_same_chain_id_deduplicates_rather_than_appending_twice():
     second = client.post("/sweep", json=body, headers=AUTH_HEADERS).json()
     assert second["verdicts_written"] == 0
     assert second["results"][0]["prediction_eval_id"] in ids
+
+
+SCHEDULED_BODY = json.loads(
+    re.search(
+        r"^DEFAULT_BODY='(.*)'$",
+        (Path(__file__).resolve().parents[1] / "deploy" / "scheduler.sh").read_text(),
+        re.M,
+    ).group(1)
+)
+
+
+def test_the_scheduled_body_is_the_one_the_cron_actually_sends():
+    # Read out of deploy/scheduler.sh rather than restated here, so the two
+    # cannot drift and leave the idempotency test below asserting a body
+    # nothing sends.
+    assert SCHEDULED_BODY["daily_chain_id"] is True
+
+
+def test_the_scheduled_run_is_idempotent_across_a_scheduler_retry():
+    # Cloud Scheduler abandons an attempt at ATTEMPT_DEADLINE and retries --
+    # while the original may still be running and about to commit. So the
+    # retry has to MERGE onto the first attempt's rows, and it only can if it
+    # derives the same chain_id. The cron body cannot carry today's date
+    # (static bodies, no template variables), so it asks the route to.
+    ledger = _ledger(open_prediction_row())
+    client = _client(ledger, SweepLLM(reevaluation_reply=reevaluation_reply(ANSWER)))
+
+    first = client.post("/sweep", json=SCHEDULED_BODY, headers=AUTH_HEADERS).json()
+    assert first["verdicts_written"] == 1
+    assert first["chain_id"] == "pred-sweep-daily-" + datetime.now(UTC).strftime("%Y-%m-%d")
+    rows_after_first = len(ledger.rows)
+
+    ledger.rowcount = 0  # the MERGE matches: this evaluation is already there
+    second = client.post("/sweep", json=SCHEDULED_BODY, headers=AUTH_HEADERS).json()
+    assert second["chain_id"] == first["chain_id"]
+    assert second["results"][0]["prediction_eval_id"] == first["results"][0][
+        "prediction_eval_id"
+    ]
+    assert second["verdicts_written"] == 0
+    assert len(ledger.rows) == rows_after_first
+
+
+def test_a_manual_fire_does_not_merge_into_the_days_scheduled_rows():
+    # ...and the default is still a fresh chain, so a capped-scope test fire
+    # cannot be silently swallowed by the scheduled run's ids.
+    ledger = _ledger(open_prediction_row())
+    body = client_body = {"skip_generation": True}
+    resp = _client(ledger, SweepLLM()).post("/sweep", json=body, headers=AUTH_HEADERS)
+    assert resp.json()["chain_id"].startswith("pred-sweep-chain-")
+    assert client_body == {"skip_generation": True}
+
+
+def test_a_malformed_ledger_row_does_not_lose_the_whole_sweep():
+    # PREDICTION_EVAL_ID keeps its DDL DEFAULT UUID_STRING() for ad-hoc
+    # inserts and NOT NULL excludes neither a control character nor
+    # whitespace, so a row this service did not write can fail Claim's
+    # structural checks. Read in an unguarded comprehension that was a 502
+    # with nothing written for ANY prediction.
+    bad = open_prediction_row(prediction_id="broken", subject="rucking\x01vests")
+    good = open_prediction_row(prediction_id="fine")
+    ledger = _ledger(bad, good)
+
+    resp = _client(ledger, SweepLLM()).post(
+        "/sweep", json={"skip_generation": True}, headers=AUTH_HEADERS
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert [r["prediction_id"] for r in body["results"]] == ["fine"]
+    assert body["verdicts_written"] == 1
+    (skipped,) = body["skipped"]
+    assert skipped["prediction_id"] == "broken"
+    assert "could not be read" in skipped["reason"]
+    assert "\x01" not in json.dumps(body)
+
+
+def test_an_unwired_saturation_phase_leaves_the_prior_reading_alone():
+    # create_app without a saturation phase used to substitute an OFFLINE one
+    # for the sweep, which overwrote a real prior reading with a
+    # "not_configured" miss. The latest row is what CRMA-769 projects.
+    prior = {
+        "source_signals": ["bluesky:abc"],
+        "saturation": {
+            "query": "rucking vests",
+            "exploding_topics": {"matched": True, "classification": "regular"},
+            "gdelt": {"available": True, "article_count": 31},
+        },
+        "trend_context": None,
+        "coverage": None,
+    }
+    ledger = _ledger(open_prediction_row(evidence=prior))
+    _client(ledger, SweepLLM()).post(
+        "/sweep", json={"skip_generation": True}, headers=AUTH_HEADERS
+    )
+    (write,) = ledger.writes
+    saturation = json.loads(write.params["evidence"])["saturation"]
+    assert saturation["exploding_topics"]["matched"] is True
+    assert saturation["gdelt"]["article_count"] == 31
+
+
+def test_a_run_that_minted_at_real_cost_reports_that_cost():
+    # The sweep turn is skipped when nothing is live, and "no turn" used to
+    # report cost as unknown -- which made the whole run's estimate null even
+    # though generation had just spent money.
+    ledger = SweepLedgerSimulator(rows=[], signals=list(SIGNAL_ROWS))
+    body = _client(
+        ledger, SweepLLM(generation_reply=GENERATION_REPLY)
+    ).post("/sweep", json={}, headers=AUTH_HEADERS).json()
+
+    assert body["reevaluated"] == 0
+    assert body["predictions_minted"] == 1
+    assert body["llm_cost_estimate"] is not None
+    assert body["llm_cost_estimate"] > 0
+
+
+def test_a_same_chain_retry_still_reports_the_prediction_ids_of_rows_that_exist():
+    # minted_written excludes MERGE-dedup hits, so a retry reported
+    # prediction_id: null for rows that are demonstrably in the ledger.
+    # rowcount 0 is the ledger saying "WHEN NOT MATCHED found a match": the
+    # row this MERGE describes is already there, put there by an attempt whose
+    # response was lost. That is a retry, not a failure -- and the row exists.
+    ledger = SweepLedgerSimulator(rows=[], signals=list(SIGNAL_ROWS), rowcount=0)
+    body = _client(ledger, SweepLLM(generation_reply=GENERATION_REPLY)).post(
+        "/sweep", json={"chain_id": "pred-sweep-chain-fixed"}, headers=AUTH_HEADERS
+    ).json()
+
+    (generated,) = body["generated"]
+    # This attempt did not insert it...
+    assert generated["written"] is False
+    assert body["predictions_minted"] == 0
+    # ...but reporting prediction_id: null would say the row does not exist.
+    assert generated["prediction_id"]
 
 
 @pytest.mark.parametrize("field", ["prediction_limit", "candidate_limit"])

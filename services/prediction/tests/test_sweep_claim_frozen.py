@@ -68,6 +68,7 @@ _MEDDLING_REPLY = json.dumps(
         "reevaluations": [
             {
                 "id": 1,
+                "prediction_id": "814a38cb-3935-4ce2-b640-b3154bfa84f4",
                 "subject": "rucking vests",
                 # Every one of these is an attempt to move a frozen part.
                 "subject_descriptor": "weighted vests",

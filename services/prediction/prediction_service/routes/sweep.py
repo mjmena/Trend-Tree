@@ -23,6 +23,10 @@ the PRD asks for it -- as verdict-ledger staleness in the audit agent's view.
 mode: Cloud Scheduler POSTs this route with an OIDC token exactly the way a
 human does with ``gcloud auth print-identity-token``, and the capped-scope
 body (``prediction_ids``, ``skip_generation``) is what makes a test run cheap.
+The one thing the scheduled body says that a manual one does not is
+``daily_chain_id: true`` -- Cloud Scheduler retries, and without a stable
+per-day idempotency key a retry appends a second full set of evaluations for
+the same day. See ``sweep.run.daily_chain_id``.
 """
 
 from __future__ import annotations
@@ -63,7 +67,13 @@ from ..matching.trends import (
     SnowflakeTrendReader,
 )
 from ..saturation import SaturationPhase, floor_from_settings
-from ..sweep import SweepResult, SweepScope, new_chain_id, sweep_predictions
+from ..sweep import (
+    SweepResult,
+    SweepScope,
+    daily_chain_id,
+    new_chain_id,
+    sweep_predictions,
+)
 from ..writes import VerdictWriteFailed, write_verdicts
 
 log = logging.getLogger(__name__)
@@ -126,9 +136,20 @@ class SweepRequest(BaseModel):
             "Idempotency key for the whole run. Each re-evaluation row's PREDICTION_EVAL_ID "
             "is a hash of this id plus the PREDICTION_ID it evaluates, so re-firing with the "
             "same chain_id MERGEs into the rows it already wrote rather than appending a "
-            "second evaluation. Cloud Scheduler retries a failed POST, so the scheduled job "
-            "passes a stable id per calendar day (see deploy/scheduler.sh); omit it and each "
-            "POST is a new evaluation, which is the right default for a manual fire."
+            "second evaluation. Omit it and each POST is a new evaluation, which is the "
+            "right default for a manual fire. Wins over daily_chain_id when both are given."
+        ),
+    )
+    daily_chain_id: bool = Field(
+        default=False,
+        description=(
+            "Derive chain_id from the UTC calendar date instead of minting a fresh one. "
+            "This is what the scheduled job sends (deploy/scheduler.sh): Cloud Scheduler "
+            "retries a POST it abandoned at the attempt deadline while the original may "
+            "still be running and committing, and a fresh chain_id would append a second "
+            "full set of evaluations for the same day. A manual fire leaves this false so "
+            "it cannot MERGE into -- and therefore be silently swallowed by -- the day's "
+            "scheduled rows."
         ),
     )
 
@@ -185,8 +206,10 @@ class SweepResponse(BaseModel):
     expired: int
     verdicts_written: int
     results: list[SweepOut]
-    #: Live rows the sweep read and deliberately did not re-evaluate -- past
-    #: the grace window, or outside a capped-scope run's prediction_ids.
+    #: Rows the sweep did not re-evaluate, and why: its final row is already
+    #: in the ledger; the ledger row could not be read; or a requested
+    #: PREDICTION_ID matched no live row at all. Never silent -- "reevaluated:
+    #: 0" with nothing in here would look identical to a clean run.
     skipped: list[SkippedOut]
     generation_ran: bool
     #: Why the generation pass did not run or did not finish. Never fails the
@@ -235,6 +258,12 @@ def sweep_router(
     # call, both oracles an explicit miss -- so constructing an app never by
     # itself reaches the network.
     saturation_phase = saturation or SaturationPhase.offline(floor_from_settings(settings))
+    # ...but the SWEEP gets the phase as it was given, None included. An
+    # unwired service must leave EVIDENCE.saturation as the prior row left it
+    # rather than overwriting a real reading with a "we did not look" miss --
+    # the choice local_sweep.py already makes. sweep/run.py holds the same
+    # line for a wired phase whose lookups came back empty.
+    sweep_saturation = saturation
     table = settings.qualify(VERDICT_LEDGER_TABLE)
 
     @router.post("/sweep", response_model=SweepResponse)
@@ -242,7 +271,9 @@ def sweep_router(
         body: SweepRequest,
         caller: CallerIdentity = Depends(require_caller),  # noqa: B008 - FastAPI's own DI pattern
     ) -> SweepResponse:
-        chain_id = body.chain_id or new_chain_id()
+        chain_id = body.chain_id or (
+            daily_chain_id() if body.daily_chain_id else new_chain_id()
+        )
         scope = SweepScope(
             prediction_limit=body.prediction_limit,
             candidate_limit=body.candidate_limit,
@@ -269,7 +300,7 @@ def sweep_router(
                 predictions=predictions,
                 trends=trends,
                 llm=llm,
-                saturation=saturation_phase,
+                saturation=sweep_saturation,
                 scope=scope,
                 chain_id=chain_id,
             )
@@ -369,18 +400,24 @@ def sweep_router(
                     else round(cost + generation.cost_usd, 6)
                 )
                 minted_written: set[str] = set()
+                # A same-chain retry MERGEs onto rows a previous attempt
+                # committed. Those rows exist -- reporting prediction_id: null
+                # for them would say the opposite -- so "the row is in the
+                # ledger" is written | deduplicated, while `written` keeps its
+                # narrower meaning of "this attempt inserted it".
+                minted_present: set[str] = set()
                 if not body.dry_run:
-                    minted_written = set(
-                        write_verdicts(
-                            snowflake, table, generation.verdicts, chain_id=chain_id
-                        ).written
+                    report = write_verdicts(
+                        snowflake, table, generation.verdicts, chain_id=chain_id
                     )
+                    minted_written = set(report.written)
+                    minted_present = minted_written | set(report.deduplicated)
                 minted = len(minted_written)
                 generated = [
                     GeneratedOut(
                         prediction_id=(
                             v.prediction_id
-                            if v.prediction_eval_id in minted_written
+                            if v.prediction_eval_id in minted_present
                             else None
                         ),
                         prediction_eval_id=v.prediction_eval_id,

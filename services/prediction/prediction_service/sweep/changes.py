@@ -63,9 +63,20 @@ def _confidence_clause(prior: float | None, current: float) -> tuple[str | None,
     )
 
 
-def _status_clause(prior_status: str, status: str, reason: str) -> str | None:
+def _status_clause(
+    prior_status: str, status: str, reason: str, *, final: bool
+) -> str | None:
+    """The status line, when there is one to draw.
+
+    A prediction whose grace window closes unobserved writes its LAST row
+    without changing status: EXPIRED -> EXPIRED. There is no transition to
+    name, but "no further evaluation is coming" is the single most important
+    thing that row says -- and the alternative is a final row whose note
+    promises a re-check the sweep will never run. So a final row always gets a
+    clause, transition or not.
+    """
     if (prior_status or "").upper() == (status or "").upper():
-        return None
+        return f"This is the final evaluation of this call: {reason}" if final else None
     return f"Status moved {prior_status.upper()} -> {status.upper()}: {reason}"
 
 
@@ -98,6 +109,7 @@ def compose_what_changed(
     evidence_notes: Sequence[str] = (),
     model_note: str | None = None,
     observation_rationale: str | None = None,
+    final: bool = False,
 ) -> str:
     """The composed note. Never empty, never longer than the column.
 
@@ -109,7 +121,7 @@ def compose_what_changed(
     movement, held = _confidence_clause(prior_confidence, confidence)
     if movement:
         clauses.append(movement)
-    status_clause = _status_clause(prior_status, status, status_reason)
+    status_clause = _status_clause(prior_status, status, status_reason, final=final)
     if status_clause:
         clauses.append(status_clause)
     match_clause = _match_clause(prior_trend_id, trend_id, trend_topic)

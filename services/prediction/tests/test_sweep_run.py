@@ -63,6 +63,7 @@ def sweep(rows, *, llm=None, now=NOW, scope=None, saturation=None):
 
 ANSWER = {
     "id": 1,
+    "prediction_id": "814a38cb-3935-4ce2-b640-b3154bfa84f4",
     "subject": "rucking vests",
     "observable_check": "not_yet",
     "observation": "no house-label listing yet",
@@ -226,11 +227,30 @@ def test_a_context_read_failure_still_writes_the_row():
 # --- selection -------------------------------------------------------------
 
 
-def test_a_prediction_past_its_grace_window_is_skipped_with_a_reason():
+def test_the_grace_window_closing_writes_one_final_row_then_freezes():
+    # The integrated path, not the pure function: a daily cron leaves a
+    # prediction already EXPIRED when its window closes, so this is the ONLY
+    # way a row ever carries final_evaluation: true.
     row = open_prediction_row(status="EXPIRED")
-    result = sweep([row], llm=None, now=HORIZON + timedelta(days=180))
-    assert result.outcomes == []
-    (skipped,) = result.skipped
+    closes = HORIZON + timedelta(days=180)
+    result = sweep([row], llm=None, now=closes)
+
+    (outcome,) = result.outcomes
+    assert result.skipped == []
+    assert outcome.verdict.status == "EXPIRED"
+    assert outcome.final is True
+    assert outcome.verdict.evidence["reevaluation"]["final_evaluation"] is True
+    # The row's last word does not promise a re-check nobody will run.
+    assert "final evaluation" in outcome.verdict.what_changed
+
+    # Feed that row back in the way the next day's sweep would read it.
+    import json
+
+    closed = open_prediction_row(status="EXPIRED", evidence=outcome.verdict.evidence)
+    closed["EVIDENCE"] = json.dumps(outcome.verdict.evidence)
+    after = sweep([closed], llm=None, now=closes + timedelta(days=1))
+    assert after.outcomes == []
+    (skipped,) = after.skipped
     assert skipped.prediction_id == row["PREDICTION_ID"]
     assert "grace window closed" in skipped.reason
     assert "final" in skipped.reason
@@ -259,8 +279,46 @@ def test_capped_scope_re_evaluates_only_the_requested_predictions():
         [keep, other], llm=None, scope=SweepScope(prediction_ids=("keep-me",))
     )
     assert [o.prediction_id for o in result.outcomes] == ["keep-me"]
-    assert [s.prediction_id for s in result.skipped] == ["leave-me"]
-    assert "capped-scope" in result.skipped[0].reason
+    # The filter is in the read now, so the rest of the world is not merely
+    # left alone -- it is never looked at, and a capped-scope run says
+    # nothing about predictions it was not asked about.
+    assert result.skipped == []
+    assert result.predictions_read == 1
+
+
+def test_a_requested_prediction_that_was_never_found_is_reported_not_silent():
+    # "reevaluated: 0" with the target absent from `skipped` too is
+    # indistinguishable from "we looked and it was fine".
+    result = sweep(
+        [open_prediction_row(prediction_id="keep-me")],
+        llm=None,
+        scope=SweepScope(prediction_ids=("keep-me", "ghost")),
+    )
+    assert [o.prediction_id for o in result.outcomes] == ["keep-me"]
+    (skipped,) = result.skipped
+    assert skipped.prediction_id == "ghost"
+    assert "no live row was found" in skipped.reason
+
+
+def test_one_unreadable_ledger_row_does_not_lose_the_whole_sweep():
+    # A row this service did not write -- PREDICTION_EVAL_ID keeps its DDL
+    # DEFAULT UUID_STRING() for ad-hoc inserts, and NOT NULL excludes neither
+    # a control character nor whitespace. Built in an unguarded comprehension
+    # this raised InvalidClaim and the daily sweep wrote nothing for ANY
+    # prediction.
+    bad = open_prediction_row(
+        prediction_id="broken", subject="rucking\x01vests"
+    )
+    good = open_prediction_row(prediction_id="fine")
+    result = sweep([bad, good], llm=None)
+
+    assert [o.prediction_id for o in result.outcomes] == ["fine"]
+    (skipped,) = result.skipped
+    assert skipped.prediction_id == "broken"
+    assert "could not be read" in skipped.reason
+    # ...and the thing that made it unreadable is not echoed back verbatim.
+    assert "\x01" not in skipped.subject_descriptor
+    assert "\x01" not in skipped.reason
 
 
 def test_a_sweep_with_nothing_live_is_not_an_error():
@@ -268,6 +326,30 @@ def test_a_sweep_with_nothing_live_is_not_an_error():
     assert result.outcomes == []
     assert result.verdicts == []
     assert result.predictions_read == 0
+    # A pass that made no model call cost nothing. Reporting that as unknown
+    # makes the route's total null for a run that goes on to mint at real cost.
+    assert result.cost_usd == 0.0
+
+
+def test_a_sweep_that_made_no_model_call_costs_zero_not_unknown():
+    assert sweep([open_prediction_row()], llm=None).cost_usd == 0.0
+    failed = sweep(
+        [open_prediction_row()],
+        llm=SweepLLM(fail_reevaluation_with=RuntimeError("gemini is down")),
+    )
+    assert failed.cost_usd == 0.0
+
+
+def test_a_mis_bound_answer_is_reported_at_the_outcome_not_only_in_the_evidence():
+    # "reevaluated: false, note: null" tells an operator nothing about which
+    # of the two it was.
+    wrong = {**ANSWER, "prediction_id": "some-other-prediction"}
+    result = sweep(
+        [open_prediction_row()], llm=SweepLLM(reevaluation_reply=reevaluation_reply(wrong))
+    )
+    (outcome,) = result.outcomes
+    assert outcome.reevaluated is False
+    assert outcome.note and "no usable answer" in outcome.note
 
 
 def test_re_firing_the_same_chain_id_produces_the_same_row_identities():
@@ -317,9 +399,42 @@ def test_the_sweep_does_not_re_apply_the_data_quality_floor():
     assert len(result.outcomes) == 1
 
 
+def test_a_saturation_miss_never_overwrites_a_real_prior_reading():
+    # An ET outage, or a lookup budget spent before this subject's turn, comes
+    # back as a miss. The LATEST row is what CRMA-769 projects, so writing the
+    # miss over a real reading would make the pillar say it knows less about a
+    # subject than it does. A miss is not evidence; it carries no penalty
+    # precisely because nobody looked.
+    from prediction_service.saturation import SaturationPhase
+
+    prior = {
+        "source_signals": ["bluesky:abc"],
+        "saturation": {
+            "query": "rucking vests",
+            "exploding_topics": {"matched": True, "classification": "regular"},
+            "gdelt": {"available": True, "article_count": 31},
+        },
+        "trend_context": None,
+        "coverage": None,
+    }
+    result = sweep(
+        [open_prediction_row(evidence=prior)], llm=None, saturation=SaturationPhase.offline()
+    )
+    (outcome,) = result.outcomes
+    saturation = outcome.verdict.evidence["saturation"]
+    assert saturation["exploding_topics"]["matched"] is True
+    assert saturation["gdelt"]["article_count"] == 31
+    # ...and the row says the reading was not refreshed, rather than implying
+    # it was.
+    assert "not re-read" in outcome.verdict.evidence["reevaluation"]["saturation_note"]
+    assert "not re-read" in (outcome.note or "")
+
+
 def test_a_wired_saturation_phase_refreshes_the_evidence_key():
     from prediction_service.saturation import SaturationPhase
 
+    # The prior row carries no reading at all, so an explicit miss is the
+    # most this evaluation knows -- and recording it is better than a null.
     phase = SaturationPhase.offline()
     result = sweep([open_prediction_row()], llm=None, saturation=phase)
     saturation = result.outcomes[0].verdict.evidence["saturation"]

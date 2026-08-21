@@ -11,7 +11,9 @@
     "PREDICTION_STATUS": "ACTIVE",
     "MATCHED_TREND_ID": null,
     "EVIDENCE": {
-      "source_signals": ["bluesky:3lqz7a2xk4d2m"],
+      "source_signals": [
+        "bluesky:3lqz7a2xk4d2m"
+      ],
       "saturation": null,
       "trend_context": null,
       "coverage": null
@@ -31,7 +33,9 @@
     "PREDICTION_STATUS": "EXPIRED",
     "MATCHED_TREND_ID": null,
     "EVIDENCE": {
-      "source_signals": ["gdelt:2026-08-18:nasal-microbiome"],
+      "source_signals": [
+        "gdelt:2026-08-18:nasal-microbiome"
+      ],
       "saturation": null,
       "trend_context": null,
       "coverage": null
@@ -51,12 +55,52 @@
     "PREDICTION_STATUS": "EXPIRED",
     "MATCHED_TREND_ID": null,
     "EVIDENCE": {
-      "source_signals": ["pinterest:air-dry-clay-2024"],
+      "source_signals": [
+        "pinterest:air-dry-clay-2024"
+      ],
       "saturation": null,
       "trend_context": null,
-      "coverage": null
+      "coverage": null,
+      "reevaluation": {
+        "chain_id": "pred-sweep-daily-2025-04-01",
+        "evaluated_at": "2025-04-11T14:00:00+00:00",
+        "prior_status": "EXPIRED",
+        "observable_check": "not_yet",
+        "grace_ends_at": "2025-04-10T00:00:00+00:00",
+        "final_evaluation": true
+      }
     },
     "REASONING": "A single platform's search volume moved and nothing corroborated it.",
-    "EVALUATED_AT": "2025-04-01 09:00:00.000"
+    "EVALUATED_AT": "2025-04-11 14:00:00.000"
+  },
+  {
+    "PREDICTION_ID": "0b5f2c17-4f2e-4a1c-9a1d-2c9f4b6e77a1",
+    "PREDICTION_EVAL_ID": "9f1c7a30-51de-4a6b-8f2c-11d0c2b3a4e5",
+    "SUBJECT_DESCRIPTOR": "linen bedding sets",
+    "DIRECTIONAL_CLAIM": "washed-linen bedding moves from direct-to-consumer into mass-retail house labels",
+    "HORIZON_BAND": "near_term_1_3mo",
+    "HORIZON_AT": "2026-02-20 00:00:00.000",
+    "OBSERVABLE_CHECK": "a house-label washed-linen set listed at two national mass retailers",
+    "CONFIDENCE": 38.0,
+    "PREDICTION_STATUS": "EXPIRED",
+    "MATCHED_TREND_ID": null,
+    "EVIDENCE": {
+      "source_signals": [
+        "pinterest:linen-bedding-2026"
+      ],
+      "saturation": null,
+      "trend_context": null,
+      "coverage": null,
+      "reevaluation": {
+        "chain_id": "pred-sweep-daily-2026-05-20",
+        "evaluated_at": "2026-05-20T14:00:00+00:00",
+        "prior_status": "EXPIRED",
+        "observable_check": "not_yet",
+        "grace_ends_at": "2026-05-21T00:00:00+00:00",
+        "final_evaluation": false
+      }
+    },
+    "REASONING": "Two sources described the same shift and neither widened after the first month.",
+    "EVALUATED_AT": "2026-05-20 14:00:00.000"
   }
 ]

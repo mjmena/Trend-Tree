@@ -5,6 +5,7 @@
 #   deploy/scheduler.sh --dry-run       print the gcloud call, change nothing
 #   deploy/scheduler.sh --describe      show the job as it exists today
 #   deploy/scheduler.sh --pause / --resume
+#   deploy/scheduler.sh --verify        fire it once and prove it got a 2xx
 #
 # Idempotent by construction: it describes the job first and then either
 # `create` or `update`, so re-running it is how the cron is CHANGED, not a
@@ -27,7 +28,8 @@
 #       gcloud run services get-iam-policy trend-tree-prediction \
 #         --region us-east4 --project mcc-crm-automations
 #     -> one binding, roles/run.invoker, members crm-runtime@ and mmena@.
-#     ensure_invoker_binding below re-adds it only if it is ever missing.
+#     ensure_invoker_binding below re-adds it only if that exact ROLE and
+#     member pair is missing -- holding some other role does not count.
 #   * creating the job needs cloudscheduler.jobs.create and, because the job
 #     runs AS crm-runtime@, iam.serviceAccounts.actAs on that account. Both
 #     were confirmed granted to the operator on 2026-08-21 via
@@ -51,9 +53,10 @@
 #    container log, with nothing wrong anywhere else.
 #
 # 2. `gcloud scheduler jobs run` PRINTS NOTHING USEFUL and leaves
-#    status.code: -1 whatever happened. Do not read it as a result. Read the
-#    Cloud Run request log instead -- see verify_last_run below, which filters
-#    on the scheduler's own user agent.
+#    status.code: -1 whatever happened. Do not read its OUTPUT as a result --
+#    but do read its exit code, which is a real signal. The result comes from
+#    the Cloud Run request log, filtered on the scheduler's own user agent and
+#    on a timestamp floor taken before the fire. See --verify below.
 #
 # 3. --schedule IS VALIDATED AT CREATION. An impossible date (`0 0 31 2 *`)
 #    is rejected outright, so "create it paused with a date that never fires"
@@ -86,15 +89,24 @@ GCLOUD="${GCLOUD:-gcloud}"
 SCHEDULE="${SCHEDULE:-0 14 * * *}"
 TIME_ZONE="${TIME_ZONE:-UTC}"
 
-# The sweep's own retry budget. Cloud Scheduler retries a non-2xx, and the
-# sweep is idempotent per chain_id -- but the scheduled body deliberately
-# does NOT pin a chain_id: a retry that lands after a partial write should
-# append the rows the first attempt did not, and MERGE semantics make a
-# repeat of the ones it did harmless only when the id matches. Rather than
-# hand-roll a per-day id in a cron payload (Cloud Scheduler has no template
-# variables), the run is left to mint one, and the retry count is kept low so
-# a genuinely broken run fails into ledger staleness -- which is the failure
-# surface the PRD asks for -- rather than hammering the warehouse.
+# The sweep's own retry budget. Cloud Scheduler retries a non-2xx, AND it
+# abandons an attempt that blows --attempt-deadline while that attempt may
+# still be running and about to commit. So a retry has to be idempotent
+# against a first attempt that succeeded, not merely against one that failed.
+#
+# The sweep is idempotent per chain_id -- PREDICTION_EVAL_ID is a hash of the
+# chain plus the PREDICTION_ID, and the ledger write is a MERGE -- so the
+# retry only dedupes if it uses the SAME chain_id. Cloud Scheduler bodies are
+# static and it has no template variables, so the body cannot carry today's
+# date; it sets `daily_chain_id: true` instead and the route derives
+# `pred-sweep-daily-YYYY-MM-DD` server-side (sweep/run.py daily_chain_id).
+# Without that, a retry mints a fresh chain, derives fresh eval ids, and
+# appends a SECOND full set of evaluations for the same calendar day, which
+# the append-only ledger cannot tell from real history.
+#
+# The retry count stays low so a genuinely broken run fails into ledger
+# staleness -- the failure surface the PRD asks for -- rather than hammering
+# the warehouse.
 MAX_RETRY_ATTEMPTS="${MAX_RETRY_ATTEMPTS:-2}"
 # The service is deployed with --timeout 600; the sweep's own budget has to
 # sit inside that or the scheduler gives up on a run that is still working.
@@ -107,7 +119,7 @@ ATTEMPT_DEADLINE="${ATTEMPT_DEADLINE:-590s}"
 # Written to a variable first: inside ${BODY:-...} a literal '}' has to be
 # backslash-escaped, and the backslash survives into the value -- which ships
 # a cron whose POST body is invalid JSON. Caught by tests/test_scheduler.py.
-DEFAULT_BODY='{"prediction_limit": 50, "max_predictions": 5}'
+DEFAULT_BODY='{"prediction_limit": 50, "max_predictions": 5, "daily_chain_id": true}'
 BODY="${BODY:-$DEFAULT_BODY}"
 
 log() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
@@ -121,8 +133,8 @@ usage: deploy/scheduler.sh [--dry-run|--describe|--pause|--resume|--verify]
   --describe   print the job as it exists today
   --pause      stop the cron without deleting it
   --resume     start it again
-  --verify     fire the job once and read the Cloud Run request log for the
-               real result (see note 2 in this script's header)
+  --verify     fire the job once, wait for the Cloud Run request log, and
+               exit non-zero unless this fire returned 2xx (see note 2)
 USAGE
   exit 1
 }
@@ -162,11 +174,21 @@ job_exists() {
 # ensure_invoker_binding -- add roles/run.invoker for $INVOKER if it is
 # missing. Already granted as of 2026-08-21, so this is normally a no-op read;
 # it exists so the cron can be rebuilt from this script alone.
+#
+# The check asks about the ROLE and the member together. Grepping the whole
+# policy for the member alone passes when $INVOKER holds some *other* role on
+# the service -- roles/run.viewer, say -- and skips the grant, producing a
+# cron that 403s once a day forever. gcloud does the matching, because a
+# role-aware match on raw policy JSON in bash 3.2 is not worth writing.
 ensure_invoker_binding() {
-  local policy
-  policy="$("$GCLOUD" run services get-iam-policy "$SERVICE" \
-    --region "$REGION" --project "$PROJECT" --format json 2>/dev/null || echo '{}')"
-  if printf '%s' "$policy" | grep -q "serviceAccount:${INVOKER}"; then
+  local bound filter
+  filter="bindings.role=\"roles/run.invoker\" AND bindings.members=\"serviceAccount:${INVOKER}\""
+  bound="$("$GCLOUD" run services get-iam-policy "$SERVICE" \
+    --region "$REGION" --project "$PROJECT" \
+    --flatten='bindings[].members' \
+    --filter="$filter" \
+    --format='value(bindings.members)' 2>/dev/null || true)"
+  if [[ -n "$bound" ]]; then
     log "roles/run.invoker: ${INVOKER} already bound on ${SERVICE} (no change)."
     return 0
   fi
@@ -221,16 +243,64 @@ URL="$(service_url)" || {
   exit 1
 }
 
+# --verify has one job: be trustworthy. Three things it therefore does not do.
+#
+#  * It does not swallow `jobs run`. That command's *status* is meaningless
+#    (header note 2), but its exit code is not: a missing job, a paused job or
+#    a permission error all fail there, and `|| true` turned every one of them
+#    into a pass.
+#  * It does not read the log immediately. Cloud Run request logs are not
+#    synchronously available, so a read taken at the moment of firing prints
+#    an empty table under "The real result" -- and `gcloud logging read` exits
+#    0 on empty, so an empty table used to be a pass.
+#  * It does not read without a timestamp floor. `--freshness 15m` with no
+#    floor happily prints the PREVIOUS run's rows as this fire's, which is
+#    worse than printing nothing: it is a green light for a run that never
+#    happened.
+#
+# So: take the floor first, fire, poll up to VERIFY_ATTEMPTS times, and
+# require a 2xx from an entry after the floor. Anything else exits non-zero.
+VERIFY_ATTEMPTS="${VERIFY_ATTEMPTS:-10}"
+VERIFY_INTERVAL_S="${VERIFY_INTERVAL_S:-6}"
+
 if [[ "$ACTION" == "verify" ]]; then
-  # `jobs run` reports nothing useful (header note 2) -- fire it, then read
-  # the Cloud Run request log filtered on the scheduler's own user agent.
+  FLOOR="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  LOG_FILTER="resource.type=cloud_run_revision AND resource.labels.service_name=${SERVICE} AND httpRequest.userAgent:\"Google-Cloud-Scheduler\" AND timestamp>=\"${FLOOR}\""
+
   log "Firing ${JOB} once (its printed status is meaningless -- see below)..."
-  "$GCLOUD" scheduler jobs run "$JOB" --location "$REGION" --project "$PROJECT" || true
-  log "The real result, from the Cloud Run request log:"
-  exec "$GCLOUD" logging read \
-    "resource.type=cloud_run_revision AND resource.labels.service_name=${SERVICE} AND httpRequest.userAgent:\"Google-Cloud-Scheduler\"" \
-    --project "$PROJECT" --limit 5 --freshness 15m \
-    --format 'table(timestamp, httpRequest.status, httpRequest.requestUrl, httpRequest.latency)'
+  if ! "$GCLOUD" scheduler jobs run "$JOB" --location "$REGION" --project "$PROJECT"; then
+    echo "Aborting: 'gcloud scheduler jobs run ${JOB}' failed. The job may not exist, may be paused, or you may lack cloudscheduler.jobs.run. Nothing was verified." >&2
+    exit 1
+  fi
+
+  statuses=""
+  attempt=0
+  while [[ "$attempt" -lt "$VERIFY_ATTEMPTS" ]]; do
+    attempt=$((attempt + 1))
+    sleep "$VERIFY_INTERVAL_S"
+    statuses="$("$GCLOUD" logging read "$LOG_FILTER" \
+      --project "$PROJECT" --limit 5 \
+      --format 'value(httpRequest.status)' 2>/dev/null || true)"
+    [[ -n "$statuses" ]] && break
+    log "No request log entry yet (attempt ${attempt}/${VERIFY_ATTEMPTS})..."
+  done
+
+  if [[ -z "$statuses" ]]; then
+    echo "FAILED: no Cloud Run request from Google-Cloud-Scheduler appeared after ${FLOOR} within $((VERIFY_ATTEMPTS * VERIFY_INTERVAL_S))s. The job fired but the service was never reached -- check the job's --uri and the OIDC audience (header note 1)." >&2
+    exit 1
+  fi
+
+  log "The real result, from the Cloud Run request log (since ${FLOOR}):"
+  "$GCLOUD" logging read "$LOG_FILTER" \
+    --project "$PROJECT" --limit 5 \
+    --format 'table(timestamp, httpRequest.status, httpRequest.requestUrl, httpRequest.latency)' || true
+
+  if ! printf '%s\n' "$statuses" | grep -qE '^2[0-9][0-9]$'; then
+    echo "FAILED: the scheduler reached ${SERVICE} but no request since ${FLOOR} returned 2xx (saw: $(printf '%s' "$statuses" | tr '\n' ' ')). A 401 is almost always the OIDC audience; a 403 is roles/run.invoker; a 5xx is the sweep itself." >&2
+    exit 1
+  fi
+  log "OK: the scheduled fire reached ${SERVICE} and returned 2xx."
+  exit 0
 fi
 
 build_job_args "$URL"

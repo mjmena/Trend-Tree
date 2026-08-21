@@ -14,9 +14,10 @@ deployed route calls, through the same reader interfaces.
 ``--now`` is the whole point of the offline loop here. The status machine is
 a function of the moment being evaluated, and the fixture is built so that
 the default moment puts one prediction before its horizon, one past its
-horizon but inside the grace window, and one past the grace window
-altogether -- so a single run shows all three regions, including the freeze.
-Move ``--now`` and watch them cross.
+horizon but inside the grace window, one at the close of its grace window
+(the single final row), and one already frozen -- so a single run shows every
+state a live call can be in, including the freeze. Move ``--now`` and watch
+them cross.
 
     --live-llm       call Gemini for real (PREDICTION_GEMINI_API_KEY required)
     --model NAME     which model --live-llm calls
@@ -63,7 +64,8 @@ DEFAULT_TRENDS = FIXTURES / "trends.sample.json"
 DEFAULT_REPLY = FIXTURES / "sweep_reply.sample.json"
 
 #: The moment the shipped fixture is written around: one prediction before
-#: its horizon, one inside its grace window, one past it. A fixed default so
+#: its horizon, one inside its grace window, one at the close of its window
+#: and one already frozen past it. A fixed default so
 #: the loop's output is the same next month as it is today -- a fixture whose
 #: meaning depends on the wall clock stops demonstrating anything.
 DEFAULT_NOW = datetime(2026, 8, 21, 12, 0, tzinfo=UTC)

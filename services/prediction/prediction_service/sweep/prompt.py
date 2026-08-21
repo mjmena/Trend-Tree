@@ -17,9 +17,11 @@ unfalsifiable one, because the thing being judged would have moved under the
 judging.
 
 Same discipline as saturation/weigh.py: code carries the model's number
-across verbatim and never adjusts one, entries are bound to their subject
-rather than to their list position, and an absent or malformed entry leaves
-that prediction exactly as the prior row left it.
+across verbatim and never adjusts one, entries are bound to the call they
+name rather than to their list position, and an absent or malformed entry
+leaves that prediction exactly as the prior row left it. The binding key is
+the PREDICTION_ID -- shown here and echoed back -- because two live calls can
+share a subject descriptor but never an id (sweep/parse.py).
 
 Everything here is pure -- no clock, no network, no warehouse.
 """
@@ -60,7 +62,6 @@ class ReevaluationItem:
     matched_trend_topic: str | None = None
     trend_context: dict[str, Any] | None = None
     saturation: str | None = None
-    prior_evaluated_at: str | None = None
 
 
 def build_system_prompt() -> str:
@@ -135,7 +136,8 @@ OUTPUT
 
   {{
     "reevaluations": [
-      {{"id": 1, "subject": "<the subject shown for id 1, copied exactly>",
+      {{"id": 1, "prediction_id": "<the prediction_id shown for id 1, copied exactly>",
+        "subject": "<the subject shown for id 1, copied exactly>",
         "observable_check": "{OBSERVED_NOT_YET}",
         "observation": "how you read the check, in one sentence",
         "confidence": 0-100,
@@ -144,11 +146,16 @@ OUTPUT
     ]
   }}
 
-  The "subject" field is how your answer is bound to the call it is about.
-  Copy it character for character. Keep the ids as they were given to you --
-  do NOT renumber, re-sort or reorder the entries. An entry whose subject
-  does not match the subject shown for its id is DISCARDED, and that call
-  keeps the confidence and reasoning it already had.
+  The "prediction_id" field is how your answer is bound to the call it is
+  about. Copy it character for character. Two of the calls below can share a
+  subject descriptor -- they can never share a prediction_id, which is why
+  the id is what binds. Copy the subject verbatim too; it is checked against
+  the prediction_id as a second opinion.
+
+  Keep the "id" numbers as they were given to you -- do NOT renumber, re-sort
+  or reorder the entries. An entry whose prediction_id does not match the one
+  shown for its id is DISCARDED, and that call keeps the confidence and
+  reasoning it already had.
 
   Omitting an id leaves that call's confidence and reasoning exactly as they
   were, and reads its observable check as "{OBSERVED_NOT_YET}"."""
@@ -159,6 +166,16 @@ def _horizon_line(item: ReevaluationItem) -> str:
         return (
             f"      horizon: {item.horizon_at} ({item.horizon_band}) -- "
             f"{item.days_to_horizon:.1f} day(s) away"
+        )
+    if item.days_of_grace_left <= 0:
+        # The grace window has closed. This row is the call's last, so the
+        # prompt must not promise a re-check the sweep will never run.
+        return (
+            f"      horizon: {item.horizon_at} ({item.horizon_band}) -- PASSED "
+            f"{abs(item.days_to_horizon):.1f} day(s) ago, and the one-horizon grace window "
+            "has now closed. THIS IS THE FINAL RE-CHECK of this call: after it the row "
+            "stands and the grade derived from it is final. A truth you can see NOW still "
+            "resolves it TRUE."
         )
     return (
         f"      horizon: {item.horizon_at} ({item.horizon_band}) -- PASSED "
@@ -175,7 +192,8 @@ def build_user_prompt(items: Sequence[ReevaluationItem]) -> str:
     blocks = []
     for index, item in enumerate(items, 1):
         lines = [
-            f"  [{index}] subject: {item.subject_descriptor}",
+            f"  [{index}] prediction_id: {item.prediction_id}",
+            f"      subject: {item.subject_descriptor}",
             f"      claim: {item.directional_claim}",
             f"      observable check: {item.observable_check}",
             _horizon_line(item),
@@ -183,8 +201,6 @@ def build_user_prompt(items: Sequence[ReevaluationItem]) -> str:
             f"      your last confidence: {item.confidence}",
             f"      your last reasoning: {item.reasoning}",
         ]
-        if item.prior_evaluated_at:
-            lines.append(f"      last evaluated: {item.prior_evaluated_at}")
         if item.matched_trend_topic:
             lines.append(f"      matched trend: {item.matched_trend_topic}")
         else:
@@ -210,7 +226,7 @@ def build_user_prompt(items: Sequence[ReevaluationItem]) -> str:
 {body}
 
 For each id: read the observable check, restate your confidence, rewrite your
-reasoning, and say what changed. Echo each id's subject verbatim. The claim
-itself is frozen and cannot be revised.
+reasoning, and say what changed. Echo each id's prediction_id verbatim (and
+its subject). The claim itself is frozen and cannot be revised.
 
 JSON only."""

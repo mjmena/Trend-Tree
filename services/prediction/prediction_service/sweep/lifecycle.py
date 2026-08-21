@@ -15,8 +15,13 @@ So a prediction has three time regions, and both boundaries come out of the
 frozen claim:
 
     mint ......... HORIZON_AT ......... HORIZON_AT + one horizon length
-         ACTIVE   |     EXPIRED,       |      EXPIRED, frozen
-                  |   still re-checked |   (no further evaluations)
+         ACTIVE   |     EXPIRED,       |  one final EXPIRED row, then frozen
+                  |   still re-checked |   (no further evaluations after it)
+
+The freeze is one evaluation late, deliberately: the sweep writes exactly
+one final EXPIRED row at or after the close (``is_reevaluable``'s
+``final_row_written``), so the ledger records the freeze happening instead of
+simply going quiet.
 
 "One horizon length" is the band's own window -- 90 / 180 / 365 / 730 days,
 ``domain.claim.horizon_length`` -- not ``HORIZON_AT - EVALUATED_AT``. Two
@@ -36,8 +41,9 @@ reasons, and the second is the load-bearing one:
 horizon, or inside the grace window -- resolves it. That is the point of
 re-checking an EXPIRED prediction at all: a claim that came true late reads
 as a late truth (the Early-Late grade, CRMA-771's derivation) rather than as
-silently wrong. After the grace window closes, nothing further is appended:
-the last row stands, and the grade derived from it is final.
+silently wrong. Once the grace window has closed, one final row is written
+saying so, and after that nothing further is appended: that row stands, and
+the grade derived from it is final.
 
 Nothing here grades. Correct / Early-Late / Incorrect is derived in SQL from
 these rows (CRMA-771) and is deliberately not computed, not stored, and not
@@ -134,7 +140,14 @@ def is_past_grace(horizon_at: datetime, band: HorizonBand, now: datetime) -> boo
     return now >= grace_ends_at(horizon_at, band)
 
 
-def is_reevaluable(status: str, horizon_at: datetime, band: HorizonBand, now: datetime) -> bool:
+def is_reevaluable(
+    status: str,
+    horizon_at: datetime,
+    band: HorizonBand,
+    now: datetime,
+    *,
+    final_row_written: bool = False,
+) -> bool:
     """Whether the sweep should append another row for this prediction.
 
     ACTIVE always is -- including an ACTIVE row whose grace window has
@@ -142,15 +155,30 @@ def is_reevaluable(status: str, horizon_at: datetime, band: HorizonBand, now: da
     row so the ledger records the transition rather than leaving the last
     word as a claim that was never closed.
 
-    EXPIRED is, until the grace window closes; after that the grade is
-    frozen and appending anything would move it.
+    EXPIRED is, until the grace window closes -- **and then exactly once
+    more**, to write that final row. ``final_row_written`` is what stops the
+    "once more" from becoming "every day forever": the caller reads it off
+    the prior row's ``EVIDENCE.reevaluation.final_evaluation``, which this
+    sweep sets on every row it writes.
+
+    That last row is not a nicety. Under a daily cron a prediction is already
+    EXPIRED by the time its grace window closes, so a rule of "EXPIRED and
+    past grace is never selected" means ``next_status``'s final branch can
+    only be reached by a prediction the sweep somehow never touched between
+    HORIZON_AT and the close -- no row ever carries ``final_evaluation:
+    true``, and the call's last word is a row whose WHAT_CHANGED promises a
+    re-check that never comes. One more evaluation keeps that promise: the
+    check gets read one final time (a truth visible at the boundary still
+    resolves it TRUE), and the row says out loud that it is the last.
+
+    After that row, the grade is frozen and appending anything would move it.
     """
     normalized = (status or "").upper()
     if normalized in TERMINAL_STATUSES:
         return False
-    if normalized == "EXPIRED":
-        return not is_past_grace(horizon_at, band, now)
-    return normalized == "ACTIVE"
+    if normalized == "EXPIRED" and is_past_grace(horizon_at, band, now):
+        return not final_row_written
+    return normalized in ("ACTIVE", "EXPIRED")
 
 
 def next_status(

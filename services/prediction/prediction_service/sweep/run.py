@@ -10,17 +10,24 @@ route does the writing, after the sweep has returned.
 
 1. Reads the ledger's live predictions -- ACTIVE, plus EXPIRED ones still
    inside their grace window (matching/predictions.py, ``LIVE_STATUSES``).
-2. Drops the ones whose grace window has closed. That is the freeze: their
-   last row stands and the grade derived from it is final
-   (sweep/lifecycle.py).
+2. Writes ONE last row for a prediction whose grace window has closed, then
+   drops it on every later run. That final row is the freeze made visible:
+   after it the row stands and the grade derived from it is final
+   (sweep/lifecycle.py). A row the read could not parse, and a requested
+   PREDICTION_ID with no live row, are reported as skips rather than
+   dropped or raised.
 3. Re-checks the match through ``matching.run.resolve_match`` -- the same
    code path ``POST /match`` uses, not a copy of it -- refreshing
    ``MATCHED_TREND_ID`` and ``EVIDENCE.trend_context``.
 4. Refreshes ``EVIDENCE.saturation`` through the saturation phase's public
-   lookup seam. The data-quality floor is deliberately NOT re-applied: it is
-   a mint-time gate on whether a subject can be judged at all, and running it
-   again would let it quietly stop re-evaluating an already-live call, which
-   is a new mechanical rule the strategy does not permit.
+   lookup seam -- unless neither oracle answered and the prior row already
+   carries a real reading, in which case the prior reading stands. The
+   latest row is what the dashboard projection reads, and a provider outage
+   is not a reason to say we know less about a subject than we do. The
+   data-quality floor is deliberately NOT re-applied: it is a mint-time gate
+   on whether a subject can be judged at all, and running it again would let
+   it quietly stop re-evaluating an already-live call, which is a new
+   mechanical rule the strategy does not permit.
 5. Asks the model, in one batched turn, to read the observable check,
    restate confidence, rewrite reasoning and say what changed.
 6. Applies the status machine and composes ``WHAT_CHANGED``.
@@ -45,7 +52,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -93,6 +100,31 @@ def new_chain_id() -> str:
     re-evaluation chain from a generation or compare-step chain in the
     ledger."""
     return f"pred-sweep-chain-{uuid.uuid4().hex[:8]}"
+
+
+def daily_chain_id(now: datetime | None = None) -> str:
+    """The scheduled run's chain id: one value per UTC calendar day.
+
+    Cloud Scheduler retries a POST that returned non-2xx or that blew the
+    attempt deadline -- and it abandons an attempt that is *still running*,
+    which is the dangerous case: the first attempt goes on to commit its rows
+    while the retry starts from scratch. With a fresh random chain per fire
+    the retry derives fresh ``eval_id_for()`` values and appends a SECOND full
+    set of evaluations for the same day; the ledger is append-only, so nothing
+    downstream can tell them apart.
+
+    Derived from the date rather than passed in the cron body because Cloud
+    Scheduler message bodies are static -- it has no template variables. The
+    job asks for this by sending ``daily_chain_id: true`` (deploy/scheduler.sh)
+    and the route derives the value here, so the id is one line of code rather
+    than a thing an operator has to remember to rotate.
+
+    A retry that crossed UTC midnight would derive the next day's id and lose
+    the dedup. The job fires at 14:00 UTC with a 590s attempt deadline and two
+    retries, so that boundary is ten hours away.
+    """
+    moment = now or datetime.now(UTC)
+    return f"pred-sweep-daily-{moment.astimezone(UTC).strftime('%Y-%m-%d')}"
 
 
 def eval_id_for(chain_id: str, prediction_id: str) -> str:
@@ -162,7 +194,7 @@ class SweepOutcome:
     confidence_direction: str
     confidence_delta: float | None
     #: True when the model answered for this prediction and the answer was
-    #: bound to its subject.
+    #: bound to it by PREDICTION_ID.
     reevaluated: bool = False
     note: str | None = None
 
@@ -182,8 +214,12 @@ class SweepResult:
     model: str = ""
     input_tokens: int = 0
     output_tokens: int = 0
-    #: None when llm.py does not price this model. Unknown, not free.
-    cost_usd: float | None = None
+    #: None when a re-evaluation turn HAPPENED and llm.py does not price that
+    #: model -- unknown, not free. A sweep that made no model call at all (an
+    #: empty live pool, no model configured, a failed turn) is 0.0, because
+    #: "this pass cost nothing" is a fact, and reporting it as unknown makes
+    #: the route's total null for a run that went on to mint at real cost.
+    cost_usd: float | None = 0.0
 
     @property
     def verdicts(self) -> list[Verdict]:
@@ -206,6 +242,39 @@ def _render_saturation(lookup: Any, reading: Any) -> str:
     return "\n".join((render_et(lookup), render_breadth(reading)))
 
 
+def _looked_at_nothing(lookup: Any, reading: Any) -> bool:
+    """True when this evaluation consulted neither oracle successfully -- an
+    ET miss AND an unavailable GDELT reading. Not the same as "we looked and
+    found nothing": an available reading of zero articles is a reading."""
+    return not lookup.matched and not reading.available
+
+
+def _carries_a_reading(saturation: Any) -> bool:
+    """Whether the prior row's ``EVIDENCE.saturation`` holds something an
+    oracle actually answered, as opposed to null or two recorded misses."""
+    if not isinstance(saturation, Mapping):
+        return False
+    et = saturation.get("exploding_topics")
+    gdelt = saturation.get("gdelt")
+    matched = isinstance(et, Mapping) and bool(et.get("matched"))
+    available = isinstance(gdelt, Mapping) and bool(gdelt.get("available"))
+    return matched or available
+
+
+def _final_row_written(evidence: Mapping[str, Any] | None) -> bool:
+    """Whether the prior row was already this prediction's final evaluation.
+
+    Read off the row the sweep itself wrote: every sweep row records
+    ``EVIDENCE.reevaluation.final_evaluation``. A mint row has no
+    ``reevaluation`` block at all, which reads as False -- correctly, since a
+    prediction that was minted and never swept has not had its final row.
+    """
+    if not isinstance(evidence, Mapping):
+        return False
+    block = evidence.get("reevaluation")
+    return isinstance(block, Mapping) and block.get("final_evaluation") is True
+
+
 def _selected(
     predictions: Sequence[OpenPrediction], *, scope: SweepScope, now: datetime
 ) -> tuple[list[OpenPrediction], list[SkippedPrediction]]:
@@ -215,6 +284,10 @@ def _selected(
     skipped: list[SkippedPrediction] = []
     for prediction in predictions:
         subject = prediction.claim.subject_descriptor
+        # A backstop only: the capped scope is applied in the read
+        # (OPEN_PREDICTIONS_QUERY), so a reader that honours it never gets
+        # here. A reader that ignores the argument still cannot widen a
+        # capped-scope run's blast radius.
         if not scope.selects(prediction.prediction_id):
             skipped.append(
                 SkippedPrediction(
@@ -225,7 +298,11 @@ def _selected(
             )
             continue
         if not is_reevaluable(
-            prediction.status, prediction.horizon_at, prediction.claim.horizon_band, now
+            prediction.status,
+            prediction.horizon_at,
+            prediction.claim.horizon_band,
+            now,
+            final_row_written=_final_row_written(prediction.evidence),
         ):
             closes = grace_ends_at(prediction.horizon_at, prediction.claim.horizon_band)
             skipped.append(
@@ -234,14 +311,60 @@ def _selected(
                     subject_descriptor=subject,
                     reason=(
                         f"status {prediction.status} with the one-horizon grace window "
-                        f"closed at {closes.isoformat()}; this prediction's grade is final "
-                        "and no further row will be appended"
+                        f"closed at {closes.isoformat()}; its final evaluation is already "
+                        "in the ledger, its grade is final, and no further row will be "
+                        "appended"
                     ),
                 )
             )
             continue
         live.append(prediction)
     return live, skipped
+
+
+def _unreadable(predictions: OpenPredictionReader) -> list[SkippedPrediction]:
+    """Rows the read could not turn into predictions, as skips.
+
+    A malformed ledger row used to abort the whole sweep from inside a list
+    comprehension -- 502, nothing written for any prediction. It degrades per
+    row now (matching/predictions.py), and this is where the sweep says so
+    out loud instead of quietly evaluating a smaller pool.
+    """
+    return [
+        SkippedPrediction(
+            prediction_id=row.prediction_id,
+            subject_descriptor=row.subject_descriptor,
+            reason=row.reason,
+        )
+        for row in getattr(predictions, "unreadable", ())
+    ]
+
+
+def _unrequested(
+    read: Sequence[OpenPrediction], *, scope: SweepScope
+) -> list[SkippedPrediction]:
+    """Requested PREDICTION_IDs the read never returned.
+
+    "reevaluated: 0" with the target absent from `skipped` too is the one
+    answer a capped-scope fire must never give: it looks identical to "we
+    looked and it was fine".
+    """
+    if not scope.prediction_ids:
+        return []
+    seen = {prediction.prediction_id for prediction in read}
+    return [
+        SkippedPrediction(
+            prediction_id=prediction_id,
+            subject_descriptor="",
+            reason=(
+                "requested in this run's prediction_ids but no live row was found for it: "
+                "it is not in the ledger, its latest row is not ACTIVE or EXPIRED, or the "
+                "prediction_limit cut it off. Nothing was evaluated for it"
+            ),
+        )
+        for prediction_id in scope.prediction_ids
+        if prediction_id not in seen
+    ]
 
 
 def _reevaluations(
@@ -270,7 +393,12 @@ def _reevaluations(
             system=build_system_prompt(), user=build_user_prompt(items)
         )
         answers = parse_reevaluations(
-            response.text, subjects=[item.subject_descriptor for item in items]
+            response.text,
+            # PREDICTION_ID is the binding key: two live calls can share a
+            # subject descriptor, and a `met` bound to the wrong one closes
+            # the wrong call permanently. See sweep/parse.py.
+            prediction_ids=[item.prediction_id for item in items],
+            subjects=[item.subject_descriptor for item in items],
         )
     except Exception as err:  # noqa: BLE001 - an outage is a miss, not a failed sweep
         log.warning("re-evaluation turn failed; live calls keep their prior numbers: %s", err)
@@ -312,15 +440,25 @@ def sweep_predictions(
     chain = chain_id or new_chain_id()
     moment = now or datetime.now(UTC)
 
-    read = predictions.open_predictions(limit=scope.prediction_limit)
+    # The capped scope goes INTO the read, not after it: filtering the page
+    # the LIMIT returned would silently miss a requested prediction that sits
+    # past the cap. See OPEN_PREDICTIONS_QUERY.
+    read = predictions.open_predictions(
+        limit=scope.prediction_limit, prediction_ids=scope.prediction_ids
+    )
     live, skipped = _selected(read, scope=scope, now=moment)
+    skipped = _unreadable(predictions) + _unrequested(read, scope=scope) + skipped
     if not live:
         log.info(
             "sweep found nothing to re-evaluate",
             extra={"chain_id": chain, "read": len(read), "skipped": len(skipped)},
         )
         return SweepResult(
-            chain_id=chain, skipped=skipped, predictions_read=len(read), trends_indexed=0
+            chain_id=chain,
+            skipped=skipped,
+            predictions_read=len(read),
+            trends_indexed=0,
+            cost_usd=0.0,
         )
 
     # Read once for the whole sweep, like the compare step: every subject is
@@ -402,15 +540,29 @@ def sweep_predictions(
             prediction.evidence, decision=resolution.decision, context=resolution.context
         )
         evidence_notes: list[str] = []
+        saturation_note: str | None = None
         if lookup is not None and reading is not None:
-            evidence["saturation"] = build_saturation_evidence(
-                lookup=lookup, reading=reading
-            )
-            evidence = attach_saturation(evidence, evidence["saturation"])
-            if lookup.matched and lookup.classification:
-                evidence_notes.append(
-                    f"Exploding Topics now reads {lookup.classification!r} for this subject"
+            if _looked_at_nothing(lookup, reading) and _carries_a_reading(
+                evidence.get("saturation")
+            ):
+                # Neither oracle answered -- a provider outage, or the lookup
+                # budget spent before this subject's turn. The prior row's
+                # real reading stands. Downgrading it to a miss would make the
+                # LATEST row -- the one CRMA-769 projects -- say we know less
+                # about this subject than we do, and a miss carries no penalty
+                # precisely because it is not evidence.
+                saturation_note = (
+                    "saturation was not re-read at this evaluation (neither Exploding "
+                    "Topics nor GDELT answered); the prior reading stands unchanged"
                 )
+            else:
+                evidence = attach_saturation(
+                    evidence, build_saturation_evidence(lookup=lookup, reading=reading)
+                )
+                if lookup.matched and lookup.classification:
+                    evidence_notes.append(
+                        f"Exploding Topics now reads {lookup.classification!r} for this subject"
+                    )
         block = dict(provenance)
         block["chain_id"] = chain
         block["evaluated_at"] = moment.isoformat()
@@ -424,13 +576,20 @@ def sweep_predictions(
         # Said in the payload rather than stored as a column, deliberately --
         # see sweep/direction.py.
         block["confidence_direction_is_derived_not_stored"] = True
-        note: str | None = resolution.note
+        notes: list[str] = [n for n in (resolution.note,) if n]
         if answer is None and provenance.get("reevaluated"):
             block["note"] = (
                 "the model returned no usable answer for this call -- absent, malformed, "
-                "or not bound to this subject; confidence and reasoning are the prior "
+                "or not bound to this prediction; confidence and reasoning are the prior "
                 "evaluation's, unadjusted, and no observable check was read"
             )
+            # Also reported at the API surface: "reevaluated: false, note: null"
+            # tells an operator nothing about which of the two it was.
+            notes.append(block["note"])
+        if saturation_note:
+            block["saturation_note"] = saturation_note
+            notes.append(saturation_note)
+        note = "; ".join(notes) or None
         evidence["reevaluation"] = block
 
         what_changed = compose_what_changed(
@@ -447,6 +606,7 @@ def sweep_predictions(
             evidence_notes=evidence_notes,
             model_note=answer.what_changed if answer else None,
             observation_rationale=observation.rationale,
+            final=status.final,
         )
 
         try:
@@ -516,5 +676,6 @@ def sweep_predictions(
         model=str(provenance.get("model") or ""),
         input_tokens=int(provenance.get("batch_input_tokens") or 0),
         output_tokens=int(provenance.get("batch_output_tokens") or 0),
-        cost_usd=provenance.get("batch_cost_usd"),
+        # Only a turn that actually ran can have an unknown price.
+        cost_usd=provenance.get("batch_cost_usd") if provenance.get("reevaluated") else 0.0,
     )

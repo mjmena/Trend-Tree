@@ -91,9 +91,25 @@ def test_an_expired_prediction_inside_the_grace_window_is_still_re_checked():
     assert is_reevaluable("EXPIRED", HORIZON, BAND, inside)
 
 
-def test_an_expired_prediction_past_the_grace_window_is_frozen():
+def test_an_expired_prediction_at_the_close_gets_exactly_one_more_evaluation():
+    # Under a daily cron a prediction is ALREADY EXPIRED when its window
+    # closes, so "EXPIRED past grace is never selected" would mean no row ever
+    # carries final_evaluation: true, and the call's last word would be a row
+    # promising a re-check that never comes. One more, then silence.
     past = HORIZON + timedelta(days=BAND_DAYS)
-    assert not is_reevaluable("EXPIRED", HORIZON, BAND, past)
+    assert is_reevaluable("EXPIRED", HORIZON, BAND, past)
+    decision = next_status(prior_status="EXPIRED", horizon_at=HORIZON, band=BAND, now=past)
+    assert decision.status == "EXPIRED"
+    assert decision.final is True
+
+
+def test_an_expired_prediction_whose_final_row_is_written_is_frozen():
+    past = HORIZON + timedelta(days=BAND_DAYS)
+    assert not is_reevaluable("EXPIRED", HORIZON, BAND, past, final_row_written=True)
+    # Still frozen a year later -- the freeze is the final ROW, not the date.
+    assert not is_reevaluable(
+        "EXPIRED", HORIZON, BAND, past + timedelta(days=365), final_row_written=True
+    )
 
 
 def test_an_active_prediction_is_re_evaluated_even_past_its_grace_window():
@@ -105,8 +121,8 @@ def test_an_active_prediction_is_re_evaluated_even_past_its_grace_window():
     decision = next_status(prior_status="ACTIVE", horizon_at=HORIZON, band=BAND, now=past)
     assert decision.status == "EXPIRED"
     assert decision.final is True
-    # ...and then never again.
-    assert not is_reevaluable("EXPIRED", HORIZON, BAND, past)
+    # ...and then never again, because that row said it was final.
+    assert not is_reevaluable("EXPIRED", HORIZON, BAND, past, final_row_written=True)
 
 
 @pytest.mark.parametrize("status", ["RESOLVED_TRUE", "RESOLVED_FALSE", "WITHDRAWN"])
@@ -186,6 +202,10 @@ def test_the_grace_window_closing_unobserved_writes_one_final_expired_row():
     assert decision.status == "EXPIRED"
     assert decision.final is True
     assert "final evaluation" in decision.reason
+    # ...and the selection rule can actually reach this branch. Asserting the
+    # pure function alone would prove a behaviour the integrated sweep cannot
+    # produce; tests/test_sweep_run.py runs the whole pass over the boundary.
+    assert is_reevaluable("EXPIRED", HORIZON, BAND, closes)
 
 
 def test_passing_the_horizon_does_not_by_itself_resolve_anything_false():

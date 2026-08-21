@@ -1,18 +1,35 @@
 """The re-evaluation reply, parsed (CRMA-766).
 
-Same contract as saturation/weigh.py's ``parse_weighings``, and for the same
-reason: **an entry is bound to its subject, not to its position**. Asked to
-re-evaluate a list, a model may reasonably return the entries re-sorted by
-its new confidence and renumbered 1..n. Read back by id, that would write
-each row with another call's confidence, another call's reasoning, and --
-worse here than in the weighing pass -- another call's *resolution*, closing
-the wrong prediction permanently. Every row still written, nothing
-detectably wrong downstream.
+Same shape as saturation/weigh.py's ``parse_weighings``, and for the same
+reason: **an entry is bound to the call it names, not to its position**.
+Asked to re-evaluate a list, a model may reasonably return the entries
+re-sorted by its new confidence and renumbered 1..n. Read back by position,
+that would write each row with another call's confidence, another call's
+reasoning, and -- worse here than in the weighing pass -- another call's
+*resolution*, closing the wrong prediction permanently. Every row still
+written, nothing detectably wrong downstream.
+
+**The binding key is PREDICTION_ID, not the subject.** The subject descriptor
+is not unique across live calls: generation dedupes on the whole four-part
+claim (``generation/run.py``), so two candidates that share a subject and
+differ in their directional claim both mint, and the live-subject index is
+read before the model turn, so it cannot suppress a same-subject sibling
+minted in the same reply. Two live predictions on "rucking vests" bound by
+subject alone would let a swapped reply hand call A the ``met`` that belongs
+to call B -- and ``met`` is terminal. So each entry echoes the PREDICTION_ID
+it was shown against, which is an identity by construction, and the subject
+is checked as a second opinion when it is offered.
+
+An entry binds only when BOTH the position it claims and the PREDICTION_ID it
+echoes agree. An internally inconsistent entry -- a renumbered id under the
+right prediction, or the right number under the wrong prediction -- is
+dropped rather than reconciled: choosing which of the two fields to believe
+would be the parser inventing a resolution.
 
 Anything malformed or mismatched is simply absent from the returned map, and
 an absent id means the caller keeps that prediction's prior confidence and
 reasoning and reads its observable check as ``not_yet``. That degradation is
-the only safe one: a parser that guessed would be inventing a resolution.
+the only safe one.
 """
 
 from __future__ import annotations
@@ -89,13 +106,26 @@ def _observation(entry: Mapping[str, Any]) -> Observation:
     )
 
 
-def parse_reevaluations(text: str, *, subjects: Sequence[str]) -> dict[int, Reevaluation]:
+def parse_reevaluations(
+    text: str, *, prediction_ids: Sequence[str], subjects: Sequence[str]
+) -> dict[int, Reevaluation]:
     """Parse the re-evaluation reply into ``{1-based id: Reevaluation}``.
 
-    ``subjects`` is the batch in the order it was rendered, so ``subjects[0]``
-    is the subject of id 1. An entry must echo the subject its id was shown
-    against, or it is dropped -- see the module docstring.
+    Both sequences are the batch in the order it was rendered, so element 0
+    of each belongs to id 1. An entry must echo the PREDICTION_ID its id was
+    shown against -- and, when it offers one, a matching subject -- or it is
+    dropped. See the module docstring for why the id is the key and the
+    subject is not.
     """
+    if len(prediction_ids) != len(subjects):
+        raise ValueError(
+            "prediction_ids and subjects describe the same batch and must be the same "
+            f"length, got {len(prediction_ids)} and {len(subjects)}"
+        )
+    expected_id = {
+        index: str(prediction_id).strip()
+        for index, prediction_id in enumerate(prediction_ids, 1)
+    }
     expected = {index: subject_key(subject) for index, subject in enumerate(subjects, 1)}
     count = len(subjects)
     payload = extract_json_object(text)
@@ -120,11 +150,20 @@ def parse_reevaluations(text: str, *, subjects: Sequence[str]) -> dict[int, Reev
             continue
         if not 1 <= index <= count or index in out:
             continue
-        subject = entry.get("subject")
-        if not isinstance(subject, str) or subject_key(subject) != expected[index]:
-            # The answer does not say which call it is about, or says a
+        identity = entry.get("prediction_id")
+        if not isinstance(identity, str) or identity.strip() != expected_id[index]:
+            # The answer does not say which call it is about, or names a
             # different one. Keeping the prior row's numbers is the only
-            # option that cannot mislabel a resolution.
+            # option that cannot mislabel a resolution -- and PREDICTION_ID
+            # is the only field in the reply that is an identity.
+            continue
+        subject = entry.get("subject")
+        if subject is not None and (
+            not isinstance(subject, str) or subject_key(subject) != expected[index]
+        ):
+            # The id and the subject disagree about which call this is. Two
+            # live calls can share a subject but never an id, so this is an
+            # incoherent entry, not a recoverable one.
             continue
         out[index] = Reevaluation(
             confidence=_confidence(entry.get("confidence")),
