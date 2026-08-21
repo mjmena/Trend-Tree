@@ -1,0 +1,17 @@
+{
+  "name": "trend-tree-ecomm-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Trend-to-product sourcing agent (CRMA-776) — Cloud Run service.",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "snowflake-sdk": "^2.2.0"
+  }
+}
