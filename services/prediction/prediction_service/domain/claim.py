@@ -9,6 +9,7 @@ before a warehouse round-trip, instead of a raw Snowflake error. No I/O.
 
 from __future__ import annotations
 
+import unicodedata
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -45,6 +46,12 @@ _HORIZON_BAND_DAYS: dict[str, int] = {
     "longer_range_12_24mo": 730,
 }
 
+#: The controlled horizon vocabulary, in ascending window order. Public
+#: because the generation prompt (generation/prompt.py) has to name the exact
+#: strings the domain layer accepts -- a prompt listing a band this module
+#: rejects would produce candidates that can never be minted.
+HORIZON_BANDS: tuple[str, ...] = tuple(_HORIZON_BAND_DAYS)
+
 # The EVIDENCE VARIANT's contracted keys (strategy doc §6) -- required to be
 # *present*, even when a value is legitimately null (e.g. trend_context is
 # NULL for a white-space prediction). The key's presence is the contract, not
@@ -74,6 +81,36 @@ MAX_LENGTHS: dict[str, int] = {
 }
 
 
+#: Explicit bidirectional formatting controls. They are Unicode category Cf,
+#: not Cc, so a control-character check alone misses them -- and they are the
+#: dangerous half: SUBJECT_DESCRIPTOR is composed into the dashboard's rendered
+#: claim sentence, where a right-to-left override reverses the display of
+#: everything after it. That is display spoofing on the surface a strategist
+#: uses to decide whether to believe us. ZWJ/ZWNJ are also Cf and are load-
+#: bearing in real scripts, so the check names these twelve rather than
+#: rejecting the whole class.
+_BIDI_CONTROLS: frozenset[str] = frozenset(
+    "\u061c\u200e\u200f\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069"
+)
+
+
+def check_printable(name: str, value: str) -> None:
+    """Raise InvalidClaim if ``value`` carries a control or bidi-override
+    character.
+
+    Neither survives as meaning -- a NUL truncates in some readers, a
+    right-to-left override silently reverses the rest of the rendered
+    sentence -- and both reach the dashboard verbatim, since the ledger's
+    VARCHAR columns store whatever they are given.
+    """
+    for ch in value:
+        if unicodedata.category(ch) == "Cc" or ch in _BIDI_CONTROLS:
+            raise InvalidClaim(
+                f"{name} contains a control or bidirectional-override character "
+                f"(U+{ord(ch):04X}); claim text must be plain, displayable text"
+            )
+
+
 def check_length(name: str, value: str | None) -> None:
     """Raise InvalidClaim if ``value`` would overflow its ledger column."""
     limit = MAX_LENGTHS[name]
@@ -95,9 +132,11 @@ class Claim:
 
     def __post_init__(self) -> None:
         for name in ("subject_descriptor", "directional_claim", "observable_check"):
-            if not getattr(self, name).strip():
+            value = getattr(self, name)
+            if not value.strip():
                 raise InvalidClaim(f"{name} must be non-empty")
-            check_length(name, getattr(self, name))
+            check_length(name, value)
+            check_printable(name, value)
         if self.horizon_band not in _HORIZON_BAND_DAYS:
             raise InvalidClaim(
                 f"unknown horizon_band: {self.horizon_band!r} "

@@ -14,6 +14,7 @@ import pytest
 from tt_services_lib.auth import AUTH_MODE_IAP, AUTH_MODE_OIDC
 
 from prediction_service.config import ConfigError, settings_from_env
+from prediction_service.generation.llm import DEFAULT_MODEL as DEFAULT_GEMINI_MODEL
 
 AUDIENCE = "https://trend-tree-prediction-tu6gxkvema-uk.a.run.app"
 IAP_AUDIENCE = "/projects/289569404687/locations/us-east4/services/trend-tree-prediction"
@@ -207,3 +208,74 @@ def test_a_non_numeric_port_is_a_config_error():
 
 def test_a_numeric_port_is_parsed():
     assert settings_from_env(dict(_SERVER_ENV, PORT="9090")).port == 9090
+
+
+# --- the generation phase's model (CRMA-763) -------------------------------
+
+
+def test_the_gemini_model_defaults_to_flash():
+    assert settings_from_env({}).gemini.model == "gemini-3.7-flash"
+    assert settings_from_env({}).gemini.model == DEFAULT_GEMINI_MODEL
+
+
+def test_the_gemini_model_and_timeout_are_overridable_without_a_code_change():
+    settings = settings_from_env(
+        {"PREDICTION_GEMINI_MODEL": "gemini-4-preview", "PREDICTION_GEMINI_TIMEOUT_S": "45"}
+    )
+
+    assert settings.gemini.model == "gemini-4-preview"
+    assert settings.gemini.timeout_s == 45.0
+
+
+def test_the_previous_default_is_still_reachable_by_env_var():
+    # The A/B this change exists to make cheap: back to Pro without a commit.
+    settings = settings_from_env({"PREDICTION_GEMINI_MODEL": "gemini-3.1-pro-preview"})
+
+    assert settings.gemini.model == "gemini-3.1-pro-preview"
+    assert settings.gemini.is_priced()
+
+
+def test_a_padded_model_name_is_trimmed_rather_than_sent_with_its_whitespace():
+    # `--update-env-vars` copy-paste picks up spaces; a model id with one
+    # would 404 per request, on /generate only.
+    assert settings_from_env({"PREDICTION_GEMINI_MODEL": "  gemini-3.7-flash "}).gemini.model == (
+        "gemini-3.7-flash"
+    )
+
+
+def test_an_empty_model_is_refused_at_startup_not_per_request():
+    # An empty id builds `/v1beta/models/:generateContent`, which 404s on
+    # every /generate while /health stays green -- the service looks fine and
+    # writes no verdicts. A blank override is a typo, never an intent.
+    env = dict(_SERVER_ENV, PREDICTION_GEMINI_MODEL="   ")
+
+    with pytest.raises(ConfigError, match="PREDICTION_GEMINI_MODEL is empty"):
+        settings_from_env(env).validate_for_server()
+
+
+def test_an_unpriced_model_boots_and_only_reports_its_cost_as_unknown():
+    # Deliberately NOT a startup failure: refusing to boot on an unknown id
+    # would break the one case the knob exists for -- trying a model this
+    # code has never seen. It runs; only the dollar figure is null.
+    settings = settings_from_env(dict(_SERVER_ENV, PREDICTION_GEMINI_MODEL="gemini-9-preview"))
+
+    settings.validate_for_server()
+    assert not settings.gemini.is_priced()
+    assert settings_from_env(_SERVER_ENV).gemini.is_priced()
+
+
+def test_a_non_numeric_gemini_timeout_is_a_config_error():
+    with pytest.raises(ConfigError, match="PREDICTION_GEMINI_TIMEOUT_S is 'soon'"):
+        settings_from_env({"PREDICTION_GEMINI_TIMEOUT_S": "soon"})
+
+
+def test_a_missing_gemini_key_does_not_stop_the_service_booting():
+    # Deliberate: without it the service still serves /health, /whoami (the
+    # deploy gate's probe) and /run -- only POST /generate answers 503. A dead
+    # generation phase then surfaces as verdict-ledger staleness in the audit
+    # agent's view, which is where the PRD wants it, rather than as a
+    # container that will not start.
+    settings = settings_from_env(_SERVER_ENV)
+
+    assert settings.gemini.api_key == ""
+    settings.validate_for_server()

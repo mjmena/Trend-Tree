@@ -194,3 +194,55 @@ def test_build_verdict_accepts_an_explicit_eval_id_and_chain_id():
     )
     assert verdict.prediction_eval_id == "fixed-eval-id"
     assert verdict.chain_id == "pred-verdict-chain-abcd1234"
+
+
+# --- control and bidi characters (review finding 14) -----------------------
+
+
+def _claim(**overrides):
+    base = {
+        "subject_descriptor": "rucking vests",
+        "directional_claim": "mainstream retail adoption expands",
+        "horizon_band": "emerging_3_6mo",
+        "observable_check": "Target lists a house-label weighted vest under 20 lb",
+    }
+    base.update(overrides)
+    return Claim(**base)
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["subject_descriptor", "directional_claim", "observable_check"],
+)
+@pytest.mark.parametrize(
+    ("label", "char"),
+    [
+        ("NUL", "\x00"),
+        ("bell", "\x07"),
+        ("newline", "\n"),
+        ("RLO", "‮"),
+        ("LRO", "‭"),
+        ("RLI", "⁧"),
+        ("ALM", "؜"),
+    ],
+)
+def test_control_and_bidi_characters_are_refused(field, label, char):
+    # SUBJECT_DESCRIPTOR is composed into the dashboard's rendered claim
+    # sentence, so a right-to-left override is display spoofing on the
+    # surface a strategist uses to decide whether to believe us.
+    with pytest.raises(InvalidClaim, match="control or bidirectional"):
+        _claim(**{field: f"rucking{char}vests"})
+
+
+def test_the_error_names_the_offending_code_point():
+    with pytest.raises(InvalidClaim, match=r"U\+202E"):
+        _claim(subject_descriptor="rucking‮vests")
+
+
+def test_ordinary_and_non_ascii_text_still_passes():
+    # The check names the twelve bidi controls rather than rejecting the
+    # whole Cf category, so accented text, emoji and joiners are unaffected.
+    claim = _claim(subject_descriptor="crème brûlée soft-serve \U0001f366")
+
+    assert claim.subject_descriptor.startswith("crème")
+    assert _claim(subject_descriptor="family \U0001f468‍\U0001f469‍\U0001f467")
