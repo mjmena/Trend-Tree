@@ -1,0 +1,49 @@
+schema: workflow/2022.04
+name: Ecomm Agent
+settings:
+  error_notification: true
+  lambda_memory: 1024
+  lambda_timeout: 300
+triggers:
+# CRMA-776 (tracer bullet): HTTP only, sync-response toggle ON at creation
+# (this workflow must be BORN from the Pipedream UI's HTTP Template — see
+# the pipedream-synced-project skill's "Create a workflow" recipe and this
+# repo's CLAUDE.md; the toggle is write-once and not git-settable).
+# hi_XXXXXXX below is a PLACEHOLDER — Pipedream assigns the real id on
+# first UI-driven creation; update this line (and ecomm-agent-p_XXXXXXX/
+# .workflow.state, also not yet created) once that happens.
+#
+# A future sibling story adds the poll cron here, matching
+# prediction-agent-p_QPCkLP1/workflow.yaml's shape:
+#   - id: dc_XXXXXXX   # NOT built by this story — do not add yet.
+- id: hi_PLACEHOLDER
+steps:
+- namespace: normalize_event
+  runtime: nodejs20.x
+  uses: "./normalize_event/entry.mjs"
+  props:
+    trigger_event: "{{steps.trigger.event}}"
+- namespace: fetch_context
+  runtime: nodejs20.x
+  uses: "./fetch_context/entry.mjs"
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    trend_id: "{{steps.normalize_event.$return_value.trend_id}}"
+    tier: "{{steps.normalize_event.$return_value.tier}}"
+- namespace: run_sourcing
+  runtime: nodejs20.x
+  uses: "./run_sourcing/entry.mjs"
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    google_gemini:
+      authProvisionId: apn_EOhp9DY
+    event: "{{steps.normalize_event.$return_value}}"
+    context: "{{steps.fetch_context.$return_value}}"
+- namespace: respond
+  runtime: nodejs20.x
+  uses: "./respond/entry.mjs"
+  props:
+    event: "{{steps.normalize_event.$return_value}}"
+    result: "{{steps.run_sourcing.$return_value}}"
