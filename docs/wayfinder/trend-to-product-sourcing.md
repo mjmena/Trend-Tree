@@ -279,6 +279,16 @@ Settled decisions in binding present tense.
   vector, and `CATALOG_STATUS` only; presentation fields are never stored. A product missing
   from a sweep is **soft-delisted, never deleted**: retrieval filters to `active`, ledger rows
   stay untouched, and no re-source compensates — a thinned card row is accepted.
+  **The Shopify tier's `CATALOG_PRODUCT_ID` is the product handle** — the admin CSV export
+  carries no numeric product id, and the handle is the URL identity the Decision Page links
+  on; the numeric id rides in `CATALOG_PAYLOAD` once the sync observes it. A renamed handle
+  behaves as delist + add. *Amended 2026-08-21 at CRMA-752.*
+- The catalog may be **seeded from a Shopify admin CSV export** ahead of the live sync — same
+  embed doc, same handle key, `LAST_SEEN_AT` stamped with the export date — so the build
+  proceeds while the token waits on CRMA-747. Seed rows graduate through the first live sweep
+  as a normal sweep; nothing is re-keyed. The 7-day freshness gate is **unchanged**: a manual
+  re-export is the refresh lever until the sync lands (token expected week of 2026-08-24).
+  *Settled 2026-08-21 at CRMA-752.*
 - Catalog staleness is guarded at the **outcome layer only**: an audit-agent freshness row on
   `MAX(LAST_SEEN_AT)` (YELLOW past 3 days, RED past 7) plus the ecomm agent **declining to
   source** against a catalog older than 7 days. No Pipedream registry entry, no GCP alert
@@ -322,8 +332,8 @@ Settled decisions in binding present tense.
 
 - [Decide: the multi-tier contract — how a second product source plugs in](https://mcclatchy.atlassian.net/browse/CRMA-755)
 
-- [Decide: catalog sync — cadence, change detection, and where product vectors live](https://mcclatchy.atlassian.net/browse/CRMA-752) — **Decided:** A Cloud Run job trend-tree-catalog-sync (`services/catalog-sync/`, daily Cloud Scheduler cron — self-service since the 2026-08-20 re-probe) does a full-catalog sweep diffed on an embed-doc hash into DIM_CATALOG_PRODUCT, soft-delisting disappeared products; staleness is guarded at the outcome layer only.
-  **Binds:** CRMA-753's calibration corpus becomes DIM_CATALOG_PRODUCT and its embed doc owns EMBED_DOC_HASH/VERSION semantics; retrieval must filter `CATALOG_STATUS='active'`; the ecomm agent gains a 7-day freshness gate; the token home amends to Secret Manager `trend-tree-shopify-token` (CRMA-747 wizard updated); the spec's provisioning list adds the Cloud Scheduler cron and `run.jobs.run` for `crm-runtime@`.
+- [Decide: catalog sync — cadence, change detection, and where product vectors live](https://mcclatchy.atlassian.net/browse/CRMA-752) — **Decided:** A Cloud Run job trend-tree-catalog-sync (`services/catalog-sync/`, daily Cloud Scheduler cron — self-service since the 2026-08-20 re-probe) does a full-catalog sweep diffed on an embed-doc hash into DIM_CATALOG_PRODUCT, soft-delisting disappeared products; staleness is guarded at the outcome layer only. Amended 2026-08-21: the Shopify tier keys on the product handle, and the catalog may be CSV-seeded ahead of the sync.
+  **Binds:** CRMA-753's calibration corpus becomes DIM_CATALOG_PRODUCT and its embed doc owns EMBED_DOC_HASH/VERSION semantics; retrieval must filter `CATALOG_STATUS='active'`; the ecomm agent gains a 7-day freshness gate; the token home amends to Secret Manager `trend-tree-shopify-token` (CRMA-747 wizard updated); the spec's provisioning list adds the Cloud Scheduler cron and `run.jobs.run` for `crm-runtime@`; the build is not token-blocked — seeding from the 2026-08-20 export is sanctioned.
 
 - [Prototype: calibrate the trend-to-product vector space — model, embed doc, threshold](https://mcclatchy.atlassian.net/browse/CRMA-753)
 
