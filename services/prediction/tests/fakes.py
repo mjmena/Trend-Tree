@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from prediction_service.generation.llm import LLMResponse, estimate_cost_usd
+from prediction_service.generation.llm import DEFAULT_MODEL, LLMResponse, estimate_cost_usd
 
 
 @dataclass
@@ -71,7 +71,13 @@ class FakePredictionLLM:
             model=self.model,
             input_tokens=self.input_tokens,
             output_tokens=self.output_tokens,
-            cost_usd=estimate_cost_usd(self.input_tokens, self.output_tokens),
+            # Billed at the real default model, not at `self.model`: these
+            # fakes answer to an id no rate table knows, and the point of
+            # these tests is that the cost *reaches* the caller. The
+            # unpriced-model path has its own coverage in test_llm.py.
+            cost_usd=estimate_cost_usd(
+                self.input_tokens, self.output_tokens, model=DEFAULT_MODEL
+            ),
         )
 
     @property
@@ -123,7 +129,13 @@ class ShufflingPredictionLLM:
             model=self.model,
             input_tokens=self.input_tokens,
             output_tokens=self.output_tokens,
-            cost_usd=estimate_cost_usd(self.input_tokens, self.output_tokens),
+            # Billed at the real default model, not at `self.model`: these
+            # fakes answer to an id no rate table knows, and the point of
+            # these tests is that the cost *reaches* the caller. The
+            # unpriced-model path has its own coverage in test_llm.py.
+            cost_usd=estimate_cost_usd(
+                self.input_tokens, self.output_tokens, model=DEFAULT_MODEL
+            ),
         )
 
     @property

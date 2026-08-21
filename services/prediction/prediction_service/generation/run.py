@@ -74,8 +74,10 @@ class GenerationResult:
     signals_considered: int = 0
     model: str = ""
     input_tokens: int = 0
+    #: Answer plus thinking tokens -- what the model bills for (llm.py).
     output_tokens: int = 0
-    cost_usd: float = 0.0
+    #: None when llm.py does not price this model. Unknown, not free.
+    cost_usd: float | None = None
 
 
 def new_chain_id() -> str:

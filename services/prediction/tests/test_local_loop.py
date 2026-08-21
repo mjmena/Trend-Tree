@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 
 import local_generate
+from prediction_service.generation.llm import DEFAULT_MODEL
 from prediction_service.generation.signals import FixtureSignalReader
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
@@ -73,6 +74,44 @@ def test_print_prompt_dumps_the_exact_prompts_the_run_would_send():
 def test_live_llm_without_a_key_fails_loudly_instead_of_silently_replaying():
     with pytest.raises(SystemExit, match="PREDICTION_GEMINI_API_KEY"):
         local_generate.run(["--live-llm"], out=io.StringIO())
+
+
+# --- --model: A/B two models without editing code --------------------------
+
+
+def _built(argv):
+    """The LLM the loop would call, built from the same argv a developer
+    types -- without calling it."""
+    return local_generate.build_llm(local_generate.build_parser().parse_args(argv))
+
+
+def test_a_live_run_uses_the_default_model_when_nothing_asks_for_another(monkeypatch):
+    monkeypatch.setenv("PREDICTION_GEMINI_API_KEY", "key-123")
+    monkeypatch.delenv("PREDICTION_GEMINI_MODEL", raising=False)
+
+    assert _built(["--live-llm"]).model == DEFAULT_MODEL
+
+
+def test_the_model_flag_beats_the_env_var_which_beats_the_default(monkeypatch):
+    # The precedence a developer expects from a flag: the thing typed last
+    # wins, so an A/B is `--live-llm --model X` against `--live-llm`, with no
+    # need to know what is exported in this shell.
+    monkeypatch.setenv("PREDICTION_GEMINI_API_KEY", "key-123")
+    monkeypatch.setenv("PREDICTION_GEMINI_MODEL", "gemini-3.1-pro-preview")
+
+    assert _built(["--live-llm"]).model == "gemini-3.1-pro-preview"
+    assert _built(["--live-llm", "--model", "gemini-3.7-flash"]).model == (
+        "gemini-3.7-flash"
+    )
+
+
+def test_the_offline_default_still_replays_and_never_reaches_for_a_key(monkeypatch):
+    # --model is a live-run switch; the replay path must not start demanding
+    # a key because a model was named.
+    monkeypatch.delenv("PREDICTION_GEMINI_API_KEY", raising=False)
+    output = _run("--model", "gemini-3.1-pro-preview")
+
+    assert "model               replay:generation_reply.sample.json" in output
 
 
 def test_the_shipped_signal_fixture_matches_the_fct_signals_row_shape():

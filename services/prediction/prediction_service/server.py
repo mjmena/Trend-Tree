@@ -37,6 +37,16 @@ def build_llm(settings: Settings) -> PredictionLLM | None:
             "service will write no verdicts. Every other route is unaffected."
         )
         return None
+    if not settings.gemini.is_priced():
+        # Not a failure -- an unlisted model runs fine, it just cannot be
+        # costed. Said out loud here so a null LLM_COST_ESTIMATE later reads
+        # as "nobody priced this model" rather than "the cost code broke".
+        log.warning(
+            "PREDICTION_GEMINI_MODEL=%r is not in generation/llm.py's rate table: this "
+            "service will report its cost as null rather than guess at another model's "
+            "rates. Add it to the table to get costs back.",
+            settings.gemini.model,
+        )
     return GeminiPredictionLLM(
         settings.gemini.api_key,
         model=settings.gemini.model,

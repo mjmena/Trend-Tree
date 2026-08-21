@@ -12,6 +12,12 @@ before any commit-to-deploy round trip (PRD: "generation quality iterates
 through the local loop").
 
     --live-llm       call Gemini for real (PREDICTION_GEMINI_API_KEY required)
+    --model NAME     which model --live-llm calls; defaults to
+                     PREDICTION_GEMINI_MODEL, then llm.DEFAULT_MODEL. This is
+                     how an A/B between models is run without a code edit --
+                     `--live-llm --model gemini-3.1-pro-preview` against a
+                     plain `--live-llm` is the whole comparison. Ignored in
+                     replay mode, where the reply is already recorded.
     --print-prompt   dump the exact system + user prompt this run would send
     --signals PATH   a different corpus fixture
     --reply PATH     a different recorded reply (ignored with --live-llm)
@@ -32,7 +38,12 @@ import os
 import sys
 from pathlib import Path
 
-from prediction_service.generation.llm import GeminiPredictionLLM, PredictionLLM, ReplayLLM
+from prediction_service.generation.llm import (
+    DEFAULT_MODEL,
+    GeminiPredictionLLM,
+    PredictionLLM,
+    ReplayLLM,
+)
 from prediction_service.generation.run import (
     GenerationScope,
     generate_predictions,
@@ -49,6 +60,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--signals", type=Path, default=DEFAULT_SIGNALS)
     parser.add_argument("--reply", type=Path, default=DEFAULT_REPLY)
     parser.add_argument("--live-llm", action="store_true")
+    # Default resolved in build_llm, not here, so `--model` overrides the env
+    # var and the env var overrides the built-in -- and so `-h` does not print
+    # whatever happens to be exported in this shell as if it were the default.
+    parser.add_argument("--model", default=None, help=f"default: {DEFAULT_MODEL}")
     parser.add_argument("--print-prompt", action="store_true")
     parser.add_argument("--signal-limit", type=int, default=200)
     parser.add_argument("--lookback-hours", type=int, default=168)
@@ -62,9 +77,8 @@ def build_llm(args: argparse.Namespace) -> PredictionLLM:
         key = os.environ.get("PREDICTION_GEMINI_API_KEY", "")
         if not key.strip():
             raise SystemExit("--live-llm needs PREDICTION_GEMINI_API_KEY in the environment")
-        return GeminiPredictionLLM(
-            key, model=os.environ.get("PREDICTION_GEMINI_MODEL", "gemini-3.1-pro-preview")
-        )
+        model = args.model or os.environ.get("PREDICTION_GEMINI_MODEL") or DEFAULT_MODEL
+        return GeminiPredictionLLM(key, model=model)
     return ReplayLLM(args.reply.read_text(), model=f"replay:{args.reply.name}")
 
 

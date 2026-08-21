@@ -130,7 +130,10 @@ class GenerateResponse(BaseModel):
     #: should say why, not just come back empty.
     rejections: list[RejectionOut]
     llm_token_usage: dict[str, int]
-    llm_cost_estimate: float
+    #: Null when the configured model is not in generation/llm.py's rate
+    #: table -- an unpriced run reports unknown rather than another model's
+    #: number. The token counts above are still exact.
+    llm_cost_estimate: float | None
 
 
 def _to_out(result: GenerationResult, *, written: set[str]) -> list[PredictionOut]:

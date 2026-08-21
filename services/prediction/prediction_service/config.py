@@ -32,6 +32,7 @@ from tt_services_lib.auth import (
 )
 
 from .generation.llm import DEFAULT_MODEL as DEFAULT_GEMINI_MODEL
+from .generation.llm import rates_for
 
 # The prefix an audience must carry in each mode. The two shapes are not
 # interchangeable: an OIDC token's `aud` is this service's URL, an IAP
@@ -71,9 +72,16 @@ class SnowflakeSettings:
 @dataclass(frozen=True)
 class GeminiSettings:
     """The generation phase's LLM (CRMA-763). The fleet runs on Google
-    Gemini; ``model`` defaults to what agents/lib/gemini_loop.mjs uses for
-    the Pipedream agents, so a model bump is one env var, not a redeploy of
-    code.
+    Gemini; ``model`` comes from PREDICTION_GEMINI_MODEL and defaults to
+    generation.llm.DEFAULT_MODEL (``gemini-3.7-flash``), so trying another
+    model is one env var, not a redeploy of code. local_generate.py's
+    ``--model`` is the same switch for the offline loop.
+
+    An **unpriced** model is allowed on purpose -- refusing to boot on one
+    would make the config knob useless for exactly the case it exists for,
+    trying a model this code has never seen. What it costs is a null rather
+    than a guess (llm.estimate_cost_usd), and ``is_priced`` lets the
+    caller say so out loud at startup.
 
     ``api_key`` is deliberately NOT part of validate_for_server's refuse-to-
     boot set: without it the service still serves /health, /whoami (the
@@ -86,6 +94,11 @@ class GeminiSettings:
     api_key: str
     model: str
     timeout_s: float
+
+    def is_priced(self) -> bool:
+        """Whether llm.py knows this model's rates. False does not stop the
+        service: the run works, its reported cost is null."""
+        return rates_for(self.model, 0) is not None
 
 
 @dataclass(frozen=True)
@@ -138,6 +151,10 @@ class Settings:
         * with no key material the Snowflake client falls through to
           ``externalbrowser``, which in a container blocks for ~120s waiting
           for a browser that will never open, and then errors -- per request.
+        * an empty ``PREDICTION_GEMINI_MODEL`` builds the request URL
+          ``/v1beta/models/:generateContent``, which 404s -- per request, and
+          only on /generate, so the service looks healthy while it writes no
+          verdicts at all. A blank override is a deploy typo, never an intent.
 
         Called from server.py, not from ``settings_from_env``: tests and any
         non-server caller still build Settings freely.
@@ -166,6 +183,12 @@ class Settings:
                 f"with {_AUDIENCE_PREFIXES[self.auth_mode]!r} -- "
                 f"{self.expected_audience_shape()}). Every request would 401 while the "
                 "service looked locked down from outside."
+            )
+        if not self.gemini.model.strip():
+            problems.append(
+                "PREDICTION_GEMINI_MODEL is empty -- every /generate call would ask "
+                "Gemini for a model with no name and 404. Leave it unset for "
+                f"{DEFAULT_GEMINI_MODEL!r}."
             )
         if not (self.snowflake.private_key or self.snowflake.private_key_path):
             problems.append(
@@ -212,7 +235,10 @@ def settings_from_env(env: Mapping[str, str] | None = None) -> Settings:
         ),
         gemini=GeminiSettings(
             api_key=e.get("PREDICTION_GEMINI_API_KEY", ""),
-            model=e.get("PREDICTION_GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
+            # Kept verbatim apart from surrounding whitespace: an unknown
+            # model is a legitimate override (it just bills as unknown), an
+            # empty one is refused by validate_for_server.
+            model=e.get("PREDICTION_GEMINI_MODEL", DEFAULT_GEMINI_MODEL).strip(),
             timeout_s=_timeout(e.get("PREDICTION_GEMINI_TIMEOUT_S", "180")),
         ),
         port=_port(e.get("PORT", "8080")),

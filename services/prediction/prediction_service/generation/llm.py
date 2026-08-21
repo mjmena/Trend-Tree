@@ -5,10 +5,24 @@ runs offline against an injected fake and the local loop can replay a
 recorded reply (see generation/fixtures.py, local_generate.py). The concrete
 adapter is the only thing here that knows a network exists.
 
-Model: **gemini-3.1-pro-preview**, matching the fleet's agent work
-(``agents/lib/gemini_loop.mjs``, used by distillation, promotion, lifecycle,
-enrichment) and the PRD's "the fleet-standard Gemini path". This fleet is on
-Google Gemini; there is no Anthropic client in this service.
+Model: **``gemini-3.7-flash``**, and configurable -- set
+``PREDICTION_GEMINI_MODEL`` (config.GeminiSettings) or pass ``--model`` to
+local_generate.py, so comparing two models is an env var rather than a code
+edit. This fleet is on Google Gemini; there is no Anthropic client in this
+service.
+
+Why Flash is the default *here* when it is not viable everywhere in the
+fleet: 3.7 Flash silently drops the head of its answer -- the reply begins
+mid-object -- but only on **grounded** calls, at ~41-45% of them
+(docs/wayfinder/gemini-3-7-flash-model-allocation.md, from CRMA-757 and
+CRMA-730). The same crossed measurement found the ungrounded side clean --
+9 whole / 0 truncated, "no ungrounded run has ever truncated". This call
+declares no tools, so it sits on the clean side of that line: 5/5 whole
+replies measured live through this module's own parse path, at ~9s median
+against ~19-21s for gemini-3.1-pro-preview, with equivalent claim quality
+and ~3x lower rates. ``assert_head_intact`` below is insurance against that
+defect turning up in a shape nobody measured, not a fix for anything seen on
+this call.
 
 Two constraints carried over from the fleet's loop, both learned the hard
 way there:
@@ -36,9 +50,11 @@ from __future__ import annotations
 import http.client
 import json
 import logging
+import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from datetime import UTC, date, datetime
 from typing import Any, Protocol
 
 from tenacity import (
@@ -51,17 +67,45 @@ from tenacity import (
 
 log = logging.getLogger(__name__)
 
-DEFAULT_MODEL = "gemini-3.1-pro-preview"
+MODEL_GEMINI_3_1_PRO = "gemini-3.1-pro-preview"
+MODEL_GEMINI_3_7_FLASH = "gemini-3.7-flash"
+
+#: Overridable per deploy via PREDICTION_GEMINI_MODEL -- see the module note
+#: for why the toolless shape of this call is what makes Flash safe here.
+DEFAULT_MODEL = MODEL_GEMINI_3_7_FLASH
+
 _ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
-#: Gemini 3 Pro prices the whole request by its *prompt* size: at or below
-#: 200k prompt tokens the sub-200k tier applies (the same rates the fleet's
-#: gemini_loop.mjs bills against), above it the long-context tier does.
-#: ``estimate_cost_usd`` picks between them rather than silently understating
-#: a long run -- at signal_limit=2000 the prompt can cross the boundary.
+#: Rates are **per model**. The repo carries thirteen hardcoded rate tables
+#: and no shared constant, and one of them bills a Pro-pinned lane at another
+#: model's rates and under-reports it ~40% (daily-digest, per the model map).
+#: The defence against joining that list is that an id this table does not
+#: know bills as *unknown* (``rates_for`` -> None) rather than inheriting
+#: whatever the last model happened to cost.
+#:
+#: gemini-3.1-pro-preview prices the whole request by its *prompt* size: at or
+#: below 200k prompt tokens the sub-200k tier applies, above it the
+#: long-context tier does. ``rates_for`` picks between them rather than
+#: silently understating a long run -- at signal_limit=2000 the prompt can
+#: cross the boundary. 3.7 Flash publishes no long-prompt tier.
+#:
+#: Sources: https://openrouter.ai/google/gemini-3.7-flash and
+#: https://www.morphllm.com/gemini-api-pricing, corroborated by
+#: ai.google.dev/gemini-api/docs/pricing as recorded in
+#: docs/wayfinder/gemini-3-7-flash-model-allocation.md.
 LONG_CONTEXT_THRESHOLD_TOKENS = 200_000
-RATES_PER_M = {"input": 2.0, "output": 12.0}
-RATES_PER_M_LONG_CONTEXT = {"input": 4.0, "output": 18.0}
+PRO_RATES_PER_M = {"input": 2.0, "output": 12.0}
+PRO_RATES_PER_M_LONG_CONTEXT = {"input": 4.0, "output": 18.0}
+
+#: 3.7 Flash's launch price is **introductory and scheduled to double** on
+#: this date -- a published change, not a rumour. Hardcoding the introductory
+#: rate would silently halve every reported cost from January onwards, which
+#: is exactly the kind of quiet understatement the audit agent's per-model
+#: rollups cannot see. Encoded as a date so ``rates_for`` switches on its own
+#: rather than needing a code change on New Year's Day.
+FLASH_INTRODUCTORY_PRICING_ENDS = date(2027, 1, 1)
+FLASH_RATES_PER_M_INTRODUCTORY = {"input": 0.75, "output": 3.75}
+FLASH_RATES_PER_M_STANDARD = {"input": 1.5, "output": 7.5}
 
 #: **Shared with thinking.** Gemini 3 counts ``thinkingLevel`` tokens against
 #: ``maxOutputTokens``, so this budget has to cover the reasoning *and* the
@@ -75,11 +119,19 @@ RATES_PER_M_LONG_CONTEXT = {"input": 4.0, "output": 18.0}
 #: failure, not degraded output.
 #:
 #: 32768 is a ceiling, not a reservation -- billing is on the tokens actually
-#: produced (``candidatesTokenCount``), so a run that thinks briefly still
-#: costs what it costs. It bounds the worst case at 32768/1e6 * $12 = $0.39
-#: of output, inside the envelope the enrichment agent already runs in
-#: ($0.15 median/run), and leaves headroom under the model's own 64k output
-#: limit rather than asking for the maximum.
+#: produced (answer *plus* thinking; see parse_response_body), so a run that
+#: thinks briefly still costs what it costs. The reasoning above is about
+#: tokens, not dollars, so it survives the default moving to 3.7 Flash: both
+#: models cap output at ~64k (3.7 Flash 65,536), and neither lets thinking be
+#: turned off, so the budget still has to cover reasoning plus five
+#: predictions either way.
+#:
+#: The **dollar** bound is per model, and is no longer the $0.39 this comment
+#: used to quote for Pro alone: 32768/1e6 output tokens costs $0.39 on
+#: gemini-3.1-pro-preview, $0.12 on gemini-3.7-flash at the introductory rate
+#: and $0.25 once that rate doubles in 2027. Every one of those is inside the
+#: envelope the enrichment agent already runs in ($0.15 median/run), so the
+#: cheaper default widens the margin rather than needing a smaller ceiling.
 DEFAULT_MAX_OUTPUT_TOKENS = 32768
 DEFAULT_THINKING_LEVEL = "medium"
 DEFAULT_TIMEOUT_S = 180.0
@@ -124,13 +176,24 @@ class TruncatedResponse(LLMError):
     parse failure sends the reader after the reply's shape instead."""
 
 
+class HeadTruncatedResponse(LLMError):
+    """The answer arrived with its *opening* missing -- it starts partway
+    into the JSON rather than at ``{`` or ``[``. The opposite end of the
+    reply from TruncatedResponse, and a different remedy: nothing about the
+    budget or the corpus fixes it, the model has to be changed or the call
+    re-shaped."""
+
+
 @dataclass(frozen=True)
 class LLMResponse:
     text: str
     model: str
     input_tokens: int
+    #: Answer tokens **plus** thinking tokens -- what the model bills for.
     output_tokens: int
-    cost_usd: float
+    #: None when the model is not in llm.py's rate table: unknown, not zero
+    #: and not another model's price. See estimate_cost_usd.
+    cost_usd: float | None
 
     @property
     def total_tokens(self) -> int:
@@ -141,22 +204,89 @@ class PredictionLLM(Protocol):
     def complete(self, *, system: str, user: str) -> LLMResponse: ...
 
 
-def rates_for(input_tokens: int) -> dict[str, float]:
-    """Which price tier a request with this prompt size bills at."""
-    if input_tokens > LONG_CONTEXT_THRESHOLD_TOKENS:
-        return RATES_PER_M_LONG_CONTEXT
-    return RATES_PER_M
+def rates_for(
+    model: str, input_tokens: int, *, on: date | None = None
+) -> dict[str, float] | None:
+    """The per-million rates ``model`` bills at, or **None if it is not priced
+    here**.
+
+    ``on`` is the date the call is billed on -- a parameter, not a read of the
+    clock, so the 2027 Flash changeover is testable both sides of the line.
+    """
+    if model == MODEL_GEMINI_3_1_PRO:
+        if input_tokens > LONG_CONTEXT_THRESHOLD_TOKENS:
+            return PRO_RATES_PER_M_LONG_CONTEXT
+        return PRO_RATES_PER_M
+    if model == MODEL_GEMINI_3_7_FLASH:
+        today = on or datetime.now(UTC).date()
+        if today < FLASH_INTRODUCTORY_PRICING_ENDS:
+            return FLASH_RATES_PER_M_INTRODUCTORY
+        return FLASH_RATES_PER_M_STANDARD
+    return None
 
 
-def estimate_cost_usd(input_tokens: int, output_tokens: int) -> float:
-    """Pure -- unit-tested, and the same arithmetic the Pipedream fleet uses
-    so per-run costs stay comparable across platforms, plus the long-context
-    tier the fleet's tool-loop turns never reach."""
-    rates = rates_for(input_tokens)
+def estimate_cost_usd(
+    input_tokens: int, output_tokens: int, *, model: str, on: date | None = None
+) -> float | None:
+    """Pure -- unit-tested. ``output_tokens`` is expected to already include
+    thinking (see parse_response_body).
+
+    **None means "this model is not priced here"**, and is deliberately not a
+    fallback to some other model's rates: a run on an id nobody has priced
+    should report its cost as unknown, because a confidently wrong number
+    survives into the audit agent's per-model rollups and is summed there
+    without complaint, while a null is visible as a gap.
+    """
+    rates = rates_for(model, input_tokens, on=on)
+    if rates is None:
+        return None
     cost = (input_tokens / 1_000_000) * rates["input"] + (output_tokens / 1_000_000) * rates[
         "output"
     ]
     return round(cost, 6)
+
+
+#: The parser tolerates a fence; so does this guard, for the same reason --
+#: a model that ignores "no code fence" is still answering the question. Kept
+#: local rather than imported from parse.py: this is a check on the *model's*
+#: behaviour at the transport seam, and parse.py stays a pure text->claims
+#: module with no notion of who produced the text.
+_FENCE = re.compile(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", re.DOTALL)
+
+
+def assert_head_intact(text: str) -> None:
+    """Refuse a reply whose opening ``{`` or ``[`` is missing.
+
+    **Cheap insurance, not a fix for an observed failure on this call.** The
+    grounded-call defect that motivates it (module note; ~41-45% of grounded
+    3.7 Flash calls lose the head of the answer) has never been seen on an
+    ungrounded call, and this call declares no tools. What it buys is that if
+    it ever does happen here, the error names the model's defect instead of
+    arriving as "no JSON object in the model reply", which reads as a prompt
+    problem and sends the reader to rewrite a prompt that is fine.
+
+    Note what is *not* consulted: ``finishReason``. The fleet's real-world
+    symptom is a ``STOP`` finish on a reply that begins mid-object, so a
+    normal finish reason is no evidence of a complete answer.
+
+    This is stricter than parse.py, which tolerates prose around the object.
+    Deliberate, and only here: the request sets
+    ``responseMimeType: application/json``, so a reply that opens with prose
+    is already off-contract, and reading "does not start with {" as the
+    defect is the more useful diagnosis of the two.
+    """
+    body = text.strip()
+    fenced = _FENCE.match(body)
+    if fenced:
+        body = fenced.group(1).strip()
+    if body[:1] not in ("{", "["):
+        raise HeadTruncatedResponse(
+            "the model's answer does not begin with a JSON object or array -- its "
+            f"opening is missing (the reply starts {body[:80]!r}). This is the signature "
+            "of the head-truncation defect measured on grounded gemini-3.7-flash calls: "
+            "not a prompt problem and not the token cap, so the remedy is the model or "
+            "the call shape, not max_output_tokens."
+        )
 
 
 def build_request_body(
@@ -189,9 +319,19 @@ def parse_response_body(body: Any, *, model: str) -> LLMResponse:
 
     usage = body.get("usageMetadata") or {}
     input_tokens = int(usage.get("promptTokenCount") or 0)
-    # candidatesTokenCount already includes thinking tokens -- do NOT add
-    # thoughtsTokenCount (same note as the fleet's gemini_loop.mjs).
-    output_tokens = int(usage.get("candidatesTokenCount") or 0)
+    # Billed output is the answer *plus* the thinking. ``candidatesTokenCount``
+    # EXCLUDES thoughts, measured live on both gemini-3.1-pro-preview and
+    # gemini-3.7-flash: on every one of ~10 calls across the two models,
+    # `promptTokenCount + candidatesTokenCount + thoughtsTokenCount` reconciled
+    # to `totalTokenCount` exactly (e.g. 9 + 4 + 68 == 81), and it reconciles
+    # *only* when thoughts are added. The inherited comment here -- copied from
+    # agents/lib/gemini_loop.mjs:150, which says the opposite -- is wrong at all
+    # five fleet call sites that repeat it, and the error is not marginal:
+    # real generation calls book ~800 answer tokens against 1,300-2,700
+    # thinking tokens, so billing candidates alone understates output ~3x.
+    output_tokens = int(usage.get("candidatesTokenCount") or 0) + int(
+        usage.get("thoughtsTokenCount") or 0
+    )
 
     candidates = body.get("candidates") or []
     if not candidates:
@@ -213,12 +353,15 @@ def parse_response_body(body: Any, *, model: str) -> LLMResponse:
             f"({output_tokens} output tokens, thinking included). Raise "
             "max_output_tokens or lower signal_limit / max_predictions."
         )
+    # After the MAX_TOKENS branch, which is the API telling us about the tail;
+    # this one is about the head, and no finish reason reports it.
+    assert_head_intact(text)
     return LLMResponse(
         text=text,
         model=model,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
-        cost_usd=estimate_cost_usd(input_tokens, output_tokens),
+        cost_usd=estimate_cost_usd(input_tokens, output_tokens, model=model),
     )
 
 

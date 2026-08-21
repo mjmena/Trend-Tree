@@ -45,8 +45,10 @@ SIGNAL_TITLE_CHARS = 300
 #: Total characters of rendered corpus a prompt will carry, roughly 75k
 #: tokens at 4 chars/token. The route lets a caller ask for up to 2,000
 #: signals; nothing else bounds what that costs. This keeps any run well
-#: inside Gemini's sub-200k pricing tier (llm.RATES_PER_M) and its input side
-#: near the ~$0.15 the enrichment agent spends per run. Signals past the
+#: inside the sub-200k pricing tier that gemini-3.1-pro-preview re-prices
+#: above (llm.PRO_RATES_PER_M; the default gemini-3.7-flash publishes no
+#: long-prompt tier at all, so the ceiling only ever helps there), and its
+#: input side near or below the ~$0.15 the enrichment agent spends per run. Signals past the
 #: budget are dropped from the prompt AND from the citable id set, so a
 #: bounded prompt never leaves the model able to cite what it was not shown.
 MAX_CORPUS_CHARS = 300_000
