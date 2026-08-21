@@ -58,8 +58,15 @@ async function callProcComplete(connOpts, sourcingRunId, plan) {
   return parseReceipt(rows);
 }
 
+// runWithConnectRetryOnly, NOT runWithRetry: this is a bare INSERT with no
+// idempotency guard (STG_AGENT_RUN_COSTS' RUN_ID PRIMARY KEY is
+// informational-only in Snowflake, not enforced), so retrying after execute()
+// reached the server but the response was lost — exactly the transient class
+// the retry wrapper matches — would write a SECOND cost row for one run and
+// double-count the spend. Same reasoning as PROC_SOURCING_APPLY('open'):
+// only a connect-phase failure, which sent nothing, is safe to retry.
 async function insertCostRow(connOpts, row) {
-  await runWithRetry(connOpts, INSERT_COST_ROW, [
+  await runWithConnectRetryOnly(connOpts, INSERT_COST_ROW, [
     row.run_id, row.agent_session_id, row.chain_id,
     row.started_at, row.ended_at, row.duration_ms, row.model,
     row.input_tokens, row.output_tokens, row.tool_call_count, row.turn_count,
@@ -153,10 +160,31 @@ export async function runSourcing({ connOpts, apiKey, evt, ctx }) {
     // try/catch instead of letting it fall into the outer catch below.
     const endedAt = new Date();
     let costRowError = null;
+
+    // 'complete' applying does NOT mean the run succeeded: plan.outcome is
+    // 'failed' when the selector emitted nothing usable or every pick was
+    // invalid, and the budget_usd kill-switch lands here too. Recording those
+    // as STATUS='OK' would make the two failure statuses the cost schema
+    // exists for (see sql/stg_agent_run_costs.sql) unwritable by this service,
+    // and any `WHERE STATUS='ERROR'` audit query would read the lane as clean.
+    const costStatus =
+      plan.outcome !== "failed"
+        ? "OK"
+        : selectorTelemetry?.stop_reason === "budget_exhausted"
+          ? "BUDGET_EXHAUSTED"
+          : "ERROR";
+
     try {
       await insertCostRow(
         connOpts,
-        costRowFrom({ evt, startedAt, endedAt, telemetry: selectorTelemetry, status: "OK", errorMessage: null }),
+        costRowFrom({
+          evt,
+          startedAt,
+          endedAt,
+          telemetry: selectorTelemetry,
+          status: costStatus,
+          errorMessage: plan.error_message ? String(plan.error_message).slice(0, 2000) : null,
+        }),
       );
     } catch (costErr) {
       costRowError = costErr.message;
@@ -210,6 +238,11 @@ export async function runSourcing({ connOpts, apiKey, evt, ctx }) {
     }
 
     const endedAt = new Date();
+    // Captured, not merely logged: the success path reports a lost cost row to
+    // the caller via cost_row_error, and the failure path must too — this is
+    // exactly the run where "the required cost row never landed" most needs to
+    // be visible, and returning null here would assert the opposite.
+    let costRowError = null;
     try {
       await insertCostRow(
         connOpts,
@@ -223,6 +256,7 @@ export async function runSourcing({ connOpts, apiKey, evt, ctx }) {
         }),
       );
     } catch (e3) {
+      costRowError = e3.message;
       console.log(`ecomm-agent run_sourcing: cost-row insert ALSO failed: ${e3.message}`);
     }
 
@@ -237,6 +271,7 @@ export async function runSourcing({ connOpts, apiKey, evt, ctx }) {
       candidates: [],
       warnings: [],
       complete_result: completeResult,
+      cost_row_error: costRowError,
     };
   }
 }

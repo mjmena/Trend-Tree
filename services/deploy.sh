@@ -153,14 +153,18 @@ fi
 
 if [[ -z "$SERVICE_EXISTS" ]]; then
   # gcloud rejects --no-traffic when creating a service (there is no prior
-  # revision to protect). The bootstrap revision serves 100% immediately; every
+  # revision to protect), so the very first revision is unavoidably live on
+  # create. It is still tagged `candidate` and still smoke-tested below; the
+  # promote that follows is then a no-op. Deliberately NOT followed by a second
+  # --no-traffic deploy of the same image: that would build a redundant
+  # revision, move the tag onto it, and orphan the one already serving. Every
   # deploy after this one takes the normal dark-deploy path.
   log "Service does not exist yet — creating a bootstrap revision (no --no-traffic on first create)."
   deploy_step ""
+else
+  log "Dark-deploying candidate (--no-traffic --tag candidate)..."
+  deploy_step "--no-traffic"
 fi
-
-log "Dark-deploying candidate (--no-traffic --tag candidate)..."
-deploy_step "--no-traffic"
 
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT" --format 'value(status.url)')"
 CANDIDATE_URL="https://candidate---${URL#https://}"
@@ -171,6 +175,13 @@ CANDIDATE_REVISION="$(gcloud run services describe "$SERVICE" --region "$REGION"
 # 5. Smoke test — authenticated, because ingress is not public.
 # ---------------------------------------------------------------------------
 log "Smoke-testing ${CANDIDATE_URL}${HEALTH_PATH} (authenticated)..."
+# Bare `print-identity-token`, no --audiences: this is the form Google's own
+# "test a private Cloud Run service" docs use, and for USER credentials
+# --audiences is rejected outright ("Invalid audiences") — it is a
+# service-account-credential flag. If this script is ever run by an
+# impersonated service account instead of a human, add
+# `--audiences "$CANDIDATE_URL"` here. UNVERIFIED either way: gcloud auth
+# could not be exercised on the machine this was written on (CRMA-776).
 # `|| true`: a connection-level curl failure must reach the friendly failure
 # branch below (as HTTP_CODE=000), not abort the script via `set -e` with a
 # bare curl exit code and no explanation of what stays serving.

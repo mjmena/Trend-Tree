@@ -51,16 +51,27 @@ function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let size = 0;
+    let over = false;
     req.on("data", (chunk) => {
+      if (over) return;
       size += chunk.length;
       if (size > MAX_BODY_BYTES) {
+        over = true;
+        chunks.length = 0;
+        // Reject, then DRAIN the rest — `req.destroy()` here would tear the
+        // socket down before the handler could write the 400 this file
+        // promises, and the caller would see a connection reset, which is
+        // indistinguishable from a transport failure and therefore something
+        // a Cloud Scheduler caller would retry forever.
         reject(new BadRequestError(`request body exceeds ${MAX_BODY_BYTES} bytes`));
-        req.destroy();
+        req.resume();
         return;
       }
       chunks.push(chunk);
     });
-    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("end", () => {
+      if (!over) resolve(Buffer.concat(chunks).toString("utf8"));
+    });
     req.on("error", reject);
   });
 }
@@ -183,6 +194,17 @@ function main() {
   }
 
   const server = createServer(config);
+
+  // Keep idle connections alive longer than the Google front end's own idle
+  // window, so the front end never reuses a connection this process is closing
+  // at the same instant — that race surfaces to callers as an intermittent
+  // 5xx that no application log explains. headersTimeout must exceed
+  // keepAliveTimeout or Node closes the socket while headers are still
+  // arriving. (Node's requestTimeout is NOT a hazard for a long sourcing run:
+  // its timer is cleared once the request body is fully received.)
+  server.keepAliveTimeout = 620_000;
+  server.headersTimeout = 630_000;
+
   server.listen(config.port, () => {
     console.log(`ecomm-agent listening on :${config.port}`);
   });

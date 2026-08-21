@@ -17,6 +17,16 @@ import { randomUUID } from "node:crypto";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const TIER = "shopify";
 
+// FCT_TREND_SOURCING_LEDGER.AGENT_SESSION_ID and STG_AGENT_RUN_COSTS'
+// AGENT_SESSION_ID / CHAIN_ID are all VARCHAR(64). An over-long caller-
+// supplied id would make PROC_SOURCING_APPLY('open')'s INSERT fail with
+// "String ... too long" AND the cost-row insert fail the same way, so the run
+// would leave no trace in either table. Reject it here for the same reason
+// trend_id is validated here: a bind value that cannot land should fail fast
+// and legibly, not deep inside the write path. Truncating instead would risk
+// silently collapsing two callers' correlation ids into one.
+const ID_MAX_CHARS = 64;
+
 export class BadRequestError extends Error {}
 
 export function normalizeEvent(body) {
@@ -31,15 +41,27 @@ export function normalizeEvent(body) {
 
   // chain_id / agent_session_id are accepted from the caller so a future
   // Cloud Scheduler poller (CRMA-778) can correlate a whole tick's runs;
-  // a bare manual curl gets fresh ids.
+  // a bare manual curl gets fresh ids (47 chars — comfortably inside the cap).
+  const chain_id = callerId(b.chain_id, "chain_id") ?? `ecomm-chain-${randomUUID()}`;
+  const agent_session_id = callerId(b.agent_session_id, "agent_session_id") ?? `ecomm-sess-${randomUUID()}`;
+
   return {
     trend_id: trend_id.trim(),
     tier: TIER,
-    chain_id: typeof b.chain_id === "string" && b.chain_id ? b.chain_id : `ecomm-chain-${randomUUID()}`,
-    agent_session_id:
-      typeof b.agent_session_id === "string" && b.agent_session_id
-        ? b.agent_session_id
-        : `ecomm-sess-${randomUUID()}`,
+    chain_id,
+    agent_session_id,
     received_at: new Date().toISOString(),
   };
+}
+
+// Returns the caller's id, or null to mean "generate one". Throws on a value
+// that is present but cannot land in its VARCHAR(64) column.
+function callerId(raw, field) {
+  if (typeof raw !== "string" || raw === "") return null;
+  if (raw.length > ID_MAX_CHARS) {
+    throw new BadRequestError(
+      `${field} is ${raw.length} characters; the ledger column holds at most ${ID_MAX_CHARS}`,
+    );
+  }
+  return raw;
 }

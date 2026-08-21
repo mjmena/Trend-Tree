@@ -94,12 +94,19 @@ export async function fetchContext({ connOpts, trend_id, tier }) {
   const maxLastSeenAt = freshRows?.[0]?.MAX_LAST_SEEN_AT ?? null;
   const freshness = checkCatalogFreshness(maxLastSeenAt);
 
+  // Guarded, not `new Date(x).toISOString()`: that throws RangeError on an
+  // unparseable value, and this line runs BEFORE the decline branch — so it
+  // would 500 the request (no header, no cost row) on exactly the input
+  // checkCatalogFreshness is written to turn into a clean decline.
+  const seenAt = maxLastSeenAt ? new Date(maxLastSeenAt) : null;
+  const seenAtIso = seenAt && !Number.isNaN(seenAt.getTime()) ? seenAt.toISOString() : null;
+
   const base = {
     trend_id,
     tier,
     catalog_fresh: freshness.fresh,
     catalog_age_days: freshness.ageDays,
-    catalog_max_last_seen_at: maxLastSeenAt ? new Date(maxLastSeenAt).toISOString() : null,
+    catalog_max_last_seen_at: seenAtIso,
     decline_reason: freshness.reason,
   };
 
