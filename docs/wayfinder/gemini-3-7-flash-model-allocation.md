@@ -78,6 +78,46 @@ the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 1
   explanation. Per-model: `gemini-2.5-flash` 0, `gemini-3-flash-preview` 0/6,
   `gemini-3.6-flash` 4/5 (forum), `gemini-3.7-flash` ~1 in 5.
   _Source: [CRMA-731](https://mcclatchy.atlassian.net/browse/CRMA-731) raw-API capture, 2026-08-20._
+  **Rate corrected and mechanism found by re-measurement — see the next two entries.**
+- **The truncation fires ONLY when `google_search` actually runs, at ~41% of grounded
+  calls.** Crossed per call over 40 calls of production's exact shape: grounded 17 whole /
+  **14 truncated (45.2%)**, ungrounded **9 whole / 0 truncated**. All 14 truncations were
+  grounded; no ungrounded run has ever truncated. The "~1 in 5" above is that grounded rate
+  **diluted by the calls where the model never searches**. Combined across both API surfaces:
+  **23 of 56 grounded calls (41.1%)**. The loss is **exactly one array element** — clean minus
+  truncated is 1.00 items, 26 of 27 cuts land on the identical token (the tail of the first
+  object's `why_now`), and a mandated 1,190-char preamble arrived **complete** while the array
+  was still cut, so no leading byte window is lost. This places the fault in **grounded-answer
+  generation**, and it explains why `gemini-2.5-flash` (0/20) and the ungrounded distillation
+  lead are clean. _Source: [CRMA-757](https://mcclatchy.atlassian.net/browse/CRMA-757), 2026-08-20._
+- **`generateContent` silently skips grounding on ~22% of calls** — 31 of 40 grounded on
+  production's shape. A discovery lane that believes it is grounded is not, roughly one run in
+  five. Model-independent of the swap and its own defect. The Interactions API grounded
+  **25/25** on the same prompt. _Source: [CRMA-757](https://mcclatchy.atlassian.net/browse/CRMA-757), 2026-08-20._
+- **No call shape returns a complete grounded answer, on either surface.** Nine shapes over
+  ~340 live calls: `thinking_level` low (16/20) and high (14/20), `temperature` stripped
+  (14/20), `responseSchema` + grounding (14/20), a sacrificial preamble (12/20), and a wrapper
+  key (16/20) all sit in the same 70–80% band as the 15/20 baseline. **Every shape that returns
+  whole answers does so by not grounding.** The terminal-emit-tool shape returns 45/45 whole
+  answers and grounds **0 of 16** — `functionDeclarations` alongside `google_search` suppress
+  search entirely, which is the fabricated-URL failure, not a fix. The **Interactions API shows
+  the same defect** (9 of 25 grounded calls, identical cut signature).
+  _Source: [CRMA-757](https://mcclatchy.atlassian.net/browse/CRMA-757), 2026-08-20._
+- **The Interactions API returns grounding REDIRECTS, not publisher URLs** — 0 publisher URLs
+  against 123 `vertexaisearch.cloud.google.com` redirects over 25 grounded calls. This
+  **refutes** the reading of Google's documented examples recorded from
+  [CRMA-756](https://mcclatchy.atlassian.net/browse/CRMA-756), which flagged itself as worth an
+  empirical check before betting the URL-death fix on it. The redirect problem is identical on
+  both surfaces. Interactions also declares tools as `{type: "google_search"}`, not the legacy
+  `{google_search: {}}`. _Source: [CRMA-757](https://mcclatchy.atlassian.net/browse/CRMA-757), 2026-08-20._
+- **Structured output DOES combine with Search grounding on 3.7** — 20 calls, no API error. The
+  assertion at `discovery-p_5VCPP3N/discover_gemini/entry.js:7-9`, copied into
+  `sql/seed_discovery_prompts.sql:57`, cites a memory file `gemini_grounding_gotcha.md` that
+  **exists nowhere on disk**; it was written about `gemini-2.5-flash`. It does not fix
+  truncation either. Separately, built-in tools combined with `functionDeclarations` are
+  rejected `400 INVALID_ARGUMENT` unless `toolConfig.includeServerSideToolInvocations` is set —
+  a flag no page in CRMA-756's sweep mentions.
+  _Source: [CRMA-757](https://mcclatchy.atlassian.net/browse/CRMA-757), 2026-08-20._
 - **`candidatesTokenCount` EXCLUDES thinking tokens**, on both `gemini-3.1-pro-preview` and
   `gemini-3.7-flash`. Measured by arithmetic against the API's own `totalTokenCount`:
   `prompt 13 + candidates 8 + thoughts 140 = total 161` (Pro) and
@@ -270,10 +310,21 @@ the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 1
   named limits, and a decision made without them is a decision made on an artifact of the
   harness. Grounded lanes compare **re-run vs re-run** — the harness does this automatically
   for any lane declaring `requiresRerun`.
-- **The grounded head-truncation blocks every grounded lane.** Until there is a call shape
-  that returns a complete answer, no grounded lane can move. That is
-  [CRMA-757](https://mcclatchy.atlassian.net/browse/CRMA-757), and both grounded lane tickets
-  are blocked on it.
+- **Grounded lanes STAY on their incumbent. The head-truncation has no fix.**
+  [CRMA-757](https://mcclatchy.atlassian.net/browse/CRMA-757) settled this by measurement
+  rather than leaving it pending: the truncation fires only when `google_search` actually
+  runs, at ~41% of grounded calls, on **both** API surfaces. Nine call shapes were tested and
+  every shape that returns a whole answer does so by **not grounding** — including the
+  terminal-emit-tool shape, which looks perfect at 45/45 and grounds 0 of 16. A lane whose job
+  is citing real URLs cannot buy completeness by giving up search, so the map's default of
+  "move unless infeasible" is met here: for grounded lanes it **is** infeasible on this model.
+  This unblocks [CRMA-730](https://mcclatchy.atlassian.net/browse/CRMA-730) and
+  [CRMA-731](https://mcclatchy.atlassian.net/browse/CRMA-731) with their verdict forced; each
+  still records its own lane decision and its own remediation items.
+  The surviving mitigations, if a grounded lane is ever forced onto 3.7: a **two-call split**
+  (grounded prose, then ungrounded formatting — 0 invented URLs, +30% cost, +28% latency,
+  measured once) or a **tolerant parser**, which converts a whole-payload loss into a
+  guaranteed loss of the first proposal on ~41% of grounded calls.
 - **The switch targets Pipedream now.** It does not wait for
   [CRMA-429](https://mcclatchy.atlassian.net/browse/CRMA-429); model ids are configuration
   and travel with the code to Cloud Run.
@@ -355,6 +406,22 @@ the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 1
      [CRMA-733](https://mcclatchy.atlassian.net/browse/CRMA-733). Model-independent —
      no pin choice fixes it.
 
+  10. **A grounded discovery call skips grounding ~22% of the time, and nothing records
+      it.** On production's exact shape, only 31 of 40 calls issued a single search query;
+      the other 9 answered from training data with `finishReason: STOP` and no
+      `groundingMetadata`. The lane's whole contract is "every proposal cites a URL from
+      YOUR ACTUAL search results", so roughly one run in five silently produces
+      training-data proposals — the fabricated-URL family, which CRMA-731 already called
+      unrecoverable downstream. Nothing in `discover_gemini/entry.js` inspects
+      `groundingMetadata`, and `STG_EXTERNAL_SIGNALS` stores no per-run grounding flag, so
+      the condition is invisible in the warehouse. **Model-independent** — measured on 3.7
+      Flash, but the incumbent shares the call shape and the lane has never checked. The
+      spec must carry a grounded-or-discard check plus a persisted `grounded` flag, or the
+      lane keeps ingesting uncited proposals whatever model runs it. A secondary, cheaper
+      item rides with it: the stale assertion at `discover_gemini/entry.js:7-9` and
+      `sql/seed_discovery_prompts.sql:57` citing a memory file that no longer exists.
+      Added by [CRMA-757](https://mcclatchy.atlassian.net/browse/CRMA-757).
+
   Related and also held: **`temperature` was deprecated 2026-07-21** and every lane still
   sends it. Full hazard list with sources is on CRMA-727.
 - **The budget-gate trap binds any lane that moves — but check the headroom before
@@ -414,7 +481,12 @@ the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 1
   The registry-driven lane is the cheapest place to learn it.
 - **Whether the migration ships per lane or as a fleet cutover.** The old map assumed per-lane
   allocation. A migration might instead land one shared call-layer fix and move many lanes at
-  once. Cannot be phrased sharply until CRMA-757 shows how much of a call site the fix touches.
+  once. **CRMA-757 has now cut this in half**: there is no shared fix for the grounded problem,
+  because grounded lanes do not move at all, so the fleet splits cleanly along grounded vs
+  ungrounded. What is still unsharp is the ungrounded remainder — whether the shared
+  remediation items every moving lane needs (`thoughtsTokenCount`, `functionResponse` ids,
+  stripping `temperature`, the four new `finishReason` values, `RATES_PER_M`) ship as one
+  call-layer slice or per lane. That depends on the lane tickets still open, not on 757.
 - **Telemetry the migration needs to be verifiable at all.** Three instances:
   defect 6 (discovery loses shards silently), defect 8 (distillation persists no run trace),
   and CRMA-733's finding that promotion stores no subagent turn count while `max_iterations`
@@ -423,7 +495,11 @@ the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 1
   `STOP_REASON`, `MODEL_USED` and per-run cost — the fleet's only recorded tool trace. So
   this is not a gap to design a shape for; it is a shape to **copy from lifecycle** to the
   lanes that lack it. What is still unsharp is the mechanism: whether that becomes one
-  shared call-layer change or a per-lane ledger fix depends on CRMA-757.
+  shared call-layer change or a per-lane ledger fix. **No longer waiting on CRMA-757** — that
+  ticket removed grounded lanes from the migration entirely, so the telemetry question now
+  covers only the ungrounded lanes and rides with whichever slice moves them. CRMA-757 does add
+  one telemetry item that binds the discovery lane whether or not it moves: nothing today
+  records whether a grounded call actually grounded (see defect 10).
 - **Interaction effects.** If several lanes move, does the composite pipeline degrade even
   where each lane passed replay in isolation?
 - **If Gemini 3.5 Pro ships mid-effort**, the question reopens for the loops. No announced
