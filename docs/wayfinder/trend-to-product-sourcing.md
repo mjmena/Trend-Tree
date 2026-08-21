@@ -12,6 +12,12 @@ tier; the multi-tier contract is specified, not built.
 
 The map ends at the spec. It does not carry execution.
 
+**Reached 2026-08-21**: the PRD is `docs/prd/trend-to-product-sourcing.md`
+([PR #106](https://github.com/mjmena/Trend-Tree/pull/106)), under Epic
+[CRMA-772](https://mcclatchy.atlassian.net/browse/CRMA-772). Only
+[CRMA-747](https://mcclatchy.atlassian.net/browse/CRMA-747) (token, parked on Service Desk
+IN-0105529) remains open; it blocks the live sync, not the spec or the build.
+
 ## Notes
 
 - **Origin**: Marcelo's handoff of 2026-07-28, *Shopify Trend → Product Matching*, repo
