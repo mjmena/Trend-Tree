@@ -4,8 +4,13 @@
 // ledger rows) from a single authenticated HTTP call.
 //
 // Two routes, and deliberately only two:
-//   GET  /healthz  -> 200. What the CRMA-440 dark-deploy smoke test hits at
+//   GET  /health   -> 200. What the CRMA-440 dark-deploy smoke test hits at
 //                     the `candidate` tag URL before traffic is promoted.
+//                     NOT `/healthz`: Google's edge swallows that exact path
+//                     on *.run.app and returns its own 404 before Cloud Run
+//                     sees the request, so a healthy service fails its own
+//                     smoke test. Diagnosed on CRMA-762; `/health`, `/livez`
+//                     and `/readyz` all route through normally.
 //   POST /source   -> {"trend_id": "<uuid>"} in, a synchronous JSON receipt
 //                     out. The SAME endpoint the CRMA-778 Cloud Scheduler
 //                     poller will call per trend (Google OIDC token) and a
@@ -146,7 +151,7 @@ export function createServer(config) {
     const route = url.pathname.replace(/\/+$/, "") || "/";
 
     try {
-      if (route === "/healthz") {
+      if (route === "/health") {
         if (req.method !== "GET" && req.method !== "HEAD") {
           sendJson(res, 405, { error: "method not allowed", allow: "GET" });
           return;
@@ -166,7 +171,7 @@ export function createServer(config) {
         return;
       }
 
-      sendJson(res, 404, { error: `no such route: ${req.method} ${route}`, routes: ["GET /healthz", "POST /source"] });
+      sendJson(res, 404, { error: `no such route: ${req.method} ${route}`, routes: ["GET /health", "POST /source"] });
     } catch (err) {
       if (err instanceof BadRequestError) {
         console.log(`ecomm-agent: bad request — ${err.message}`);

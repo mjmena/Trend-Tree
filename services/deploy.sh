@@ -24,20 +24,32 @@
 #
 # Ingress is `--no-allow-unauthenticated` per CRMA-441: callers (the CRMA-778
 # Cloud Scheduler poller, and a human curl) present a Google OIDC token and
-# Cloud Run validates it against a run.invoker binding. The ecomm agent needs
-# its OWN caller identity — it is not a beneficiary of the existing
-# trend-tree-pipedream-caller@ SA, which exists only for Pipedream-originated
-# calls. That binding is a one-time admin ask, tracked on CRMA-776.
+# Cloud Run validates it against a run.invoker binding.
 #
-# Known sibling divergence, flagged rather than silently resolved: the paused
-# CRMA-762 work (branch crma-762-service-impl) reaches the same destination by
-# a different route — a daemon-free `crane` build, because there is no Docker
-# daemon on a dev Mac and cloudbuild.builds.create is denied in this project,
-# and Cloud Run's native `--iap` instead of bare OIDC, after bare OIDC produced
-# an unexplained edge-level 404 there. This script implements CRMA-440's
-# decided pattern as written. If the build step is the blocker on a given
-# machine, port CRMA-762's crane staging into step 2 — the Dockerfile stays
-# the source of truth for image contents either way.
+# That binding is SELF-SERVICE, not an admin ask — an earlier version of this
+# comment said otherwise and was wrong. CRMA-441's admin ask was for a new
+# service account plus a key, and iam.serviceAccounts.create is indeed denied.
+# The ecomm agent needs neither: nothing calls it from Pipedream, so the caller
+# is simply crm-runtime@, and run.services.setIamPolicy is granted to
+# crm@mcclatchy.com. Bind it yourself:
+#
+#   gcloud run services add-iam-policy-binding <service> --region <region> \
+#     --member=serviceAccount:crm-runtime@mcc-crm-automations.iam.gserviceaccount.com \
+#     --role=roles/run.invoker
+#
+# Do NOT reach for `--iap` to work around a 404. CRMA-762 did, and `--iap` sets
+# run.googleapis.com/invoker-iam-disabled: true; with IAP not actually
+# provisioned, nothing authorizes the request and the GFE emits a generic 404.
+# The fix there is `--invoker-iam-check`, not more IAP. Read the response
+# headers to tell the two apart: a real Cloud Run rejection carries
+# `server: Google Frontend`, the edge's own error page carries no `server:`
+# header at all.
+#
+# Sibling alignment: the build step below is now the same daemon-free `crane`
+# build CRMA-762 and the wider estate (prism, helm, mcc-audience-builder) use.
+# The remaining difference from CRMA-762 is auth mode — this service uses bare
+# OIDC, which is CRMA-441's decided pattern, and CRMA-762's move to IAP was a
+# response to the 404 that is now understood and has a direct fix.
 #
 # Usage:
 #   services/deploy.sh ecomm-agent                 full flow
@@ -97,14 +109,71 @@ IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}/${SERVICE}:${GIT_SHA}"
 
 # ---------------------------------------------------------------------------
 # 2/3. Build linux/amd64 from the repo root, push to Artifact Registry.
+#
+# Daemon-free, via crane. There is no Docker daemon on a dev Mac and
+# cloudbuild.builds.create is denied in mcc-crm-automations, so `docker build`
+# and `gcloud run deploy --source` both dead-end. crane assembles the image by
+# appending one tar layer onto a base image, entirely over the registry API.
+# This matches prism, helm, mcc-audience-builder and CRMA-762.
+#
+# This is safe to cross-build here only because the dependency tree is pure
+# JavaScript: the lockfile carries no package with an install script and none
+# constrained by os/cpu, so node_modules resolved on macOS is byte-for-byte
+# what linux/amd64 needs. RE-CHECK THAT before adding a dependency:
+#   jq '[.packages[] | select(.hasInstallScript or .os or .cpu)] | length' \
+#     services/<name>/package-lock.json      # must print 0
+# If it ever prints non-zero, the dep has native code and this build silently
+# ships the wrong architecture — install inside a linux/amd64 container, or go
+# back to a real Docker build.
+#
+# The Dockerfile remains the source of truth for image CONTENTS and is what
+# `docker run` reproduces locally. The staging below must mirror it; they are
+# checked against each other by services/deploy_layout.test.mjs.
 # ---------------------------------------------------------------------------
-if [[ "$BUILD" == "1" ]]; then
-  log "Building ${IMAGE} (linux/amd64, context = repo root)..."
-  docker build --platform linux/amd64 -f "services/$NAME/Dockerfile" -t "$IMAGE" .
+CRANE="${CRANE:-crane}"
+BASE_IMAGE="${BASE_IMAGE:-node:22-slim}"
 
-  log "Pushing ${IMAGE}..."
-  gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet --project "$PROJECT"
-  docker push "$IMAGE"
+if [[ "$BUILD" == "1" ]]; then
+  command -v "$CRANE" >/dev/null || {
+    echo "crane not found. Install it (brew install crane) or set CRANE=/path/to/crane." >&2
+    exit 1
+  }
+
+  log "Staging ${IMAGE} (linux/amd64, context = repo root, base = ${BASE_IMAGE})..."
+  CTX="$(mktemp -d -t "${SERVICE}-ctx.XXXXXX")"
+  trap 'rm -rf "$CTX"' EXIT
+
+  # Mirror the Dockerfile's layout exactly: /app/services/{lib,<name>} with
+  # production node_modules inside the service dir.
+  mkdir -p "$CTX/app/services"
+  cp -R "$REPO_ROOT/services/lib" "$CTX/app/services/lib"
+  mkdir -p "$CTX/app/services/$NAME"
+  # Copy the service's own files, but never a local node_modules — it is
+  # reinstalled from the lockfile below so the image can't inherit dev deps
+  # or a half-stale local tree.
+  (cd "$SVC_DIR" && tar --exclude=node_modules -cf - .) | tar -C "$CTX/app/services/$NAME" -xf -
+
+  log "Installing production dependencies from the lockfile..."
+  npm ci --omit=dev --prefix "$CTX/app/services/$NAME"
+
+  log "Appending layer onto ${BASE_IMAGE} and pushing..."
+  tar -C "$CTX" -cf "$CTX/layer.tar" app
+
+  # Pipe the token to `crane auth login --password-stdin`; passing it as an
+  # argv value would leave a live OAuth token in the process table.
+  gcloud auth print-access-token \
+    | "$CRANE" auth login "${REGION}-docker.pkg.dev" -u oauth2accesstoken --password-stdin
+
+  WITH_LAYER="$("$CRANE" append --platform linux/amd64 \
+    -b "$BASE_IMAGE" -f "$CTX/layer.tar" -t "${IMAGE%:*}:layer")"
+
+  "$CRANE" mutate "$WITH_LAYER" -t "$IMAGE" \
+    --workdir "/app/services/$NAME" \
+    --env NODE_ENV=production \
+    --env "PORT=${PORT}" \
+    --user node \
+    --entrypoint node \
+    --cmd server.mjs
 fi
 
 # ---------------------------------------------------------------------------
