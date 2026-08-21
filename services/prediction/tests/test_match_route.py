@@ -8,6 +8,7 @@ inside the phase.
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
@@ -15,10 +16,11 @@ from prediction_service.app import create_app
 from prediction_service.config import settings_from_env
 from prediction_service.domain.claim import REQUIRED_EVIDENCE_KEYS
 
-from .fakes import FakePredictionLLM
+from .fakes import FakePredictionLLM, RecordedCall
 from .matching_fakes import (
     OTHER_TREND_ID,
     TREND_ID,
+    LedgerSimulator,
     RoutingFakeSnowflake,
     open_prediction_row,
 )
@@ -268,3 +270,93 @@ def test_the_scope_bounds_are_validated_at_the_edge():
 
     assert status({"min_similarity": 1.5}) == 422
     assert status({"prediction_limit": 0}) == 422
+
+
+def test_a_failed_context_read_alone_still_writes_every_row():
+    # The distinction the blanket-failure test above cannot make. Trend
+    # context is *evidence*; the heaviest statement this phase issues is the
+    # one that fetches it, and one timeout on one matched trend must not cost
+    # the run -- least of all the white-space rows, which never needed a
+    # context read at all.
+    class ContextTimesOut(RoutingFakeSnowflake):
+        def query(self, sql, params=None):
+            if "DATEDIFF" in sql.upper():
+                self.calls.append(RecordedCall(sql, params, kind="query"))
+                raise RuntimeError("000630: Statement reached its statement or warehouse timeout")
+            return super().query(sql, params)
+
+    snowflake = ContextTimesOut(predictions=_both_predictions())
+    client = _client(snowflake, FakePredictionLLM(reply=NARRATIVE))
+
+    resp = client.post("/match", json={}, headers=AUTH_HEADERS)
+
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["matched"] == 1
+    assert body["white_space"] == 1
+    # Both rows land -- the matched one without its context, the white-space
+    # one exactly as it always would have.
+    assert body["verdicts_written"] == 2
+    assert len(snowflake.writes) == 2
+
+    by_subject = {r["subject_descriptor"]: r for r in body["results"]}
+    matched = by_subject["rucking vests"]
+    assert matched["matched_trend_id"] == TREND_ID
+    assert matched["trend_context"] is None
+    assert "trend context unavailable" in matched["note"]
+    # ...and the evidence key is present-but-null, per the ledger contract.
+    evidence = json.loads(snowflake.writes[0].params["evidence"])
+    assert set(REQUIRED_EVIDENCE_KEYS) <= set(evidence)
+    assert evidence["trend_context"] is None
+
+
+def test_evaluated_at_is_written_in_utc_alongside_horizon_at():
+    # Both columns are TIMESTAMP_NTZ. HORIZON_AT is written by this service
+    # from an aware UTC datetime; EVALUATED_AT used to take the DDL's
+    # CURRENT_TIMESTAMP() default, which Snowflake evaluates in the *session*
+    # timezone -- so the two columns sat hours apart on rows minted in the
+    # same instant, and a resolution sweep would grade one against the other.
+    snowflake = RoutingFakeSnowflake(predictions=_both_predictions())
+    client = _client(snowflake, FakePredictionLLM(reply=NARRATIVE))
+
+    before = datetime.now(UTC)
+    resp = client.post("/match", json={}, headers=AUTH_HEADERS)
+    after = datetime.now(UTC)
+
+    assert resp.status_code == 200, resp.text
+    for write in snowflake.writes:
+        assert "EVALUATED_AT" in write.sql
+        evaluated_at = write.params["evaluated_at"]
+        assert evaluated_at.tzinfo is not None
+        assert evaluated_at.utcoffset() == timedelta(0)
+        assert before <= evaluated_at <= after
+        # ...and it is on the same clock as HORIZON_AT, which is what makes
+        # the two comparable at resolution time.
+        assert write.params["horizon_at"].utcoffset() == timedelta(0)
+
+
+def test_the_open_pool_is_worked_through_rather_than_starved():
+    # AC1/AC3 depend on "unmatched" meaning white space. Every evaluation
+    # appends a row, so evaluating a prediction makes it the most recently
+    # evaluated one: a newest-first ORDER BY under a LIMIT would hand the cap
+    # back to the same head of the queue forever and leave the tail with
+    # MATCHED_TREND_ID NULL indefinitely, indistinguishable from a genuine
+    # miss. This runs five open predictions through a cap of two and asserts
+    # every one of them is eventually looked at.
+    pool = [
+        open_prediction_row(prediction_id=f"pred-{n}", subject=f"subject {n}")
+        for n in range(5)
+    ]
+    for offset, row in enumerate(pool):
+        row["EVALUATED_AT"] = datetime(2026, 8, 1, 12, 0, tzinfo=UTC) + timedelta(hours=offset)
+
+    snowflake = LedgerSimulator(rows=pool)
+    client = _client(snowflake, FakePredictionLLM(reply=NARRATIVE))
+
+    seen: set[str] = set()
+    for _ in range(4):
+        resp = client.post("/match", json={"prediction_limit": 2}, headers=AUTH_HEADERS)
+        assert resp.status_code == 200, resp.text
+        seen |= {r["prediction_id"] for r in resp.json()["results"]}
+
+    assert seen == {row["PREDICTION_ID"] for row in pool}

@@ -81,3 +81,92 @@ def test_es_plurals_fold_on_the_shapes_that_take_them():
 def test_fold_is_the_plain_text_form():
     assert fold("Air-Dry Clay!!") == "air dry clay"
     assert fold("  MULTI   space  ") == "multi space"
+
+
+# --- what the fold must not collapse ---------------------------------------
+
+
+def test_a_single_letter_is_part_of_the_subject_not_an_article():
+    # "a" was a stop word, which made a vitamin-A/retinol prediction identical
+    # to a generic vitamin serum. The descriptor leg overrides the cosine leg
+    # outright, so that is a wrong MATCHED_TREND_ID with nothing left to catch
+    # it.
+    assert descriptor_key("vitamin a serum") == ("vitamin", "a", "serum")
+    assert not same_subject("vitamin a serum", "vitamin serum")
+    assert not same_subject("vitamin a", "vitamin")
+    # Same class.
+    assert not same_subject("type a personality mug", "type personality mug")
+    assert not same_subject("plan a", "plan")
+
+
+@pytest.mark.parametrize(
+    ("left", "right"),
+    [
+        # Two different words for matcha, in two different scripts. Folding
+        # used to delete both, leaving each as ("latte",).
+        ("말차 latte", "抹茶 latte"),
+        # Letters that do not decompose to ASCII are letters, not noise.
+        ("søl", "sæl"),
+        ("mørk chokolade", "mark chokolade"),
+    ],
+)
+def test_non_ascii_letters_survive_the_fold(left, right):
+    assert not same_subject(left, right)
+    assert not same_subject(right, left)
+
+
+def test_a_non_ascii_subject_still_matches_itself():
+    # Preserving the letters has to leave a *key*, not an empty tuple -- a
+    # pure-CJK subject used to fold away entirely.
+    assert descriptor_key("抹茶 latte") == ("抹茶", "latte")
+    assert same_subject("抹茶 Latte", "  抹茶   latte ")
+
+
+def test_accents_still_fold_because_that_is_the_same_word():
+    # The intended win, unchanged: combining marks are stripped.
+    assert fold("açaí") == "acai"
+    assert same_subject("açaí bowls", "acai bowl")
+
+
+def test_a_key_that_folds_to_nothing_never_matches_another_empty_key():
+    # Punctuation, or nothing but stop words, on either side.
+    assert not same_subject("---", "***")
+    assert not same_subject("the", "the")
+    assert not same_subject("of the", "for the")
+    assert not same_subject("rucking vests", "the")
+
+
+# --- singular/plural folding is symmetric ----------------------------------
+
+
+@pytest.mark.parametrize(
+    ("singular", "plural"),
+    [
+        # The `es` branch used to return early, so "lenses" reached "lens"
+        # while "lens" reached "len" -- the two did not compare equal.
+        ("lens", "lenses"),
+        ("virus", "viruses"),
+        ("bus", "buses"),
+        ("glass", "glasses"),
+        # No -ies rule at all before this, in a pipeline with a supplements
+        # vertical.
+        ("gummy", "gummies"),
+        ("smoothie", "smoothies"),
+        ("vest", "vests"),
+        ("patch", "patches"),
+    ],
+)
+def test_a_word_and_its_plural_fold_to_one_key(singular, plural):
+    assert descriptor_key(singular) == descriptor_key(plural)
+    assert same_subject(singular, plural)
+    assert same_subject(plural, singular)
+
+
+def test_an_ous_word_is_not_mangled():
+    # "hypochlorous acid spray" is a live descriptor. The `s` is the word.
+    assert descriptor_key("hypochlorous acid spray") == (
+        "hypochlorous",
+        "acid",
+        "spray",
+    )
+    assert same_subject("hypochlorous acid sprays", "hypochlorous acid spray")

@@ -9,8 +9,10 @@ query.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 from prediction_service.matching.trends import TrendCandidate, TrendContext
@@ -179,3 +181,78 @@ class RecordingTrendReader:
     def context_for(self, trend_id: str) -> TrendContext | None:
         self.calls.append(("context_for", trend_id))
         return self.contexts.get(trend_id)
+
+
+@dataclass
+class LedgerSimulator(RoutingFakeSnowflake):
+    """A verdict ledger that actually behaves like one.
+
+    ``RoutingFakeSnowflake`` returns a fixed list to every open-prediction
+    read, which cannot show what happens across *runs*. This one keeps rows,
+    appends what the route MERGEs, and answers the open-prediction read the
+    way the ledger does: latest row per PREDICTION_ID, ACTIVE only, ordered
+    and capped.
+
+    The sort direction is read out of the statement rather than assumed, so a
+    test written against it fails if the ORDER BY is flipped -- which is the
+    whole point of the starvation test in tests/test_match_route.py.
+    """
+
+    rows: list[dict[str, Any]] = field(default_factory=list)
+
+    _ORDER_BY = re.compile(
+        r"ORDER BY\s+EVALUATED_AT\s+(ASC|DESC)\s*,\s*PREDICTION_EVAL_ID\s+(ASC|DESC)\s*\n?LIMIT",
+        re.IGNORECASE,
+    )
+
+    def query(self, sql: str, params: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
+        if "FCT_PREDICTION_VERDICT_LEDGER" not in sql.upper():
+            return super().query(sql, params)
+        self.calls.append(RecordedCall(sql, params, kind="query"))
+
+        match = self._ORDER_BY.search(sql)
+        assert match, f"the open-prediction read must order before it caps: {sql[-200:]}"
+        newest_first = match.group(1).upper() == "DESC"
+
+        latest: dict[str, dict[str, Any]] = {}
+        for row in self.rows:
+            key = str(row["PREDICTION_ID"])
+            current = latest.get(key)
+            if current is None or _sort_key(row) > _sort_key(current):
+                latest[key] = row
+
+        live = [row for row in latest.values() if row.get("PREDICTION_STATUS") == "ACTIVE"]
+        live.sort(key=_sort_key, reverse=newest_first)
+        limit = int((params or {}).get("prediction_limit", len(live)))
+        return [dict(row) for row in live[:limit]]
+
+    def execute(self, sql: str, params: Mapping[str, Any] | None = None) -> int:
+        rowcount = super().execute(sql, params)
+        bound = dict(params or {})
+        self.rows.append(
+            {
+                "PREDICTION_ID": bound["prediction_id"],
+                "PREDICTION_EVAL_ID": bound["prediction_eval_id"],
+                "SUBJECT_DESCRIPTOR": bound["subject_descriptor"],
+                "DIRECTIONAL_CLAIM": bound["directional_claim"],
+                "HORIZON_BAND": bound["horizon_band"],
+                "HORIZON_AT": bound["horizon_at"],
+                "OBSERVABLE_CHECK": bound["observable_check"],
+                "CONFIDENCE": bound["confidence"],
+                "PREDICTION_STATUS": bound["status"],
+                "MATCHED_TREND_ID": bound["matched_trend_id"],
+                "EVIDENCE": bound["evidence"],
+                "REASONING": bound["reasoning"],
+                # The column this service now writes rather than defaults --
+                # which is also what lets a later run see this evaluation.
+                "EVALUATED_AT": bound["evaluated_at"],
+            }
+        )
+        return rowcount
+
+
+def _sort_key(row: Mapping[str, Any]) -> tuple[Any, str]:
+    evaluated = row.get("EVALUATED_AT")
+    if isinstance(evaluated, str):
+        evaluated = datetime.fromisoformat(evaluated).replace(tzinfo=UTC)
+    return (evaluated, str(row.get("PREDICTION_EVAL_ID") or ""))

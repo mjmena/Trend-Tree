@@ -26,6 +26,12 @@ What one matched evaluation changes, and what it does not:
   re-evaluation sweep. Writing a number here that no calibration decided
   would put a mechanical adjustment where the strategy asks for a judgement.
 
+Trend context is *evidence*, and failing to fetch evidence is not a reason
+to drop a prediction. A context read that raises degrades exactly the way a
+failed narrative call does -- a note on the outcome, ``trend_context`` null,
+the row still written. The only thing that aborts a pass is a row this
+service cannot re-state at all (``InvalidClaim``), which is a bug.
+
 What this phase does NOT do, deliberately:
 
 * **saturation and coverage evidence.** ``EVIDENCE.saturation`` and
@@ -65,10 +71,12 @@ class MatchScope:
     """A run's caps. Caps, not gates -- they bound cost and blast radius,
     they do not decide what qualifies.
 
-    ``min_similarity`` is the embedding leg's floor. It decides *whether a
-    prediction is matched or white-space*, never whether it survives: both
-    outcomes are written. See matching/decide.py for the measurement behind
-    the default.
+    ``min_similarity`` is the embedding leg's floor for the statement-side
+    comparison (the descriptor-side one is a constant in matching/decide.py,
+    because it is a property of the two authored vocabularies rather than of
+    a run). It decides *whether a prediction is matched or white-space*,
+    never whether it survives: both outcomes are written. See
+    matching/decide.py for the measurements behind both numbers.
     """
 
     prediction_limit: int = DEFAULT_PREDICTION_LIMIT
@@ -230,13 +238,37 @@ def match_open_predictions(
             min_similarity=scope.min_similarity,
         )
 
-        context: TrendContext | None = None
-        if decision.trend is not None:
-            context = trends.context_for(decision.trend.trend_id)
-
         reasoning = prediction.reasoning
         narrated = False
         note: str | None = None
+
+        context: TrendContext | None = None
+        if decision.trend is not None:
+            try:
+                context = trends.context_for(decision.trend.trend_id)
+            except Exception as err:  # noqa: BLE001 - any read failure degrades the same way
+                # Degraded evidence, never a dropped prediction -- the same
+                # contract _narrate keeps below. The context read is the
+                # heaviest statement this phase issues (a window over the
+                # lifecycle ledger plus two correlated subqueries and two
+                # joins), so it is the one most likely to time out; letting
+                # that propagate would abort the whole pass in routes/match.py
+                # and write *nothing*, including the white-space rows that
+                # never needed a context read at all. The match itself was
+                # already decided without it, so the row is still correct: it
+                # lands with trend_context null, which is the shape
+                # build_evidence and the ledger already allow for an
+                # unmeasured trend.
+                context = None
+                note = f"trend context unavailable, recorded without it: {err}"
+                log.warning(
+                    "trend context read failed",
+                    extra={
+                        "chain_id": chain,
+                        "prediction_id": prediction.prediction_id,
+                        "trend_id": decision.trend.trend_id,
+                    },
+                )
 
         if decision.matched and llm is not None:
             try:
@@ -253,13 +285,27 @@ def match_open_predictions(
                 # itself was decided without the model (matching/decide.py),
                 # so the row is still correct -- it just carries the reasoning
                 # the previous evaluation recorded.
-                note = f"narrative unavailable, prior reasoning carried forward: {err}"
+                note = "; ".join(
+                    part
+                    for part in (
+                        note,
+                        f"narrative unavailable, prior reasoning carried forward: {err}",
+                    )
+                    if part
+                )
                 log.warning(
                     "match narrative failed",
                     extra={"chain_id": chain, "prediction_id": prediction.prediction_id},
                 )
         elif decision.matched and llm is None:
-            note = "no narrative model configured; prior reasoning carried forward"
+            note = "; ".join(
+                part
+                for part in (
+                    note,
+                    "no narrative model configured; prior reasoning carried forward",
+                )
+                if part
+            )
 
         if not reasoning.strip():
             # The ledger's REASONING is nullable but build_verdict is not

@@ -30,7 +30,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from .isolation import assert_matching_sql, positive_int
-from .subject import fold
+from .subject import fold, fold_ascii
 
 #: Canonical trend identity. Unqualified -- routes/match.py passes
 #: ``settings.qualify(TRENDS_TABLE)``.
@@ -57,6 +57,13 @@ DEFAULT_DESCRIPTOR_LIMIT = 2000
 #: How many cosine-ranked trends one subject's embedding leg considers.
 DEFAULT_CANDIDATE_LIMIT = 10
 
+#: How wide the stage-one retrieval window is before stage two re-scores it.
+#: Measured, not guessed: probed on 2026-08-21, each of the 284 live trends
+#: carrying a descriptor puts its own trend vector inside the top 50 for its
+#: own descriptor query (median rank 1, worst 43 of 491). Raising it costs one
+#: Cortex embedding per extra row, per subject.
+DEFAULT_RESCORE_LIMIT = 50
+
 
 # The descriptor index. "Current descriptor" is the latest row per trend that
 # authored one -- ADR-0003 makes the descriptor *evolving*, not frozen, so it
@@ -69,7 +76,7 @@ WITH LATEST_DESCRIPTOR AS (
         PAYLOAD:descriptor:statement::STRING AS DESCRIPTOR_STATEMENT,
         ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS RN
     FROM {enrichment}
-    WHERE PAYLOAD:descriptor:query IS NOT NULL
+    WHERE PAYLOAD:descriptor:query::STRING IS NOT NULL
 )
 SELECT
     t.TREND_ID,
@@ -82,11 +89,34 @@ ORDER BY t.TREND_ID ASC
 LIMIT %(descriptor_limit)s
 """
 
-# The embedding leg. One subject in, the closest trends out.
+# The embedding leg, in two stages: retrieve on the trend vector, score on
+# whichever text is the same *shape* as the subject.
 #
 # The subject is embedded per call rather than stored: a prediction's subject
 # descriptor is minted once and read a handful of times, so caching it would
 # buy a Cortex call and cost a column nobody else wants.
+#
+# **Why two stages.** TREND_VECTOR embeds a ~350-character, 3-sentence
+# `descriptor.statement` (ADR-0003, sql/fn_trend_embed_doc.sql); a prediction's
+# SUBJECT_DESCRIPTOR is a ~16-character noun phrase. Comparing them is
+# asymmetric and the cosines compress badly -- measured on 2026-08-21 over the
+# 284 live trends that carry a descriptor, a trend's *own* descriptor query
+# scores a median 0.5632 against its *own* trend vector, and only 101 of 284
+# (36%) reach 0.60 at all. As a scorer that is unusable. As a *retriever* it is
+# fine: the same probe puts the trend's own vector at median rank 1 and worst
+# rank 43 of 491, so 284 of 284 land inside a 50-row window.
+#
+# So stage one keeps the trend vector and uses it only to pick the window, and
+# stage two re-scores that window noun-phrase against noun-phrase by embedding
+# the trend's own `descriptor.query`. A trend with no descriptor keeps its
+# statement-side score -- ~42% of promoted trends have none, and dropping them
+# from the leg entirely would cost more coverage than the rescale buys. The two
+# numbers are on different scales and each carries its own floor; SIMILARITY_BASIS
+# is what tells matching/decide.py which one it is holding.
+#
+# Cost of stage two, measured: ~4.6s per subject against the live corpus versus
+# ~2.9s for the single-stage form. The window is what bounds it -- 50 rows of
+# Cortex embedding, not 284.
 #
 # DESCRIPTOR_EXACT is *not* the descriptor-vocabulary decision -- that is made
 # in Python over the descriptor index (matching/subject.py, which also folds
@@ -109,26 +139,57 @@ LATEST_DESCRIPTOR AS (
         PAYLOAD:descriptor:statement::STRING AS DESCRIPTOR_STATEMENT,
         ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS RN
     FROM {enrichment}
-    WHERE PAYLOAD:descriptor:query IS NOT NULL
+    WHERE PAYLOAD:descriptor:query::STRING IS NOT NULL
 ),
 SUBJECT AS (
     SELECT SNOWFLAKE.CORTEX.EMBED_TEXT_1024(%(embed_model)s, %(subject)s) AS SUBJECT_VECTOR
+),
+WINDOWED AS (
+    SELECT
+        t.TREND_ID,
+        t.TREND_TOPIC,
+        d.DESCRIPTOR_QUERY,
+        d.DESCRIPTOR_STATEMENT,
+        VECTOR_COSINE_SIMILARITY(v.TREND_VECTOR, s.SUBJECT_VECTOR)::FLOAT AS STATEMENT_SIMILARITY,
+        IFF(
+            TRIM(REGEXP_REPLACE(LOWER(d.DESCRIPTOR_QUERY), '[^0-9a-z]+', ' ')) = %(subject_fold)s,
+            1, 0
+        ) AS DESCRIPTOR_EXACT
+    FROM {trends} t
+    JOIN LATEST_VECTOR v ON v.TREND_ID = t.TREND_ID AND v.RN = 1
+    LEFT JOIN LATEST_DESCRIPTOR d ON d.TREND_ID = t.TREND_ID AND d.RN = 1
+    CROSS JOIN SUBJECT s
+    QUALIFY ROW_NUMBER() OVER (
+        ORDER BY DESCRIPTOR_EXACT DESC, STATEMENT_SIMILARITY DESC, t.TREND_ID ASC
+    ) <= %(rescore_limit)s
+),
+RESCORED AS (
+    SELECT
+        w.TREND_ID,
+        w.TREND_TOPIC,
+        w.DESCRIPTOR_QUERY,
+        w.DESCRIPTOR_STATEMENT,
+        w.DESCRIPTOR_EXACT,
+        w.STATEMENT_SIMILARITY,
+        VECTOR_COSINE_SIMILARITY(
+            SNOWFLAKE.CORTEX.EMBED_TEXT_1024(%(embed_model)s, w.DESCRIPTOR_QUERY),
+            s.SUBJECT_VECTOR
+        )::FLOAT AS DESCRIPTOR_SIMILARITY
+    FROM WINDOWED w
+    CROSS JOIN SUBJECT s
 )
 SELECT
-    t.TREND_ID,
-    t.TREND_TOPIC,
-    d.DESCRIPTOR_QUERY,
-    d.DESCRIPTOR_STATEMENT,
-    VECTOR_COSINE_SIMILARITY(v.TREND_VECTOR, s.SUBJECT_VECTOR)::FLOAT AS SIMILARITY,
-    IFF(
-        TRIM(REGEXP_REPLACE(LOWER(d.DESCRIPTOR_QUERY), '[^0-9a-z]+', ' ')) = %(subject_fold)s,
-        1, 0
-    ) AS DESCRIPTOR_EXACT
-FROM {trends} t
-JOIN LATEST_VECTOR v ON v.TREND_ID = t.TREND_ID AND v.RN = 1
-LEFT JOIN LATEST_DESCRIPTOR d ON d.TREND_ID = t.TREND_ID AND d.RN = 1
-CROSS JOIN SUBJECT s
-ORDER BY DESCRIPTOR_EXACT DESC, SIMILARITY DESC, t.TREND_ID ASC
+    TREND_ID,
+    TREND_TOPIC,
+    DESCRIPTOR_QUERY,
+    DESCRIPTOR_STATEMENT,
+    COALESCE(DESCRIPTOR_SIMILARITY, STATEMENT_SIMILARITY) AS SIMILARITY,
+    IFF(DESCRIPTOR_SIMILARITY IS NULL, 'statement', 'descriptor_query') AS SIMILARITY_BASIS,
+    STATEMENT_SIMILARITY,
+    DESCRIPTOR_SIMILARITY,
+    DESCRIPTOR_EXACT
+FROM RESCORED
+ORDER BY DESCRIPTOR_EXACT DESC, SIMILARITY DESC, TREND_ID ASC
 LIMIT %(candidate_limit)s
 """
 
@@ -240,6 +301,15 @@ def _number(value: Any) -> float | None:
         return None
 
 
+#: ``SIMILARITY`` was computed against the trend's own ``descriptor.query`` --
+#: a noun phrase against a noun phrase, the like-with-like comparison.
+BASIS_DESCRIPTOR_QUERY = "descriptor_query"
+#: ``SIMILARITY`` was computed against TREND_VECTOR, which embeds a
+#: 3-sentence ``descriptor.statement``. The fallback for a trend that has no
+#: descriptor at all; a different scale, and it carries a different floor.
+BASIS_STATEMENT = "statement"
+
+
 @dataclass(frozen=True)
 class TrendCandidate:
     """One trend, as the compare step sees it."""
@@ -251,6 +321,12 @@ class TrendCandidate:
     #: Cosine against the subject's embedding. None on a descriptor-index row,
     #: which is read without a subject to compare to.
     similarity: float | None = None
+    #: Which text ``similarity`` was measured against. The two bases are on
+    #: different scales, so this is what matching/decide.py reads to pick the
+    #: floor that applies. Defaults to the statement basis: a caller that
+    #: supplies a bare number (a fixture, a unit test) is describing the
+    #: original comparison.
+    similarity_basis: str = BASIS_STATEMENT
 
     @classmethod
     def from_row(cls, row: Mapping[str, Any]) -> TrendCandidate:
@@ -260,6 +336,7 @@ class TrendCandidate:
             descriptor_query=_text(_get(row, "DESCRIPTOR_QUERY")),
             descriptor_statement=_text(_get(row, "DESCRIPTOR_STATEMENT")),
             similarity=_number(_get(row, "SIMILARITY")),
+            similarity_basis=_text(_get(row, "SIMILARITY_BASIS")) or BASIS_STATEMENT,
         )
 
 
@@ -378,6 +455,7 @@ class SnowflakeTrendReader:
         trend_signals: str = TREND_SIGNALS_TABLE,
         signals: str = SIGNALS_TABLE,
         descriptor_limit: int = DEFAULT_DESCRIPTOR_LIMIT,
+        rescore_limit: int = DEFAULT_RESCORE_LIMIT,
         embed_model: str = EMBED_MODEL,
     ) -> None:
         self._client = client
@@ -387,6 +465,7 @@ class SnowflakeTrendReader:
         self._trend_signals = trend_signals
         self._signals = signals
         self._descriptor_limit = descriptor_limit
+        self._rescore_limit = rescore_limit
         self._embed_model = embed_model
 
     def descriptor_index(self) -> list[TrendCandidate]:
@@ -402,11 +481,18 @@ class SnowflakeTrendReader:
     ) -> list[TrendCandidate]:
         sql = TREND_CANDIDATE_QUERY.format(trends=self._trends, enrichment=self._enrichment)
         assert_matching_sql(sql, allowed_tables=(TRENDS_TABLE, ENRICHMENT_LEDGER_TABLE))
+        candidate_limit = positive_int("candidate_limit", limit)
         params = {
             "embed_model": self._embed_model,
             "subject": subject,
-            "subject_fold": fold(subject),
-            "candidate_limit": positive_int("candidate_limit", limit),
+            # The SQL fold is ASCII-only, so the bind it is compared against
+            # has to be too -- see subject.fold_ascii.
+            "subject_fold": fold_ascii(subject),
+            "candidate_limit": candidate_limit,
+            # Never narrower than the window it feeds.
+            "rescore_limit": max(
+                positive_int("rescore_limit", self._rescore_limit), candidate_limit
+            ),
         }
         return [TrendCandidate.from_row(row) for row in self._client.query(sql, params)]
 
@@ -483,6 +569,7 @@ class FixtureTrendReader:
                 descriptor_query=trend.descriptor_query,
                 descriptor_statement=trend.descriptor_statement,
                 similarity=_number(per_subject.get(key, trend.similarity)),
+                similarity_basis=trend.similarity_basis,
             )
             for trend, per_subject in zip(self._trends, self._similarities, strict=True)
         ]

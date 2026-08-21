@@ -79,8 +79,11 @@ class MatchRequest(BaseModel):
         ge=0.0,
         le=1.0,
         description=(
-            "Cosine floor for the embedding leg. Decides matched vs white-space, never "
-            "whether a prediction survives -- both outcomes are written."
+            "Cosine floor for the embedding leg's *statement* comparison -- the fallback "
+            "used for a trend that has no descriptor of its own. A candidate scored "
+            "against a trend's descriptor.query is on a different scale and carries its "
+            "own measured floor (matching/decide.py). Decides matched vs white-space, "
+            "never whether a prediction survives -- both outcomes are written."
         ),
     )
     dry_run: bool = Field(
@@ -108,7 +111,11 @@ class MatchOut(BaseModel):
     match_method: str | None
     similarity: float | None
     trend_topic: str | None
-    #: NULL exactly when matched_trend_id is NULL.
+    #: The matched trend's heat / acceleration / growth / age. Null when
+    #: unmeasured -- which covers a white-space prediction (no trend to have
+    #: context for), a matched trend the warehouse has nothing recorded for,
+    #: and a matched trend whose context read failed (``note`` says so, and
+    #: the row is written either way).
     trend_context: dict | None
     confidence: float
     #: Whether the narrative model wrote this row's reasoning.

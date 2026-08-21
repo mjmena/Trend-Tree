@@ -196,3 +196,115 @@ def test_the_verdict_json_round_trips_through_the_ledger_params():
     assert evidence["match"]["method"] == "descriptor_vocabulary"
     assert evidence["trend_context"]["trend_id"] == TREND_ID
     assert params["what_changed"] is None
+
+
+# --- a failed evidence read must not cost a prediction ----------------------
+
+
+class _ContextExplodes(FixtureTrendReader):
+    """Everything reads except the trend-context statement -- the one that
+    times out first, being the heaviest thing this phase issues."""
+
+    def context_for(self, trend_id: str):
+        raise RuntimeError("000630: Statement reached its statement or warehouse timeout")
+
+
+def test_a_failed_context_read_still_writes_the_prediction():
+    trends = _ContextExplodes(
+        [
+            {
+                "TREND_ID": TREND_ID,
+                "TREND_TOPIC": "Rucking as everyday exercise",
+                "DESCRIPTOR_QUERY": "rucking vest",
+                "SIMILARITIES": {"rucking vests": 0.74},
+            }
+        ]
+    )
+
+    result = match_open_predictions(
+        predictions=StaticOpenPredictionReader([open_prediction_row()]),
+        trends=trends,
+        llm=FakePredictionLLM(reply=NARRATIVE),
+    )
+
+    # The match itself was decided without the context, so it stands...
+    assert len(result.verdicts) == 1
+    verdict = result.verdicts[0]
+    assert verdict.matched_trend_id == TREND_ID
+    # ...the evidence key is present and null, which is the ledger contract...
+    assert "trend_context" in verdict.evidence
+    assert verdict.evidence["trend_context"] is None
+    # ...and the row says why.
+    assert "trend context unavailable" in (result.outcomes[0].note or "")
+
+
+def test_a_failed_context_read_does_not_suppress_the_narrative_note():
+    trends = _ContextExplodes(
+        [
+            {
+                "TREND_ID": TREND_ID,
+                "DESCRIPTOR_QUERY": "rucking vest",
+                "SIMILARITIES": {"rucking vests": 0.74},
+            }
+        ]
+    )
+
+    result = match_open_predictions(
+        predictions=StaticOpenPredictionReader([open_prediction_row()]),
+        trends=trends,
+        llm=None,
+    )
+
+    note = result.outcomes[0].note or ""
+    assert "trend context unavailable" in note
+    assert "no narrative model configured" in note
+
+
+# --- reading the ledger and the descriptor index ----------------------------
+
+
+def test_an_offset_bearing_timestamp_is_converted_not_restamped():
+    # `.replace(tzinfo=UTC)` on an offset-bearing string keeps the wall clock
+    # and throws the offset away, which moves the instant. HORIZON_AT is the
+    # date a claim is due to be judged; it must survive a fixture or a JSON
+    # round-trip unmoved.
+    row = open_prediction_row()
+    row["HORIZON_AT"] = "2027-02-14T00:00:00+02:00"
+
+    prediction = OpenPrediction.from_row(row)
+
+    assert prediction.horizon_at == datetime(2027, 2, 13, 22, 0, tzinfo=UTC)
+
+
+def test_a_naive_timestamp_is_stamped_utc():
+    # The deployed path: TIMESTAMP_NTZ columns written in UTC come back naive.
+    row = open_prediction_row()
+    row["HORIZON_AT"] = "2027-02-14 00:00:00.000"
+
+    assert OpenPrediction.from_row(row).horizon_at == datetime(2027, 2, 14, tzinfo=UTC)
+
+
+def test_the_open_prediction_read_caps_after_ordering_oldest_first():
+    from prediction_service.matching.predictions import OPEN_PREDICTIONS_QUERY
+
+    sql = OPEN_PREDICTIONS_QUERY.upper()
+    # The window still picks the *latest* row per prediction...
+    assert "PARTITION BY PREDICTION_ID\n            ORDER BY EVALUATED_AT DESC" in sql
+    # ...while the cap works through the pool oldest-evaluated first, so it is
+    # a cap and not a gate.
+    assert "ORDER BY EVALUATED_AT ASC, PREDICTION_EVAL_ID ASC\nLIMIT" in sql
+
+
+def test_a_variant_json_null_descriptor_does_not_win_the_latest_row():
+    # `PAYLOAD:descriptor:query IS NOT NULL` is TRUE for a VARIANT holding a
+    # JSON null, so a later row that authored no descriptor could take RN = 1
+    # and mask an older row that did. ADR-0003 asks for a latest-*non-null*
+    # read; the ::STRING cast is what makes it one.
+    from prediction_service.matching.trends import (
+        DESCRIPTOR_INDEX_QUERY,
+        TREND_CANDIDATE_QUERY,
+    )
+
+    for sql in (DESCRIPTOR_INDEX_QUERY, TREND_CANDIDATE_QUERY):
+        assert "PAYLOAD:descriptor:query::STRING IS NOT NULL" in sql
+        assert "WHERE PAYLOAD:descriptor:query IS NOT NULL" not in sql

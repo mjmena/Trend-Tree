@@ -28,11 +28,22 @@ from .isolation import assert_matching_sql, positive_int
 VERDICT_LEDGER_TABLE = "FCT_PREDICTION_VERDICT_LEDGER"
 
 #: How many open predictions one run evaluates. A cap on cost and blast
-#: radius, not a gate on what qualifies.
+#: radius, not a gate on what qualifies -- and the ORDER BY below is what
+#: makes that true rather than merely stated. See OPEN_PREDICTIONS_QUERY.
 DEFAULT_PREDICTION_LIMIT = 50
 
 # EVAL_RANK ties break on PREDICTION_EVAL_ID so two rows written inside the
 # same clock tick still resolve to one deterministic "latest".
+#
+# The *outer* ORDER BY is oldest-evaluated first, and that direction is
+# load-bearing. Every evaluation appends a row, so evaluating a prediction
+# makes it the most recently evaluated one. Selecting newest-first would hand
+# the cap back to the same head of the queue on every run: once the open pool
+# grew past `prediction_limit`, the predictions past that point would never be
+# selected again, would keep MATCHED_TREND_ID NULL forever, and would be
+# indistinguishable in the ledger from genuine white space. Oldest-first makes
+# repeated runs round-robin the whole pool, which is what a cap is supposed to
+# do. Invisible at today's handful of open rows; certain at ~50.
 OPEN_PREDICTIONS_QUERY = """
 WITH LATEST AS (
     SELECT
@@ -72,7 +83,7 @@ SELECT
 FROM LATEST
 WHERE EVAL_RANK = 1
   AND PREDICTION_STATUS = 'ACTIVE'
-ORDER BY EVALUATED_AT DESC, PREDICTION_EVAL_ID DESC
+ORDER BY EVALUATED_AT ASC, PREDICTION_EVAL_ID ASC
 LIMIT %(prediction_limit)s
 """
 
@@ -105,9 +116,18 @@ def _evidence(raw: Any) -> dict[str, Any]:
 
 
 def _as_datetime(raw: Any) -> datetime:
+    """A ledger timestamp as an aware UTC datetime.
+
+    The connector hands back real datetimes and the ledger's columns are
+    TIMESTAMP_NTZ written in UTC, so a naive value is *stamped* UTC. A string
+    that already carries an offset is a different case -- a fixture or a JSON
+    payload -- and it is *converted*, not re-stamped: ``.replace(tzinfo=UTC)``
+    on "2027-02-14T00:00:00+02:00" would silently move the instant two hours.
+    """
     if isinstance(raw, datetime):
         return raw if raw.tzinfo else raw.replace(tzinfo=UTC)
-    return datetime.fromisoformat(str(raw)).replace(tzinfo=UTC)
+    parsed = datetime.fromisoformat(str(raw))
+    return parsed.replace(tzinfo=UTC) if parsed.tzinfo is None else parsed.astimezone(UTC)
 
 
 @dataclass(frozen=True)

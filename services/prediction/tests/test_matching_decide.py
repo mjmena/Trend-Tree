@@ -12,12 +12,18 @@ import inspect
 
 from prediction_service.matching import decide as decide_module
 from prediction_service.matching.decide import (
+    DESCRIPTOR_QUERY_MIN_SIMILARITY,
     MATCH_DESCRIPTOR,
     MATCH_EMBEDDING,
     decide_match,
+    floor_for,
     match_evidence,
 )
-from prediction_service.matching.trends import TrendCandidate
+from prediction_service.matching.trends import (
+    BASIS_DESCRIPTOR_QUERY,
+    BASIS_STATEMENT,
+    TrendCandidate,
+)
 
 RUCKING = TrendCandidate(
     trend_id="trend-rucking",
@@ -178,3 +184,110 @@ def test_the_decision_module_names_no_context_measure():
     executable = "".join(body[::2]).lower()
     for measure in ("heat", "acceleration", "age_days", "lifecycle", "growth"):
         assert measure not in executable, measure
+
+
+# --- two comparisons, two scales, two floors -------------------------------
+
+
+def _scored(candidate: TrendCandidate, similarity: float, basis: str) -> TrendCandidate:
+    return TrendCandidate(
+        trend_id=candidate.trend_id,
+        trend_topic=candidate.trend_topic,
+        descriptor_query=candidate.descriptor_query,
+        descriptor_statement=candidate.descriptor_statement,
+        similarity=similarity,
+        similarity_basis=basis,
+    )
+
+
+def test_a_bare_similarity_is_read_as_the_statement_comparison():
+    # The original comparison, and the default: a caller who supplies a
+    # number without saying what it was measured against gets the floor that
+    # number was always judged by.
+    assert TrendCandidate(trend_id="t").similarity_basis == BASIS_STATEMENT
+    assert floor_for(TrendCandidate(trend_id="t"), min_similarity=0.6) == 0.6
+
+
+def test_a_query_to_query_score_is_judged_by_its_own_floor():
+    candidate = _scored(RUCKING, 0.70, BASIS_DESCRIPTOR_QUERY)
+
+    assert floor_for(candidate, min_similarity=0.6) == DESCRIPTOR_QUERY_MIN_SIMILARITY
+    # 0.70 clears the statement floor and would have matched under one number
+    # for both scales. It does not clear its own.
+    decision = decide_match(
+        "everyday weighted vest walking",
+        descriptor_index=[],
+        candidates=[candidate],
+        min_similarity=0.6,
+    )
+    assert not decision.matched
+
+
+def test_a_query_to_query_score_above_its_floor_matches():
+    # The family this leg now reaches and the exact fold cannot: the same
+    # subject with one extra word. Measured live at 0.9214 for
+    # "korean skincare" against "korean skincare routine".
+    decision = decide_match(
+        "korean skincare",
+        descriptor_index=[],
+        candidates=[_scored(RUCKING, 0.9214, BASIS_DESCRIPTOR_QUERY)],
+        min_similarity=0.6,
+    )
+
+    assert decision.matched
+    assert decision.method == MATCH_EMBEDDING
+
+
+def test_the_statement_floor_still_governs_a_trend_with_no_descriptor():
+    # ~42% of promoted trends carry no descriptor, so this branch is the only
+    # one they can be reached through. Its number is unchanged.
+    below = decide_match(
+        "probiotic nasal spray",
+        descriptor_index=[],
+        candidates=[_scored(PROBIOTIC, 0.5699, BASIS_STATEMENT)],
+        min_similarity=0.60,
+    )
+    above = decide_match(
+        "probiotic nasal spray",
+        descriptor_index=[],
+        candidates=[_scored(PROBIOTIC, 0.6100, BASIS_STATEMENT)],
+        min_similarity=0.60,
+    )
+
+    assert not below.matched
+    assert above.matched
+
+
+def test_a_higher_scoring_candidate_on_the_wrong_scale_cannot_borrow_the_other_floor():
+    # Ranking is by raw score, so the descriptor-basis candidate is seen
+    # first; clearing is per scale, so it does not admit itself and does not
+    # block the statement-basis candidate that genuinely clears.
+    decision = decide_match(
+        "something",
+        descriptor_index=[],
+        candidates=[
+            _scored(RUCKING, 0.80, BASIS_DESCRIPTOR_QUERY),
+            _scored(PROBIOTIC, 0.65, BASIS_STATEMENT),
+        ],
+        min_similarity=0.60,
+    )
+
+    assert decision.trend_id == "trend-probiotic"
+
+
+def test_the_evidence_records_which_scale_the_call_was_made_on():
+    decision = decide_match(
+        "korean skincare",
+        descriptor_index=[],
+        candidates=[_scored(RUCKING, 0.9214, BASIS_DESCRIPTOR_QUERY)],
+        min_similarity=0.6,
+    )
+
+    evidence = match_evidence(decision)
+
+    assert evidence["similarity_basis"] == BASIS_DESCRIPTOR_QUERY
+    assert evidence["min_similarity_applied"] == DESCRIPTOR_QUERY_MIN_SIMILARITY
+    # The per-request number is still recorded, so a reader can tell what the
+    # run was asked for as well as what applied.
+    assert evidence["min_similarity"] == 0.6
+    assert evidence["considered"][0]["similarity_basis"] == BASIS_DESCRIPTOR_QUERY
