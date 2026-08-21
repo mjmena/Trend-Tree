@@ -16,13 +16,15 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi.testclient import TestClient
-from tt_services_lib.auth import IAP_ASSERTION_HEADER, IAP_ISSUER
 from tt_services_lib.snowflake_client import RetryingSnowflakeClient
 
 from prediction_service.app import create_app
 from prediction_service.config import settings_from_env
 
-AUDIENCE = "/projects/289569404687/locations/us-east4/services/trend-tree-prediction"
+# Default auth mode (Cloud Run IAM / OIDC), so the audience is the service URL
+# and the credential is a bearer token -- see tests/test_app.py.
+AUDIENCE = "https://trend-tree-prediction-tu6gxkvema-uk.a.run.app"
+AUTH_HEADERS = {"Authorization": "Bearer good"}
 
 
 class _FakeLedger:
@@ -80,7 +82,11 @@ class _FakeConnection:
 
 
 def _verify_ok(token: str, audience: str) -> dict:
-    return {"email": "caller@x.iam.gserviceaccount.com", "aud": audience, "iss": IAP_ISSUER}
+    return {
+        "email": "caller@x.iam.gserviceaccount.com",
+        "aud": audience,
+        "iss": "https://accounts.google.com",
+    }
 
 
 def _client_for(ledger: _FakeLedger) -> TestClient:
@@ -96,9 +102,7 @@ def _client_for(ledger: _FakeLedger) -> TestClient:
 def test_a_retried_write_lands_exactly_one_row():
     ledger = _FakeLedger(lose_first_response=True)
 
-    resp = _client_for(ledger).post(
-        "/run", json={}, headers={IAP_ASSERTION_HEADER: "good"}
-    )
+    resp = _client_for(ledger).post("/run", json={}, headers=AUTH_HEADERS)
 
     assert resp.status_code == 200
     assert ledger.statements == 2  # the write really was retried...
@@ -112,9 +116,7 @@ def test_a_retried_write_lands_exactly_one_row():
 def test_a_clean_write_lands_one_row_and_reports_it():
     ledger = _FakeLedger(lose_first_response=False)
 
-    resp = _client_for(ledger).post(
-        "/run", json={}, headers={IAP_ASSERTION_HEADER: "good"}
-    )
+    resp = _client_for(ledger).post("/run", json={}, headers=AUTH_HEADERS)
 
     assert resp.status_code == 200
     assert ledger.statements == 1
@@ -127,7 +129,7 @@ def test_two_separate_runs_are_two_rows():
     ledger = _FakeLedger(lose_first_response=False)
     client = _client_for(ledger)
 
-    client.post("/run", json={}, headers={IAP_ASSERTION_HEADER: "good"})
-    client.post("/run", json={}, headers={IAP_ASSERTION_HEADER: "good"})
+    client.post("/run", json={}, headers=AUTH_HEADERS)
+    client.post("/run", json={}, headers=AUTH_HEADERS)
 
     assert len(ledger.rows) == 2

@@ -7,17 +7,38 @@
 # (CI, once wired) would use services/prediction/Dockerfile instead; both
 # produce the same /app layout.
 #
-# Ingress-auth: Cloud Run's native IAP integration (`--iap`), not bare
-# `run.invoker` + service-to-service OIDC. The bare-OIDC approach this
-# replaces has zero working examples anywhere in the McClatchy estate
-# (CRMA-509/511 research) and, deployed for real during CRMA-762, produced an
-# unexplained edge-level 404 that several rounds of platform-level
-# investigation (org policy, ingress annotation, VPC-SC audit logs) could not
-# root-cause. `--iap --no-allow-unauthenticated` on `gcloud beta run deploy`
-# is the pattern every other locked-down service in the estate actually uses
-# and that works (helm, mcc-audience-builder, mcc-newsletters/dashboard) --
-# see mcc-audience-builder/deploy/deploy.sh:101 for the reference this
-# mirrors. `beta` track is required for the `--iap` flag on `run deploy`.
+# ---------------------------------------------------------------------------
+# Ingress-auth: two modes, `oidc` (default) and `iap`.
+# ---------------------------------------------------------------------------
+#
+# `oidc` -- plain Cloud Run IAM: `--no-allow-unauthenticated --no-iap`, callers
+# need roles/run.invoker and present `Authorization: Bearer <id_token>` whose
+# `aud` is the SERVICE URL. This is how the service actually runs today.
+#
+# `iap` -- Cloud Run's native IAP integration (`--iap`), the pattern most other
+# locked-down services in the estate use (helm, mcc-audience-builder,
+# mcc-newsletters/dashboard; see mcc-audience-builder/deploy/deploy.sh:101).
+# Callers need roles/iap.httpsResourceAccessor and IAP forwards a signed
+# `X-Goog-IAP-JWT-Assertion` whose `aud` is
+# `/projects/{PROJECT_NUMBER}/locations/{REGION}/services/{SERVICE}`.
+# Kept selectable so reinstating IAP is a flag, not a rewrite.
+#
+# The unexplained edge-level 404 that pushed CRMA-762 to IAP in the first
+# place was never an OIDC problem: the service had been deployed with
+# `run.googleapis.com/invoker-iam-disabled: true` while IAP was never actually
+# provisioned (zero bindings on its IAP IAM policy), so NO authorization layer
+# was bound and Google's frontend answered a generic 404 to everything. With
+# the invoker IAM check re-enabled the service authorizes correctly and
+# returns 403 to unauthenticated callers. `gcloud run deploy` preserves that
+# annotation's current (enabled) state across revisions -- if a 404 ever comes
+# back on every path, check the annotation first:
+#   gcloud run services describe $SERVICE --region $REGION --project $PROJECT \
+#     --format='value(metadata.annotations)' | tr ',' '\n' | grep invoker
+#
+# Set the mode with --auth-mode=iap or PREDICTION_AUTH_MODE=iap. The mode
+# drives BOTH the deploy flags and PREDICTION_SERVICE_AUDIENCE, because the
+# two audience shapes are not interchangeable -- an IAP-shaped audience on an
+# OIDC-mode service 401s every authenticated caller.
 #
 # This is a two-stage promote, per CRMA-762's acceptance criteria: the image
 # is always deployed --no-traffic under the `candidate` tag first, smoke-
@@ -25,22 +46,26 @@
 # smoke test exits non-zero and leaves the previously-promoted revision
 # serving, untouched.
 #
-# One bootstrap wrinkle, self-converging (no manual follow-up needed):
-# `gcloud run deploy --no-traffic` is rejected when creating a brand-new
-# service (there is no prior revision to protect) -- on a first-ever deploy
-# this script creates the service without --no-traffic, then falls through
-# to the normal dark-deploy flow for every step after. Unlike the bare-OIDC
-# attempt this replaces, there is no audience chicken-and-egg problem here:
-# IAP's audience is `/projects/{PROJECT_NUMBER}/locations/{REGION}
-# /services/{SERVICE}` -- static, known before any deploy exists.
+# Two bootstrap wrinkles, both self-converging (no manual follow-up needed):
+#   * `gcloud run deploy --no-traffic` is rejected when creating a brand-new
+#     service (there is no prior revision to protect) -- on a first-ever deploy
+#     this script creates the service without --no-traffic, then falls through
+#     to the normal dark-deploy flow for every step after.
+#   * in `oidc` mode the audience IS the service URL, which does not exist
+#     until the service does. The bootstrap revision therefore gets a
+#     deliberately unmatchable placeholder audience (it fails CLOSED -- every
+#     caller 401s -- rather than accepting anything), and the very next
+#     deploy, one step later, carries the real URL. `iap` mode has no such
+#     dance: its audience is static and known before any deploy exists.
 #
 # The smoke test is TWO probes, and both must pass before any promote:
 #
-#   1. Unauthenticated GET of the candidate's /health must return 401 --
-#      IAP's own rejection at the edge (CRMA-762 AC4; matches every other
-#      IAP-fronted service in the estate, see helm/deploy/deploy-helm.sh:114).
-#   2. IAP-authenticated GET of the *same* candidate-tagged /health must
-#      return 200 with {"ok":true} from the container itself.
+#   1. Unauthenticated GET of the candidate's /health must be REJECTED at the
+#      edge -- 403 under Cloud Run IAM, 401 under IAP (CRMA-762 AC4; matches
+#      helm/deploy/deploy-helm.sh:114). Anything else, 404 above all, means
+#      the authorization layer is not bound and the gate fails.
+#   2. Authenticated GET of the *same* candidate-tagged /health must return
+#      200 with {"ok":true} from the container itself.
 #
 # Both probes hit /health, NOT the conventional /healthz: Google's edge
 # intercepts the exact path `/healthz` on *.run.app hostnames and returns its
@@ -48,10 +73,10 @@
 # 2026-08-21). On /healthz both probes fail for a reason that has nothing to
 # do with the candidate revision's health. Leave these on /health.
 #
-# Probe 1 alone has no discriminating power over the revision: IAP answers
-# 401 at the edge before the request ever reaches a revision, so a revision
-# that 500s on every single request produces the identical 401 as a healthy
-# one -- and the old gate then promoted it. Only probe 2 actually reaches the
+# Probe 1 alone has no discriminating power over the revision: the edge
+# rejects before the request ever reaches a revision, so a revision that 500s
+# on every single request produces the identical rejection as a healthy one --
+# and the old gate then promoted it. Only probe 2 actually reaches the
 # candidate's container.
 #
 # Probe 2 needs a caller identity token. If one cannot be obtained, or the
@@ -60,21 +85,23 @@
 # the exact failure mode being fixed here.
 #
 # Token sourcing, in order:
-#   * $IAP_ID_TOKEN, if set -- an already-minted token (the estate has seen
-#     `gcloud auth print-identity-token` rejected by IAP for audience
-#     reasons; a token minted elsewhere, e.g. from a browser session or an
-#     impersonated service account, drops in here without weakening the gate,
-#     because the probe still has to come back 200).
-#   * `gcloud auth print-identity-token`, with `--audiences=$IAP_TOKEN_AUDIENCE`
-#     when that variable is set (required when minting as a service account /
-#     via impersonation).
+#   * $PROBE_ID_TOKEN (or the older $IAP_ID_TOKEN), if set -- an already-minted
+#     token (the estate has seen `gcloud auth print-identity-token` rejected
+#     for audience reasons; a token minted elsewhere, e.g. from a browser
+#     session or an impersonated service account, drops in here without
+#     weakening the gate, because the probe still has to come back 200).
+#   * `gcloud auth print-identity-token --audiences=<audience>`, where the
+#     audience defaults to the service URL in `oidc` mode (what the container
+#     verifies against) and is left to gcloud's default in `iap` mode.
+#     $PROBE_TOKEN_AUDIENCE (or the older $IAP_TOKEN_AUDIENCE) overrides.
 #
 #   deploy/deploy.sh                build + push + dark-deploy + smoke test + promote
 #   deploy/deploy.sh --no-build     redeploy the latest pushed image through the same flow
 #   deploy/deploy.sh --no-promote   stop after the smoke test; candidate stays at 0% traffic
+#   deploy/deploy.sh --auth-mode=iap   deploy behind IAP instead of Cloud Run IAM
 #
-#   IAP_ID_TOKEN=...        use this identity token for the authenticated probe
-#   IAP_TOKEN_AUDIENCE=...  mint the probe token for this audience
+#   PROBE_ID_TOKEN=...        use this identity token for the authenticated probe
+#   PROBE_TOKEN_AUDIENCE=...  mint the probe token for this audience
 set -euo pipefail
 
 PROJECT=mcc-crm-automations
@@ -86,12 +113,15 @@ IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}/${SERVICE}:${GIT_SHA}"
 BASE=python:3.12-slim
 CRANE="${CRANE:-crane}"
 UV="${UV:-uv}"
-# Runtime identity for the container itself (not a caller identity -- IAP
-# access for *callers* is granted separately via roles/iap.httpsResourceAccessor,
-# see the log line at the end of this script). crm-runtime@ already carries
-# project-level roles/secretmanager.secretAccessor, reaching the existing
-# snowflake-private-key secret with no new binding needed.
+# Runtime identity for the container itself (not a caller identity -- caller
+# access is granted separately, see the log lines at the end of this script).
+# crm-runtime@ already carries project-level roles/secretmanager.secretAccessor,
+# reaching the existing snowflake-private-key secret with no new binding needed.
 SERVICE_ACCOUNT=crm-runtime@mcc-crm-automations.iam.gserviceaccount.com
+
+# An audience no token can ever carry, used only for the first-ever create in
+# oidc mode (see the bootstrap note above). Fails closed by construction.
+BOOTSTRAP_AUDIENCE="https://service-url-not-yet-known.invalid"
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 SVC_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -100,13 +130,20 @@ log() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
 
 BUILD=1
 PROMOTE=1
+AUTH_MODE="${PREDICTION_AUTH_MODE:-oidc}"
 for arg in "$@"; do
   case "$arg" in
     --no-build) BUILD=0 ;;
     --no-promote) PROMOTE=0 ;;
-    *) echo "unknown flag: $arg (expected --no-build / --no-promote)" >&2; exit 1 ;;
+    --auth-mode=*) AUTH_MODE="${arg#--auth-mode=}" ;;
+    *) echo "unknown flag: $arg (expected --no-build / --no-promote / --auth-mode=oidc|iap)" >&2; exit 1 ;;
   esac
 done
+
+case "$AUTH_MODE" in
+  oidc|iap) ;;
+  *) echo "unknown auth mode: ${AUTH_MODE} (expected oidc or iap)" >&2; exit 1 ;;
+esac
 
 # One cleanup handler for everything, registered once. Each `trap ... EXIT`
 # REPLACES the previous handler rather than adding to it, so the build's
@@ -165,20 +202,36 @@ fi
 PROJECT_NUMBER="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
 IAP_AUDIENCE="/projects/${PROJECT_NUMBER}/locations/${REGION}/services/${SERVICE}"
 
+service_url() {
+  gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT" \
+    --format 'value(status.url)' 2>/dev/null || true
+}
+
 ENV_FILE="$(mktemp -t trend-tree-prediction-env.XXXXXX.yaml)"
-cat > "$ENV_FILE" <<YAML
+# write_env_file AUDIENCE -- the audience shape must match AUTH_MODE; see the
+# header. Everything else is mode-independent.
+write_env_file() {
+  cat > "$ENV_FILE" <<YAML
 PREDICTION_SNOWFLAKE_ACCOUNT: 'WVB49304-MCCLATCHY_EVAL'
 PREDICTION_SNOWFLAKE_USER: 'CRMBOT_SERVICE_USER'
 PREDICTION_SNOWFLAKE_ROLE: 'MARKETING_ENGINEER'
 PREDICTION_SNOWFLAKE_WAREHOUSE: 'MARKETING_WH'
 PREDICTION_SNOWFLAKE_DATABASE: 'MCC_PRESENTATION'
 PREDICTION_SNOWFLAKE_SCHEMA: 'TREND_AGENT'
-PREDICTION_SERVICE_AUDIENCE: '${IAP_AUDIENCE}'
+PREDICTION_SERVICE_AUTH_MODE: '${AUTH_MODE}'
+PREDICTION_SERVICE_AUDIENCE: '$1'
 YAML
+}
 
 # deploy_step TRAFFIC_FLAG
 deploy_step() {
   local traffic_flag="$1"  # "--no-traffic" or "" (unsupported on first create)
+  local iap_flag="--no-iap"
+  [[ "$AUTH_MODE" == "iap" ]] && iap_flag="--iap"
+  # `--no-iap` is stated explicitly rather than omitted: the service HAS been
+  # deployed with --iap before, and leaving the flag off would silently
+  # inherit that, putting an IAP edge in front of a container configured to
+  # verify Cloud Run IAM tokens. `beta` track is required for --[no-]iap.
   # shellcheck disable=SC2086 -- traffic_flag is intentionally either empty or one flag token
   gcloud beta run deploy "$SERVICE" \
     --project "$PROJECT" --region "$REGION" \
@@ -188,57 +241,99 @@ deploy_step() {
     --cpu 1 --memory 512Mi \
     --concurrency 20 --timeout 600 \
     --port 8080 --ingress all \
-    --iap --no-allow-unauthenticated \
+    "$iap_flag" --no-allow-unauthenticated \
     $traffic_flag --tag candidate \
     --update-secrets "PREDICTION_SNOWFLAKE_PRIVATE_KEY=snowflake-private-key:latest" \
     --env-vars-file "$ENV_FILE"
 }
 
-SERVICE_EXISTS="$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT" \
-  --format 'value(metadata.name)' 2>/dev/null || true)"
+URL="$(service_url)"
 
-if [[ -z "$SERVICE_EXISTS" ]]; then
-  log "Service does not exist yet -- gcloud rejects --no-traffic on creation (no prior revision to protect). Bootstrap revision will serve 100% traffic immediately; every step after this falls through to the normal dark-deploy flow."
-  deploy_step ""
+# The audience the container will verify incoming tokens against.
+if [[ "$AUTH_MODE" == "iap" ]]; then
+  AUDIENCE="$IAP_AUDIENCE"
+elif [[ -n "$URL" ]]; then
+  AUDIENCE="$URL"
+else
+  AUDIENCE="$BOOTSTRAP_AUDIENCE"
 fi
 
-log "Dark-deploying candidate (--no-traffic, IAP-fronted)..."
+if [[ -z "$URL" ]]; then
+  log "Service does not exist yet -- gcloud rejects --no-traffic on creation (no prior revision to protect). Bootstrap revision will serve 100% traffic immediately; every step after this falls through to the normal dark-deploy flow."
+  if [[ "$AUTH_MODE" == "oidc" ]]; then
+    log "  oidc mode: the audience is the service URL, which does not exist yet. Bootstrapping with the unmatchable placeholder '${BOOTSTRAP_AUDIENCE}' (fails closed -- every caller 401s); the dark deploy one step below carries the real URL."
+  fi
+  write_env_file "$AUDIENCE"
+  deploy_step ""
+  URL="$(service_url)"
+  if [[ -z "$URL" ]]; then
+    echo "Bootstrap deploy reported success but the service has no URL. Not continuing." >&2
+    exit 1
+  fi
+  [[ "$AUTH_MODE" == "oidc" ]] && AUDIENCE="$URL"
+fi
+
+write_env_file "$AUDIENCE"
+
+log "Dark-deploying candidate (--no-traffic, auth mode: ${AUTH_MODE}, audience: ${AUDIENCE})..."
 deploy_step "--no-traffic"
 
-URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT" --format 'value(status.url)')"
 CANDIDATE_URL="https://candidate---$(echo "$URL" | sed 's#https://##')"
 
 SMOKE_BODY=/tmp/trend-tree-prediction-smoke.json
 
-log "Probe 1/2: ${CANDIDATE_URL}/health unauthenticated (expect 401 from IAP)..."
+if [[ "$AUTH_MODE" == "iap" ]]; then
+  REJECT_CODES="401"
+else
+  # Cloud Run IAM answers 403 ("client does not have permission") to a caller
+  # with no credential; 401 is accepted as the equivalent edge rejection. A
+  # 404 is the invoker-IAM/IAP misconfiguration described in the header, and
+  # a 200 means the service is wide open -- both fail the gate.
+  REJECT_CODES="401|403"
+fi
+
+log "Probe 1/2: ${CANDIDATE_URL}/health unauthenticated (expect ${REJECT_CODES} from the edge)..."
 # `|| echo 000` so a curl-level failure reports as a failed gate rather than
 # tripping `set -e` with no explanation.
 HTTP_CODE=$(curl -sS -o "$SMOKE_BODY" -w '%{http_code}' "${CANDIDATE_URL}/health" || echo "000")
-if [[ "$HTTP_CODE" != "401" ]]; then
-  echo "Smoke test FAILED: expected 401 from IAP, got HTTP ${HTTP_CODE}. Not promoting; candidate stays at 0% traffic. Response:" >&2
+if [[ ! "$HTTP_CODE" =~ ^(${REJECT_CODES})$ ]]; then
+  echo "Smoke test FAILED: expected ${REJECT_CODES} from the edge, got HTTP ${HTTP_CODE}. Not promoting; candidate stays at 0% traffic. Response:" >&2
   cat "$SMOKE_BODY" >&2
+  echo >&2
+  if [[ "$HTTP_CODE" == "404" ]]; then
+    echo "  404 on every path is the signature of NO authorization layer being bound: check run.googleapis.com/invoker-iam-disabled on the service, and whether IAP is half-provisioned. See this script's header." >&2
+  fi
   exit 1
 fi
-log "Probe 1/2 passed: IAP rejects an unauthenticated request (401)."
+log "Probe 1/2 passed: the edge rejects an unauthenticated request (${HTTP_CODE})."
 
 # Probe 2 is the one with discriminating power: it reaches the candidate
 # revision's own container. Failing to obtain a token is a FAILURE, not a
 # skip -- an unverifiable revision must never be promoted.
-log "Probe 2/2: ${CANDIDATE_URL}/health IAP-authenticated (expect 200 from the candidate revision)..."
-if [[ -n "${IAP_ID_TOKEN:-}" ]]; then
-  ID_TOKEN="$IAP_ID_TOKEN"
-  log "  (using the identity token from \$IAP_ID_TOKEN)"
+log "Probe 2/2: ${CANDIDATE_URL}/health authenticated (expect 200 from the candidate revision)..."
+PRESET_ID_TOKEN="${PROBE_ID_TOKEN:-${IAP_ID_TOKEN:-}}"
+# In oidc mode the token's audience must be exactly what the container checks
+# (PREDICTION_SERVICE_AUDIENCE = the service URL). In iap mode, gcloud's
+# default audience is what the estate's other IAP services use.
+TOKEN_AUDIENCE="${PROBE_TOKEN_AUDIENCE:-${IAP_TOKEN_AUDIENCE:-}}"
+if [[ -z "$TOKEN_AUDIENCE" && "$AUTH_MODE" == "oidc" ]]; then
+  TOKEN_AUDIENCE="$AUDIENCE"
+fi
+
+if [[ -n "$PRESET_ID_TOKEN" ]]; then
+  ID_TOKEN="$PRESET_ID_TOKEN"
+  log "  (using the identity token from \$PROBE_ID_TOKEN/\$IAP_ID_TOKEN)"
 else
   TOKEN_ERR="$(mktemp -t trend-tree-prediction-token.XXXXXX)"
-  if [[ -n "${IAP_TOKEN_AUDIENCE:-}" ]]; then
-    ID_TOKEN="$(gcloud auth print-identity-token --audiences="$IAP_TOKEN_AUDIENCE" 2>"$TOKEN_ERR" || true)"
+  if [[ -n "$TOKEN_AUDIENCE" ]]; then
+    ID_TOKEN="$(gcloud auth print-identity-token --audiences="$TOKEN_AUDIENCE" 2>"$TOKEN_ERR" || true)"
   else
     ID_TOKEN="$(gcloud auth print-identity-token 2>"$TOKEN_ERR" || true)"
   fi
   if [[ -z "$ID_TOKEN" ]]; then
     echo "Smoke test FAILED: could not mint an identity token for the authenticated probe, so the candidate revision's health is UNVERIFIED. Not promoting. gcloud said:" >&2
     cat "$TOKEN_ERR" >&2
-    echo "Fix by granting this identity roles/iap.httpsResourceAccessor (see the end of this script), setting IAP_TOKEN_AUDIENCE, or passing a pre-minted token in IAP_ID_TOKEN." >&2
+    echo "Fix by granting this identity the caller role (see the end of this script), setting PROBE_TOKEN_AUDIENCE, or passing a pre-minted token in PROBE_ID_TOKEN." >&2
     rm -f "$TOKEN_ERR"
     exit 1
   fi
@@ -259,7 +354,12 @@ if [[ "$AUTH_CODE" != "200" ]]; then
   echo "Smoke test FAILED: authenticated probe of the candidate revision returned HTTP ${AUTH_CODE}, expected 200. Not promoting; candidate stays at 0% traffic. Response:" >&2
   cat "$SMOKE_BODY" >&2
   echo >&2
-  echo "  401/403 -> the calling identity lacks roles/iap.httpsResourceAccessor, or the token audience is wrong (set IAP_TOKEN_AUDIENCE / IAP_ID_TOKEN)." >&2
+  if [[ "$AUTH_MODE" == "iap" ]]; then
+    echo "  401/403 -> the calling identity lacks roles/iap.httpsResourceAccessor, or the token audience is wrong (set PROBE_TOKEN_AUDIENCE / PROBE_ID_TOKEN)." >&2
+  else
+    echo "  403 -> the calling identity lacks roles/run.invoker on ${SERVICE}." >&2
+    echo "  401 -> the token reached the container but failed its own check: its aud must be exactly '${AUDIENCE}' (PREDICTION_SERVICE_AUDIENCE) and its iss https://accounts.google.com. Override with PROBE_TOKEN_AUDIENCE / PROBE_ID_TOKEN." >&2
+  fi
   echo "  5xx/000 -> the candidate revision itself is unhealthy. Check: gcloud run services logs read ${SERVICE} --region ${REGION} --project ${PROJECT}" >&2
   exit 1
 fi
@@ -280,8 +380,16 @@ else
 fi
 
 log "Deployed: ${URL}"
-log "IAP audience for this service: ${IAP_AUDIENCE}"
-log "To grant a caller access (roles/iap.httpsResourceAccessor), mirroring mcc-audience-builder/deploy/deploy.sh:"
-log "  curl -s -X POST https://iap.googleapis.com/v1/projects/${PROJECT_NUMBER}/iap_web/cloud_run-${REGION}/services/${SERVICE}:getIamPolicy \\"
-log "    -H \"Authorization: Bearer \$(gcloud auth print-access-token)\""
-log "  # then setIamPolicy with the same etag, adding a roles/iap.httpsResourceAccessor binding for the caller"
+log "Auth mode: ${AUTH_MODE} -- token audience for this service: ${AUDIENCE}"
+if [[ "$AUTH_MODE" == "iap" ]]; then
+  log "To grant a caller access (roles/iap.httpsResourceAccessor), mirroring mcc-audience-builder/deploy/deploy.sh:"
+  log "  curl -s -X POST https://iap.googleapis.com/v1/projects/${PROJECT_NUMBER}/iap_web/cloud_run-${REGION}/services/${SERVICE}:getIamPolicy \\"
+  log "    -H \"Authorization: Bearer \$(gcloud auth print-access-token)\""
+  log "  # then setIamPolicy with the same etag, adding a roles/iap.httpsResourceAccessor binding for the caller"
+else
+  log "To grant a caller access (roles/run.invoker):"
+  log "  gcloud run services add-iam-policy-binding ${SERVICE} --region ${REGION} --project ${PROJECT} \\"
+  log "    --member='serviceAccount:CALLER@PROJECT.iam.gserviceaccount.com' --role='roles/run.invoker'"
+  log "To call it:"
+  log "  curl -H \"Authorization: Bearer \$(gcloud auth print-identity-token --audiences=${AUDIENCE})\" ${URL}/health"
+fi

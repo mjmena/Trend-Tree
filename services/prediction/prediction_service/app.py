@@ -1,11 +1,11 @@
 """Routes only -- every dependency arrives as an argument so tests can call
-create_app(...) with a fake Snowflake client and a fake IAP verifier, and
+create_app(...) with a fake Snowflake client and a fake token verifier, and
 drive the service over httpx with no server, no network, and no warehouse."""
 
 from __future__ import annotations
 
 from fastapi import FastAPI
-from tt_services_lib.auth import TokenVerifier, google_iap_verifier, require_caller_dependency
+from tt_services_lib.auth import TokenVerifier, require_caller_dependency
 from tt_services_lib.snowflake_client import SnowflakeClient
 
 from .config import ConfigError, Settings
@@ -16,26 +16,28 @@ def create_app(
     settings: Settings,
     snowflake: SnowflakeClient,
     *,
-    verify_token: TokenVerifier = google_iap_verifier,
+    verify_token: TokenVerifier | None = None,
 ) -> FastAPI:
-    if verify_token is google_iap_verifier and not settings.audience.strip():
+    # None means "the real verifier for settings.auth_mode" -- so only an
+    # injected (test) verifier is exempt from the audience check below.
+    if verify_token is None and not settings.audience.strip():
         # Fail at construction, not per request. An empty audience fails
         # closed (every call 401s), which is indistinguishable from a
         # correctly locked-down service when probed from outside -- exactly
         # the shape of breakage a deploy gate could otherwise wave through.
         raise ConfigError(
-            "PREDICTION_SERVICE_AUDIENCE is empty but the real IAP verifier is in use; "
+            "PREDICTION_SERVICE_AUDIENCE is empty but a real token verifier is in use; "
             "every request would 401. Set the audience, or inject a verifier (tests do)."
         )
 
     app = FastAPI(title="trend-tree-prediction", docs_url=None, redoc_url=None)
 
     # Unauthenticated at the *app* level on purpose: a liveness/readiness
-    # probe target. This does not widen access -- Cloud Run's native IAP
-    # integration (--iap --no-allow-unauthenticated, see deploy/deploy.sh)
-    # protects the whole service at the edge, health included, so an
-    # unauthenticated request never reaches the container regardless of what
-    # this route itself requires.
+    # probe target. This does not widen access -- the service is deployed
+    # --no-allow-unauthenticated (see deploy/deploy.sh), so Cloud Run IAM
+    # rejects a caller without roles/run.invoker at the edge, health included,
+    # and an unauthenticated request never reaches the container regardless of
+    # what this route itself requires. Same holds under the IAP mode.
     #
     # /health, not /healthz, is the canonical externally-probed path: Google's
     # edge intercepts the exact path `/healthz` on *.run.app hostnames and
@@ -49,6 +51,15 @@ def create_app(
     app.get("/health")(health)
     app.get("/healthz")(health)
 
-    require_caller = require_caller_dependency(settings.audience, verify=verify_token)
+    # The mode switch. Cloud Run IAM (`oidc`) is how this service is deployed
+    # today; `iap` is retained as the alternative in case IAP is reinstated.
+    # An unknown mode is a config problem, so it surfaces as ConfigError at
+    # construction -- the same class of failure as an empty audience.
+    try:
+        require_caller = require_caller_dependency(
+            settings.audience, mode=settings.auth_mode, verify=verify_token
+        )
+    except ValueError as err:
+        raise ConfigError(str(err)) from err
     app.include_router(run_router(settings, snowflake, require_caller))
     return app

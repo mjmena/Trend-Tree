@@ -1,5 +1,6 @@
-"""Production wiring: the real retrying Snowflake client, real Google OIDC
-verification (both defaults on create_app / RetryingSnowflakeClient).
+"""Production wiring: the real retrying Snowflake client, real Google token
+verification for the configured auth mode (both defaults on create_app /
+RetryingSnowflakeClient).
 
 Run with `python -m prediction_service.server`, or point uvicorn at
 `prediction_service.server:app`.
@@ -18,9 +19,9 @@ from .config import settings_from_env
 logging.basicConfig(level=logging.INFO)
 
 settings = settings_from_env()
-# Raises ConfigError on settings that cannot serve traffic (empty IAP
-# audience, no Snowflake key material) -- the container fails to start rather
-# than coming up and 401-ing or hanging on every request.
+# Raises ConfigError on settings that cannot serve traffic (empty audience,
+# unknown auth mode, no Snowflake key material) -- the container fails to
+# start rather than coming up and 401-ing or hanging on every request.
 settings.validate_for_server()
 app = create_app(settings=settings, snowflake=RetryingSnowflakeClient(settings.snowflake))
 
