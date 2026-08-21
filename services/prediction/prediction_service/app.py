@@ -33,12 +33,21 @@ def create_app(
     # Unauthenticated at the *app* level on purpose: a liveness/readiness
     # probe target. This does not widen access -- Cloud Run's native IAP
     # integration (--iap --no-allow-unauthenticated, see deploy/deploy.sh)
-    # protects the whole service at the edge, healthz included, so an
+    # protects the whole service at the edge, health included, so an
     # unauthenticated request never reaches the container regardless of what
     # this route itself requires.
-    @app.get("/healthz")
-    def healthz() -> dict[str, bool]:
+    #
+    # /health, not /healthz, is the canonical externally-probed path: Google's
+    # edge intercepts the exact path `/healthz` on *.run.app hostnames and
+    # answers its own generic 404 before the request reaches Cloud Run at all
+    # (measured 2026-08-21; every other path tried routed through normally).
+    # /healthz stays registered for in-cluster and local callers -- but do not
+    # point the deploy gate back at it, that silently re-breaks the promote.
+    def health() -> dict[str, bool]:
         return {"ok": True}
+
+    app.get("/health")(health)
+    app.get("/healthz")(health)
 
     require_caller = require_caller_dependency(settings.audience, verify=verify_token)
     app.include_router(run_router(settings, snowflake, require_caller))

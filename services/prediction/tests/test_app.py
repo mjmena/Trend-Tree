@@ -43,7 +43,16 @@ def _iap_headers(assertion: str) -> dict[str, str]:
     return {IAP_ASSERTION_HEADER: assertion}
 
 
-def test_healthz_is_unauthenticated_at_the_app_level():
+def test_health_is_unauthenticated_at_the_app_level():
+    client = _client(FakeSnowflake())
+    resp = client.get("/health")
+    assert resp.status_code == 200
+    assert resp.json() == {"ok": True}
+
+
+def test_healthz_alias_still_answers_for_local_and_in_cluster_callers():
+    # /health is what the deploy gate probes (Google's edge swallows the exact
+    # path /healthz on *.run.app); the alias stays for everything else.
     client = _client(FakeSnowflake())
     resp = client.get("/healthz")
     assert resp.status_code == 200

@@ -36,11 +36,17 @@
 #
 # The smoke test is TWO probes, and both must pass before any promote:
 #
-#   1. Unauthenticated GET of the candidate's /healthz must return 401 --
+#   1. Unauthenticated GET of the candidate's /health must return 401 --
 #      IAP's own rejection at the edge (CRMA-762 AC4; matches every other
 #      IAP-fronted service in the estate, see helm/deploy/deploy-helm.sh:114).
-#   2. IAP-authenticated GET of the *same* candidate-tagged /healthz must
+#   2. IAP-authenticated GET of the *same* candidate-tagged /health must
 #      return 200 with {"ok":true} from the container itself.
+#
+# Both probes hit /health, NOT the conventional /healthz: Google's edge
+# intercepts the exact path `/healthz` on *.run.app hostnames and returns its
+# own generic 404 before the request reaches Cloud Run or IAP (measured
+# 2026-08-21). On /healthz both probes fail for a reason that has nothing to
+# do with the candidate revision's health. Leave these on /health.
 #
 # Probe 1 alone has no discriminating power over the revision: IAP answers
 # 401 at the edge before the request ever reaches a revision, so a revision
@@ -204,10 +210,10 @@ CANDIDATE_URL="https://candidate---$(echo "$URL" | sed 's#https://##')"
 
 SMOKE_BODY=/tmp/trend-tree-prediction-smoke.json
 
-log "Probe 1/2: ${CANDIDATE_URL}/healthz unauthenticated (expect 401 from IAP)..."
+log "Probe 1/2: ${CANDIDATE_URL}/health unauthenticated (expect 401 from IAP)..."
 # `|| echo 000` so a curl-level failure reports as a failed gate rather than
 # tripping `set -e` with no explanation.
-HTTP_CODE=$(curl -sS -o "$SMOKE_BODY" -w '%{http_code}' "${CANDIDATE_URL}/healthz" || echo "000")
+HTTP_CODE=$(curl -sS -o "$SMOKE_BODY" -w '%{http_code}' "${CANDIDATE_URL}/health" || echo "000")
 if [[ "$HTTP_CODE" != "401" ]]; then
   echo "Smoke test FAILED: expected 401 from IAP, got HTTP ${HTTP_CODE}. Not promoting; candidate stays at 0% traffic. Response:" >&2
   cat "$SMOKE_BODY" >&2
@@ -218,7 +224,7 @@ log "Probe 1/2 passed: IAP rejects an unauthenticated request (401)."
 # Probe 2 is the one with discriminating power: it reaches the candidate
 # revision's own container. Failing to obtain a token is a FAILURE, not a
 # skip -- an unverifiable revision must never be promoted.
-log "Probe 2/2: ${CANDIDATE_URL}/healthz IAP-authenticated (expect 200 from the candidate revision)..."
+log "Probe 2/2: ${CANDIDATE_URL}/health IAP-authenticated (expect 200 from the candidate revision)..."
 if [[ -n "${IAP_ID_TOKEN:-}" ]]; then
   ID_TOKEN="$IAP_ID_TOKEN"
   log "  (using the identity token from \$IAP_ID_TOKEN)"
@@ -245,7 +251,7 @@ AUTH_HEADER_FILE="$(mktemp -t trend-tree-prediction-hdr.XXXXXX)"
 chmod 600 "$AUTH_HEADER_FILE"
 printf 'Authorization: Bearer %s\n' "$ID_TOKEN" > "$AUTH_HEADER_FILE"
 
-AUTH_CODE=$(curl -sS -o "$SMOKE_BODY" -w '%{http_code}' -H @"$AUTH_HEADER_FILE" "${CANDIDATE_URL}/healthz" || echo "000")
+AUTH_CODE=$(curl -sS -o "$SMOKE_BODY" -w '%{http_code}' -H @"$AUTH_HEADER_FILE" "${CANDIDATE_URL}/health" || echo "000")
 rm -f "$AUTH_HEADER_FILE"
 AUTH_HEADER_FILE=""
 
@@ -258,11 +264,11 @@ if [[ "$AUTH_CODE" != "200" ]]; then
   exit 1
 fi
 if ! grep -q '"ok"' "$SMOKE_BODY"; then
-  echo "Smoke test FAILED: authenticated probe returned 200 but not the expected /healthz body. Not promoting. Response:" >&2
+  echo "Smoke test FAILED: authenticated probe returned 200 but not the expected /health body. Not promoting. Response:" >&2
   cat "$SMOKE_BODY" >&2
   exit 1
 fi
-log "Probe 2/2 passed: the candidate revision itself answers /healthz with 200."
+log "Probe 2/2 passed: the candidate revision itself answers /health with 200."
 
 if [[ "$PROMOTE" == "1" ]]; then
   log "Promoting candidate to 100% traffic..."
