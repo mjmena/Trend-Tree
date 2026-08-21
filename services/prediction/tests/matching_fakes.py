@@ -221,7 +221,20 @@ class LedgerSimulator(RoutingFakeSnowflake):
             if current is None or _sort_key(row) > _sort_key(current):
                 latest[key] = row
 
-        live = [row for row in latest.values() if row.get("PREDICTION_STATUS") == "ACTIVE"]
+        # The statuses the reader asked for, read off the bind rather than
+        # assumed: the compare step asks for ACTIVE, the re-evaluation sweep
+        # asks for ACTIVE plus EXPIRED, and a simulator that always filtered
+        # to ACTIVE would silently hide the grace window from every sweep
+        # test.
+        wanted = {
+            str(status).upper()
+            for status in json.loads(str((params or {}).get("statuses") or '["ACTIVE"]'))
+        }
+        live = [
+            row
+            for row in latest.values()
+            if str(row.get("PREDICTION_STATUS") or "").upper() in wanted
+        ]
         live.sort(key=_sort_key, reverse=newest_first)
         limit = int((params or {}).get("prediction_limit", len(live)))
         return [dict(row) for row in live[:limit]]

@@ -13,6 +13,7 @@ from .generation.llm import PredictionLLM
 from .routes.generate import generate_router
 from .routes.match import match_router
 from .routes.run import run_router
+from .routes.sweep import sweep_router
 from .saturation import SaturationPhase
 
 
@@ -110,4 +111,13 @@ def create_app(
     # only the matched verdict's narrative here -- the match itself is
     # decided without a model -- so unlike /generate this route still works.
     app.include_router(match_router(settings, snowflake, require_caller, llm))
+    # The daily run (CRMA-766) -- what Cloud Scheduler fires. It composes the
+    # phases above rather than duplicating them: the re-evaluation pass
+    # re-checks each live prediction's match through matching/run.py's own
+    # resolve_match and refreshes its saturation evidence through the
+    # saturation phase's lookup seam, then a generation pass runs in the same
+    # request. `llm=None` degrades it the same way it degrades /generate --
+    # the time-based status transitions still happen, because EXPIRED needs a
+    # clock, not a model.
+    app.include_router(sweep_router(settings, snowflake, require_caller, llm, saturation))
     return app

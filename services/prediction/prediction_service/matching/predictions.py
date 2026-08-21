@@ -1,8 +1,13 @@
-"""The open predictions the compare step evaluates (CRMA-764).
+"""The live predictions the compare step and the re-evaluation sweep read
+(CRMA-764, generalized by CRMA-766).
 
-"Open" is a property of the *latest* row for each PREDICTION_ID, not of any
+"Live" is a property of the *latest* row for each PREDICTION_ID, not of any
 row: the ledger is append-only with one row per evaluation, so an older
 ACTIVE row under a since-WITHDRAWN prediction must not resurrect it.
+
+Which statuses count as live is the caller's, not this module's: matching
+wants ACTIVE, the sweep wants ACTIVE plus EXPIRED (the grace window). See
+``validated_statuses``.
 
 The claim comes back off the ledger and is carried forward verbatim -- all
 four parts including ``HORIZON_AT``, which is derived at mint and must not
@@ -20,7 +25,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
-from ..domain.claim import Claim
+from ..domain.claim import VALID_STATUSES, Claim
 from .isolation import assert_matching_sql, positive_int
 
 #: The pillar's own verdict ledger -- the compare step's input and, via the
@@ -32,8 +37,56 @@ VERDICT_LEDGER_TABLE = "FCT_PREDICTION_VERDICT_LEDGER"
 #: makes that true rather than merely stated. See OPEN_PREDICTIONS_QUERY.
 DEFAULT_PREDICTION_LIMIT = 50
 
+#: The statuses the compare step reads. "Open" for matching means ACTIVE and
+#: only ACTIVE -- a resolved, expired or withdrawn prediction has nothing left
+#: to match.
+DEFAULT_STATUSES: tuple[str, ...] = ("ACTIVE",)
+
+#: The statuses the re-evaluation sweep reads (CRMA-766). EXPIRED is in the
+#: set because the strategy's grace window keeps re-checking a prediction for
+#: one further horizon length past HORIZON_AT -- a truth arriving in that
+#: window has to be able to flip it to RESOLVED_TRUE. Rows past the grace
+#: window come back too and are dropped by sweep/lifecycle.py, which is where
+#: the arithmetic that decides "past" lives; the SQL does no date math, so
+#: nothing here compares a horizon against a clock.
+LIVE_STATUSES: tuple[str, ...] = ("ACTIVE", "EXPIRED")
+
+
+def validated_statuses(statuses: Iterable[str]) -> tuple[str, ...]:
+    """The status set, checked against the ledger's enum and de-duplicated.
+
+    The set is bound into the statement as a JSON array (see
+    OPEN_PREDICTIONS_QUERY), so it is the one caller-supplied value in this
+    module that is neither an int nor quoted by the connector's own binding
+    of a scalar. Checking it against ``VALID_STATUSES`` -- the same
+    vocabulary ``build_verdict`` enforces on the way out -- is what makes the
+    bind incapable of carrying anything but a status name, and it catches the
+    likelier mistake too: a typo like ``"RESOLVED"`` would otherwise select
+    nothing and read as "no predictions are live".
+    """
+    ordered = tuple(dict.fromkeys(str(status).strip().upper() for status in statuses))
+    if not ordered:
+        raise ValueError("at least one prediction status must be requested")
+    unknown = sorted(set(ordered) - VALID_STATUSES)
+    if unknown:
+        raise ValueError(
+            f"unknown prediction status: {unknown} (expected a subset of "
+            f"{sorted(VALID_STATUSES)})"
+        )
+    return ordered
+
 # EVAL_RANK ties break on PREDICTION_EVAL_ID so two rows written inside the
 # same clock tick still resolve to one deterministic "latest".
+#
+# The status filter is ARRAY_CONTAINS over a bound JSON array rather than an
+# interpolated IN list: the set is caller-supplied, and this keeps the
+# statement TEXT a constant that assert_matching_sql and the isolation tests
+# can check once, for every caller, instead of once per status set.
+#
+# There is no date arithmetic in this statement, deliberately. The sweep's
+# grace window is decided in sweep/lifecycle.py from HORIZON_AT and the
+# frozen horizon band -- values that are UTC by construction -- so nothing
+# here compares a horizon against a warehouse session clock.
 #
 # The *outer* ORDER BY is oldest-evaluated first, and that direction is
 # load-bearing. Every evaluation appends a row, so evaluating a prediction
@@ -82,7 +135,7 @@ SELECT
     EVALUATED_AT
 FROM LATEST
 WHERE EVAL_RANK = 1
-  AND PREDICTION_STATUS = 'ACTIVE'
+  AND ARRAY_CONTAINS(PREDICTION_STATUS::VARIANT, PARSE_JSON(%(statuses)s))
 ORDER BY EVALUATED_AT ASC, PREDICTION_EVAL_ID ASC
 LIMIT %(prediction_limit)s
 """
@@ -182,24 +235,63 @@ class LedgerQueryRunner(Protocol):
 
 
 class SnowflakeOpenPredictionReader:
-    """Reads the verdict ledger's open predictions and nothing else."""
+    """Reads the verdict ledger's live predictions and nothing else.
 
-    def __init__(self, client: LedgerQueryRunner, table: str = VERDICT_LEDGER_TABLE) -> None:
+    ``statuses`` is what makes one reader serve two callers: the compare step
+    wants ACTIVE (``DEFAULT_STATUSES``), the re-evaluation sweep wants ACTIVE
+    plus EXPIRED (``LIVE_STATUSES``, for the grace window). Everything else
+    -- the latest-row-per-prediction window, the oldest-first ordering that
+    keeps the cap from starving the tail of the pool, the verbatim claim --
+    is identical for both, which is why there is no second reader.
+    """
+
+    def __init__(
+        self,
+        client: LedgerQueryRunner,
+        table: str = VERDICT_LEDGER_TABLE,
+        *,
+        statuses: Iterable[str] = DEFAULT_STATUSES,
+    ) -> None:
         self._client = client
         self._table = table
+        self._statuses = validated_statuses(statuses)
+
+    @property
+    def statuses(self) -> tuple[str, ...]:
+        return self._statuses
 
     def open_predictions(self, *, limit: int = DEFAULT_PREDICTION_LIMIT) -> list[OpenPrediction]:
         sql = OPEN_PREDICTIONS_QUERY.format(table=self._table)
         assert_matching_sql(sql, allowed_tables=(VERDICT_LEDGER_TABLE,))
-        params = {"prediction_limit": positive_int("prediction_limit", limit)}
+        params = {
+            "prediction_limit": positive_int("prediction_limit", limit),
+            "statuses": json.dumps(list(self._statuses)),
+        }
         return [OpenPrediction.from_row(row) for row in self._client.query(sql, params)]
 
 
 class StaticOpenPredictionReader:
-    """The local loop's open-prediction list: whatever the caller supplies."""
+    """The local loop's open-prediction list: whatever the caller supplies,
+    filtered to ``statuses`` the way the warehouse reader's WHERE clause
+    filters -- so an offline run cannot see a prediction the deployed one
+    would not."""
 
-    def __init__(self, rows: Iterable[Mapping[str, Any]] = ()) -> None:
-        self._rows: Sequence[OpenPrediction] = [OpenPrediction.from_row(row) for row in rows]
+    def __init__(
+        self,
+        rows: Iterable[Mapping[str, Any]] = (),
+        *,
+        statuses: Iterable[str] = DEFAULT_STATUSES,
+    ) -> None:
+        self._statuses = validated_statuses(statuses)
+        self._rows: Sequence[OpenPrediction] = [
+            prediction
+            for prediction in (OpenPrediction.from_row(row) for row in rows)
+            if prediction.status.upper() in self._statuses
+        ]
+
+    @property
+    def statuses(self) -> tuple[str, ...]:
+        return self._statuses
 
     def open_predictions(
         self, *, limit: int = DEFAULT_PREDICTION_LIMIT

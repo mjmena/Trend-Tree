@@ -54,7 +54,7 @@ from ..generation.parse import UnparseableResponse
 from .decide import DEFAULT_MIN_SIMILARITY, MatchDecision, decide_match, match_evidence
 from .narrative import build_system_prompt, build_user_prompt, parse_reasoning
 from .predictions import DEFAULT_PREDICTION_LIMIT, OpenPrediction, OpenPredictionReader
-from .trends import DEFAULT_CANDIDATE_LIMIT, TrendContext, TrendReader
+from .trends import DEFAULT_CANDIDATE_LIMIT, TrendCandidate, TrendContext, TrendReader
 
 log = logging.getLogger(__name__)
 
@@ -91,6 +91,76 @@ class MatchScope:
             raise ValueError(
                 f"min_similarity must be a cosine in [0, 1], got {self.min_similarity}"
             )
+
+
+@dataclass(frozen=True)
+class MatchResolution:
+    """One prediction's match, resolved: the decision, whatever context the
+    matched trend had, and a note when the context read failed.
+
+    Extracted from the loop below so the re-evaluation sweep (CRMA-766) can
+    re-check a prediction's match through exactly this code rather than its
+    own copy of it. Nothing about the compare step changed: the sequence is
+    still candidates -> decide -> context, and context is still read only
+    after the match is settled and only for a matched prediction, which is
+    what tests/test_no_mechanical_filter.py asserts by call order.
+    """
+
+    decision: MatchDecision
+    context: TrendContext | None = None
+    #: Why the context is missing, when it is. Never a reason to drop the
+    #: prediction -- the match was already decided without it.
+    note: str | None = None
+
+
+def resolve_match(
+    subject: str,
+    *,
+    trends: TrendReader,
+    index: list[TrendCandidate],
+    candidate_limit: int = DEFAULT_CANDIDATE_LIMIT,
+    min_similarity: float = DEFAULT_MIN_SIMILARITY,
+    log_extra: dict[str, object] | None = None,
+) -> MatchResolution:
+    """Decide ``subject``'s match against the trend pipeline, then read the
+    matched trend's context.
+
+    Trend context is *evidence*, and failing to fetch evidence is not a
+    reason to drop a prediction: a context read that raises comes back as a
+    note with ``context=None``, and the caller still writes the row.
+    """
+    candidates = trends.candidates_for(subject, limit=candidate_limit)
+    decision = decide_match(
+        subject,
+        descriptor_index=index,
+        candidates=candidates,
+        min_similarity=min_similarity,
+    )
+    if decision.trend is None:
+        return MatchResolution(decision=decision)
+    try:
+        return MatchResolution(
+            decision=decision, context=trends.context_for(decision.trend.trend_id)
+        )
+    except Exception as err:  # noqa: BLE001 - any read failure degrades the same way
+        # The context read is the heaviest statement this phase issues (a
+        # window over the lifecycle ledger plus two correlated subqueries and
+        # two joins), so it is the one most likely to time out; letting that
+        # propagate would abort the whole pass in the route and write
+        # *nothing*, including the white-space rows that never needed a
+        # context read at all. The match itself was already decided without
+        # it, so the row is still correct: it lands with trend_context null,
+        # which is the shape build_evidence and the ledger already allow for
+        # an unmeasured trend.
+        log.warning(
+            "trend context read failed",
+            extra={**(log_extra or {}), "trend_id": decision.trend.trend_id},
+        )
+        return MatchResolution(
+            decision=decision,
+            context=None,
+            note=f"trend context unavailable, recorded without it: {err}",
+        )
 
 
 @dataclass(frozen=True)
@@ -230,45 +300,22 @@ def match_open_predictions(
 
     for prediction in open_predictions:
         subject = prediction.claim.subject_descriptor
-        candidates = trends.candidates_for(subject, limit=scope.candidate_limit)
-        decision = decide_match(
+        resolution = resolve_match(
             subject,
-            descriptor_index=index,
-            candidates=candidates,
+            trends=trends,
+            index=index,
+            candidate_limit=scope.candidate_limit,
             min_similarity=scope.min_similarity,
+            log_extra={"chain_id": chain, "prediction_id": prediction.prediction_id},
         )
+        decision = resolution.decision
+        context = resolution.context
 
         reasoning = prediction.reasoning
         narrated = False
-        note: str | None = None
-
-        context: TrendContext | None = None
-        if decision.trend is not None:
-            try:
-                context = trends.context_for(decision.trend.trend_id)
-            except Exception as err:  # noqa: BLE001 - any read failure degrades the same way
-                # Degraded evidence, never a dropped prediction -- the same
-                # contract _narrate keeps below. The context read is the
-                # heaviest statement this phase issues (a window over the
-                # lifecycle ledger plus two correlated subqueries and two
-                # joins), so it is the one most likely to time out; letting
-                # that propagate would abort the whole pass in routes/match.py
-                # and write *nothing*, including the white-space rows that
-                # never needed a context read at all. The match itself was
-                # already decided without it, so the row is still correct: it
-                # lands with trend_context null, which is the shape
-                # build_evidence and the ledger already allow for an
-                # unmeasured trend.
-                context = None
-                note = f"trend context unavailable, recorded without it: {err}"
-                log.warning(
-                    "trend context read failed",
-                    extra={
-                        "chain_id": chain,
-                        "prediction_id": prediction.prediction_id,
-                        "trend_id": decision.trend.trend_id,
-                    },
-                )
+        # Degraded evidence, never a dropped prediction -- the same contract
+        # _narrate keeps below.
+        note: str | None = resolution.note
 
         if decision.matched and llm is not None:
             try:
