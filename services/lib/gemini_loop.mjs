@@ -1,35 +1,35 @@
-// Gemini agent loop runtime
-// ==========================
+// Gemini agent loop runtime — services/lib (Cloud Run fleet)
+// ==========================================================
 //
-// Drives a Gemini 3.1 Pro tool-use loop with thinking enabled. Mirrors
-// anthropic_loop.mjs but targets the Google Generative Language REST API
-// instead of api.anthropic.com. Used by distillation, promotion, lifecycle,
-// and enrichment agents.
+// Port of agents/lib/gemini_loop.mjs into the CRMA-439 services/ shared-module
+// home, for the ecomm agent's Cloud Run service (CRMA-776). The loop body is
+// byte-for-byte the Pipedream module's; the ONE difference is the credential
+// seam: this version takes a plain `api_key` string (Cloud Run reads it from
+// the environment / Secret Manager) instead of Pipedream's `google_gemini`
+// app prop and its `$auth.api_key`. Nothing else about the request shape,
+// thoughtSignature handling, cost accounting, or telemetry differs — keep the
+// two in sync until the last Pipedream Gemini caller is migrated and
+// agents/lib/gemini_loop.mjs is retired.
 //
-// Direct fetch() (no SDK dependency). Bearer key from Pipedream's
-// google_gemini app prop ($auth.api_key). Multi-turn loop with
+// Drives a Gemini tool-use loop with thinking enabled against the Google
+// Generative Language REST API. Direct fetch(), no SDK dependency: the image
+// therefore needs no Google client library. Multi-turn loop with
 // functionDeclarations + functionCall / functionResponse parts.
-// thinkingConfig: { thinkingLevel: "medium" } replaces the Anthropic
-// interleaved-thinking beta. thoughtSignature round-trip is REQUIRED —
-// push model parts back VERBATIM or Gemini returns 400.
+// thinkingConfig: { thinkingLevel } replaces the Anthropic interleaved-
+// thinking beta. thoughtSignature round-trip is REQUIRED — push model parts
+// back VERBATIM or Gemini returns 400.
 //
 // Tool dispatch is sequential (not Promise.all): Gemini matches
 // functionResponse parts to functionCall parts by name with positional
 // fallback when the same tool is called twice in one turn.
 //
-// Tool dispatch is delegated to dispatchTool / getToolSchemas (caller-
-// supplied or imported from tool_catalog.mjs). This file drives the loop,
-// not the tools themselves.
-//
 // model / function_calling_mode / temperature / rates_per_m are all
-// caller-overridable (CRMA-776): the ecomm agent's selector pins a
-// different model (gemini-3.7-flash vs. this file's gemini-3.1-pro-preview
-// default), forces functionCallingConfig.mode="ANY" instead of "AUTO", and
-// omits `temperature` entirely (deprecated fleet-wide 2026-07-21, the
-// CRMA-726 migration strips it) — pass `temperature: null` to omit it from
-// the request. Every existing caller that doesn't pass these gets the
-// original gemini-3.1-pro-preview / AUTO / temperature=1.0 behavior
-// unchanged.
+// caller-overridable: the ecomm agent's selector pins gemini-3.7-flash
+// (vs. this file's gemini-3.1-pro-preview default), forces
+// functionCallingConfig.mode="ANY" instead of "AUTO", and omits
+// `temperature` entirely (deprecated fleet-wide 2026-07-21, the CRMA-726
+// migration strips it) — pass `temperature: null` to omit it from the
+// request.
 
 const MODEL = "gemini-3.1-pro-preview";
 const RATES_PER_M = { input: 2.0, output: 12.0 }; // sub-200k context tier, gemini-3.1-pro-preview
@@ -59,7 +59,7 @@ export function toFunctionDeclarations(toolNames, allSchemas) {
  * Run the Gemini agent loop.
  *
  * @param {object} args
- * @param {object} args.google_gemini  Pipedream `google_gemini` app prop with $auth.api_key
+ * @param {string} args.api_key        Google Generative Language API key (read from the environment)
  * @param {string[]} args.tool_names   Tool names from the caller's schema registry
  * @param {object} args.all_schemas    Full schema map { [name]: { name, description, input_schema } }
  * @param {string} args.system         System prompt (string)
@@ -78,7 +78,7 @@ export function toFunctionDeclarations(toolNames, allSchemas) {
  * @returns {Promise<object>} { stop_reason, turns, tokens, cost_usd, reasoning_trace, tool_calls, final_text, model }
  */
 export async function runAgentLoop({
-  google_gemini,
+  api_key,
   tool_names,
   all_schemas,
   system,
@@ -94,12 +94,12 @@ export async function runAgentLoop({
   temperature = DEFAULTS.temperature,
   rates_per_m = RATES_PER_M,
 }) {
-  if (!google_gemini?.$auth?.api_key) throw new Error("google_gemini app prop missing $auth.api_key");
+  if (!api_key || typeof api_key !== "string") throw new Error("api_key is required (Google Generative Language API key)");
   if (!Array.isArray(tool_names) || tool_names.length === 0) throw new Error("tool_names is required");
   if (!all_schemas) throw new Error("all_schemas is required");
   if (typeof dispatchTool !== "function") throw new Error("dispatchTool must be a function");
 
-  const apiKey = google_gemini.$auth.api_key;
+  const apiKey = api_key;
   const tools = [{ functionDeclarations: toFunctionDeclarations(tool_names, all_schemas) }];
   const contents = [{
     role: "user",

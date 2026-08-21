@@ -1,0 +1,10 @@
+# Build context for services/*/Dockerfile is the REPO ROOT (each Dockerfile
+# needs the sibling services/lib/ tree), so this file keeps the context small
+# and keeps host build artifacts out of every image. Each Dockerfile COPYs
+# only the paths it needs, so this list is deliberately limited to things no
+# image should ever contain rather than an allow-list of one service's needs.
+.git
+.github
+.claude
+**/node_modules
+*.xlsx

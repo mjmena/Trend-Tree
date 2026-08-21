@@ -156,10 +156,34 @@ cannot, so a second tier appends without DDL change.
 
 ### Trigger: a poll, not a chain hop
 
+> **Amended 2026-08-21 (platform, Martin's call).** The ecomm agent runs on **Cloud Run**
+> (a service, per [CRMA-436](https://mcclatchy.atlassian.net/browse/CRMA-436)'s decided
+> fleet-extraction default), in the shared `mcc-crm-automations` project, not on Pipedream.
+> This was never going to be a Pipedream dispatcher hop (see below), so the move carries
+> none of the dispatcher-interop cost the enrichment-agent migration
+> ([CRMA-429](https://mcclatchy.atlassian.net/browse/CRMA-429)) has to solve for — the
+> ecomm agent is the first agent to actually execute that map's spec, not just follow it.
+> Code home is `services/ecomm-agent/` ([CRMA-439](https://mcclatchy.atlassian.net/browse/CRMA-439)'s
+> `services/` namespace), deployed via `services/deploy.sh` ([CRMA-440](https://mcclatchy.atlassian.net/browse/CRMA-440)'s
+> dark-deploy → smoke test → promote pattern). Shared pure-function modules live in
+> `services/lib/` (bootstrapped here for the first time); `agents/lib/catalog_transform.mjs`
+> (CRMA-773) stays where it is and is referenced/copied into `services/lib/` if/when the
+> Cloud Run catalog-sync job (CRMA-777) is built.
+
 - Sourcing is **not** a hop in the dispatcher chain and nothing in the chain fires it. The
-  ecomm agent is its own workflow with a **cron** (the trigger) and an **HTTP trigger**
-  (manual runs, single-trend fires; the sync-response toggle must be on at creation — it is
-  write-once).
+  ecomm agent is its own **Cloud Run service** with one authenticated HTTP endpoint
+  (`POST /source {trend_id}`) — **no separate cron/HTTP-trigger split**, unlike a Pipedream
+  workflow. A **Cloud Scheduler** job (CRMA-778) invokes the same endpoint per trend on the
+  poll cadence via a Google OIDC token; a human `curl`s the identical endpoint (also OIDC)
+  for a manual single-trend fire or repair. Cloud Run's native synchronous HTTP response
+  makes Pipedream's write-once "sync-response toggle" quirk moot — this is a simplification
+  the platform switch buys for free, not a design change.
+- Ingress is **authenticated Cloud Run, no public endpoint** (`--no-allow-unauthenticated`),
+  following [CRMA-441](https://mcclatchy.atlassian.net/browse/CRMA-441)'s decided ingress
+  pattern — but the ecomm agent needs its **own** caller identity/`run.invoker` binding,
+  since nothing calls it from Pipedream; it is not a beneficiary of the existing
+  `trend-tree-pipedream-caller@` service account. This binding is a provisioning
+  prerequisite (see Provisioning below).
 - The poll condition is an anti-join: trends holding a **real (non-seed) enrichment ledger
   row** — the seed rows written at promotion carry topic-only vectors and must be excluded
   — and no sourcing header for the (trend, tier). Live (non-retired) trends only.
@@ -304,12 +328,22 @@ The 15-minute dynamic-table lag is inherited and accepted.
 
 - **Shopify Admin API token** — parked on CRMA-747, expected week of 2026-08-24. Lands in
   Secret Manager as `trend-tree-shopify-token`; a staged wizard mints it (custom app,
-  `read_products` + `read_product_listings`, own rate-limit bucket). A Pipedream copy
-  appears only if live hydration ever lands on the ecomm agent.
-- **Cloud Scheduler cron** for the sync job, plus job-run permission for the runtime
-  service account — self-service as of the 2026-08-20 probe.
+  `read_products` + `read_product_listings`, own rate-limit bucket). A Cloud Run copy is
+  mounted only if live hydration ever lands on the ecomm agent (unlikely — presentation
+  fields are hydrated by the consumer, not the ecomm agent, per the write path above).
+- **Cloud Scheduler cron** for the sync job (CRMA-777) and the ecomm-agent poll (CRMA-778),
+  plus job-run permission for the runtime service account — self-service as of the
+  2026-08-20 probe.
 - The CSV seed removes the token from the build's critical path: everything except the
   live sync job and live hydration proceeds now.
+- **New for the ecomm agent's Cloud Run move**: an Artifact Registry image (`mcc` repo,
+  `mcc-crm-automations`/`us-east4`, per CRMA-437), the Cloud Run service itself, and one
+  `run.invoker` binding for the ecomm agent's own caller identity (poller + manual fires) —
+  distinct from the existing `trend-tree-pipedream-caller@` SA, which exists only for
+  Pipedream-originated calls. This is the same kind of one-time admin ask CRMA-441 made for
+  the enrichment-agent migration; unlike that ask, execution can start (build, dark-deploy,
+  smoke test) before it lands, and only *promoting* traffic + wiring the Cloud Scheduler
+  poller wait on it.
 
 ## Testing Decisions
 
@@ -318,9 +352,10 @@ implementation details. Two code seams, both at the repo's existing extracted-he
 pattern (pure `.mjs` modules under `agents/lib/`, `node:test`, run by the existing lib test
 script; `promotion_gate.test.mjs` is the prior art):
 
-1. **The sourcing-run core** (`agents/lib/`): one pure function from (trend context,
-   ranked candidate pool, selector emit) to the ledger write plan. Fixture-tested with a
-   faked Gemini response — no network, no Snowflake. Covers: floor and TOP_N application,
+1. **The sourcing-run core** (`services/lib/`, per CRMA-439's GCP shared-module home —
+   see the Trigger section above): one pure function from (trend context, ranked candidate
+   pool, selector emit) to the ledger write plan. Fixture-tested with a faked Gemini
+   response — no network, no Snowflake. Covers: floor and TOP_N application,
    slots-remaining cap, tier top-up order, the three-state header, strict emit validation
    (picks ⊆ shown pool, enum grades, rationale length), freshness decline, and the
    running-header staleness rule.
