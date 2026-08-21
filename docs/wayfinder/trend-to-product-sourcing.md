@@ -294,6 +294,18 @@ Settled decisions in binding present tense.
   The Shopify tier's floor is **`SEMANTIC_THRESHOLD = 0.40`** — one global floor, not
   category-aware — and retrieval shows the selector at most **`TOP_N = 10`** candidates,
   score-descending. *Settled 2026-08-20 at CRMA-753.*
+- The selector is a **filter, never a ranker**. One forced call of the shallow emit tool
+  `propose_product_selection` returns `outcome` (`matched`/`no_match`), at most the
+  slots-remaining count of picks — each graded `REASONED_FIT` (strong / partial / weak)
+  with a ≤25-word operator-facing rationale — and a run-level `pool_note`, which lands as
+  a nullable `SELECTOR_NOTE` column on the sourcing header. Candidates are shown
+  score-descending **without raw scores** — geometry stays out of judgement. Refusal is
+  strict: same ritual in a different format is `partial`; an adjacent need in a different
+  object is refused. The lane is **`sourcing.selector`** v1 in `DIM_LLM_PROMPT` —
+  ungrounded `gemini-3.7-flash` pinned in ecomm-agent code,
+  `functionCallingConfig.mode='ANY'`, `thinking_level='low'`, no `temperature`. *Settled
+  2026-08-21 at CRMA-754; readout
+  [crma-754-selector-contract.md](assets/crma-754-selector-contract.md).*
 
 ## Decisions so far
 
@@ -302,32 +314,23 @@ Settled decisions in binding present tense.
 - [Research: how the Decision panel will read sourced products](https://mcclatchy.atlassian.net/browse/CRMA-749) — **Decided:** insights-agent reads Snowflake directly as TH_APIUSER/TH_APIROLE (SFULL tier); future grants make any new ledger readable on creation; it runs in a different GCP project so Secret Manager cannot be shared.
   **Binds:** CRMA-751 needs no grant ticket and need not route through DT_TREND_DASHBOARD for access. CRMA-747 must provision the token on the trend-tree side only — Snowflake is the sole shared substrate. Two frontend-shape questions remain for Marcelo, chiefly whether the panel hydrates price/image live, which decides if the ledger row must be self-sufficient.
 
-- [Research: the Shopify Admin product payload at API version 2026-04](https://mcclatchy.atlassian.net/browse/CRMA-748) — **Decided:** REST products.json is live at 2026-04 but frozen (expires 2027-04-16, >100-variant apps excluded); product_type/vendor/body_html/status are free to add; a full sweep is 40 requests but metafields are 1-per-product; delta sync should use product_listings.json, not an undocumented updated_at_min.
-  **Binds:** CRMA-753's embed doc may draw on product_type/vendor/body_html at no request cost, but must strip HTML and split the comma-separated tags string; collection membership is unavailable on REST. CRMA-752 should sync via product_listings.json (documented updated_at_min, limit 1000, existing scope). If metafields or collections ever enter the embed doc, REST's N+1 breaks the budget and GraphQL must be costed first.
+- [Research: the Shopify Admin product payload at API version 2026-04](https://mcclatchy.atlassian.net/browse/CRMA-748)
 
-- [Decide: where the sourcing step sits in the chain, and what a failure does](https://mcclatchy.atlassian.net/browse/CRMA-750) — **Decided:** Sourcing is not a chain hop at all — a cron 'ecomm agent' polls Snowflake for trends holding a real enrichment row and no sourcing row, and fires once per answer; the dispatcher is unchanged.
-  **Binds:** CRMA-751's ledger must carry three states (not sourced / processed-nothing-matched / sourcing failed) and should be written by a PROC_SOURCING_APPLY mirroring PROC_ENRICHMENT_APPLY. The poll condition must exclude promotion_seed rows and needs an in-flight guard. Backfill is solved — the ~484 existing trends match the poll on tick one. The ecomm agent needs custom_response ON at creation (write-once) plus both an hi_ HTTP trigger and a dc_ cron.
+- [Decide: where the sourcing step sits in the chain, and what a failure does](https://mcclatchy.atlassian.net/browse/CRMA-750)
 
-- [Decide: the sourced-products ledger — schema, the no-match state, and dashboard exposure](https://mcclatchy.atlassian.net/browse/CRMA-751) — **Decided:** Two tables — FCT_TREND_SOURCING_LEDGER (header: one row per trend, tier and run, carrying the three states) and FCT_TREND_SOURCING_CANDIDATES (every candidate the selector saw, not just its picks); SEMANTIC_SCORE (cosine, reproducible) and REASONED_FIT (strong/partial/weak enum) live in separate columns and are never blended.
-  **Binds:** CRMA-753 calibrates SEMANTIC_THRESHOLD against the stored rejects and owns EMBED_DOC_VERSION. CRMA-754 must present the candidate list in SEMANTIC_SCORE-descending order within a tier (tier-block ordering settled at CRMA-755) — otherwise a stored rank column has to come back — and must define what strong/partial/weak mean. The DDL establishes this repo's first computed-but-empty row and needs a staleness rule for headers stuck in 'running'; PROC_SOURCING_APPLY mirrors PROC_ENRICHMENT_APPLY; DT_TREND_DASHBOARD gains SOURCING_STATUS, SOURCED_PRODUCTS and SOURCED_AT.
+- [Decide: the sourced-products ledger — schema, the no-match state, and dashboard exposure](https://mcclatchy.atlassian.net/browse/CRMA-751)
 
-- [Decide: the multi-tier contract — how a second product source plugs in](https://mcclatchy.atlassian.net/browse/CRMA-755) — **Decided:** A tier participates with a stable CATALOG_PRODUCT_ID, title + one descriptive text field (matchable — each tier authors its own embed doc and owns its EMBED_DOC_VERSION) and title + URL (renderable — image and price optional, so Amazon qualifies), plus its own calibrated floor and a declared hydration mode (live/static); tiers top up selector picks to MAX_SOURCED_PRODUCTS (5) in preference order, one selector call per consulted tier, floors never relaxed; the tier registry is a TIERS constant in ecomm-agent code, the tier stored as lowercase text on the header.
-  **Binds:** CRMA-754's ordering is tier block first, then SEMANTIC_SCORE within a tier, and its selector call takes a slots-remaining input. Reads take the latest completed run outright, concatenating its matched tiers in preference order — a run can hold several matched headers, and an older run's products never linger. The spec must carry the Decision Page's text-only-card obligation, the per-tier calibration onboarding step, and the note that a live second tier is hot path, not fallback.
+- [Decide: the multi-tier contract — how a second product source plugs in](https://mcclatchy.atlassian.net/browse/CRMA-755)
 
 - [Decide: catalog sync — cadence, change detection, and where product vectors live](https://mcclatchy.atlassian.net/browse/CRMA-752) — **Decided:** A Cloud Run job trend-tree-catalog-sync (`services/catalog-sync/`, daily Cloud Scheduler cron — self-service since the 2026-08-20 re-probe) does a full-catalog sweep diffed on an embed-doc hash into DIM_CATALOG_PRODUCT, soft-delisting disappeared products; staleness is guarded at the outcome layer only.
   **Binds:** CRMA-753's calibration corpus becomes DIM_CATALOG_PRODUCT and its embed doc owns EMBED_DOC_HASH/VERSION semantics; retrieval must filter `CATALOG_STATUS='active'`; the ecomm agent gains a 7-day freshness gate; the token home amends to Secret Manager `trend-tree-shopify-token` (CRMA-747 wizard updated); the spec's provisioning list adds the Cloud Scheduler cron and `run.jobs.run` for `crm-runtime@`.
 
-- [Prototype: calibrate the trend-to-product vector space — model, embed doc, threshold](https://mcclatchy.atlassian.net/browse/CRMA-753) — **Decided:** arctic-l/1024 against the persisted TREND_VECTOR (no trend-side re-embed; arctic-m/768 fails separation, 242/443 trends clearing a 0.45 top-1 vs 50/443); embed doc v1 = title/type/vendor/tags + 600-char stripped body, REST product-record fields only (the Google category adds nothing — correlation 0.997 without it); SEMANTIC_THRESHOLD=0.40, one global floor (a perfect match scored 0.45); TOP_N=10. Full readout: [crma-753-vector-calibration.md](assets/crma-753-vector-calibration.md).
-  **Binds:** CRMA-752's sync stays REST-only (the v1 doc needs no GraphQL-only field) and DIM_CATALOG_PRODUCT embeds doc v1. CRMA-754's selector receives ≤10 candidates ≥0.40, and its refusal permission is load-bearing in the 0.40–0.45 band — a perfect and a wrong match tied at 0.453, the inversion that justifies the selector, so retrieval is not collapsed. The first poll tick is measured: 443 live trends (701 counting RETIRED).
+- [Prototype: calibrate the trend-to-product vector space — model, embed doc, threshold](https://mcclatchy.atlassian.net/browse/CRMA-753)
 
-- [Prototype: the selector's contract — candidate pool, prompt, and permission to return nothing](https://mcclatchy.atlassian.net/browse/CRMA-754) — **Decided:** The selector filters (never ranks) a ≤10-candidate pool shown scoreless in score order, emitting via forced shallow tool call up to {slots} picks with REASONED_FIT (strong=is the trend item / partial=same ritual, different format / weak=shared ingredient only) + ≤25-word rationale, plus a run-level pool_note; refusal is first-class and strict (adjacent-need, different-object pools are refused — confirmed by Martin); lane sourcing.selector v1 on ungrounded gemini-3.7-flash, mode=ANY, thinking low, no temperature. Validated 22/22 live calls — the 0.453 tie resolved both directions every repeat, ~$0.0015/call. Full readout: [crma-754-selector-contract.md](assets/crma-754-selector-contract.md).
-  **Binds:** The spec carries the v1 prompt verbatim from the readout. CRMA-751's header DDL gains nullable SELECTOR_NOTE (home of pool_note — the Decision Page's readable no_match line); rejects stay rationale-less. CRMA-726 has nothing to migrate here — the pin is born on its target model and call-shape rules. Closes the prompt-versioning fog item: DIM_LLM_PROMPT key sourcing.selector, model pinned in ecomm-agent code like every non-discovery lane.
+- [Prototype: the selector's contract — candidate pool, prompt, and permission to return nothing](https://mcclatchy.atlassian.net/browse/CRMA-754)
 
 ## Not yet specified
 
-- **Prompt versioning for the selector** — whether its prompt lands in `DIM_LLM_PROMPT` like
-  the rest of the fleet, and what lane name it takes. Sharpens once the selector's contract
-  lands.
 - **Cost telemetry that actually lands.** CRMA-751 settled *where* it goes — `STG_AGENT_RUN_COSTS`
   already takes one row per Pipedream run, correlated by the header's `AGENT_SESSION_ID`. What is
   still open is whether the ecomm agent will write it reliably: only about half of
