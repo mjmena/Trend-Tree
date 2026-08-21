@@ -246,15 +246,21 @@ else
 fi
 pause
 
-# ── Stage 3: store in Pipedream ───────────────────────────────────────────
-stage "Store the token as a Pipedream workspace environment variable"
-say "The ecomm agent will read it as process.env.SHOPIFY_ACCESS_TOKEN —"
-say "the same pattern as EXPLODING_TOPICS_API_KEY."
-open_url "https://pipedream.com/settings"
-step "In the Trend Tree workspace settings, open the Environment Variables section."
-step "Add a variable named SHOPIFY_ACCESS_TOKEN and paste the token as its value. Save."
-confirm "Saved in Pipedream?" || {
-  SKIPPED+=("Pipedream env var SHOPIFY_ACCESS_TOKEN — the ticket stays open until it exists")
+# ── Stage 3: store in Secret Manager ──────────────────────────────────────
+# Amended at CRMA-752 (2026-08-20): the catalog sync is a Cloud Run job in
+# mcc-crm-automations, so the token lands in Secret Manager, not Pipedream.
+# A Pipedream env-var copy is added later only if live hydration lands on the
+# ecomm agent (open on CRMA-749).
+stage "Store the token as the Secret Manager secret trend-tree-shopify-token"
+say "The catalog sync (Cloud Run job trend-tree-catalog-sync) reads it via"
+say "--set-secrets; crm-runtime@ already holds project-level secretAccessor."
+step "Run (pastes the token from your clipboard; never echo it):"
+say "  pbpaste | gcloud secrets create trend-tree-shopify-token \\"
+say "    --project=mcc-crm-automations --replication-policy=automatic --data-file=-"
+say "  (secret already exists? use: pbpaste | gcloud secrets versions add \\"
+say "    trend-tree-shopify-token --project=mcc-crm-automations --data-file=-)"
+confirm "Saved in Secret Manager?" || {
+  SKIPPED+=("Secret Manager secret trend-tree-shopify-token — the ticket stays open until it exists")
   warn "Not saved — the ticket stays open until it is."
 }
 
@@ -264,7 +270,7 @@ say "Paste this block as a comment on CRMA-747 (never paste the token itself):"
 say ""
 printf '  ─────────────────────────────────────────────\n'
 printf '  Token minted for shoptrendhunter.myshopify.com on %s\n' "$(date +%F)"
-printf '  Held at: Pipedream workspace env var SHOPIFY_ACCESS_TOKEN\n'
+printf '  Held at: Secret Manager secret trend-tree-shopify-token (mcc-crm-automations)\n'
 printf '  Scopes: %s\n' "$SCOPES"
 printf '  Catalog size: %s products total, %s active\n' "$PRODUCT_COUNT" "${ACTIVE_COUNT:-unknown}"
 printf '  ─────────────────────────────────────────────\n'

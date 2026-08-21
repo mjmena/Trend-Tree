@@ -187,6 +187,12 @@ Measured state of the world. Falsified by re-measurement, never by a decision.
   multi-vendor Shopify Collective storefront; median price $35, range $5–603. **The export is
   a usable calibration corpus for the vector-space prototype** — the token remains necessary
   only for the live sync path, not for calibration. Measured 2026-08-20.
+- **Cloud Scheduler in `mcc-crm-automations` is self-service as of 2026-08-20.**
+  `testIamPermissions` grants `cloudscheduler.jobs.create/list/run/update` and
+  `cloudscheduler.googleapis.com` is enabled — superseding the fleet map's 2026-08-09 probe,
+  which found every scheduler primitive denied. Eventarc, Workflows, Cloud Tasks, Pub/Sub and
+  `serviceusage.services.enable` stay denied. The scheduling gap CRMA-528 and CRMA-429's
+  phase 3 were written around no longer exists. Re-measured 2026-08-20 during CRMA-752.
 - **No ledger in this repo records a computed-but-empty result.** `FCT_TREND_CONTENT_MATCHES_LEDGER`
   and `FCT_TREND_CONNECTIONS_LEDGER` both write nothing below threshold, and both say so outright
   (`sql/fct_trend_content_matches_ledger.sql:42-45`, `sql/dt_trend_dashboard.sql:299-302`). The
@@ -257,6 +263,25 @@ Settled decisions in binding present tense.
   image) are hydrated live from Shopify for the few products actually selected.
 - The **multi-tier contract is in scope; building the second tier is not.** The contract exists
   to stop the matching design over-fitting to one 250-product catalog.
+- The catalog sync is a **Cloud Run job `trend-tree-catalog-sync`** in `mcc-crm-automations`
+  (code at `services/catalog-sync/` under CRMA-429's fleet patterns), fired by a **daily Cloud
+  Scheduler cron** running as `crm-runtime@`. It is not a Pipedream workflow and does not live
+  in `ingestion/` — sourcing is the opposite data direction. *Settled 2026-08-20 at CRMA-752.*
+- The sync is a **daily full sweep diffed on an embed-doc hash** — no delta cursors. An
+  unchanged product only touches `LAST_SEEN_AT`; only a changed embed doc re-embeds.
+  **Revisit trigger**: a tier's catalog past ~2,500 products reopens delta sync.
+- The catalog lives in **`DIM_CATALOG_PRODUCT`** — one mutable dimension for all tiers,
+  upserted by `(TIER, CATALOG_PRODUCT_ID)`, holding identity, embed doc + hash + version,
+  vector, and `CATALOG_STATUS` only; presentation fields are never stored. A product missing
+  from a sweep is **soft-delisted, never deleted**: retrieval filters to `active`, ledger rows
+  stay untouched, and no re-source compensates — a thinned card row is accepted.
+- Catalog staleness is guarded at the **outcome layer only**: an audit-agent freshness row on
+  `MAX(LAST_SEEN_AT)` (YELLOW past 3 days, RED past 7) plus the ecomm agent **declining to
+  source** against a catalog older than 7 days. No Pipedream registry entry, no GCP alert
+  policy — per the CRMA-443 pattern.
+- The Shopify token lands in **Secret Manager as `trend-tree-shopify-token`** — amending the
+  CRMA-747 comment decision (Pipedream env var), which was premised on a Pipedream consumer.
+  A Pipedream copy appears only if live hydration lands on the ecomm agent (open at CRMA-749).
 
 ## Decisions so far
 
@@ -277,6 +302,9 @@ Settled decisions in binding present tense.
 - [Decide: the multi-tier contract — how a second product source plugs in](https://mcclatchy.atlassian.net/browse/CRMA-755) — **Decided:** A tier participates with a stable CATALOG_PRODUCT_ID, title + one descriptive text field (matchable — each tier authors its own embed doc and owns its EMBED_DOC_VERSION) and title + URL (renderable — image and price optional, so Amazon qualifies), plus its own calibrated floor and a declared hydration mode (live/static); tiers top up selector picks to MAX_SOURCED_PRODUCTS (5) in preference order, one selector call per consulted tier, floors never relaxed; the tier registry is a TIERS constant in ecomm-agent code, the tier stored as lowercase text on the header.
   **Binds:** CRMA-754's ordering is tier block first, then SEMANTIC_SCORE within a tier, and its selector call takes a slots-remaining input. Reads take the latest completed run outright, concatenating its matched tiers in preference order — a run can hold several matched headers, and an older run's products never linger. The spec must carry the Decision Page's text-only-card obligation, the per-tier calibration onboarding step, and the note that a live second tier is hot path, not fallback.
 
+- [Decide: catalog sync — cadence, change detection, and where product vectors live](https://mcclatchy.atlassian.net/browse/CRMA-752) — **Decided:** A Cloud Run job trend-tree-catalog-sync (`services/catalog-sync/`, daily Cloud Scheduler cron — self-service since the 2026-08-20 re-probe) does a full-catalog sweep diffed on an embed-doc hash into DIM_CATALOG_PRODUCT, soft-delisting disappeared products; staleness is guarded at the outcome layer only.
+  **Binds:** CRMA-753's calibration corpus becomes DIM_CATALOG_PRODUCT and its embed doc owns EMBED_DOC_HASH/VERSION semantics; retrieval must filter `CATALOG_STATUS='active'`; the ecomm agent gains a 7-day freshness gate; the token home amends to Secret Manager `trend-tree-shopify-token` (CRMA-747 wizard updated); the spec's provisioning list adds the Cloud Scheduler cron and `run.jobs.run` for `crm-runtime@`.
+
 ## Not yet specified
 
 - **Prompt versioning for the selector** — whether its prompt lands in `DIM_LLM_PROMPT` like
@@ -287,9 +315,6 @@ Settled decisions in binding present tense.
   still open is whether the ecomm agent will write it reliably: only about half of
   `FCT_TREND_ENRICHMENT_LEDGER` rows carry a cost value at all (`CRMA-442`), so the fleet's
   existing habit is not a clean model to copy.
-- **Where the Shopify token is held** — Secret Manager in `mcc-crm-automations`, a Pipedream
-  connected account, or wherever `insights-agent` already keeps it. Sharpens with the
-  provisioning task, which will surface where the token actually ends up.
 - **Whether the sourcing path should be built on GraphQL rather than REST.** REST
   `products.json` is in maintenance mode and version 2026-04 expires 2027-04-16, so anything
   built on it inherits a migration. REST is adequate while the embed doc draws only on the
