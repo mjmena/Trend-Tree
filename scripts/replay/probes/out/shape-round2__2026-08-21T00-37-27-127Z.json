@@ -1,0 +1,119 @@
+{
+  "ticket": "CRMA-757",
+  "ran_at": "2026-08-21T00:37:27.128Z",
+  "model": "gemini-3.7-flash",
+  "prompt": {
+    "case_id": "wellness",
+    "frozen_at": "2026-08-21T00:23:50.254Z"
+  },
+  "n_per_shape": 1,
+  "summary": [
+    {
+      "shape": "F_pad",
+      "why": "sacrificial 1,190-char preamble — falsifies the fixed-byte-window reading",
+      "n": 1,
+      "api_errors": 0,
+      "clean": 0,
+      "bad": 1,
+      "clean_rate": 0,
+      "mean_items": 0,
+      "mean_ms": 20764,
+      "mean_cost_usd": 0.0198
+    },
+    {
+      "shape": "G_tool",
+      "why": "answer returns as a functionCall argument, not text — grounded",
+      "n": 1,
+      "api_errors": 1,
+      "clean": 0,
+      "bad": 0,
+      "clean_rate": null,
+      "mean_items": 0,
+      "mean_ms": 0,
+      "mean_cost_usd": 0
+    },
+    {
+      "shape": "H_wrap",
+      "why": "array nested under a wrapper key — tests whether a TOP-LEVEL array is the trigger",
+      "n": 1,
+      "api_errors": 0,
+      "clean": 1,
+      "bad": 0,
+      "clean_rate": 1,
+      "mean_items": 5,
+      "mean_ms": 20672,
+      "mean_cost_usd": 0.0212
+    }
+  ],
+  "results": [
+    {
+      "shape": "F_pad",
+      "i": 0,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 20764,
+      "cost": {
+        "input_tokens": 4645,
+        "candidates_tokens": 1236,
+        "thoughts_tokens": 3119,
+        "total_tokens": 9000,
+        "cost_as_deployed": 0.0081,
+        "cost_with_thinking": 0.0198,
+        "understated_by": 0.0117,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "pad_survived": true,
+      "items": null,
+      "head_120": "PADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGP",
+      "body_chars": 3096
+    },
+    {
+      "shape": "G_tool",
+      "i": 0,
+      "ok": false,
+      "error": "Gemini HTTP 400 (gemini-3.7-flash): {\n  \"error\": {\n    \"code\": 400,\n    \"message\": \"Please enable tool_config.include_server_side_tool_invocations to use Built-in tools with Function calling.\",\n    \"status\": \"INVALID_ARGUMENT\"\n  }\n}\n"
+    },
+    {
+      "shape": "H_wrap",
+      "i": 0,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 20672,
+      "cost": {
+        "input_tokens": 5741,
+        "candidates_tokens": 1250,
+        "thoughts_tokens": 3253,
+        "total_tokens": 10244,
+        "cost_as_deployed": 0.009,
+        "cost_with_thinking": 0.0212,
+        "understated_by": 0.0122,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "head_120": "{\n  \"proposals\": [\n    {\n      \"topic\": \"Adopting 'fertilitymaxxing' male reproductive health routines\",\n      \"evidence",
+      "body_chars": 3152
+    }
+  ]
+}

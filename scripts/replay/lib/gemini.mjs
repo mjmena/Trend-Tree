@@ -126,6 +126,11 @@ const round4 = (n) => Math.round(n * 10000) / 10000;
  * @param {number} [a.maxOutputTokens]
  * @param {number} [a.temperature]      Omitted unless explicitly passed.
  * @param {string} [a.functionCallingMode] AUTO | VALIDATED | ANY | NONE.
+ * @param {boolean} [a.includeServerSideToolInvocations]
+ *   Required by the API whenever a built-in tool (google_search) and
+ *   functionDeclarations appear in the same call. Without it the request is
+ *   rejected 400 INVALID_ARGUMENT naming the flag. Discovered on CRMA-757;
+ *   no doc page found in CRMA-756's sweep mentions it.
  */
 export async function callGemini({
   apiKey,
@@ -138,6 +143,7 @@ export async function callGemini({
   maxOutputTokens = 8192,
   temperature,
   functionCallingMode = "AUTO",
+  includeServerSideToolInvocations,
   timeoutMs = 180_000,
 }) {
   if (!apiKey) throw new Error("callGemini: apiKey is required");
@@ -172,6 +178,12 @@ export async function callGemini({
     body.tools = tools;
     if (functionCallingMode != null) {
       body.toolConfig = { functionCallingConfig: { mode: functionCallingMode } };
+    }
+    if (includeServerSideToolInvocations != null) {
+      body.toolConfig = {
+        ...(body.toolConfig || {}),
+        includeServerSideToolInvocations,
+      };
     }
   }
 

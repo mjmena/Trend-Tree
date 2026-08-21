@@ -1,0 +1,145 @@
+{
+  "ticket": "CRMA-757",
+  "ran_at": "2026-08-21T00:38:28.749Z",
+  "model": "gemini-3.7-flash",
+  "prompt": {
+    "case_id": "wellness",
+    "frozen_at": "2026-08-21T00:23:50.254Z"
+  },
+  "n_per_shape": 1,
+  "summary": [
+    {
+      "shape": "F_pad",
+      "why": "sacrificial 1,190-char preamble — falsifies the fixed-byte-window reading",
+      "n": 1,
+      "api_errors": 0,
+      "clean": 0,
+      "bad": 1,
+      "clean_rate": 0,
+      "mean_items": 0,
+      "mean_ms": 22860,
+      "mean_cost_usd": 0.0208
+    },
+    {
+      "shape": "G_tool",
+      "why": "answer returns as a functionCall argument, not text — grounded",
+      "n": 1,
+      "api_errors": 0,
+      "clean": 1,
+      "bad": 0,
+      "clean_rate": 1,
+      "mean_items": 4,
+      "mean_ms": 20960,
+      "mean_cost_usd": 0.0215
+    },
+    {
+      "shape": "H_wrap",
+      "why": "array nested under a wrapper key — tests whether a TOP-LEVEL array is the trigger",
+      "n": 1,
+      "api_errors": 0,
+      "clean": 0,
+      "bad": 1,
+      "clean_rate": 0,
+      "mean_items": 0,
+      "mean_ms": 16928,
+      "mean_cost_usd": 0.0203
+    }
+  ],
+  "results": [
+    {
+      "shape": "F_pad",
+      "i": 0,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 22860,
+      "cost": {
+        "input_tokens": 4859,
+        "candidates_tokens": 1543,
+        "thoughts_tokens": 3044,
+        "total_tokens": 9446,
+        "cost_as_deployed": 0.0094,
+        "cost_with_thinking": 0.0208,
+        "understated_by": 0.0114,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "pad_survived": true,
+      "items": null,
+      "head_120": "PADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGPADDINGP",
+      "body_chars": 3903
+    },
+    {
+      "shape": "G_tool",
+      "i": 0,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 9,
+      "duration_ms": 20960,
+      "cost": {
+        "input_tokens": 6104,
+        "candidates_tokens": 883,
+        "thoughts_tokens": 3634,
+        "total_tokens": 10621,
+        "cost_as_deployed": 0.0079,
+        "cost_with_thinking": 0.0215,
+        "understated_by": 0.0136,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 4,
+      "all_fields_present": true,
+      "head_120": "{\"why_now\":\"Dubbed 'skin care in a can' and 'sardinemaxxing', consumers are buying up canned sardines as a pantry-based,",
+      "body_chars": 2296
+    },
+    {
+      "shape": "H_wrap",
+      "i": 0,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 16928,
+      "cost": {
+        "input_tokens": 5000,
+        "candidates_tokens": 1022,
+        "thoughts_tokens": 3384,
+        "total_tokens": 9406,
+        "cost_as_deployed": 0.0076,
+        "cost_with_thinking": 0.0203,
+        "understated_by": 0.0127,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "items": null,
+      "head_120": "{\n  \"proposals\":.\",\n      \"vertical\": \"wellness\"\n    },\n    {\n      \"topic\": \"Meal-prepping 'boy kibble' bowls for frict",
+      "body_chars": 1982
+    }
+  ]
+}

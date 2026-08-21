@@ -1,0 +1,826 @@
+{
+  "ticket": "CRMA-757",
+  "ran_at": "2026-08-21T00:45:06.503Z",
+  "model": "gemini-3.7-flash",
+  "prompt": {
+    "case_id": "food-drink",
+    "frozen_at": "2026-08-21T00:43:15.148Z"
+  },
+  "n_per_shape": 25,
+  "summary": [
+    {
+      "shape": "G_tool",
+      "why": "answer returns as a functionCall argument, not text — grounded",
+      "n": 25,
+      "api_errors": 0,
+      "clean": 25,
+      "bad": 0,
+      "clean_rate": 1,
+      "mean_items": 4.92,
+      "mean_ms": 23283,
+      "mean_cost_usd": 0.0229
+    }
+  ],
+  "results": [
+    {
+      "shape": "G_tool",
+      "i": 0,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 11,
+      "duration_ms": 23858,
+      "cost": {
+        "input_tokens": 6366,
+        "candidates_tokens": 876,
+        "thoughts_tokens": 3684,
+        "total_tokens": 10926,
+        "cost_as_deployed": 0.0081,
+        "cost_with_thinking": 0.0219,
+        "understated_by": 0.0138,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 4,
+      "all_fields_present": true,
+      "head_120": "{\"evidence_url\":\"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHJp6YrdAIxWwxEliTuAlsJ6kADTyPPph69",
+      "body_chars": 2252
+    },
+    {
+      "shape": "G_tool",
+      "i": 1,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 9,
+      "duration_ms": 30123,
+      "cost": {
+        "input_tokens": 5797,
+        "candidates_tokens": 1577,
+        "thoughts_tokens": 3968,
+        "total_tokens": 11342,
+        "cost_as_deployed": 0.0103,
+        "cost_with_thinking": 0.0251,
+        "understated_by": 0.0149,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 6,
+      "all_fields_present": true,
+      "head_120": "{\"vertical\":\"food-drink\",\"evidence_url\":\"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEOOjKy6V1Z",
+      "body_chars": 3808
+    },
+    {
+      "shape": "G_tool",
+      "i": 2,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 7,
+      "duration_ms": 20539,
+      "cost": {
+        "input_tokens": 5788,
+        "candidates_tokens": 1204,
+        "thoughts_tokens": 3343,
+        "total_tokens": 10335,
+        "cost_as_deployed": 0.0089,
+        "cost_with_thinking": 0.0214,
+        "understated_by": 0.0125,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "all_fields_present": true,
+      "head_120": "{\"evidence_url\":\"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEtmjE-A1IqSVgmcpb4Di9dSARkAK0If_1g",
+      "body_chars": 2980
+    },
+    {
+      "shape": "G_tool",
+      "i": 3,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 5,
+      "duration_ms": 26944,
+      "cost": {
+        "input_tokens": 4729,
+        "candidates_tokens": 1243,
+        "thoughts_tokens": 4563,
+        "total_tokens": 10535,
+        "cost_as_deployed": 0.0082,
+        "cost_with_thinking": 0.0253,
+        "understated_by": 0.0171,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "all_fields_present": true,
+      "head_120": "{\"evidence_url\":\"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFgBTOHI2wQV8emDUS4hiM1XqnTagoBgqUE",
+      "body_chars": 3077
+    },
+    {
+      "shape": "G_tool",
+      "i": 4,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 5,
+      "duration_ms": 22797,
+      "cost": {
+        "input_tokens": 4684,
+        "candidates_tokens": 1376,
+        "thoughts_tokens": 2462,
+        "total_tokens": 8522,
+        "cost_as_deployed": 0.0087,
+        "cost_with_thinking": 0.0179,
+        "understated_by": 0.0092,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 6,
+      "all_fields_present": true,
+      "head_120": "{\"why_now\":\"Consumers are turning whole lemons and fresh juice into dessert-style mocktails by blending them with sweete",
+      "body_chars": 3336
+    },
+    {
+      "shape": "G_tool",
+      "i": 5,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 5,
+      "duration_ms": 19805,
+      "cost": {
+        "input_tokens": 5040,
+        "candidates_tokens": 1246,
+        "thoughts_tokens": 2679,
+        "total_tokens": 8965,
+        "cost_as_deployed": 0.0085,
+        "cost_with_thinking": 0.0185,
+        "understated_by": 0.01,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "all_fields_present": true,
+      "head_120": "{\"evidence_url\":\"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFYUuZhJOoqyiAWRvIydn8G2EelvzGk_4qR",
+      "body_chars": 3025
+    },
+    {
+      "shape": "G_tool",
+      "i": 6,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 7,
+      "duration_ms": 34557,
+      "cost": {
+        "input_tokens": 4535,
+        "candidates_tokens": 1387,
+        "thoughts_tokens": 5229,
+        "total_tokens": 11151,
+        "cost_as_deployed": 0.0086,
+        "cost_with_thinking": 0.0282,
+        "understated_by": 0.0196,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "all_fields_present": true,
+      "head_120": "{\"evidence_url\":\"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGzyLJCrKBi7_1kaarKehvBiU3oMA3K1I5Y",
+      "body_chars": 3512
+    },
+    {
+      "shape": "G_tool",
+      "i": 7,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 9,
+      "duration_ms": 22924,
+      "cost": {
+        "input_tokens": 5987,
+        "candidates_tokens": 936,
+        "thoughts_tokens": 3194,
+        "total_tokens": 10117,
+        "cost_as_deployed": 0.008,
+        "cost_with_thinking": 0.02,
+        "understated_by": 0.012,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 4,
+      "all_fields_present": true,
+      "head_120": "{\"why_now\":\"Mainstream foodservice brands and global QSR chains are commercializing crispy kataifi and pistachio cream f",
+      "body_chars": 2249
+    },
+    {
+      "shape": "G_tool",
+      "i": 8,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 11,
+      "duration_ms": 23601,
+      "cost": {
+        "input_tokens": 6727,
+        "candidates_tokens": 1229,
+        "thoughts_tokens": 4414,
+        "total_tokens": 12370,
+        "cost_as_deployed": 0.0097,
+        "cost_with_thinking": 0.0262,
+        "understated_by": 0.0166,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "all_fields_present": true,
+      "head_120": "{\"why_now\":\"Major spirits conglomerates are launching RTD and single-serve soju lines in August 2026 to capitalize on ma",
+      "body_chars": 2900
+    },
+    {
+      "shape": "G_tool",
+      "i": 9,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 3,
+      "duration_ms": 13246,
+      "cost": {
+        "input_tokens": 4091,
+        "candidates_tokens": 1161,
+        "thoughts_tokens": 1862,
+        "total_tokens": 7114,
+        "cost_as_deployed": 0.0074,
+        "cost_with_thinking": 0.0144,
+        "understated_by": 0.007,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "all_fields_present": true,
+      "head_120": "{\"topic\":\"Drinking Sorbet-Blended Sgroppino Cocktails and Mocktails\",\"why_now\":\"Bars and home entertainers are reviving ",
+      "body_chars": 2817
+    },
+    {
+      "shape": "G_tool",
+      "i": 10,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 9,
+      "duration_ms": 27868,
+      "cost": {
+        "input_tokens": 6377,
+        "candidates_tokens": 1415,
+        "thoughts_tokens": 4295,
+        "total_tokens": 12087,
+        "cost_as_deployed": 0.0101,
+        "cost_with_thinking": 0.0262,
+        "understated_by": 0.0161,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 6,
+      "all_fields_present": true,
+      "head_120": "{\"vertical\":\"food-drink\",\"why_now\":\"Online search interest in sardinemaxxing doubled heading into August 2026 as health ",
+      "body_chars": 3429
+    },
+    {
+      "shape": "G_tool",
+      "i": 11,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 5,
+      "duration_ms": 20274,
+      "cost": {
+        "input_tokens": 5134,
+        "candidates_tokens": 846,
+        "thoughts_tokens": 4717,
+        "total_tokens": 10697,
+        "cost_as_deployed": 0.007,
+        "cost_with_thinking": 0.0247,
+        "understated_by": 0.0177,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 4,
+      "all_fields_present": true,
+      "head_120": "{\"why_now\":\"Wellness consumers on TikTok are embracing tinned sardines as a whole-food, omega-3 and collagen-rich 'beaut",
+      "body_chars": 2090
+    },
+    {
+      "shape": "G_tool",
+      "i": 12,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 7,
+      "duration_ms": 16779,
+      "cost": {
+        "input_tokens": 4965,
+        "candidates_tokens": 565,
+        "thoughts_tokens": 2873,
+        "total_tokens": 8403,
+        "cost_as_deployed": 0.0058,
+        "cost_with_thinking": 0.0166,
+        "understated_by": 0.0108,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "all_fields_present": true,
+      "head_120": "{\"why_now\":\"Beverage programs and bars are modernizing the classic Venetian sgroppino by blending fruit sorbets (guava, ",
+      "body_chars": 2089
+    },
+    {
+      "shape": "G_tool",
+      "i": 13,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 3,
+      "duration_ms": 13963,
+      "cost": {
+        "input_tokens": 4106,
+        "candidates_tokens": 1185,
+        "thoughts_tokens": 2755,
+        "total_tokens": 8046,
+        "cost_as_deployed": 0.0075,
+        "cost_with_thinking": 0.0179,
+        "understated_by": 0.0103,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "all_fields_present": true,
+      "head_120": "{\"why_now\":\"Driven by consumer fatigue with hyper-sweet functional drinks, RTD beverage brands are adopting root vegetab",
+      "body_chars": 2932
+    },
+    {
+      "shape": "G_tool",
+      "i": 14,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 5,
+      "duration_ms": 23073,
+      "cost": {
+        "input_tokens": 5392,
+        "candidates_tokens": 1298,
+        "thoughts_tokens": 3842,
+        "total_tokens": 10532,
+        "cost_as_deployed": 0.0089,
+        "cost_with_thinking": 0.0233,
+        "understated_by": 0.0144,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "all_fields_present": true,
+      "head_120": "{\"vertical\":\"food-drink\",\"topic\":\"Adopting 'sardinemaxxing' canned-fish fasts for rapid protein and ketosis\",\"why_now\":\"",
+      "body_chars": 3226
+    },
+    {
+      "shape": "G_tool",
+      "i": 15,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 7,
+      "duration_ms": 24127,
+      "cost": {
+        "input_tokens": 6394,
+        "candidates_tokens": 1423,
+        "thoughts_tokens": 4029,
+        "total_tokens": 11846,
+        "cost_as_deployed": 0.0101,
+        "cost_with_thinking": 0.0252,
+        "understated_by": 0.0151,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 6,
+      "all_fields_present": true,
+      "head_120": "{\"vertical\":\"food-drink\",\"evidence_url\":\"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEmT9SihZf7",
+      "body_chars": 3452
+    },
+    {
+      "shape": "G_tool",
+      "i": 16,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 7,
+      "duration_ms": 28147,
+      "cost": {
+        "input_tokens": 6693,
+        "candidates_tokens": 1335,
+        "thoughts_tokens": 6505,
+        "total_tokens": 14533,
+        "cost_as_deployed": 0.01,
+        "cost_with_thinking": 0.0344,
+        "understated_by": 0.0244,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "all_fields_present": true,
+      "head_120": "{\"why_now\":\"Viral social media wellness discourse is repositioning canned sardines from an utilitarian pantry staple to ",
+      "body_chars": 3817
+    },
+    {
+      "shape": "G_tool",
+      "i": 17,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 7,
+      "duration_ms": 33119,
+      "cost": {
+        "input_tokens": 5896,
+        "candidates_tokens": 841,
+        "thoughts_tokens": 4521,
+        "total_tokens": 11258,
+        "cost_as_deployed": 0.0076,
+        "cost_with_thinking": 0.0245,
+        "understated_by": 0.017,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 4,
+      "all_fields_present": true,
+      "head_120": "{\"topic\":\"Upgrading home cooking with gourmet jarred pasta sauces\",\"vertical\":\"food-drink\",\"why_now\":\"Consumers seeking ",
+      "body_chars": 2165
+    },
+    {
+      "shape": "G_tool",
+      "i": 18,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 7,
+      "duration_ms": 16445,
+      "cost": {
+        "input_tokens": 4634,
+        "candidates_tokens": 1374,
+        "thoughts_tokens": 2120,
+        "total_tokens": 8128,
+        "cost_as_deployed": 0.0086,
+        "cost_with_thinking": 0.0166,
+        "understated_by": 0.008,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "all_fields_present": true,
+      "head_120": "{\"evidence_url\":\"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHldT2KWu9InTMp8M9aRbeon9CYJVU_gkmF",
+      "body_chars": 3222
+    },
+    {
+      "shape": "G_tool",
+      "i": 19,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 5,
+      "duration_ms": 24355,
+      "cost": {
+        "input_tokens": 5877,
+        "candidates_tokens": 1199,
+        "thoughts_tokens": 4731,
+        "total_tokens": 11807,
+        "cost_as_deployed": 0.0089,
+        "cost_with_thinking": 0.0266,
+        "understated_by": 0.0177,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 4,
+      "all_fields_present": true,
+      "head_120": "{\"vertical\":\"food-drink\",\"topic\":\"Consuming canned sardines as edible skincare for natural skin glow\",\"why_now\":\"Social ",
+      "body_chars": 2966
+    },
+    {
+      "shape": "G_tool",
+      "i": 20,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 7,
+      "duration_ms": 22222,
+      "cost": {
+        "input_tokens": 4969,
+        "candidates_tokens": 1077,
+        "thoughts_tokens": 4757,
+        "total_tokens": 10803,
+        "cost_as_deployed": 0.0078,
+        "cost_with_thinking": 0.0256,
+        "understated_by": 0.0178,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 4,
+      "all_fields_present": true,
+      "head_120": "{\"why_now\":\"Consumers experiencing 'function fatigue' are turning to whole-fruit date pastes and date-caramel sauces as ",
+      "body_chars": 2789
+    },
+    {
+      "shape": "G_tool",
+      "i": 21,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 5,
+      "duration_ms": 21841,
+      "cost": {
+        "input_tokens": 5450,
+        "candidates_tokens": 1214,
+        "thoughts_tokens": 3712,
+        "total_tokens": 10376,
+        "cost_as_deployed": 0.0086,
+        "cost_with_thinking": 0.0226,
+        "understated_by": 0.0139,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "all_fields_present": true,
+      "head_120": "{\"why_now\":\"TikTok creators and wellness consumers are embracing pantry tinned sardines as an affordable ingestible skin",
+      "body_chars": 2879
+    },
+    {
+      "shape": "G_tool",
+      "i": 22,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 7,
+      "duration_ms": 24934,
+      "cost": {
+        "input_tokens": 5467,
+        "candidates_tokens": 1251,
+        "thoughts_tokens": 3591,
+        "total_tokens": 10309,
+        "cost_as_deployed": 0.0088,
+        "cost_with_thinking": 0.0223,
+        "understated_by": 0.0135,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "all_fields_present": true,
+      "head_120": "{\"topic\":\"Consuming RTD and stick-pack matcha drinks for friction-free daily energy\",\"why_now\":\"Frustrated by high café ",
+      "body_chars": 3099
+    },
+    {
+      "shape": "G_tool",
+      "i": 23,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 5,
+      "duration_ms": 26231,
+      "cost": {
+        "input_tokens": 5015,
+        "candidates_tokens": 1170,
+        "thoughts_tokens": 4502,
+        "total_tokens": 10687,
+        "cost_as_deployed": 0.0081,
+        "cost_with_thinking": 0.025,
+        "understated_by": 0.0169,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "all_fields_present": true,
+      "head_120": "{\"evidence_url\":\"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGDGWa2FIhWobadWJTEC6SR9E5qcxWSQjkV",
+      "body_chars": 2923
+    },
+    {
+      "shape": "G_tool",
+      "i": 24,
+      "ok": true,
+      "finishReason": "STOP",
+      "parts_len": 7,
+      "duration_ms": 20314,
+      "cost": {
+        "input_tokens": 5595,
+        "candidates_tokens": 1235,
+        "thoughts_tokens": 3555,
+        "total_tokens": 10385,
+        "cost_as_deployed": 0.0088,
+        "cost_with_thinking": 0.0222,
+        "understated_by": 0.0133,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "items": 5,
+      "all_fields_present": true,
+      "head_120": "{\"topic\":\"Consuming date-sweetened snacks and spreads to replace refined sugar\",\"vertical\":\"food-drink\",\"evidence_url\":\"",
+      "body_chars": 3114
+    }
+  ]
+}

@@ -1,0 +1,1052 @@
+{
+  "ticket": "CRMA-757",
+  "model": "gemini-3.7-flash",
+  "shard": "wellness",
+  "n": 25,
+  "results": [
+    {
+      "i": 0,
+      "ok": true,
+      "head_ok": true,
+      "items": 4,
+      "grounded": true,
+      "search_calls": 4,
+      "steps": 10,
+      "citations": 5,
+      "publisher_urls": 0,
+      "redirect_urls": 5,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGWd9CNGinZBVdhU9tk444v49GZKBzFLAF_fWXhfOjbldz6404pNLaLOr3WcoXhg_T8hHHhAYgKUslCEd6xdIXrQtfUwbLxBGipMWe87Q9izxcBrGTvlWpVyB3WHQy5VGSH1R9vp-I6AEu_1NGhQnRzPInuQrT4K5u7dfb-VKWwy3p350aYhO8Tc6zt7mK-c7hYjgq_AUMcTN0jvtt0Emp5LHvlDIlpFA==",
+      "duration_ms": 16211,
+      "head_80": "[\n  {\n    \"topic\": \"Consuming canned sardines as a whole-food beauty staple for ",
+      "usage": {
+        "total_tokens": 9692,
+        "total_input_tokens": 5753,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 5753
+          }
+        ],
+        "total_cached_tokens": 3487,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 3487
+          }
+        ],
+        "total_output_tokens": 989,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 2950,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 14
+          }
+        ],
+        "raw_prompt_token": 69294
+      }
+    },
+    {
+      "i": 1,
+      "ok": true,
+      "head_ok": false,
+      "items": null,
+      "grounded": true,
+      "search_calls": 3,
+      "steps": 8,
+      "citations": 7,
+      "publisher_urls": 0,
+      "redirect_urls": 7,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFeuSWNazDvbLuotBsy1R9CsEUO-8apip-b2rXy9Y8ktdUAS0A3jxNtsudQKZKQPvC6ikoymLTqPkb3S9Z0KgNz6VZrQCOdKUcrj2M9ok0CGCvxgqcRUjOPGLFZEq1goePfzAXxkqVjG9cN4a3Ka2V5ZNw9ttwDJ8gmyQ3ggHOFoknlJJBvyrFIYNwn9fQaj2thwEE1NQcfgIoNxiDXacVkVXZ542rucg==",
+      "duration_ms": 16166,
+      "head_80": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Taking urolithin A supplem",
+      "usage": {
+        "total_tokens": 7154,
+        "total_input_tokens": 4124,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 4124
+          }
+        ],
+        "total_cached_tokens": 1918,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 1918
+          }
+        ],
+        "total_output_tokens": 532,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 2498,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 12
+          }
+        ],
+        "raw_prompt_token": 52474
+      }
+    },
+    {
+      "i": 2,
+      "ok": true,
+      "head_ok": true,
+      "items": 5,
+      "grounded": true,
+      "search_calls": 4,
+      "steps": 10,
+      "citations": 0,
+      "publisher_urls": 0,
+      "redirect_urls": 0,
+      "sample_url": null,
+      "duration_ms": 17529,
+      "head_80": "[\n  {\n    \"topic\": \"Consuming canned sardines as an ingestible 'beauty food' for",
+      "usage": {
+        "total_tokens": 8412,
+        "total_input_tokens": 4690,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 4690
+          }
+        ],
+        "total_cached_tokens": 2766,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 2766
+          }
+        ],
+        "total_output_tokens": 1111,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 2611,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 13
+          }
+        ],
+        "raw_prompt_token": 64009
+      }
+    },
+    {
+      "i": 3,
+      "ok": true,
+      "head_ok": true,
+      "items": 5,
+      "grounded": true,
+      "search_calls": 3,
+      "steps": 8,
+      "citations": 0,
+      "publisher_urls": 0,
+      "redirect_urls": 0,
+      "sample_url": null,
+      "duration_ms": 23565,
+      "head_80": "[\n  {\n    \"topic\": \"Adopting 'fertilitymaxxing' routines to optimize reproductiv",
+      "usage": {
+        "total_tokens": 10061,
+        "total_input_tokens": 4702,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 4702
+          }
+        ],
+        "total_cached_tokens": 2278,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 2278
+          }
+        ],
+        "total_output_tokens": 1261,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 4098,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 12
+          }
+        ],
+        "raw_prompt_token": 57387
+      }
+    },
+    {
+      "i": 4,
+      "ok": true,
+      "head_ok": true,
+      "items": 5,
+      "grounded": true,
+      "search_calls": 4,
+      "steps": 10,
+      "citations": 0,
+      "publisher_urls": 0,
+      "redirect_urls": 0,
+      "sample_url": null,
+      "duration_ms": 19069,
+      "head_80": "[\n  {\n    \"topic\": \"Training for VO2 max optimization as a primary longevity bio",
+      "usage": {
+        "total_tokens": 10235,
+        "total_input_tokens": 6195,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 6195
+          }
+        ],
+        "total_cached_tokens": 3414,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 3414
+          }
+        ],
+        "total_output_tokens": 654,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 3386,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 16
+          }
+        ],
+        "raw_prompt_token": 66024
+      }
+    },
+    {
+      "i": 5,
+      "ok": true,
+      "head_ok": false,
+      "items": null,
+      "grounded": true,
+      "search_calls": 4,
+      "steps": 10,
+      "citations": 10,
+      "publisher_urls": 0,
+      "redirect_urls": 10,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQH7h3-gLPbQy_sQoU3Pkxkac2zmklHjcui3kvSeTqqCNdsILslGEOlEYNHc0EYlj9A6rzPqcHsQ3yb_Qy7NrrEUpoZas8C6oZFMPRrNEy4f5P0Qyhui0QAEZr6sWdTFTVmBV4lNWIW4lICRahpDT9Jt_k7L-e8=",
+      "duration_ms": 19522,
+      "head_80": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Drinking homemade cortisol",
+      "usage": {
+        "total_tokens": 12188,
+        "total_input_tokens": 6805,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 6805
+          }
+        ],
+        "total_cached_tokens": 2522,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 2522
+          }
+        ],
+        "total_output_tokens": 688,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 4695,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 16
+          }
+        ],
+        "raw_prompt_token": 83916
+      }
+    },
+    {
+      "i": 6,
+      "ok": true,
+      "head_ok": false,
+      "items": null,
+      "grounded": true,
+      "search_calls": 4,
+      "steps": 10,
+      "citations": 16,
+      "publisher_urls": 0,
+      "redirect_urls": 16,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQF7iNyUNUNln20kpqMs7O3WW5UPua_V9SOXym5l_4OkxE_O0urxIukj7fBjR9KmfWAuLtkj_lelozeQUC-cVq-Ff5aC9IJKfG65r95loSnsy-YvEhLvHolkb6MNAKAkld3vZzH80JK_9mwDApcmn-LO13fwWrOZr4wXIesBCf9znScwOuqwEwbKfqj2uA==",
+      "duration_ms": 17148,
+      "head_80": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Booking routine DXA body c",
+      "usage": {
+        "total_tokens": 9246,
+        "total_input_tokens": 5148,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 5148
+          }
+        ],
+        "total_cached_tokens": 1538,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 1538
+          }
+        ],
+        "total_output_tokens": 964,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 3134,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 16
+          }
+        ],
+        "raw_prompt_token": 77170
+      }
+    },
+    {
+      "i": 7,
+      "ok": true,
+      "head_ok": false,
+      "items": null,
+      "grounded": true,
+      "search_calls": 6,
+      "steps": 14,
+      "citations": 17,
+      "publisher_urls": 0,
+      "redirect_urls": 17,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFme_86uzqbULa33uXxC41G3SVL2oYx2Ctg9YT4_YK3BrAuFS4m9vaJ89Tj5XCEAfWiJnpU3rHyPhFdMM4355r8RQFI8rTE5GSArX2kyWplIXGtFTh4z3B62rE--ymFDDs2mfppXtz4qpmP56gf",
+      "duration_ms": 31107,
+      "head_80": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Eating 'boy kibble' single",
+      "usage": {
+        "total_tokens": 12624,
+        "total_input_tokens": 6182,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 6182
+          }
+        ],
+        "total_cached_tokens": 3664,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 3664
+          }
+        ],
+        "total_output_tokens": 1652,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 4790,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 22
+          }
+        ],
+        "raw_prompt_token": 95986
+      }
+    },
+    {
+      "i": 8,
+      "ok": true,
+      "head_ok": true,
+      "items": 5,
+      "grounded": true,
+      "search_calls": 4,
+      "steps": 10,
+      "citations": 0,
+      "publisher_urls": 0,
+      "redirect_urls": 0,
+      "sample_url": null,
+      "duration_ms": 16497,
+      "head_80": "[\n  {\n    \"topic\": \"Booking DXA scans for proactive bone density and body compos",
+      "usage": {
+        "total_tokens": 8580,
+        "total_input_tokens": 5022,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 5022
+          }
+        ],
+        "total_cached_tokens": 2011,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 2011
+          }
+        ],
+        "total_output_tokens": 647,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 2911,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 16
+          }
+        ],
+        "raw_prompt_token": 55449
+      }
+    },
+    {
+      "i": 9,
+      "ok": true,
+      "head_ok": true,
+      "items": 4,
+      "grounded": true,
+      "search_calls": 2,
+      "steps": 6,
+      "citations": 0,
+      "publisher_urls": 0,
+      "redirect_urls": 0,
+      "sample_url": null,
+      "duration_ms": 10417,
+      "head_80": "[\n  {\n    \"topic\": \"Consuming tart cherry and berry anthocyanin extracts for mus",
+      "usage": {
+        "total_tokens": 7326,
+        "total_input_tokens": 3966,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 3966
+          }
+        ],
+        "total_cached_tokens": 0,
+        "total_output_tokens": 478,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 2882,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 8
+          }
+        ],
+        "raw_prompt_token": 34910
+      }
+    },
+    {
+      "i": 10,
+      "ok": true,
+      "head_ok": false,
+      "items": null,
+      "grounded": true,
+      "search_calls": 4,
+      "steps": 10,
+      "citations": 7,
+      "publisher_urls": 0,
+      "redirect_urls": 7,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEePky1O_X7W1_2_rReaEzQv7BMu6ZfD6kY1qqub7SKUPCbnu_GLLqY6cHmGXXVIIaVGKA7dOX746nW36Zks1IBK_ypqO4zDQ59pc_Wzrpiip8Oj4GqLOoCX1NEfSa1_-uJmVsd4b6nhamRJT1sYQ-EjZID0qJP975MflE=",
+      "duration_ms": 35228,
+      "head_80": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Consuming bovine colostrum",
+      "usage": {
+        "total_tokens": 11982,
+        "total_input_tokens": 4601,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 4601
+          }
+        ],
+        "total_cached_tokens": 2653,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 2653
+          }
+        ],
+        "total_output_tokens": 1514,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 5867,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 16
+          }
+        ],
+        "raw_prompt_token": 68301
+      }
+    },
+    {
+      "i": 11,
+      "ok": true,
+      "head_ok": false,
+      "items": null,
+      "grounded": true,
+      "search_calls": 3,
+      "steps": 8,
+      "citations": 6,
+      "publisher_urls": 0,
+      "redirect_urls": 6,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHfzuBgBXEV12kikn012Lpele_cPSlTGry2FFqkEyGHgQxtgSb54-x3sArKtCRLNJZg9zr_NvzR5MHaHZl0isqqSL8BRY5xPrskvUaCR_gieSd6kCTbLAcJvDp-NVkUd-enrwliUHZQ5m7DwQDvw2ghg6zm-TBlkLKgTRPSdflYDEi6RcMVSBo6Kup2VRXJojB0a0LlkSus4kNp2VDps4vo9XJXsgPfNkvMy2i6BHNBBRI=",
+      "duration_ms": 19804,
+      "head_80": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Practicing morning malasan",
+      "usage": {
+        "total_tokens": 9352,
+        "total_input_tokens": 5052,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 5052
+          }
+        ],
+        "total_cached_tokens": 2407,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 2407
+          }
+        ],
+        "total_output_tokens": 1103,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 3197,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 12
+          }
+        ],
+        "raw_prompt_token": 59693
+      }
+    },
+    {
+      "i": 12,
+      "ok": true,
+      "head_ok": true,
+      "items": 4,
+      "grounded": true,
+      "search_calls": 4,
+      "steps": 10,
+      "citations": 6,
+      "publisher_urls": 0,
+      "redirect_urls": 6,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE6midLkiitj1Y8krjIlr1xfaaED5wQbkWr3zOVap-d8Yy0o4d-ULLkYl6SelxYSIDzUn1XeqKZtwDcoWEf7YZ2pOCdQXddGqhkB3NeWarTGmXK8XezoCD426TR1YoYzCH8sRizc3tzyachFiYzseFNV0NOE_qFg2pqM1YK9gqauEiTayz0B63DuRdDPdvHFonbuGdz-rGntQ==",
+      "duration_ms": 14929,
+      "head_80": "[\n  {\n    \"topic\": \"Using over-the-counter antihistamines for PMDD and menopause",
+      "usage": {
+        "total_tokens": 8653,
+        "total_input_tokens": 5044,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 5044
+          }
+        ],
+        "total_cached_tokens": 2925,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 2925
+          }
+        ],
+        "total_output_tokens": 653,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 2956,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 15
+          }
+        ],
+        "raw_prompt_token": 72192
+      }
+    },
+    {
+      "i": 13,
+      "ok": true,
+      "head_ok": true,
+      "items": 5,
+      "grounded": true,
+      "search_calls": 2,
+      "steps": 6,
+      "citations": 0,
+      "publisher_urls": 0,
+      "redirect_urls": 0,
+      "sample_url": null,
+      "duration_ms": 17577,
+      "head_80": "[\n  {\n    \"topic\": \"Switching to nano-hydroxyapatite toothpaste for biomimetic e",
+      "usage": {
+        "total_tokens": 9969,
+        "total_input_tokens": 5491,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 5491
+          }
+        ],
+        "total_cached_tokens": 1629,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 1629
+          }
+        ],
+        "total_output_tokens": 1142,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 3336,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 8
+          }
+        ],
+        "raw_prompt_token": 41503
+      }
+    },
+    {
+      "i": 14,
+      "ok": true,
+      "head_ok": true,
+      "items": 4,
+      "grounded": true,
+      "search_calls": 3,
+      "steps": 8,
+      "citations": 3,
+      "publisher_urls": 0,
+      "redirect_urls": 3,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE1F8CMI6khvVR4V7dM7fVjAlKFiBBcAv-Rtun-LkXFlf_Ie1QuJnWQerzKkxLDAEFNjDdNrAYuvLlJHiFBYc5YOB5heb8nA-iyLkS_xEeinAlgPAkUvtGs3ulEnf51NZsCIRl3p25SVaavAZkBXtMLeeVfGg==",
+      "duration_ms": 19058,
+      "head_80": "[\n  {\n    \"topic\": \"Adopting 'sardinemaxxing' diets and multi-day sardine fasts\"",
+      "usage": {
+        "total_tokens": 9397,
+        "total_input_tokens": 5120,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 5120
+          }
+        ],
+        "total_cached_tokens": 2444,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 2444
+          }
+        ],
+        "total_output_tokens": 1005,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 3272,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 12
+          }
+        ],
+        "raw_prompt_token": 55676
+      }
+    },
+    {
+      "i": 15,
+      "ok": true,
+      "head_ok": true,
+      "items": 5,
+      "grounded": true,
+      "search_calls": 3,
+      "steps": 8,
+      "citations": 6,
+      "publisher_urls": 0,
+      "redirect_urls": 6,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG4dxn30GkKIVxlwiHtYkg8OCc6CdmKXBALkYvjpv-izpQ7PLkCSzGg8xhNwBPVflmh_OpZVIh5lcqgpBCO2aqPQmGJxiS2rb3XsAAW0sPIqK5CHFqjBRPJ33zxESJ4bU4VZb5C70gshK1wL6htFmWo4LgBZbJr80qV5xhoj3bvP0NkYQ==",
+      "duration_ms": 27876,
+      "head_80": "[\n  {\n    \"topic\": \"Booking preventative DXA scans for bone density and longevit",
+      "usage": {
+        "total_tokens": 9215,
+        "total_input_tokens": 4268,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 4268
+          }
+        ],
+        "total_cached_tokens": 2048,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 2048
+          }
+        ],
+        "total_output_tokens": 1245,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 3702,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 12
+          }
+        ],
+        "raw_prompt_token": 59724
+      }
+    },
+    {
+      "i": 16,
+      "ok": true,
+      "head_ok": true,
+      "items": 5,
+      "grounded": true,
+      "search_calls": 4,
+      "steps": 10,
+      "citations": 6,
+      "publisher_urls": 0,
+      "redirect_urls": 6,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGbGzlp-OsAD_9DlIjjvNhTmDr7lAL_yp2gP5RDvlxY9X8PvHJHbBuUvgKU1OW4_2s0dfLKbpN4Elet8UKbCFs_XlHsd_wn3m_lS0EXJ-ZZ4UNF-f2DBn1EYtmVVypeYNt2xGTIPfvX8oIIEYJuzixMpjh26lr5BZfI3SFKYNjvaUK3G3xn4v9isPjbo6A81pFHGm5TQWXkZOoj6mIaZMQ=",
+      "duration_ms": 25774,
+      "head_80": "[\n  {\n    \"topic\": \"Stacking OTC antihistamines for PMDD and perimenopausal symp",
+      "usage": {
+        "total_tokens": 10737,
+        "total_input_tokens": 4766,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 4766
+          }
+        ],
+        "total_cached_tokens": 2707,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 2707
+          }
+        ],
+        "total_output_tokens": 1338,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 4633,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 16
+          }
+        ],
+        "raw_prompt_token": 79996
+      }
+    },
+    {
+      "i": 17,
+      "ok": true,
+      "head_ok": true,
+      "items": 4,
+      "grounded": true,
+      "search_calls": 4,
+      "steps": 10,
+      "citations": 3,
+      "publisher_urls": 0,
+      "redirect_urls": 3,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFU7RwTkwa3ZSETZt4fzpf-GK7LvROEwuWznAZ5cy30KXmxBcFJvBQQ3_dJ7n4X42rWTp56b_d8htbR7iepPpQWL7422UtlPI9PP1SD78hAyu7EN4ouQS0rgGW961CD3n_tDa2KchfrMUETagRbI0t6FcCTq_ptDXHX",
+      "duration_ms": 18876,
+      "head_80": "[\n  {\n    \"topic\": \"Consuming bovine colostrum powder supplements for gut barrie",
+      "usage": {
+        "total_tokens": 12292,
+        "total_input_tokens": 6942,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 6942
+          }
+        ],
+        "total_cached_tokens": 4034,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 4034
+          }
+        ],
+        "total_output_tokens": 1033,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 4317,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 16
+          }
+        ],
+        "raw_prompt_token": 74972
+      }
+    },
+    {
+      "i": 18,
+      "ok": true,
+      "head_ok": false,
+      "items": null,
+      "grounded": true,
+      "search_calls": 4,
+      "steps": 10,
+      "citations": 5,
+      "publisher_urls": 0,
+      "redirect_urls": 5,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHKj8DT4IFUK2Q-Hw_hleUkb0vUH8X8B_5pWGgaWtPkFGolRkpEeVChSDA6Cj62si4B7_JRcoAPdOSsgFp0k2RzXxvf9j_LI6ESEyRgvGFKj-S4wIJ0OiT0SX5gXyYCv4uQGrheRUgDdzd4VBQg3wwMH7Nsk-ORYRstfYiJ",
+      "duration_ms": 28382,
+      "head_80": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Drinking daily shots of ex",
+      "usage": {
+        "total_tokens": 12000,
+        "total_input_tokens": 6349,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 6349
+          }
+        ],
+        "total_cached_tokens": 3670,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 3670
+          }
+        ],
+        "total_output_tokens": 1039,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 4612,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 14
+          }
+        ],
+        "raw_prompt_token": 66080
+      }
+    },
+    {
+      "i": 19,
+      "ok": true,
+      "head_ok": false,
+      "items": null,
+      "grounded": true,
+      "search_calls": 3,
+      "steps": 8,
+      "citations": 6,
+      "publisher_urls": 0,
+      "redirect_urls": 6,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQF63bL3dUz2aRw4NZYn002AIdkISCbyUNXkUUdcpNK-gAcacMwrOW5Vdp4YMYnaaM5lpCQ4lkHr9klIjFU36iOCcXAZhpmPUlYYxjpUNOphNbFxdq1QHPw0F8vBDcWq6SLRc4jl2-fGDCJKrywP--Btiebt6FDoGo_XstgvD7nHiWenDOuL",
+      "duration_ms": 15003,
+      "head_80": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Drinking 'cortisol cocktai",
+      "usage": {
+        "total_tokens": 7705,
+        "total_input_tokens": 4560,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 4560
+          }
+        ],
+        "total_cached_tokens": 2073,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 2073
+          }
+        ],
+        "total_output_tokens": 1182,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 1963,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 12
+          }
+        ],
+        "raw_prompt_token": 42074
+      }
+    },
+    {
+      "i": 20,
+      "ok": true,
+      "head_ok": true,
+      "items": 5,
+      "grounded": true,
+      "search_calls": 5,
+      "steps": 12,
+      "citations": 4,
+      "publisher_urls": 0,
+      "redirect_urls": 4,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFil1sYfwNeyiDfTqOi3wNVyfcLTE7wu7Ef53nKbllv42Vd6N7bAyRtFp1ReDVF-oMNWeycH_MDTSlsMtQRZIkNfkULh3DRVjqbS3AcmKD0YO4R6LnnVLECLCdnX7eokwyJXohMMoVQt9d5LdS-brRMfnuc7wYhut4WZiZzsEvtvZiWar4kFA0d7mf7mIcVMKJgBe9Ssh-b",
+      "duration_ms": 25261,
+      "head_80": "[\n  {\n    \"topic\": \"Adopting 'Fertilitymaxxing' Male Reproductive Health Protoco",
+      "usage": {
+        "total_tokens": 10779,
+        "total_input_tokens": 5007,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 5007
+          }
+        ],
+        "total_cached_tokens": 2980,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 2980
+          }
+        ],
+        "total_output_tokens": 1252,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 4520,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 20
+          }
+        ],
+        "raw_prompt_token": 69440
+      }
+    },
+    {
+      "i": 21,
+      "ok": true,
+      "head_ok": true,
+      "items": 4,
+      "grounded": true,
+      "search_calls": 3,
+      "steps": 8,
+      "citations": 3,
+      "publisher_urls": 0,
+      "redirect_urls": 3,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGH6Dzs_bA2G8uSv0WtE7cmPwtu_A5KHqmUZvqy01IVdaYvpGzB4QyH3B8MLzhcZDkYHsMnZ9zzd1N_ajz_EZ1xQaWy8T4Xrqs-713M9Sjtni8oJQSi3iElcF6e5J5tA9jRSMBgxr7lsgRL_CByL7FjtqZQETC4c5Q94F8jplxiur1YPmy8DHaU6DPLlbuXqfXKmH1j3RfoiA==",
+      "duration_ms": 25547,
+      "head_80": "[\n  {\n    \"topic\": \"Taking Urolithin A supplements for mitochondrial autophagy a",
+      "usage": {
+        "total_tokens": 10121,
+        "total_input_tokens": 5114,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 5114
+          }
+        ],
+        "total_cached_tokens": 1574,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 1574
+          }
+        ],
+        "total_output_tokens": 974,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 4033,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 12
+          }
+        ],
+        "raw_prompt_token": 61555
+      }
+    },
+    {
+      "i": 22,
+      "ok": true,
+      "head_ok": true,
+      "items": 5,
+      "grounded": true,
+      "search_calls": 2,
+      "steps": 6,
+      "citations": 5,
+      "publisher_urls": 0,
+      "redirect_urls": 5,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGxrdHoWZcgY8NeMBulPGfFuKEmbf9BBSbA8kj1m-r30QFGThjYHuK5KlMo_7ooH7RoexquqLuBDgkPPa61iBpDD_Xit4jsRwndivnvNMBnheeNBkULH4FK7BhURMt5Nu0dgerDqHs8PVJssUPxbbshKFzffX77jO0xe_hnvZjK_x6zjfgNHuYGCKeyC0N2xKv5-CsSH-4=",
+      "duration_ms": 17025,
+      "head_80": "[\n  {\n    \"topic\": \"Practicing fertilitymaxxing protocols for male reproductive ",
+      "usage": {
+        "total_tokens": 7344,
+        "total_input_tokens": 4136,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 4136
+          }
+        ],
+        "total_cached_tokens": 1355,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 1355
+          }
+        ],
+        "total_output_tokens": 632,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 2576,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 8
+          }
+        ],
+        "raw_prompt_token": 37625
+      }
+    },
+    {
+      "i": 23,
+      "ok": true,
+      "head_ok": false,
+      "items": null,
+      "grounded": true,
+      "search_calls": 2,
+      "steps": 6,
+      "citations": 8,
+      "publisher_urls": 0,
+      "redirect_urls": 8,
+      "sample_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFxVXFP0gWvcYHtg9nrSk2G16IfqMFEfke5FTeraaybcY4YN0ri-lFNIBQSVNhHm4oEg94Bi4vmQr88lAgrbal8HEZYdwCKEulYN7DobfcGWkxlrm1oYxrxKX4dVG5CHps66jpIQ1q7ZccBPwnHIPbJJDDQruGtSwn3uR72eXaMhxCsIOiS-QFF4hUBZD9bdjhuoo9pfoPqzTCmZK2S6cEv17JtZw==",
+      "duration_ms": 16259,
+      "head_80": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Taking mitochondrial suppo",
+      "usage": {
+        "total_tokens": 8023,
+        "total_input_tokens": 4044,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 4044
+          }
+        ],
+        "total_cached_tokens": 1243,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 1243
+          }
+        ],
+        "total_output_tokens": 1301,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 2678,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 8
+          }
+        ],
+        "raw_prompt_token": 39632
+      }
+    },
+    {
+      "i": 24,
+      "ok": true,
+      "head_ok": true,
+      "items": 5,
+      "grounded": true,
+      "search_calls": 2,
+      "steps": 6,
+      "citations": 0,
+      "publisher_urls": 0,
+      "redirect_urls": 0,
+      "sample_url": null,
+      "duration_ms": 19789,
+      "head_80": "[\n  {\n    \"topic\": \"Using portable hydrogen water generator bottles for cellular",
+      "usage": {
+        "total_tokens": 8494,
+        "total_input_tokens": 4476,
+        "input_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 4476
+          }
+        ],
+        "total_cached_tokens": 1346,
+        "cached_tokens_by_modality": [
+          {
+            "modality": "text",
+            "tokens": 1346
+          }
+        ],
+        "total_output_tokens": 1206,
+        "total_tool_use_tokens": 0,
+        "total_thought_tokens": 2812,
+        "grounding_tool_count": [
+          {
+            "type": "google_search",
+            "count": 8
+          }
+        ],
+        "raw_prompt_token": 41472
+      }
+    }
+  ]
+}

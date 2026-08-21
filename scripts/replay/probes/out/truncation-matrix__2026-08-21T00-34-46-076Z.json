@@ -1,0 +1,4335 @@
+{
+  "ticket": "CRMA-757",
+  "ran_at": "2026-08-21T00:34:46.077Z",
+  "prompt": {
+    "case_id": "wellness",
+    "chars": 15945,
+    "frozen_at": "2026-08-21T00:23:50.254Z",
+    "provenance": {
+      "discovery.gemini.search": {
+        "version": 4,
+        "registry_model": "gemini-2.5-flash",
+        "chars": 2509
+      }
+    }
+  },
+  "n_per_shape": 20,
+  "shapes": {
+    "A_prod": {
+      "model": "gemini-3.7-flash",
+      "why": "production's exact call shape — the baseline the ~1-in-5 rate was measured on",
+      "args": {
+        "system": null,
+        "tools": [
+          {
+            "google_search": {}
+          }
+        ],
+        "temperature": 0.5,
+        "thinkingLevel": null,
+        "maxOutputTokens": null,
+        "functionCallingMode": null,
+        "contents": "<frozen prompt, 15945 chars>"
+      }
+    },
+    "B_low": {
+      "model": "gemini-3.7-flash",
+      "why": "thinking_level low — failures correlated with high thinking-token counts",
+      "args": {
+        "system": null,
+        "tools": [
+          {
+            "google_search": {}
+          }
+        ],
+        "temperature": 0.5,
+        "thinkingLevel": "low",
+        "maxOutputTokens": null,
+        "functionCallingMode": null,
+        "contents": "<frozen prompt, 15945 chars>"
+      }
+    },
+    "C_high": {
+      "model": "gemini-3.7-flash",
+      "why": "thinking_level high — tests the correlation in the opposite direction",
+      "args": {
+        "system": null,
+        "tools": [
+          {
+            "google_search": {}
+          }
+        ],
+        "temperature": 0.5,
+        "thinkingLevel": "high",
+        "maxOutputTokens": null,
+        "functionCallingMode": null,
+        "contents": "<frozen prompt, 15945 chars>"
+      }
+    },
+    "D_notemp": {
+      "model": "gemini-3.7-flash",
+      "why": "temperature omitted — it is deprecated, and production still sends it",
+      "args": {
+        "system": null,
+        "tools": [
+          {
+            "google_search": {}
+          }
+        ],
+        "temperature": null,
+        "thinkingLevel": null,
+        "maxOutputTokens": null,
+        "functionCallingMode": null,
+        "contents": "<frozen prompt, 15945 chars>"
+      }
+    },
+    "E_schema": {
+      "model": "gemini-3.7-flash",
+      "why": "responseSchema + grounding (Preview on 3.7) — removes the fence entirely",
+      "args": {
+        "system": null,
+        "tools": [
+          {
+            "google_search": {}
+          }
+        ],
+        "temperature": 0.5,
+        "thinkingLevel": null,
+        "maxOutputTokens": null,
+        "functionCallingMode": null,
+        "responseSchema": {
+          "type": "ARRAY",
+          "items": {
+            "type": "OBJECT",
+            "properties": {
+              "topic": {
+                "type": "STRING"
+              },
+              "evidence_url": {
+                "type": "STRING"
+              },
+              "why_now": {
+                "type": "STRING"
+              },
+              "vertical": {
+                "type": "STRING"
+              }
+            },
+            "required": [
+              "topic",
+              "evidence_url",
+              "why_now",
+              "vertical"
+            ]
+          }
+        },
+        "contents": "<frozen prompt, 15945 chars>"
+      }
+    },
+    "Z_control_25": {
+      "model": "gemini-2.5-flash",
+      "why": "NEGATIVE CONTROL — CRMA-731 measured 0 truncations on this model",
+      "args": {
+        "system": null,
+        "tools": [
+          {
+            "google_search": {}
+          }
+        ],
+        "temperature": 0.5,
+        "thinkingLevel": null,
+        "maxOutputTokens": null,
+        "functionCallingMode": null,
+        "contents": "<frozen prompt, 15945 chars>"
+      }
+    }
+  },
+  "summary": [
+    {
+      "shape": "A_prod",
+      "model": "gemini-3.7-flash",
+      "why": "production's exact call shape — the baseline the ~1-in-5 rate was measured on",
+      "n": 20,
+      "api_errors": 0,
+      "clean": 15,
+      "truncated": 5,
+      "empty": 0,
+      "clean_rate": 0.75,
+      "mean_ms": 21678,
+      "mean_cost_usd": 0.0212,
+      "mean_thought_tokens": 3519
+    },
+    {
+      "shape": "B_low",
+      "model": "gemini-3.7-flash",
+      "why": "thinking_level low — failures correlated with high thinking-token counts",
+      "n": 20,
+      "api_errors": 0,
+      "clean": 16,
+      "truncated": 4,
+      "empty": 0,
+      "clean_rate": 0.8,
+      "mean_ms": 14357,
+      "mean_cost_usd": 0.0133,
+      "mean_thought_tokens": 1787
+    },
+    {
+      "shape": "C_high",
+      "model": "gemini-3.7-flash",
+      "why": "thinking_level high — tests the correlation in the opposite direction",
+      "n": 20,
+      "api_errors": 0,
+      "clean": 14,
+      "truncated": 6,
+      "empty": 0,
+      "clean_rate": 0.7,
+      "mean_ms": 39035,
+      "mean_cost_usd": 0.043,
+      "mean_thought_tokens": 8460
+    },
+    {
+      "shape": "D_notemp",
+      "model": "gemini-3.7-flash",
+      "why": "temperature omitted — it is deprecated, and production still sends it",
+      "n": 20,
+      "api_errors": 0,
+      "clean": 14,
+      "truncated": 6,
+      "empty": 0,
+      "clean_rate": 0.7,
+      "mean_ms": 22050,
+      "mean_cost_usd": 0.0225,
+      "mean_thought_tokens": 3811
+    },
+    {
+      "shape": "E_schema",
+      "model": "gemini-3.7-flash",
+      "why": "responseSchema + grounding (Preview on 3.7) — removes the fence entirely",
+      "n": 20,
+      "api_errors": 0,
+      "clean": 14,
+      "truncated": 6,
+      "empty": 0,
+      "clean_rate": 0.7,
+      "mean_ms": 21364,
+      "mean_cost_usd": 0.0212,
+      "mean_thought_tokens": 3482
+    },
+    {
+      "shape": "Z_control_25",
+      "model": "gemini-2.5-flash",
+      "why": "NEGATIVE CONTROL — CRMA-731 measured 0 truncations on this model",
+      "n": 20,
+      "api_errors": 0,
+      "clean": 20,
+      "truncated": 0,
+      "empty": 0,
+      "clean_rate": 1,
+      "mean_ms": 35026,
+      "mean_cost_usd": 0.019,
+      "mean_thought_tokens": 5774
+    }
+  ],
+  "results": [
+    {
+      "shape": "A_prod",
+      "i": 0,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 16241,
+      "cost": {
+        "input_tokens": 4518,
+        "candidates_tokens": 1194,
+        "thoughts_tokens": 2431,
+        "total_tokens": 8143,
+        "cost_as_deployed": 0.0079,
+        "cost_with_thinking": 0.017,
+        "understated_by": 0.0091,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting 'fertilitymaxxing' routines and targeted reproductive supplements\",\n    \"evidence_url\": \"ht",
+      "body_chars": 3066
+    },
+    {
+      "shape": "A_prod",
+      "i": 1,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 15075,
+      "cost": {
+        "input_tokens": 4492,
+        "candidates_tokens": 484,
+        "thoughts_tokens": 2824,
+        "total_tokens": 7800,
+        "cost_as_deployed": 0.0052,
+        "cost_with_thinking": 0.0158,
+        "understated_by": 0.0106,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Batching 'boy kibble' single-bowl meals for high-protein nutrition\",\n    \"evidence_url\": \"https://ww",
+      "body_chars": 1832
+    },
+    {
+      "shape": "A_prod",
+      "i": 2,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 15688,
+      "cost": {
+        "input_tokens": 5209,
+        "candidates_tokens": 497,
+        "thoughts_tokens": 3185,
+        "total_tokens": 8891,
+        "cost_as_deployed": 0.0058,
+        "cost_with_thinking": 0.0177,
+        "understated_by": 0.0119,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Drinking Sleepy Girl Mocktails for Nighttime Sleep Support\",\n    \"evidence_url\": \"https://www.uclahe",
+      "body_chars": 1850
+    },
+    {
+      "shape": "A_prod",
+      "i": 3,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 29202,
+      "cost": {
+        "input_tokens": 7885,
+        "candidates_tokens": 1186,
+        "thoughts_tokens": 5282,
+        "total_tokens": 14353,
+        "cost_as_deployed": 0.0104,
+        "cost_with_thinking": 0.0302,
+        "understated_by": 0.0198,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming canned sardines as edible skincare (\\\"sardinemaxxing\\\")\",\n    \"evidence_url\": \"https://ver",
+      "body_chars": 3107
+    },
+    {
+      "shape": "A_prod",
+      "i": 4,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 22942,
+      "cost": {
+        "input_tokens": 6086,
+        "candidates_tokens": 1342,
+        "thoughts_tokens": 4250,
+        "total_tokens": 11678,
+        "cost_as_deployed": 0.0096,
+        "cost_with_thinking": 0.0255,
+        "understated_by": 0.0159,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Practicing multi-layer 'morning shed' overnight beauty and sleep encasements\",\n    \"evidence_url\": \"",
+      "body_chars": 3291
+    },
+    {
+      "shape": "A_prod",
+      "i": 5,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 25142,
+      "cost": {
+        "input_tokens": 6619,
+        "candidates_tokens": 1272,
+        "thoughts_tokens": 4226,
+        "total_tokens": 12117,
+        "cost_as_deployed": 0.0097,
+        "cost_with_thinking": 0.0256,
+        "understated_by": 0.0158,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 4,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Consuming bovine colostrum supplements for gut barrier repair and ",
+      "body_chars": 2525
+    },
+    {
+      "shape": "A_prod",
+      "i": 6,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 19370,
+      "cost": {
+        "input_tokens": 4305,
+        "candidates_tokens": 1161,
+        "thoughts_tokens": 3341,
+        "total_tokens": 8807,
+        "cost_as_deployed": 0.0076,
+        "cost_with_thinking": 0.0201,
+        "understated_by": 0.0125,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming tinned sardines as an ingestible beauty food\",\n    \"evidence_url\": \"https://vertexaisearch",
+      "body_chars": 3027
+    },
+    {
+      "shape": "A_prod",
+      "i": 7,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 29496,
+      "cost": {
+        "input_tokens": 4390,
+        "candidates_tokens": 977,
+        "thoughts_tokens": 2940,
+        "total_tokens": 8307,
+        "cost_as_deployed": 0.007,
+        "cost_with_thinking": 0.018,
+        "understated_by": 0.011,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Practicing 'fertilitymaxxing' routines to optimize reproductive health\",\n    \"evidence_url\": \"https:",
+      "body_chars": 2544
+    },
+    {
+      "shape": "A_prod",
+      "i": 8,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 23006,
+      "cost": {
+        "input_tokens": 5795,
+        "candidates_tokens": 657,
+        "thoughts_tokens": 3610,
+        "total_tokens": 10062,
+        "cost_as_deployed": 0.0068,
+        "cost_with_thinking": 0.0203,
+        "understated_by": 0.0135,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 4,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Undergoing elective DXA scans for body composition and bone densit",
+      "body_chars": 1743
+    },
+    {
+      "shape": "A_prod",
+      "i": 9,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 27141,
+      "cost": {
+        "input_tokens": 5703,
+        "candidates_tokens": 1265,
+        "thoughts_tokens": 5320,
+        "total_tokens": 12288,
+        "cost_as_deployed": 0.009,
+        "cost_with_thinking": 0.029,
+        "understated_by": 0.02,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Sardinemaxxing and sardine fasting for nutrient density and rapid ketosis\",\n    \"evidence_url\": \"htt",
+      "body_chars": 3212
+    },
+    {
+      "shape": "A_prod",
+      "i": 10,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 14660,
+      "cost": {
+        "input_tokens": 4565,
+        "candidates_tokens": 1192,
+        "thoughts_tokens": 2188,
+        "total_tokens": 7945,
+        "cost_as_deployed": 0.0079,
+        "cost_with_thinking": 0.0161,
+        "understated_by": 0.0082,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Booking elective DXA scans for body composition and preventative bone health\",\n    \"evidence_url\": \"",
+      "body_chars": 3108
+    },
+    {
+      "shape": "A_prod",
+      "i": 11,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 28776,
+      "cost": {
+        "input_tokens": 5557,
+        "candidates_tokens": 889,
+        "thoughts_tokens": 4126,
+        "total_tokens": 10572,
+        "cost_as_deployed": 0.0075,
+        "cost_with_thinking": 0.023,
+        "understated_by": 0.0155,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting daily preventative nasal barrier and microbiome care\",\n    \"evidence_url\": \"https://vertexa",
+      "body_chars": 2333
+    },
+    {
+      "shape": "A_prod",
+      "i": 12,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 23939,
+      "cost": {
+        "input_tokens": 6042,
+        "candidates_tokens": 1029,
+        "thoughts_tokens": 3230,
+        "total_tokens": 10301,
+        "cost_as_deployed": 0.0084,
+        "cost_with_thinking": 0.0205,
+        "understated_by": 0.0121,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 3,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Consuming minimalist 'boy kibble' batch meals for macro optimizati",
+      "body_chars": 1932
+    },
+    {
+      "shape": "A_prod",
+      "i": 13,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 18860,
+      "cost": {
+        "input_tokens": 4857,
+        "candidates_tokens": 1421,
+        "thoughts_tokens": 3311,
+        "total_tokens": 9589,
+        "cost_as_deployed": 0.009,
+        "cost_with_thinking": 0.0214,
+        "understated_by": 0.0124,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming tart cherry and magnesium sleep mocktails for nightly relaxation\",\n    \"evidence_url\": \"ht",
+      "body_chars": 3382
+    },
+    {
+      "shape": "A_prod",
+      "i": 14,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 21043,
+      "cost": {
+        "input_tokens": 5216,
+        "candidates_tokens": 1169,
+        "thoughts_tokens": 4677,
+        "total_tokens": 11062,
+        "cost_as_deployed": 0.0083,
+        "cost_with_thinking": 0.0258,
+        "understated_by": 0.0175,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Preparing 'boy kibble' single-bowl meals for frictionless protein fueling\",\n    \"evidence_url\": \"htt",
+      "body_chars": 3202
+    },
+    {
+      "shape": "A_prod",
+      "i": 15,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 17175,
+      "cost": {
+        "input_tokens": 4601,
+        "candidates_tokens": 666,
+        "thoughts_tokens": 3021,
+        "total_tokens": 8288,
+        "cost_as_deployed": 0.0059,
+        "cost_with_thinking": 0.0173,
+        "understated_by": 0.0113,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Taking OTC antihistamines to treat PMDD and perimenopause symptoms\",\n    \"evidence_url\": \"https://ww",
+      "body_chars": 2518
+    },
+    {
+      "shape": "A_prod",
+      "i": 16,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 17895,
+      "cost": {
+        "input_tokens": 5068,
+        "candidates_tokens": 1329,
+        "thoughts_tokens": 3047,
+        "total_tokens": 9444,
+        "cost_as_deployed": 0.0088,
+        "cost_with_thinking": 0.0202,
+        "understated_by": 0.0114,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 4,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Consuming 'boy kibble' single-bowl meals for simplified protein tr",
+      "body_chars": 2589
+    },
+    {
+      "shape": "A_prod",
+      "i": 17,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 18567,
+      "cost": {
+        "input_tokens": 4708,
+        "candidates_tokens": 1528,
+        "thoughts_tokens": 2943,
+        "total_tokens": 9179,
+        "cost_as_deployed": 0.0093,
+        "cost_with_thinking": 0.0203,
+        "understated_by": 0.011,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 6,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Booking Proactive DXA Scans for Bone Density and Visceral Fat Benchmarking\",\n    \"evidence_url\": \"ht",
+      "body_chars": 3714
+    },
+    {
+      "shape": "A_prod",
+      "i": 18,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 20362,
+      "cost": {
+        "input_tokens": 4745,
+        "candidates_tokens": 1002,
+        "thoughts_tokens": 2738,
+        "total_tokens": 8485,
+        "cost_as_deployed": 0.0073,
+        "cost_with_thinking": 0.0176,
+        "understated_by": 0.0103,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Taking dual H1/H2 antihistamines for PMDD and menopause symptom relief\",\n    \"evidence_url\": \"https:",
+      "body_chars": 2575
+    },
+    {
+      "shape": "A_prod",
+      "i": 19,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 28972,
+      "cost": {
+        "input_tokens": 5322,
+        "candidates_tokens": 1317,
+        "thoughts_tokens": 3681,
+        "total_tokens": 10320,
+        "cost_as_deployed": 0.0089,
+        "cost_with_thinking": 0.0227,
+        "understated_by": 0.0138,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 4,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Using whole-body vibration plates for lymphatic drainage and recov",
+      "body_chars": 2649
+    },
+    {
+      "shape": "B_low",
+      "i": 0,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 4408,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 513,
+        "thoughts_tokens": 0,
+        "total_tokens": 4333,
+        "cost_as_deployed": 0.0048,
+        "cost_with_thinking": 0.0048,
+        "understated_by": 0,
+        "reconciles": "n/a_no_thinking_tokens",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Eating 'boy kibble' single-bowl macro meals for simplified fitness nutrition\",\n    \"evidence_url\": \"",
+      "body_chars": 1885
+    },
+    {
+      "shape": "B_low",
+      "i": 1,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 13699,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 532,
+        "thoughts_tokens": 0,
+        "total_tokens": 4352,
+        "cost_as_deployed": 0.0049,
+        "cost_with_thinking": 0.0049,
+        "understated_by": 0,
+        "reconciles": "n/a_no_thinking_tokens",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming 'Sleepy Girl Mocktails' (tart cherry juice and magnesium) for nightly sleep support\",\n    ",
+      "body_chars": 1805
+    },
+    {
+      "shape": "B_low",
+      "i": 2,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 17481,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 418,
+        "thoughts_tokens": 0,
+        "total_tokens": 4238,
+        "cost_as_deployed": 0.0044,
+        "cost_with_thinking": 0.0044,
+        "understated_by": 0,
+        "reconciles": "n/a_no_thinking_tokens",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 3,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Eating single-skillet 'boy kibble' bowls for simplified high-protein fuel\",\n    \"evidence_url\": \"htt",
+      "body_chars": 1542
+    },
+    {
+      "shape": "B_low",
+      "i": 3,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 6159,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 953,
+        "thoughts_tokens": 0,
+        "total_tokens": 4773,
+        "cost_as_deployed": 0.0064,
+        "cost_with_thinking": 0.0064,
+        "understated_by": 0,
+        "reconciles": "n/a_no_thinking_tokens",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Switching to mineral-infused thermoregulating sleepwear for overnight cooling\",\n    \"evidence_url\": ",
+      "body_chars": 2411
+    },
+    {
+      "shape": "B_low",
+      "i": 4,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 3150,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 483,
+        "thoughts_tokens": 0,
+        "total_tokens": 4303,
+        "cost_as_deployed": 0.0047,
+        "cost_with_thinking": 0.0047,
+        "understated_by": 0,
+        "reconciles": "n/a_no_thinking_tokens",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 2,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Sourcing unapproved lab peptides for at-home injectable body optimization\",\n    \"evidence_url\": \"htt",
+      "body_chars": 1334
+    },
+    {
+      "shape": "B_low",
+      "i": 5,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 20849,
+      "cost": {
+        "input_tokens": 6421,
+        "candidates_tokens": 1010,
+        "thoughts_tokens": 3986,
+        "total_tokens": 11417,
+        "cost_as_deployed": 0.0086,
+        "cost_with_thinking": 0.0236,
+        "understated_by": 0.0149,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 3,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Booking 'hushpitality' hotel stays and silent retreats for sensory",
+      "body_chars": 1878
+    },
+    {
+      "shape": "B_low",
+      "i": 6,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 15200,
+      "cost": {
+        "input_tokens": 5198,
+        "candidates_tokens": 1167,
+        "thoughts_tokens": 2668,
+        "total_tokens": 9033,
+        "cost_as_deployed": 0.0083,
+        "cost_with_thinking": 0.0183,
+        "understated_by": 0.01,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming bovine colostrum powder for gut barrier repair and immune defense\",\n    \"evidence_url\": \"h",
+      "body_chars": 2898
+    },
+    {
+      "shape": "B_low",
+      "i": 7,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 16929,
+      "cost": {
+        "input_tokens": 4657,
+        "candidates_tokens": 930,
+        "thoughts_tokens": 2119,
+        "total_tokens": 7706,
+        "cost_as_deployed": 0.007,
+        "cost_with_thinking": 0.0149,
+        "understated_by": 0.0079,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Practicing neuromuscular balance and stability training for longevity\",\n    \"evidence_url\": \"https:/",
+      "body_chars": 2576
+    },
+    {
+      "shape": "B_low",
+      "i": 8,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 17972,
+      "cost": {
+        "input_tokens": 4167,
+        "candidates_tokens": 1452,
+        "thoughts_tokens": 3007,
+        "total_tokens": 8626,
+        "cost_as_deployed": 0.0086,
+        "cost_with_thinking": 0.0198,
+        "understated_by": 0.0113,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 4,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Taking bovine colostrum supplements for gut lining repair and immu",
+      "body_chars": 2793
+    },
+    {
+      "shape": "B_low",
+      "i": 9,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 16411,
+      "cost": {
+        "input_tokens": 3947,
+        "candidates_tokens": 1259,
+        "thoughts_tokens": 1913,
+        "total_tokens": 7119,
+        "cost_as_deployed": 0.0077,
+        "cost_with_thinking": 0.0149,
+        "understated_by": 0.0072,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Practicing navel oiling with castor oil for digestion and hormone balance\",\n    \"evidence_url\": \"htt",
+      "body_chars": 3135
+    },
+    {
+      "shape": "B_low",
+      "i": 10,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 15571,
+      "cost": {
+        "input_tokens": 4813,
+        "candidates_tokens": 1280,
+        "thoughts_tokens": 2735,
+        "total_tokens": 8828,
+        "cost_as_deployed": 0.0084,
+        "cost_with_thinking": 0.0187,
+        "understated_by": 0.0103,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming utilitarian 'boy kibble' bowls for frictionless macro-tracking\",\n    \"evidence_url\": \"http",
+      "body_chars": 3188
+    },
+    {
+      "shape": "B_low",
+      "i": 11,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 13463,
+      "cost": {
+        "input_tokens": 4423,
+        "candidates_tokens": 783,
+        "thoughts_tokens": 2248,
+        "total_tokens": 7454,
+        "cost_as_deployed": 0.0063,
+        "cost_with_thinking": 0.0147,
+        "understated_by": 0.0084,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 3,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Taking morning extra virgin olive oil and lemon juice shots\",\n    \"evidence_url\": \"https://vertexais",
+      "body_chars": 1946
+    },
+    {
+      "shape": "B_low",
+      "i": 12,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 14614,
+      "cost": {
+        "input_tokens": 5542,
+        "candidates_tokens": 961,
+        "thoughts_tokens": 3034,
+        "total_tokens": 9537,
+        "cost_as_deployed": 0.0078,
+        "cost_with_thinking": 0.0191,
+        "understated_by": 0.0114,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Stacking OTC antihistamines for PMDD and perimenopause relief\",\n    \"evidence_url\": \"https://vertexa",
+      "body_chars": 2410
+    },
+    {
+      "shape": "B_low",
+      "i": 13,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 12996,
+      "cost": {
+        "input_tokens": 4057,
+        "candidates_tokens": 766,
+        "thoughts_tokens": 2226,
+        "total_tokens": 7049,
+        "cost_as_deployed": 0.0059,
+        "cost_with_thinking": 0.0143,
+        "understated_by": 0.0083,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 2,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Eating single-bowl 'boy kibble' meal preps for streamlined high-pr",
+      "body_chars": 1324
+    },
+    {
+      "shape": "B_low",
+      "i": 14,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 16571,
+      "cost": {
+        "input_tokens": 4726,
+        "candidates_tokens": 979,
+        "thoughts_tokens": 2333,
+        "total_tokens": 8038,
+        "cost_as_deployed": 0.0072,
+        "cost_with_thinking": 0.016,
+        "understated_by": 0.0087,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Stacking OTC antihistamines (H1 and H2 blockers) for PMDD and perimenopause relief\",\n    \"evidence_u",
+      "body_chars": 2481
+    },
+    {
+      "shape": "B_low",
+      "i": 15,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 25501,
+      "cost": {
+        "input_tokens": 4604,
+        "candidates_tokens": 796,
+        "thoughts_tokens": 2982,
+        "total_tokens": 8382,
+        "cost_as_deployed": 0.0064,
+        "cost_with_thinking": 0.0176,
+        "understated_by": 0.0112,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 2,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Wearing mineral-infused thermoregulating sleepwear for overnight r",
+      "body_chars": 1340
+    },
+    {
+      "shape": "B_low",
+      "i": 16,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 5083,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 720,
+        "thoughts_tokens": 0,
+        "total_tokens": 4540,
+        "cost_as_deployed": 0.0056,
+        "cost_with_thinking": 0.0056,
+        "understated_by": 0,
+        "reconciles": "n/a_no_thinking_tokens",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 3,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting AI chatbots for personal workout programming and mental self-reflection\",\n    \"evidence_url",
+      "body_chars": 1803
+    },
+    {
+      "shape": "B_low",
+      "i": 17,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 15678,
+      "cost": {
+        "input_tokens": 4382,
+        "candidates_tokens": 822,
+        "thoughts_tokens": 1720,
+        "total_tokens": 6924,
+        "cost_as_deployed": 0.0064,
+        "cost_with_thinking": 0.0128,
+        "understated_by": 0.0064,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 3,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting 'fertilitymaxxing' biohacking protocols for male reproductive health\",\n    \"evidence_url\": ",
+      "body_chars": 1976
+    },
+    {
+      "shape": "B_low",
+      "i": 18,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 21894,
+      "cost": {
+        "input_tokens": 4414,
+        "candidates_tokens": 1004,
+        "thoughts_tokens": 3238,
+        "total_tokens": 8656,
+        "cost_as_deployed": 0.0071,
+        "cost_with_thinking": 0.0192,
+        "understated_by": 0.0121,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Booking proactive DXA scans for body composition and bone healthspan\",\n    \"evidence_url\": \"https://",
+      "body_chars": 2570
+    },
+    {
+      "shape": "B_low",
+      "i": 19,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 13511,
+      "cost": {
+        "input_tokens": 4275,
+        "candidates_tokens": 509,
+        "thoughts_tokens": 1527,
+        "total_tokens": 6311,
+        "cost_as_deployed": 0.0051,
+        "cost_with_thinking": 0.0108,
+        "understated_by": 0.0057,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming 'boy kibble' ground meat and rice bowls for utilitarian macro tracking\",\n    \"evidence_url",
+      "body_chars": 1888
+    },
+    {
+      "shape": "C_high",
+      "i": 0,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 45581,
+      "cost": {
+        "input_tokens": 9342,
+        "candidates_tokens": 1826,
+        "thoughts_tokens": 8879,
+        "total_tokens": 20047,
+        "cost_as_deployed": 0.0139,
+        "cost_with_thinking": 0.0472,
+        "understated_by": 0.0333,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 6,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Drinking cortisol cocktails and pre-mixed powders for adrenal stre",
+      "body_chars": 3839
+    },
+    {
+      "shape": "C_high",
+      "i": 1,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 33968,
+      "cost": {
+        "input_tokens": 6665,
+        "candidates_tokens": 1394,
+        "thoughts_tokens": 6116,
+        "total_tokens": 14175,
+        "cost_as_deployed": 0.0102,
+        "cost_with_thinking": 0.0332,
+        "understated_by": 0.0229,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 6,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Taking Urolithin A supplements for cellular recycling and muscle endurance\",\n    \"evidence_url\": \"ht",
+      "body_chars": 3813
+    },
+    {
+      "shape": "C_high",
+      "i": 2,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 48047,
+      "cost": {
+        "input_tokens": 6261,
+        "candidates_tokens": 2196,
+        "thoughts_tokens": 7626,
+        "total_tokens": 16083,
+        "cost_as_deployed": 0.0129,
+        "cost_with_thinking": 0.0415,
+        "understated_by": 0.0286,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 8,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Drinking DIY 'cortisol cocktails' for stress regulation and adrenal support\",\n    \"evidence_url\": \"h",
+      "body_chars": 5349
+    },
+    {
+      "shape": "C_high",
+      "i": 3,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 37711,
+      "cost": {
+        "input_tokens": 10449,
+        "candidates_tokens": 813,
+        "thoughts_tokens": 8501,
+        "total_tokens": 19763,
+        "cost_as_deployed": 0.0109,
+        "cost_with_thinking": 0.0428,
+        "understated_by": 0.0319,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 6,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming bovine colostrum supplements for gut barrier and immune support\",\n    \"evidence_url\": \"htt",
+      "body_chars": 3008
+    },
+    {
+      "shape": "C_high",
+      "i": 4,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 38025,
+      "cost": {
+        "input_tokens": 6268,
+        "candidates_tokens": 1659,
+        "thoughts_tokens": 8220,
+        "total_tokens": 16147,
+        "cost_as_deployed": 0.0109,
+        "cost_with_thinking": 0.0417,
+        "understated_by": 0.0308,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 6,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Wearing continuous glucose monitors for non-diabetic metabolic tracking\",\n    \"evidence_url\": \"https",
+      "body_chars": 4090
+    },
+    {
+      "shape": "C_high",
+      "i": 5,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 25329,
+      "cost": {
+        "input_tokens": 6673,
+        "candidates_tokens": 1237,
+        "thoughts_tokens": 5694,
+        "total_tokens": 13604,
+        "cost_as_deployed": 0.0096,
+        "cost_with_thinking": 0.031,
+        "understated_by": 0.0214,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Taking Urolithin A supplements for mitochondrial renewal and longevity\",\n    \"evidence_url\": \"https:",
+      "body_chars": 3186
+    },
+    {
+      "shape": "C_high",
+      "i": 6,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 44223,
+      "cost": {
+        "input_tokens": 7212,
+        "candidates_tokens": 1599,
+        "thoughts_tokens": 10337,
+        "total_tokens": 19148,
+        "cost_as_deployed": 0.0114,
+        "cost_with_thinking": 0.0502,
+        "understated_by": 0.0388,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 5,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Practicing 'fertilitymaxxing' routines to optimize reproductive he",
+      "body_chars": 3288
+    },
+    {
+      "shape": "C_high",
+      "i": 7,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 36974,
+      "cost": {
+        "input_tokens": 8383,
+        "candidates_tokens": 1393,
+        "thoughts_tokens": 7582,
+        "total_tokens": 17358,
+        "cost_as_deployed": 0.0115,
+        "cost_with_thinking": 0.0399,
+        "understated_by": 0.0284,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 6,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming canned sardines as a daily beauty food for glowing skin\",\n    \"evidence_url\": \"https://ver",
+      "body_chars": 3573
+    },
+    {
+      "shape": "C_high",
+      "i": 8,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 33467,
+      "cost": {
+        "input_tokens": 6815,
+        "candidates_tokens": 1424,
+        "thoughts_tokens": 7513,
+        "total_tokens": 15752,
+        "cost_as_deployed": 0.0105,
+        "cost_with_thinking": 0.0386,
+        "understated_by": 0.0282,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 6,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Practicing sensory drawing and neuro-doodling for nervous system regulation\",\n    \"evidence_url\": \"h",
+      "body_chars": 3762
+    },
+    {
+      "shape": "C_high",
+      "i": 9,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 41190,
+      "cost": {
+        "input_tokens": 7240,
+        "candidates_tokens": 1922,
+        "thoughts_tokens": 10513,
+        "total_tokens": 19675,
+        "cost_as_deployed": 0.0126,
+        "cost_with_thinking": 0.0521,
+        "understated_by": 0.0394,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 6,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Stacking OTC antihistamines for PMDD and perimenopause symptom rel",
+      "body_chars": 3983
+    },
+    {
+      "shape": "C_high",
+      "i": 10,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 34969,
+      "cost": {
+        "input_tokens": 9739,
+        "candidates_tokens": 719,
+        "thoughts_tokens": 7285,
+        "total_tokens": 17743,
+        "cost_as_deployed": 0.01,
+        "cost_with_thinking": 0.0373,
+        "understated_by": 0.0273,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 4,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Booking Elective DXA Scans for Body Composition and Bone Longevity",
+      "body_chars": 1920
+    },
+    {
+      "shape": "C_high",
+      "i": 11,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 47881,
+      "cost": {
+        "input_tokens": 11521,
+        "candidates_tokens": 1816,
+        "thoughts_tokens": 11640,
+        "total_tokens": 24977,
+        "cost_as_deployed": 0.0155,
+        "cost_with_thinking": 0.0591,
+        "understated_by": 0.0436,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 8,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Drinking 'cortisol cocktails' for adrenal support and stress relief\",\n    \"evidence_url\": \"https://v",
+      "body_chars": 4776
+    },
+    {
+      "shape": "C_high",
+      "i": 12,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 31647,
+      "cost": {
+        "input_tokens": 7326,
+        "candidates_tokens": 910,
+        "thoughts_tokens": 6792,
+        "total_tokens": 15028,
+        "cost_as_deployed": 0.0089,
+        "cost_with_thinking": 0.0344,
+        "understated_by": 0.0255,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 6,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Downing tart cherry and magnesium shots for nightly sleep and recovery\",\n    \"evidence_url\": \"https:",
+      "body_chars": 2979
+    },
+    {
+      "shape": "C_high",
+      "i": 13,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 41020,
+      "cost": {
+        "input_tokens": 7398,
+        "candidates_tokens": 1247,
+        "thoughts_tokens": 7809,
+        "total_tokens": 16454,
+        "cost_as_deployed": 0.0102,
+        "cost_with_thinking": 0.0395,
+        "understated_by": 0.0293,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Taking OTC antihistamines for PMDD and perimenopause symptom relief\",\n    \"evidence_url\": \"https://v",
+      "body_chars": 3321
+    },
+    {
+      "shape": "C_high",
+      "i": 14,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 33900,
+      "cost": {
+        "input_tokens": 7395,
+        "candidates_tokens": 1628,
+        "thoughts_tokens": 7426,
+        "total_tokens": 16449,
+        "cost_as_deployed": 0.0117,
+        "cost_with_thinking": 0.0395,
+        "understated_by": 0.0278,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 5,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Supplementing with bovine colostrum powders for gut lining and imm",
+      "body_chars": 3393
+    },
+    {
+      "shape": "C_high",
+      "i": 15,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 55434,
+      "cost": {
+        "input_tokens": 7363,
+        "candidates_tokens": 1396,
+        "thoughts_tokens": 12597,
+        "total_tokens": 21356,
+        "cost_as_deployed": 0.0108,
+        "cost_with_thinking": 0.058,
+        "understated_by": 0.0472,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 6,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Drinking DIY cortisol mocktails to regulate stress and adrenal fatigue\",\n    \"evidence_url\": \"https:",
+      "body_chars": 3648
+    },
+    {
+      "shape": "C_high",
+      "i": 16,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 37736,
+      "cost": {
+        "input_tokens": 8409,
+        "candidates_tokens": 1884,
+        "thoughts_tokens": 9284,
+        "total_tokens": 19577,
+        "cost_as_deployed": 0.0134,
+        "cost_with_thinking": 0.0482,
+        "understated_by": 0.0348,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 6,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Training single-leg balance and neuromuscular stability for longev",
+      "body_chars": 3838
+    },
+    {
+      "shape": "C_high",
+      "i": 17,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 29514,
+      "cost": {
+        "input_tokens": 8281,
+        "candidates_tokens": 609,
+        "thoughts_tokens": 7046,
+        "total_tokens": 15936,
+        "cost_as_deployed": 0.0085,
+        "cost_with_thinking": 0.0349,
+        "understated_by": 0.0264,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Self-Screening for Iron Deficiency via 'Ferritin Face' Visual Cues\",\n    \"evidence_url\": \"https://ww",
+      "body_chars": 2181
+    },
+    {
+      "shape": "C_high",
+      "i": 18,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 43511,
+      "cost": {
+        "input_tokens": 8239,
+        "candidates_tokens": 1527,
+        "thoughts_tokens": 10644,
+        "total_tokens": 20410,
+        "cost_as_deployed": 0.0119,
+        "cost_with_thinking": 0.0518,
+        "understated_by": 0.0399,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 6,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Taking Urolithin A supplements for cellular energy and mitophagy\",\n    \"evidence_url\": \"https://vert",
+      "body_chars": 3903
+    },
+    {
+      "shape": "C_high",
+      "i": 19,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 40566,
+      "cost": {
+        "input_tokens": 6575,
+        "candidates_tokens": 1548,
+        "thoughts_tokens": 7702,
+        "total_tokens": 15825,
+        "cost_as_deployed": 0.0107,
+        "cost_with_thinking": 0.0396,
+        "understated_by": 0.0289,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 6,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming tinned sardines as a daily beauty food for skin health\",\n    \"evidence_url\": \"https://vert",
+      "body_chars": 3934
+    },
+    {
+      "shape": "D_notemp",
+      "i": 0,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 24171,
+      "cost": {
+        "input_tokens": 7020,
+        "candidates_tokens": 1232,
+        "thoughts_tokens": 5011,
+        "total_tokens": 13263,
+        "cost_as_deployed": 0.0099,
+        "cost_with_thinking": 0.0287,
+        "understated_by": 0.0188,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 4,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Booking commercial DXA scans for proactive bone density and muscle",
+      "body_chars": 2537
+    },
+    {
+      "shape": "D_notemp",
+      "i": 1,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 24165,
+      "cost": {
+        "input_tokens": 6393,
+        "candidates_tokens": 1224,
+        "thoughts_tokens": 4021,
+        "total_tokens": 11638,
+        "cost_as_deployed": 0.0094,
+        "cost_with_thinking": 0.0245,
+        "understated_by": 0.0151,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting 'fertilitymaxxing' routines for proactive reproductive health\",\n    \"evidence_url\": \"https:",
+      "body_chars": 3150
+    },
+    {
+      "shape": "D_notemp",
+      "i": 2,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 26372,
+      "cost": {
+        "input_tokens": 6353,
+        "candidates_tokens": 1236,
+        "thoughts_tokens": 3892,
+        "total_tokens": 11481,
+        "cost_as_deployed": 0.0094,
+        "cost_with_thinking": 0.024,
+        "understated_by": 0.0146,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Wearing mineral-infused thermoregulating sleepwear for overnight cooling\",\n    \"evidence_url\": \"http",
+      "body_chars": 3245
+    },
+    {
+      "shape": "D_notemp",
+      "i": 3,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 34323,
+      "cost": {
+        "input_tokens": 8186,
+        "candidates_tokens": 1180,
+        "thoughts_tokens": 6980,
+        "total_tokens": 16346,
+        "cost_as_deployed": 0.0106,
+        "cost_with_thinking": 0.0367,
+        "understated_by": 0.0262,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 3,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Drinking cortisol mocktails to regulate stress and adrenal fatigue",
+      "body_chars": 1923
+    },
+    {
+      "shape": "D_notemp",
+      "i": 4,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 31698,
+      "cost": {
+        "input_tokens": 7053,
+        "candidates_tokens": 1238,
+        "thoughts_tokens": 4604,
+        "total_tokens": 12895,
+        "cost_as_deployed": 0.0099,
+        "cost_with_thinking": 0.0272,
+        "understated_by": 0.0173,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Gathering at communal social saunas and contrast bathhouses\",\n    \"evidence_url\": \"https://vertexais",
+      "body_chars": 2966
+    },
+    {
+      "shape": "D_notemp",
+      "i": 5,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 18055,
+      "cost": {
+        "input_tokens": 4491,
+        "candidates_tokens": 489,
+        "thoughts_tokens": 2706,
+        "total_tokens": 7686,
+        "cost_as_deployed": 0.0052,
+        "cost_with_thinking": 0.0153,
+        "understated_by": 0.0101,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming bovine colostrum powder for gut barrier repair and immune resilience\",\n    \"evidence_url\":",
+      "body_chars": 1866
+    },
+    {
+      "shape": "D_notemp",
+      "i": 6,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 13733,
+      "cost": {
+        "input_tokens": 4558,
+        "candidates_tokens": 1417,
+        "thoughts_tokens": 2246,
+        "total_tokens": 8221,
+        "cost_as_deployed": 0.0087,
+        "cost_with_thinking": 0.0172,
+        "understated_by": 0.0084,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 6,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Drinking 'cortisol cocktails' for stress and adrenal hormone regulation\",\n    \"evidence_url\": \"https",
+      "body_chars": 3774
+    },
+    {
+      "shape": "D_notemp",
+      "i": 7,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 16947,
+      "cost": {
+        "input_tokens": 4258,
+        "candidates_tokens": 1261,
+        "thoughts_tokens": 2161,
+        "total_tokens": 7680,
+        "cost_as_deployed": 0.0079,
+        "cost_with_thinking": 0.016,
+        "understated_by": 0.0081,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming canned sardines as edible skincare\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.goo",
+      "body_chars": 3160
+    },
+    {
+      "shape": "D_notemp",
+      "i": 8,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 17332,
+      "cost": {
+        "input_tokens": 4760,
+        "candidates_tokens": 685,
+        "thoughts_tokens": 2884,
+        "total_tokens": 8329,
+        "cost_as_deployed": 0.0061,
+        "cost_with_thinking": 0.017,
+        "understated_by": 0.0108,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming single-bowl 'boy kibble' (beef and rice) for high-protein efficiency\",\n    \"evidence_url\":",
+      "body_chars": 2312
+    },
+    {
+      "shape": "D_notemp",
+      "i": 9,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 24511,
+      "cost": {
+        "input_tokens": 5514,
+        "candidates_tokens": 1067,
+        "thoughts_tokens": 5204,
+        "total_tokens": 11785,
+        "cost_as_deployed": 0.0081,
+        "cost_with_thinking": 0.0277,
+        "understated_by": 0.0195,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 3,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Taking targeted cortisol-lowering supplements to combat chronic st",
+      "body_chars": 1998
+    },
+    {
+      "shape": "D_notemp",
+      "i": 10,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 24397,
+      "cost": {
+        "input_tokens": 5631,
+        "candidates_tokens": 1334,
+        "thoughts_tokens": 4328,
+        "total_tokens": 11293,
+        "cost_as_deployed": 0.0092,
+        "cost_with_thinking": 0.0255,
+        "understated_by": 0.0162,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming bovine colostrum supplements for gut permeability and immune defense\",\n    \"evidence_url\":",
+      "body_chars": 3412
+    },
+    {
+      "shape": "D_notemp",
+      "i": 11,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 16932,
+      "cost": {
+        "input_tokens": 5718,
+        "candidates_tokens": 556,
+        "thoughts_tokens": 2887,
+        "total_tokens": 9161,
+        "cost_as_deployed": 0.0064,
+        "cost_with_thinking": 0.0172,
+        "understated_by": 0.0108,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting proactive fertilitymaxxing reproductive health protocols\",\n    \"evidence_url\": \"https://www",
+      "body_chars": 2005
+    },
+    {
+      "shape": "D_notemp",
+      "i": 12,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 29342,
+      "cost": {
+        "input_tokens": 5968,
+        "candidates_tokens": 1451,
+        "thoughts_tokens": 4174,
+        "total_tokens": 11593,
+        "cost_as_deployed": 0.0099,
+        "cost_with_thinking": 0.0256,
+        "understated_by": 0.0157,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 4,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Adopting post-meal 'fart walks' to reduce bloating and manage bloo",
+      "body_chars": 2807
+    },
+    {
+      "shape": "D_notemp",
+      "i": 13,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 20588,
+      "cost": {
+        "input_tokens": 6934,
+        "candidates_tokens": 593,
+        "thoughts_tokens": 3852,
+        "total_tokens": 11379,
+        "cost_as_deployed": 0.0074,
+        "cost_with_thinking": 0.0219,
+        "understated_by": 0.0144,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting 'boy kibble' single-bowl meal prep for frictionless protein\",\n    \"evidence_url\": \"https://",
+      "body_chars": 2194
+    },
+    {
+      "shape": "D_notemp",
+      "i": 14,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 24139,
+      "cost": {
+        "input_tokens": 5681,
+        "candidates_tokens": 1321,
+        "thoughts_tokens": 4596,
+        "total_tokens": 11598,
+        "cost_as_deployed": 0.0092,
+        "cost_with_thinking": 0.0264,
+        "understated_by": 0.0172,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming canned sardines as edible skincare for skin barrier health\",\n    \"evidence_url\": \"https://",
+      "body_chars": 3221
+    },
+    {
+      "shape": "D_notemp",
+      "i": 15,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 16482,
+      "cost": {
+        "input_tokens": 4411,
+        "candidates_tokens": 990,
+        "thoughts_tokens": 2971,
+        "total_tokens": 8372,
+        "cost_as_deployed": 0.007,
+        "cost_with_thinking": 0.0182,
+        "understated_by": 0.0111,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Sipping cortisol mocktails to regulate stress hormones and afternoon fatigue\",\n    \"evidence_url\": \"",
+      "body_chars": 2490
+    },
+    {
+      "shape": "D_notemp",
+      "i": 16,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 17980,
+      "cost": {
+        "input_tokens": 5451,
+        "candidates_tokens": 1079,
+        "thoughts_tokens": 3365,
+        "total_tokens": 9895,
+        "cost_as_deployed": 0.0081,
+        "cost_with_thinking": 0.0208,
+        "understated_by": 0.0126,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 3,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Taking methylene blue oral supplements as a cellular energy and no",
+      "body_chars": 2006
+    },
+    {
+      "shape": "D_notemp",
+      "i": 17,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 18415,
+      "cost": {
+        "input_tokens": 5281,
+        "candidates_tokens": 780,
+        "thoughts_tokens": 2593,
+        "total_tokens": 8654,
+        "cost_as_deployed": 0.0069,
+        "cost_with_thinking": 0.0166,
+        "understated_by": 0.0097,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 3,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming canned sardines as ingestible skincare\",\n    \"evidence_url\": \"https://vertexaisearch.cloud",
+      "body_chars": 2067
+    },
+    {
+      "shape": "D_notemp",
+      "i": 18,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 17043,
+      "cost": {
+        "input_tokens": 3969,
+        "candidates_tokens": 1028,
+        "thoughts_tokens": 2716,
+        "total_tokens": 7713,
+        "cost_as_deployed": 0.0068,
+        "cost_with_thinking": 0.017,
+        "understated_by": 0.0102,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting 'fertilitymaxxing' pre-conception wellness protocols\",\n    \"evidence_url\": \"https://vertexa",
+      "body_chars": 2400
+    },
+    {
+      "shape": "D_notemp",
+      "i": 19,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 24375,
+      "cost": {
+        "input_tokens": 5343,
+        "candidates_tokens": 1147,
+        "thoughts_tokens": 5036,
+        "total_tokens": 11526,
+        "cost_as_deployed": 0.0083,
+        "cost_with_thinking": 0.0272,
+        "understated_by": 0.0189,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 4,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Adopting fertilitymaxxing protocols to optimize male reproductive ",
+      "body_chars": 2374
+    },
+    {
+      "shape": "E_schema",
+      "i": 0,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 19762,
+      "cost": {
+        "input_tokens": 5770,
+        "candidates_tokens": 1502,
+        "thoughts_tokens": 2954,
+        "total_tokens": 10226,
+        "cost_as_deployed": 0.01,
+        "cost_with_thinking": 0.021,
+        "understated_by": 0.0111,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 4,
+      "empty": false,
+      "head_120": ". Mainstream health platforms are actively evaluating the trend as search interest surges around natural burnout solutio",
+      "body_chars": 3226
+    },
+    {
+      "shape": "E_schema",
+      "i": 1,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 20842,
+      "cost": {
+        "input_tokens": 4992,
+        "candidates_tokens": 987,
+        "thoughts_tokens": 3854,
+        "total_tokens": 9833,
+        "cost_as_deployed": 0.0074,
+        "cost_with_thinking": 0.0219,
+        "understated_by": 0.0145,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming canned sardines as ingestible skincare\",\n    \"evidence_url\": \"https://vertexaisearch.cloud",
+      "body_chars": 2470
+    },
+    {
+      "shape": "E_schema",
+      "i": 2,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 21633,
+      "cost": {
+        "input_tokens": 5910,
+        "candidates_tokens": 974,
+        "thoughts_tokens": 3914,
+        "total_tokens": 10798,
+        "cost_as_deployed": 0.0081,
+        "cost_with_thinking": 0.0228,
+        "understated_by": 0.0147,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting over-the-counter CGMs for metabolic health tracking\",\n    \"evidence_url\": \"https://vertexai",
+      "body_chars": 2607
+    },
+    {
+      "shape": "E_schema",
+      "i": 3,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 24072,
+      "cost": {
+        "input_tokens": 5911,
+        "candidates_tokens": 1115,
+        "thoughts_tokens": 4525,
+        "total_tokens": 11551,
+        "cost_as_deployed": 0.0086,
+        "cost_with_thinking": 0.0256,
+        "understated_by": 0.017,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming 'Boy Kibble' Minimalist High-Protein Meal Bowls\",\n    \"evidence_url\": \"https://vertexaisea",
+      "body_chars": 2881
+    },
+    {
+      "shape": "E_schema",
+      "i": 4,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 19747,
+      "cost": {
+        "input_tokens": 5554,
+        "candidates_tokens": 744,
+        "thoughts_tokens": 3206,
+        "total_tokens": 9504,
+        "cost_as_deployed": 0.007,
+        "cost_with_thinking": 0.019,
+        "understated_by": 0.012,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 2,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Adopting 'boy kibble' single-bowl functional nutrition meal prep\",",
+      "body_chars": 1323
+    },
+    {
+      "shape": "E_schema",
+      "i": 5,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 25033,
+      "cost": {
+        "input_tokens": 6452,
+        "candidates_tokens": 803,
+        "thoughts_tokens": 3923,
+        "total_tokens": 11178,
+        "cost_as_deployed": 0.0079,
+        "cost_with_thinking": 0.0226,
+        "understated_by": 0.0147,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 3,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Using OTC antihistamines for PMDD and perimenopause relief\",\n    \"evidence_url\": \"https://vertexaise",
+      "body_chars": 2247
+    },
+    {
+      "shape": "E_schema",
+      "i": 6,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 20984,
+      "cost": {
+        "input_tokens": 5807,
+        "candidates_tokens": 1177,
+        "thoughts_tokens": 3443,
+        "total_tokens": 10427,
+        "cost_as_deployed": 0.0088,
+        "cost_with_thinking": 0.0217,
+        "understated_by": 0.0129,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Drinking 'cortisol cocktails' to regulate adrenal health and daily stress\",\n    \"evidence_url\": \"htt",
+      "body_chars": 3144
+    },
+    {
+      "shape": "E_schema",
+      "i": 7,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 19225,
+      "cost": {
+        "input_tokens": 6013,
+        "candidates_tokens": 1009,
+        "thoughts_tokens": 3589,
+        "total_tokens": 10611,
+        "cost_as_deployed": 0.0083,
+        "cost_with_thinking": 0.0218,
+        "understated_by": 0.0135,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 3,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Drinking Citrus-Electrolyte Adrenal Cocktails for Cortisol Regulat",
+      "body_chars": 1832
+    },
+    {
+      "shape": "E_schema",
+      "i": 8,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 27086,
+      "cost": {
+        "input_tokens": 6314,
+        "candidates_tokens": 1010,
+        "thoughts_tokens": 4289,
+        "total_tokens": 11613,
+        "cost_as_deployed": 0.0085,
+        "cost_with_thinking": 0.0246,
+        "understated_by": 0.0161,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 3,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Consuming bovine colostrum powder for gut barrier integrity\",\n    ",
+      "body_chars": 1849
+    },
+    {
+      "shape": "E_schema",
+      "i": 9,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 27853,
+      "cost": {
+        "input_tokens": 7490,
+        "candidates_tokens": 1396,
+        "thoughts_tokens": 5215,
+        "total_tokens": 14101,
+        "cost_as_deployed": 0.0109,
+        "cost_with_thinking": 0.0304,
+        "understated_by": 0.0196,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Injecting unapproved research peptides for DIY body optimization\",\n    \"evidence_url\": \"https://vert",
+      "body_chars": 3667
+    },
+    {
+      "shape": "E_schema",
+      "i": 10,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 26183,
+      "cost": {
+        "input_tokens": 4898,
+        "candidates_tokens": 1744,
+        "thoughts_tokens": 4171,
+        "total_tokens": 10813,
+        "cost_as_deployed": 0.0102,
+        "cost_with_thinking": 0.0259,
+        "understated_by": 0.0156,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 6,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Repurposing OTC Antihistamines for Menstrual and Menopausal Mood Relief\",\n    \"evidence_url\": \"https",
+      "body_chars": 4048
+    },
+    {
+      "shape": "E_schema",
+      "i": 11,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 16963,
+      "cost": {
+        "input_tokens": 6034,
+        "candidates_tokens": 494,
+        "thoughts_tokens": 2899,
+        "total_tokens": 9427,
+        "cost_as_deployed": 0.0064,
+        "cost_with_thinking": 0.0172,
+        "understated_by": 0.0109,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Stacking OTC antihistamines for hormonal PMDD and perimenopause relief\",\n    \"evidence_url\": \"https:",
+      "body_chars": 1866
+    },
+    {
+      "shape": "E_schema",
+      "i": 12,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 16904,
+      "cost": {
+        "input_tokens": 4296,
+        "candidates_tokens": 996,
+        "thoughts_tokens": 2355,
+        "total_tokens": 7647,
+        "cost_as_deployed": 0.007,
+        "cost_with_thinking": 0.0158,
+        "understated_by": 0.0088,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 3,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Practicing 'low-cortisol maxxing' daily stress protocols\",\n    \"ev",
+      "body_chars": 1853
+    },
+    {
+      "shape": "E_schema",
+      "i": 13,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 19884,
+      "cost": {
+        "input_tokens": 5107,
+        "candidates_tokens": 1039,
+        "thoughts_tokens": 2298,
+        "total_tokens": 8444,
+        "cost_as_deployed": 0.0077,
+        "cost_with_thinking": 0.0163,
+        "understated_by": 0.0086,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming adrenal and cortisol cocktails for hormonal stress regulation\",\n    \"evidence_url\": \"https",
+      "body_chars": 2866
+    },
+    {
+      "shape": "E_schema",
+      "i": 14,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 17053,
+      "cost": {
+        "input_tokens": 4824,
+        "candidates_tokens": 1306,
+        "thoughts_tokens": 2544,
+        "total_tokens": 8674,
+        "cost_as_deployed": 0.0085,
+        "cost_with_thinking": 0.0181,
+        "understated_by": 0.0095,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 4,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Drinking extra virgin olive oil and lemon juice shots for gut heal",
+      "body_chars": 2521
+    },
+    {
+      "shape": "E_schema",
+      "i": 15,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 23302,
+      "cost": {
+        "input_tokens": 4820,
+        "candidates_tokens": 503,
+        "thoughts_tokens": 2509,
+        "total_tokens": 7832,
+        "cost_as_deployed": 0.0055,
+        "cost_with_thinking": 0.0149,
+        "understated_by": 0.0094,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming functional supplement lollipops for playful nutrient delivery\",\n    \"evidence_url\": \"https",
+      "body_chars": 1771
+    },
+    {
+      "shape": "E_schema",
+      "i": 16,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 16164,
+      "cost": {
+        "input_tokens": 5447,
+        "candidates_tokens": 974,
+        "thoughts_tokens": 2930,
+        "total_tokens": 9351,
+        "cost_as_deployed": 0.0077,
+        "cost_with_thinking": 0.0187,
+        "understated_by": 0.011,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming canned sardines as ingestible skincare\",\n    \"evidence_url\": \"https://vertexaisearch.cloud",
+      "body_chars": 2434
+    },
+    {
+      "shape": "E_schema",
+      "i": 17,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 22356,
+      "cost": {
+        "input_tokens": 5938,
+        "candidates_tokens": 1218,
+        "thoughts_tokens": 3454,
+        "total_tokens": 10610,
+        "cost_as_deployed": 0.009,
+        "cost_with_thinking": 0.022,
+        "understated_by": 0.013,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Booking elective DXA scans for bone density and muscle composition tracking\",\n    \"evidence_url\": \"h",
+      "body_chars": 3210
+    },
+    {
+      "shape": "E_schema",
+      "i": 18,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 21997,
+      "cost": {
+        "input_tokens": 6083,
+        "candidates_tokens": 702,
+        "thoughts_tokens": 4325,
+        "total_tokens": 11110,
+        "cost_as_deployed": 0.0072,
+        "cost_with_thinking": 0.0234,
+        "understated_by": 0.0162,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 3,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Batch-cooking utilitarian 'boy kibble' bowls for high-protein macro nutrition\",\n    \"evidence_url\": ",
+      "body_chars": 1840
+    },
+    {
+      "shape": "E_schema",
+      "i": 19,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 20227,
+      "cost": {
+        "input_tokens": 4609,
+        "candidates_tokens": 1015,
+        "thoughts_tokens": 3234,
+        "total_tokens": 8858,
+        "cost_as_deployed": 0.0073,
+        "cost_with_thinking": 0.0194,
+        "understated_by": 0.0121,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming canned sardines as a nutrient-dense ingestible skincare ritual\",\n    \"evidence_url\": \"http",
+      "body_chars": 2609
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 0,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 27918,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 856,
+        "thoughts_tokens": 5097,
+        "total_tokens": 14041,
+        "cost_as_deployed": 0.0033,
+        "cost_with_thinking": 0.016,
+        "understated_by": 0.0127,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Real-time hormone tracking via wearables\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.",
+      "body_chars": 2282
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 1,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 30727,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 1245,
+        "thoughts_tokens": 5215,
+        "total_tokens": 14536,
+        "cost_as_deployed": 0.0043,
+        "cost_with_thinking": 0.0173,
+        "understated_by": 0.013,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Exploring 'spermmaxxing' protocols for male reproductive health\",\n    \"evidence_url\": \"https://verte",
+      "body_chars": 3157
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 2,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 37305,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 1129,
+        "thoughts_tokens": 7067,
+        "total_tokens": 16317,
+        "cost_as_deployed": 0.004,
+        "cost_with_thinking": 0.0216,
+        "understated_by": 0.0177,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting AI as a Predictive Health Guardian\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.goog",
+      "body_chars": 2579
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 3,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 48933,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 2171,
+        "thoughts_tokens": 8718,
+        "total_tokens": 28177,
+        "cost_as_deployed": 0.0066,
+        "cost_with_thinking": 0.0284,
+        "understated_by": 0.0218,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 7,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting multi-ingredient gummy supplements for gender-specific wellness\",\n    \"evidence_url\": \"http",
+      "body_chars": 5094
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 4,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 26796,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 1833,
+        "thoughts_tokens": 3937,
+        "total_tokens": 14144,
+        "cost_as_deployed": 0.0057,
+        "cost_with_thinking": 0.0156,
+        "understated_by": 0.0098,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 7,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting rucking for everyday fitness and endurance\",\n    \"evidence_url\": \"https://vertexaisearch.cl",
+      "body_chars": 4670
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 5,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 35483,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 1137,
+        "thoughts_tokens": 6293,
+        "total_tokens": 15491,
+        "cost_as_deployed": 0.004,
+        "cost_with_thinking": 0.0197,
+        "understated_by": 0.0157,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"De-optimizing Wellness Routines\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/groun",
+      "body_chars": 2696
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 6,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 28370,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 1630,
+        "thoughts_tokens": 4776,
+        "total_tokens": 14632,
+        "cost_as_deployed": 0.0052,
+        "cost_with_thinking": 0.0172,
+        "understated_by": 0.0119,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Prioritizing emotional well-being via energy healing practices\",\n    \"evidence_url\": \"https://vertex",
+      "body_chars": 3678
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 7,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 26743,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 1077,
+        "thoughts_tokens": 4431,
+        "total_tokens": 14266,
+        "cost_as_deployed": 0.0038,
+        "cost_with_thinking": 0.0149,
+        "understated_by": 0.0111,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Embracing human-centric wellness over hyper-optimization\",\n    \"evidence_url\": \"https://vertexaisear",
+      "body_chars": 2646
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 8,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 21584,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 1190,
+        "thoughts_tokens": 3360,
+        "total_tokens": 12680,
+        "cost_as_deployed": 0.0041,
+        "cost_with_thinking": 0.0125,
+        "understated_by": 0.0084,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting Fertilitymaxxing for Reproductive Health Optimization\",\n    \"evidence_url\": \"https://vertex",
+      "body_chars": 2770
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 9,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 32736,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 1195,
+        "thoughts_tokens": 5496,
+        "total_tokens": 23162,
+        "cost_as_deployed": 0.0041,
+        "cost_with_thinking": 0.0179,
+        "understated_by": 0.0137,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Mainstreaming Lymphatic Drainage\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grou",
+      "body_chars": 2634
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 10,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 30732,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 918,
+        "thoughts_tokens": 6069,
+        "total_tokens": 15073,
+        "cost_as_deployed": 0.0034,
+        "cost_with_thinking": 0.0186,
+        "understated_by": 0.0152,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Performance Peptides\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-re",
+      "body_chars": 2290
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 11,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 33341,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 1825,
+        "thoughts_tokens": 5580,
+        "total_tokens": 15545,
+        "cost_as_deployed": 0.0057,
+        "cost_with_thinking": 0.0197,
+        "understated_by": 0.014,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 7,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming Olive Oil & Lemon Juice Shots\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.c",
+      "body_chars": 4402
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 12,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 18051,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 1010,
+        "thoughts_tokens": 3042,
+        "total_tokens": 12200,
+        "cost_as_deployed": 0.0037,
+        "cost_with_thinking": 0.0113,
+        "understated_by": 0.0076,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming olive oil and lemon juice shots\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google",
+      "body_chars": 2455
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 13,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 43230,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 1166,
+        "thoughts_tokens": 8646,
+        "total_tokens": 17969,
+        "cost_as_deployed": 0.0041,
+        "cost_with_thinking": 0.0257,
+        "understated_by": 0.0216,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting 'Maxxing' as extreme wellness pursuit\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.g",
+      "body_chars": 2775
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 14,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 59473,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 1113,
+        "thoughts_tokens": 8451,
+        "total_tokens": 26842,
+        "cost_as_deployed": 0.0039,
+        "cost_with_thinking": 0.0251,
+        "understated_by": 0.0211,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 3,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Evidence-Based Adaptogen Scrutiny / Lion's Mane Ascent\",\n    \"evidence_url\": \"https://vertexaisearch",
+      "body_chars": 2144
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 15,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 58749,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 577,
+        "thoughts_tokens": 12011,
+        "total_tokens": 46668,
+        "cost_as_deployed": 0.0026,
+        "cost_with_thinking": 0.0326,
+        "understated_by": 0.03,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 1,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting continuous biomarker tracking for hyper-personalized nutrition\",\n    \"evidence_url\": \"https",
+      "body_chars": 739
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 16,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 61030,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 2739,
+        "thoughts_tokens": 4716,
+        "total_tokens": 16857,
+        "cost_as_deployed": 0.008,
+        "cost_with_thinking": 0.0198,
+        "understated_by": 0.0118,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 7,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Longevity-Centric Living Spaces\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/groun",
+      "body_chars": 3893
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 17,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 33100,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 1690,
+        "thoughts_tokens": 5484,
+        "total_tokens": 15851,
+        "cost_as_deployed": 0.0054,
+        "cost_with_thinking": 0.0191,
+        "understated_by": 0.0137,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 6,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Targeted functional mushroom consumption for specific wellness outcomes\",\n    \"evidence_url\": \"https",
+      "body_chars": 4148
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 18,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 22558,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 1512,
+        "thoughts_tokens": 3173,
+        "total_tokens": 18535,
+        "cost_as_deployed": 0.0049,
+        "cost_with_thinking": 0.0129,
+        "understated_by": 0.0079,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 3,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Integrating everyday breathwork for stress and sleep\",\n    \"evidence_url\": \"https://vertexaisearch.c",
+      "body_chars": 1690
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 19,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 23661,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 1368,
+        "thoughts_tokens": 3923,
+        "total_tokens": 13393,
+        "cost_as_deployed": 0.0046,
+        "cost_with_thinking": 0.0144,
+        "understated_by": 0.0098,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting Hyrox-style functional fitness competitions\",\n    \"evidence_url\": \"https://vertexaisearch.c",
+      "body_chars": 3427
+    }
+  ]
+}

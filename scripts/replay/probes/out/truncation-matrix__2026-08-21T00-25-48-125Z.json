@@ -1,0 +1,440 @@
+{
+  "ticket": "CRMA-757",
+  "ran_at": "2026-08-21T00:25:48.126Z",
+  "prompt": {
+    "case_id": "wellness",
+    "chars": 15945,
+    "frozen_at": "2026-08-21T00:23:50.254Z",
+    "provenance": {
+      "discovery.gemini.search": {
+        "version": 4,
+        "registry_model": "gemini-2.5-flash",
+        "chars": 2509
+      }
+    }
+  },
+  "n_per_shape": 1,
+  "shapes": {
+    "A_prod": {
+      "model": "gemini-3.7-flash",
+      "why": "production's exact call shape — the baseline the ~1-in-5 rate was measured on",
+      "args": {
+        "system": null,
+        "tools": [
+          {
+            "google_search": {}
+          }
+        ],
+        "temperature": 0.5,
+        "thinkingLevel": null,
+        "maxOutputTokens": null,
+        "functionCallingMode": null,
+        "contents": "<frozen prompt, 15945 chars>"
+      }
+    },
+    "B_low": {
+      "model": "gemini-3.7-flash",
+      "why": "thinking_level low — failures correlated with high thinking-token counts",
+      "args": {
+        "system": null,
+        "tools": [
+          {
+            "google_search": {}
+          }
+        ],
+        "temperature": 0.5,
+        "thinkingLevel": "low",
+        "maxOutputTokens": null,
+        "functionCallingMode": null,
+        "contents": "<frozen prompt, 15945 chars>"
+      }
+    },
+    "C_high": {
+      "model": "gemini-3.7-flash",
+      "why": "thinking_level high — tests the correlation in the opposite direction",
+      "args": {
+        "system": null,
+        "tools": [
+          {
+            "google_search": {}
+          }
+        ],
+        "temperature": 0.5,
+        "thinkingLevel": "high",
+        "maxOutputTokens": null,
+        "functionCallingMode": null,
+        "contents": "<frozen prompt, 15945 chars>"
+      }
+    },
+    "D_notemp": {
+      "model": "gemini-3.7-flash",
+      "why": "temperature omitted — it is deprecated, and production still sends it",
+      "args": {
+        "system": null,
+        "tools": [
+          {
+            "google_search": {}
+          }
+        ],
+        "temperature": null,
+        "thinkingLevel": null,
+        "maxOutputTokens": null,
+        "functionCallingMode": null,
+        "contents": "<frozen prompt, 15945 chars>"
+      }
+    },
+    "E_schema": {
+      "model": "gemini-3.7-flash",
+      "why": "responseSchema + grounding (Preview on 3.7) — removes the fence entirely",
+      "args": {
+        "system": null,
+        "tools": [
+          {
+            "google_search": {}
+          }
+        ],
+        "temperature": 0.5,
+        "thinkingLevel": null,
+        "maxOutputTokens": null,
+        "functionCallingMode": null,
+        "responseSchema": {
+          "type": "ARRAY",
+          "items": {
+            "type": "OBJECT",
+            "properties": {
+              "topic": {
+                "type": "STRING"
+              },
+              "evidence_url": {
+                "type": "STRING"
+              },
+              "why_now": {
+                "type": "STRING"
+              },
+              "vertical": {
+                "type": "STRING"
+              }
+            },
+            "required": [
+              "topic",
+              "evidence_url",
+              "why_now",
+              "vertical"
+            ]
+          }
+        },
+        "contents": "<frozen prompt, 15945 chars>"
+      }
+    },
+    "Z_control_25": {
+      "model": "gemini-2.5-flash",
+      "why": "NEGATIVE CONTROL — CRMA-731 measured 0 truncations on this model",
+      "args": {
+        "system": null,
+        "tools": [
+          {
+            "google_search": {}
+          }
+        ],
+        "temperature": 0.5,
+        "thinkingLevel": null,
+        "maxOutputTokens": null,
+        "functionCallingMode": null,
+        "contents": "<frozen prompt, 15945 chars>"
+      }
+    }
+  },
+  "summary": [
+    {
+      "shape": "A_prod",
+      "model": "gemini-3.7-flash",
+      "why": "production's exact call shape — the baseline the ~1-in-5 rate was measured on",
+      "n": 1,
+      "api_errors": 0,
+      "clean": 1,
+      "truncated": 0,
+      "empty": 0,
+      "clean_rate": 1,
+      "mean_ms": 21006,
+      "mean_cost_usd": 0.025,
+      "mean_thought_tokens": 5178
+    },
+    {
+      "shape": "B_low",
+      "model": "gemini-3.7-flash",
+      "why": "thinking_level low — failures correlated with high thinking-token counts",
+      "n": 1,
+      "api_errors": 0,
+      "clean": 0,
+      "truncated": 1,
+      "empty": 0,
+      "clean_rate": 0,
+      "mean_ms": 19687,
+      "mean_cost_usd": 0.0189,
+      "mean_thought_tokens": 3178
+    },
+    {
+      "shape": "C_high",
+      "model": "gemini-3.7-flash",
+      "why": "thinking_level high — tests the correlation in the opposite direction",
+      "n": 1,
+      "api_errors": 0,
+      "clean": 1,
+      "truncated": 0,
+      "empty": 0,
+      "clean_rate": 1,
+      "mean_ms": 34566,
+      "mean_cost_usd": 0.0483,
+      "mean_thought_tokens": 9513
+    },
+    {
+      "shape": "D_notemp",
+      "model": "gemini-3.7-flash",
+      "why": "temperature omitted — it is deprecated, and production still sends it",
+      "n": 1,
+      "api_errors": 0,
+      "clean": 1,
+      "truncated": 0,
+      "empty": 0,
+      "clean_rate": 1,
+      "mean_ms": 32209,
+      "mean_cost_usd": 0.0311,
+      "mean_thought_tokens": 5646
+    },
+    {
+      "shape": "E_schema",
+      "model": "gemini-3.7-flash",
+      "why": "responseSchema + grounding (Preview on 3.7) — removes the fence entirely",
+      "n": 1,
+      "api_errors": 0,
+      "clean": 1,
+      "truncated": 0,
+      "empty": 0,
+      "clean_rate": 1,
+      "mean_ms": 18338,
+      "mean_cost_usd": 0.0211,
+      "mean_thought_tokens": 3825
+    },
+    {
+      "shape": "Z_control_25",
+      "model": "gemini-2.5-flash",
+      "why": "NEGATIVE CONTROL — CRMA-731 measured 0 truncations on this model",
+      "n": 1,
+      "api_errors": 0,
+      "clean": 1,
+      "truncated": 0,
+      "empty": 0,
+      "clean_rate": 1,
+      "mean_ms": 33195,
+      "mean_cost_usd": 0.0189,
+      "mean_thought_tokens": 6318
+    }
+  ],
+  "results": [
+    {
+      "shape": "A_prod",
+      "i": 0,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 21006,
+      "cost": {
+        "input_tokens": 4908,
+        "candidates_tokens": 497,
+        "thoughts_tokens": 5178,
+        "total_tokens": 10583,
+        "cost_as_deployed": 0.0055,
+        "cost_with_thinking": 0.025,
+        "understated_by": 0.0194,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Taking OTC antihistamines for PMDD and perimenopause symptom relief\",\n    \"evidence_url\": \"https://w",
+      "body_chars": 1783
+    },
+    {
+      "shape": "B_low",
+      "i": 0,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 19687,
+      "cost": {
+        "input_tokens": 4247,
+        "candidates_tokens": 1014,
+        "thoughts_tokens": 3178,
+        "total_tokens": 8439,
+        "cost_as_deployed": 0.007,
+        "cost_with_thinking": 0.0189,
+        "understated_by": 0.0119,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 3,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Preparing single-bowl 'boy kibble' for high-protein convenience\",\n",
+      "body_chars": 1940
+    },
+    {
+      "shape": "C_high",
+      "i": 0,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 34566,
+      "cost": {
+        "input_tokens": 8963,
+        "candidates_tokens": 1566,
+        "thoughts_tokens": 9513,
+        "total_tokens": 20042,
+        "cost_as_deployed": 0.0126,
+        "cost_with_thinking": 0.0483,
+        "understated_by": 0.0357,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 6,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Wearing over-the-counter CGMs for everyday metabolic optimization\",\n    \"evidence_url\": \"https://ver",
+      "body_chars": 3870
+    },
+    {
+      "shape": "D_notemp",
+      "i": 0,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 32209,
+      "cost": {
+        "input_tokens": 7978,
+        "candidates_tokens": 1059,
+        "thoughts_tokens": 5646,
+        "total_tokens": 14683,
+        "cost_as_deployed": 0.01,
+        "cost_with_thinking": 0.0311,
+        "understated_by": 0.0212,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming single-skillet 'boy kibble' for frictionless high-protein nutrition\",\n    \"evidence_url\": ",
+      "body_chars": 2633
+    },
+    {
+      "shape": "E_schema",
+      "i": 0,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 18338,
+      "cost": {
+        "input_tokens": 4198,
+        "candidates_tokens": 958,
+        "thoughts_tokens": 3825,
+        "total_tokens": 8981,
+        "cost_as_deployed": 0.0067,
+        "cost_with_thinking": 0.0211,
+        "understated_by": 0.0143,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming functional nutrient and electrolyte lollipops\",\n    \"evidence_url\": \"https://vertexaisearc",
+      "body_chars": 2457
+    },
+    {
+      "shape": "Z_control_25",
+      "i": 0,
+      "ok": true,
+      "model": "gemini-2.5-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 33195,
+      "cost": {
+        "input_tokens": 3820,
+        "candidates_tokens": 792,
+        "thoughts_tokens": 6318,
+        "total_tokens": 15206,
+        "cost_as_deployed": 0.0031,
+        "cost_with_thinking": 0.0189,
+        "understated_by": 0.0158,
+        "reconciles": "indeterminate",
+        "rate": {
+          "input": 0.3,
+          "output": 2.5
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 3,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Proteinmaxxing: Aggressively supplementing with protein-fortified foods\",\n    \"evidence_url\": \"https",
+      "body_chars": 1913
+    }
+  ]
+}

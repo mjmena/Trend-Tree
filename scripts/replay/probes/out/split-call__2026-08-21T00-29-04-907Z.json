@@ -1,0 +1,55 @@
+{
+  "ticket": "CRMA-757",
+  "option": "1 — two-call split (grounded prose, then ungrounded format)",
+  "ran_at": "2026-08-21T00:29:04.908Z",
+  "model": "gemini-3.7-flash",
+  "prompt": {
+    "case_id": "wellness",
+    "frozen_at": "2026-08-21T00:23:50.254Z",
+    "call1_chars": 15855
+  },
+  "n": 1,
+  "summary": {
+    "clean": 1,
+    "of": 1,
+    "mean_cost_usd": 0.0277,
+    "mean_ms": 27766,
+    "mean_items": 6,
+    "urls_emitted": 6,
+    "urls_invented": 0
+  },
+  "results": [
+    {
+      "i": 0,
+      "ok": true,
+      "call1": {
+        "finishReason": "STOP",
+        "chars": 2794,
+        "duration_ms": 24904,
+        "cost": 0.0209,
+        "thoughts": 3980,
+        "head_60": "1. Training for Hybrid Fitness Racing (HYROX)\nhttps://www.dw"
+      },
+      "call2": {
+        "finishReason": "STOP",
+        "duration_ms": 2862,
+        "cost": 0.0068,
+        "thoughts": 938,
+        "head_ok": true,
+        "parses_direct": true,
+        "direct_items": 6,
+        "head_120": "[{\"topic\":\"Training for Hybrid Fitness Racing (HYROX)\",\"evidence_url\":\"https://www.dw.com/en/how-germanys-hyrox-became-a",
+        "body_chars": 3157
+      },
+      "items": 6,
+      "fidelity": {
+        "urls_in_notes": 6,
+        "urls_emitted": 6,
+        "urls_traceable_to_notes": 6,
+        "invented": 0
+      },
+      "total_cost": 0.0277,
+      "total_ms": 27766
+    }
+  ]
+}

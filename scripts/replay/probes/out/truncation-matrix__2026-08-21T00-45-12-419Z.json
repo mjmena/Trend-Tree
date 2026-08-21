@@ -1,0 +1,929 @@
+{
+  "ticket": "CRMA-757",
+  "ran_at": "2026-08-21T00:45:12.421Z",
+  "prompt": {
+    "case_id": "food-drink",
+    "chars": 15959,
+    "frozen_at": "2026-08-21T00:43:15.148Z",
+    "provenance": {
+      "discovery.gemini.search": {
+        "version": 4,
+        "registry_model": "gemini-2.5-flash",
+        "chars": 2509
+      }
+    }
+  },
+  "n_per_shape": 25,
+  "shapes": {
+    "A_prod": {
+      "model": "gemini-3.7-flash",
+      "why": "production's exact call shape — the baseline the ~1-in-5 rate was measured on",
+      "args": {
+        "system": null,
+        "tools": [
+          {
+            "google_search": {}
+          }
+        ],
+        "temperature": 0.5,
+        "thinkingLevel": null,
+        "maxOutputTokens": null,
+        "functionCallingMode": null,
+        "contents": "<frozen prompt, 15959 chars>"
+      }
+    }
+  },
+  "summary": [
+    {
+      "shape": "A_prod",
+      "model": "gemini-3.7-flash",
+      "why": "production's exact call shape — the baseline the ~1-in-5 rate was measured on",
+      "n": 25,
+      "api_errors": 0,
+      "clean": 18,
+      "truncated": 7,
+      "empty": 0,
+      "clean_rate": 0.72,
+      "mean_ms": 20654,
+      "mean_cost_usd": 0.0205,
+      "mean_thought_tokens": 3358
+    }
+  ],
+  "results": [
+    {
+      "shape": "A_prod",
+      "i": 0,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 19301,
+      "cost": {
+        "input_tokens": 4316,
+        "candidates_tokens": 1207,
+        "thoughts_tokens": 2415,
+        "total_tokens": 7938,
+        "cost_as_deployed": 0.0078,
+        "cost_with_thinking": 0.0168,
+        "understated_by": 0.0091,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Ordering mini cocktails and flight pours for low-commitment social sipping\",\n    \"evidence_url\": \"ht",
+      "body_chars": 2998
+    },
+    {
+      "shape": "A_prod",
+      "i": 1,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 17302,
+      "cost": {
+        "input_tokens": 5319,
+        "candidates_tokens": 519,
+        "thoughts_tokens": 2708,
+        "total_tokens": 8546,
+        "cost_as_deployed": 0.0059,
+        "cost_with_thinking": 0.0161,
+        "understated_by": 0.0102,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Ordering Sgroppinos and Sorbet-Infused Hybrid Cocktails\",\n    \"evidence_url\": \"https://simpsonsbever",
+      "body_chars": 1911
+    },
+    {
+      "shape": "A_prod",
+      "i": 2,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 13716,
+      "cost": {
+        "input_tokens": 4080,
+        "candidates_tokens": 635,
+        "thoughts_tokens": 2682,
+        "total_tokens": 7397,
+        "cost_as_deployed": 0.0054,
+        "cost_with_thinking": 0.0155,
+        "understated_by": 0.0101,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Drinking ready-to-drink collagen-infused iced teas for ingestible beauty\",\n    \"evidence_url\": \"http",
+      "body_chars": 2266
+    },
+    {
+      "shape": "A_prod",
+      "i": 3,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 18311,
+      "cost": {
+        "input_tokens": 5103,
+        "candidates_tokens": 1309,
+        "thoughts_tokens": 3305,
+        "total_tokens": 9717,
+        "cost_as_deployed": 0.0087,
+        "cost_with_thinking": 0.0211,
+        "understated_by": 0.0124,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting collagen-infused RTD iced teas for ingestible beauty\",\n    \"evidence_url\": \"https://vertexa",
+      "body_chars": 3261
+    },
+    {
+      "shape": "A_prod",
+      "i": 4,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 22173,
+      "cost": {
+        "input_tokens": 4704,
+        "candidates_tokens": 1062,
+        "thoughts_tokens": 2835,
+        "total_tokens": 8601,
+        "cost_as_deployed": 0.0075,
+        "cost_with_thinking": 0.0181,
+        "understated_by": 0.0106,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Topping at-home iced beverages with aerosol cold foam cans\",\n    \"evidence_url\": \"https://vertexaise",
+      "body_chars": 2720
+    },
+    {
+      "shape": "A_prod",
+      "i": 5,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 23397,
+      "cost": {
+        "input_tokens": 4950,
+        "candidates_tokens": 1353,
+        "thoughts_tokens": 4020,
+        "total_tokens": 10323,
+        "cost_as_deployed": 0.0088,
+        "cost_with_thinking": 0.0239,
+        "understated_by": 0.0151,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming ancient regional heritage beverages for functional wellness\",\n    \"evidence_url\": \"https:/",
+      "body_chars": 3315
+    },
+    {
+      "shape": "A_prod",
+      "i": 6,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 15830,
+      "cost": {
+        "input_tokens": 5703,
+        "candidates_tokens": 834,
+        "thoughts_tokens": 3173,
+        "total_tokens": 9710,
+        "cost_as_deployed": 0.0074,
+        "cost_with_thinking": 0.0193,
+        "understated_by": 0.0119,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 5,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"food-drink\"\n  },\n  {\n    \"topic\": \"Eating globally spiced variations of classic American comfort fo",
+      "body_chars": 2360
+    },
+    {
+      "shape": "A_prod",
+      "i": 7,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 22147,
+      "cost": {
+        "input_tokens": 5266,
+        "candidates_tokens": 1317,
+        "thoughts_tokens": 4310,
+        "total_tokens": 10893,
+        "cost_as_deployed": 0.0089,
+        "cost_with_thinking": 0.0251,
+        "understated_by": 0.0162,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 4,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"food-drink\"\n  },\n  {\n    \"topic\": \"Switching to whole-fat dairy milk for satiety and nutrient densi",
+      "body_chars": 2495
+    },
+    {
+      "shape": "A_prod",
+      "i": 8,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 14473,
+      "cost": {
+        "input_tokens": 4319,
+        "candidates_tokens": 964,
+        "thoughts_tokens": 1999,
+        "total_tokens": 7282,
+        "cost_as_deployed": 0.0069,
+        "cost_with_thinking": 0.0144,
+        "understated_by": 0.0075,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Ordering and mixing hybrid sgroppino sorbet cocktails and mocktails\",\n    \"evidence_url\": \"https://v",
+      "body_chars": 2337
+    },
+    {
+      "shape": "A_prod",
+      "i": 9,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 21698,
+      "cost": {
+        "input_tokens": 5106,
+        "candidates_tokens": 1420,
+        "thoughts_tokens": 3186,
+        "total_tokens": 9712,
+        "cost_as_deployed": 0.0092,
+        "cost_with_thinking": 0.0211,
+        "understated_by": 0.0119,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 6,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Ordering tonnato-sauced dishes and bar snacks\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.go",
+      "body_chars": 3516
+    },
+    {
+      "shape": "A_prod",
+      "i": 10,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 17750,
+      "cost": {
+        "input_tokens": 6544,
+        "candidates_tokens": 598,
+        "thoughts_tokens": 3495,
+        "total_tokens": 10637,
+        "cost_as_deployed": 0.0072,
+        "cost_with_thinking": 0.0203,
+        "understated_by": 0.0131,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 3,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"food-drink\"\n  },\n  {\n    \"topic\": \"Drinking Tart Cherry Sekanjabin Shrubs for Athletic Recovery\",\n ",
+      "body_chars": 1482
+    },
+    {
+      "shape": "A_prod",
+      "i": 11,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 18004,
+      "cost": {
+        "input_tokens": 4904,
+        "candidates_tokens": 1268,
+        "thoughts_tokens": 3004,
+        "total_tokens": 9176,
+        "cost_as_deployed": 0.0084,
+        "cost_with_thinking": 0.0197,
+        "understated_by": 0.0113,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Collecting limited-edition drop-culture beverage cans and packaging\",\n    \"evidence_url\": \"https://v",
+      "body_chars": 3078
+    },
+    {
+      "shape": "A_prod",
+      "i": 12,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 13425,
+      "cost": {
+        "input_tokens": 4228,
+        "candidates_tokens": 1044,
+        "thoughts_tokens": 1955,
+        "total_tokens": 7227,
+        "cost_as_deployed": 0.0071,
+        "cost_with_thinking": 0.0144,
+        "understated_by": 0.0073,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming canned sardines as ingestible beauty food for skincare\",\n    \"evidence_url\": \"https://vert",
+      "body_chars": 2623
+    },
+    {
+      "shape": "A_prod",
+      "i": 13,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 17491,
+      "cost": {
+        "input_tokens": 5143,
+        "candidates_tokens": 1058,
+        "thoughts_tokens": 2487,
+        "total_tokens": 8688,
+        "cost_as_deployed": 0.0078,
+        "cost_with_thinking": 0.0172,
+        "understated_by": 0.0093,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Blending and ordering sour Diet Coke frozen slushies\",\n    \"evidence_url\": \"https://vertexaisearch.c",
+      "body_chars": 2628
+    },
+    {
+      "shape": "A_prod",
+      "i": 14,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 30419,
+      "cost": {
+        "input_tokens": 5556,
+        "candidates_tokens": 1209,
+        "thoughts_tokens": 4643,
+        "total_tokens": 11408,
+        "cost_as_deployed": 0.0087,
+        "cost_with_thinking": 0.0261,
+        "understated_by": 0.0174,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Replacing sweet breakfast bowls with savory global-style oatmeal\",\n    \"evidence_url\": \"https://vert",
+      "body_chars": 3004
+    },
+    {
+      "shape": "A_prod",
+      "i": 15,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 19643,
+      "cost": {
+        "input_tokens": 6570,
+        "candidates_tokens": 550,
+        "thoughts_tokens": 3417,
+        "total_tokens": 10537,
+        "cost_as_deployed": 0.007,
+        "cost_with_thinking": 0.0198,
+        "understated_by": 0.0128,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Drinking RTD canned and stick-pack matcha\",\n    \"evidence_url\": \"https://www.foodnavigator-usa.com/A",
+      "body_chars": 1804
+    },
+    {
+      "shape": "A_prod",
+      "i": 16,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 25311,
+      "cost": {
+        "input_tokens": 8359,
+        "candidates_tokens": 1077,
+        "thoughts_tokens": 6921,
+        "total_tokens": 16357,
+        "cost_as_deployed": 0.0103,
+        "cost_with_thinking": 0.0363,
+        "understated_by": 0.026,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 3,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"food-drink\"\n  },\n  {\n    \"topic\": \"Purchasing globally-infused frozen and packaged comfort foods\",\n",
+      "body_chars": 2018
+    },
+    {
+      "shape": "A_prod",
+      "i": 17,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 22804,
+      "cost": {
+        "input_tokens": 6805,
+        "candidates_tokens": 685,
+        "thoughts_tokens": 4071,
+        "total_tokens": 11561,
+        "cost_as_deployed": 0.0077,
+        "cost_with_thinking": 0.0229,
+        "understated_by": 0.0153,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 4,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"food-drink\"\n  },\n  {\n    \"topic\": \"Selecting occasion-specific functional non-alcoholic beverages\",",
+      "body_chars": 1907
+    },
+    {
+      "shape": "A_prod",
+      "i": 18,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 18520,
+      "cost": {
+        "input_tokens": 4842,
+        "candidates_tokens": 1031,
+        "thoughts_tokens": 2367,
+        "total_tokens": 8240,
+        "cost_as_deployed": 0.0075,
+        "cost_with_thinking": 0.0164,
+        "understated_by": 0.0089,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Ordering Ube and Root-Vegetable Cold Foam Beverages\",\n    \"evidence_url\": \"https://vertexaisearch.cl",
+      "body_chars": 2556
+    },
+    {
+      "shape": "A_prod",
+      "i": 19,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 38992,
+      "cost": {
+        "input_tokens": 5995,
+        "candidates_tokens": 1621,
+        "thoughts_tokens": 5071,
+        "total_tokens": 12687,
+        "cost_as_deployed": 0.0106,
+        "cost_with_thinking": 0.0296,
+        "understated_by": 0.019,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 5,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"food-drink\"\n  },\n  {\n    \"topic\": \"Consuming and making pistachio kataifi 'Dubai chocolate' bars\",\n",
+      "body_chars": 3176
+    },
+    {
+      "shape": "A_prod",
+      "i": 20,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 30608,
+      "cost": {
+        "input_tokens": 5577,
+        "candidates_tokens": 941,
+        "thoughts_tokens": 2781,
+        "total_tokens": 9299,
+        "cost_as_deployed": 0.0077,
+        "cost_with_thinking": 0.0181,
+        "understated_by": 0.0104,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Adopting 'sardinemaxxing' diets via high-volume tinned fish consumption\",\n    \"evidence_url\": \"https",
+      "body_chars": 2373
+    },
+    {
+      "shape": "A_prod",
+      "i": 21,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 16850,
+      "cost": {
+        "input_tokens": 6276,
+        "candidates_tokens": 1003,
+        "thoughts_tokens": 3269,
+        "total_tokens": 10548,
+        "cost_as_deployed": 0.0085,
+        "cost_with_thinking": 0.0207,
+        "understated_by": 0.0123,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": false,
+      "parses_direct": false,
+      "direct_items": null,
+      "recovered_items": 3,
+      "empty": false,
+      "head_120": ".\",\n    \"vertical\": \"food-drink\"\n  },\n  {\n    \"topic\": \"Drinking high-ABV single-serve ready-to-drink party cocktails\",\n",
+      "body_chars": 1790
+    },
+    {
+      "shape": "A_prod",
+      "i": 22,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 23287,
+      "cost": {
+        "input_tokens": 5385,
+        "candidates_tokens": 1307,
+        "thoughts_tokens": 4592,
+        "total_tokens": 11284,
+        "cost_as_deployed": 0.0089,
+        "cost_with_thinking": 0.0262,
+        "understated_by": 0.0172,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Sardinemaxxing: Consuming tinned sardines for omega-3s and rapid ketosis\",\n    \"evidence_url\": \"http",
+      "body_chars": 3136
+    },
+    {
+      "shape": "A_prod",
+      "i": 23,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 15403,
+      "cost": {
+        "input_tokens": 5032,
+        "candidates_tokens": 584,
+        "thoughts_tokens": 2806,
+        "total_tokens": 8422,
+        "cost_as_deployed": 0.006,
+        "cost_with_thinking": 0.0165,
+        "understated_by": 0.0105,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 4,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Sweetening snacks and bakery goods with whole dates over sugar alternatives\",\n    \"evidence_url\": \"h",
+      "body_chars": 1928
+    },
+    {
+      "shape": "A_prod",
+      "i": 24,
+      "ok": true,
+      "model": "gemini-3.7-flash",
+      "finishReason": "STOP",
+      "parts_len": 1,
+      "duration_ms": 19493,
+      "cost": {
+        "input_tokens": 4505,
+        "candidates_tokens": 1156,
+        "thoughts_tokens": 2448,
+        "total_tokens": 8109,
+        "cost_as_deployed": 0.0077,
+        "cost_with_thinking": 0.0169,
+        "understated_by": 0.0092,
+        "reconciles": "candidates_excludes_thinking",
+        "rate": {
+          "input": 0.75,
+          "output": 3.75,
+          "until": "2026-12-31",
+          "after": {
+            "input": 1.5,
+            "output": 7.5
+          }
+        }
+      },
+      "head_ok": true,
+      "parses_direct": true,
+      "direct_items": 5,
+      "recovered_items": null,
+      "empty": false,
+      "head_120": "[\n  {\n    \"topic\": \"Consuming Dubai pistachio and crispy kataifi chocolate bars\",\n    \"evidence_url\": \"https://vertexais",
+      "body_chars": 2953
+    }
+  ]
+}
