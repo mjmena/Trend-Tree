@@ -33,9 +33,16 @@ from prediction_service.saturation.weigh import (
 )
 
 
-def _item(lookup: SaturationLookup, reading: ArticleBreadth) -> WeighingItem:
+def _item(
+    lookup: SaturationLookup,
+    reading: ArticleBreadth,
+    *,
+    prediction_id: str = "pred-rucking-vests",
+    subject: str = "rucking vests",
+) -> WeighingItem:
     return WeighingItem(
-        subject_descriptor="rucking vests",
+        prediction_id=prediction_id,
+        subject_descriptor=subject,
         directional_claim="mass-market retail adoption expands",
         horizon_band="emerging_3_6mo",
         observable_check="Target lists a house-label weighted vest under 20 lb",
@@ -163,17 +170,31 @@ def test_the_user_turn_refuses_an_empty_batch():
         build_weighing_user_prompt([])
 
 
-def test_the_prompt_demands_the_subject_be_echoed_back():
+def test_the_prompt_demands_the_identity_and_the_subject_be_echoed_back():
     # The binding the parser enforces has to be asked for, or every entry is
-    # skipped and the whole pass silently degrades to "unweighed".
+    # skipped and the whole pass silently degrades to "unweighed". The
+    # PREDICTION_ID is the field that binds -- two calls in one run can share
+    # a subject descriptor and never share an id -- so the prompt has to show
+    # it and ask for it back.
     system = build_weighing_system_prompt()
 
+    assert '"prediction_id": "<the prediction_id shown for id 1, copied exactly>"' in system
     assert '"subject": "<the subject shown for id 1, copied exactly>"' in system
+    assert "they can never share a prediction_id" in system
     assert "do NOT renumber, re-sort or reorder" in system
     assert "DISCARDED" in system
-    assert "echoing that id's subject" in build_weighing_user_prompt(
-        [_item(PEAKED, BROAD)]
-    )
+    user = build_weighing_user_prompt([_item(PEAKED, BROAD)])
+    assert "prediction_id: pred-rucking-vests" in user
+    assert "echoing that id's prediction_id" in user
+
+
+def test_a_discarded_entry_is_told_to_the_model_as_keeping_its_own_number():
+    # The invariant in the prompt as well as in the code: nothing about this
+    # binding rejects a call. A discarded entry means "keep what you had".
+    system = build_weighing_system_prompt()
+
+    assert "A discarded entry is not a rejected call" in system
+    assert "Nothing is excluded." in system
 
 
 def test_a_fallback_classification_is_labelled_with_the_window_it_came_from():
@@ -239,10 +260,20 @@ def test_the_fuzzy_candidates_reach_the_model_that_is_asked_to_judge_the_match()
 # --- the parser ------------------------------------------------------------
 
 SUBJECTS = ["rucking vests", "cottage cheese", "head spa"]
+IDS = ["pred-rucking-vests", "pred-cottage-cheese", "pred-head-spa"]
 
 
 def _reply(*entries) -> str:
     return json.dumps({"weighings": list(entries)})
+
+
+def parse(text, *, subjects=None, prediction_ids=None):
+    """``parse_weighings`` for a batch, defaulting the ids to the batch's
+    own. Both sequences describe the same batch, in the order it was
+    rendered."""
+    subs = list(SUBJECTS if subjects is None else subjects)
+    ids = list(IDS[: len(subs)] if prediction_ids is None else prediction_ids)
+    return parse_weighings(text, prediction_ids=ids, subjects=subs)
 
 
 def test_a_restatement_is_read_back_by_id_and_bound_to_its_subject():
@@ -250,7 +281,7 @@ def test_a_restatement_is_read_back_by_id_and_bound_to_its_subject():
         {"id": 2, "subject": "cottage cheese", "confidence": 41.5, "reasoning": "ET says peaked"}
     )
 
-    weighings = parse_weighings(reply, subjects=SUBJECTS)
+    weighings = parse(reply)
 
     assert set(weighings) == {2}
     assert weighings[2].confidence == 41.5
@@ -264,7 +295,7 @@ def test_the_subject_is_matched_case_and_whitespace_insensitively():
         {"id": 1, "subject": "Rucking  Vests", "confidence": 40, "reasoning": "same call"}
     )
 
-    assert parse_weighings(reply, subjects=SUBJECTS)[1].reasoning == "same call"
+    assert parse(reply)[1].reasoning == "same call"
 
 
 def test_a_resorted_renumbered_reply_swaps_nothing():
@@ -281,7 +312,7 @@ def test_a_resorted_renumbered_reply_swaps_nothing():
 
     # Nothing is bound, so both calls keep generation's own confidence and
     # reasoning. A skip is not a gate: it means "keep your own number".
-    assert parse_weighings(reply, subjects=SUBJECTS) == {}
+    assert parse(reply) == {}
 
 
 def test_a_restatement_naming_another_subject_is_skipped():
@@ -290,7 +321,7 @@ def test_a_restatement_naming_another_subject_is_skipped():
         {"id": 2, "subject": "cottage cheese", "confidence": 44, "reasoning": "right call"},
     )
 
-    weighings = parse_weighings(reply, subjects=SUBJECTS)
+    weighings = parse(reply)
 
     assert set(weighings) == {2}
     assert weighings[2].confidence == 44
@@ -301,7 +332,7 @@ def test_a_restatement_with_no_subject_key_is_skipped():
     # and position is not evidence that it belongs to one.
     reply = _reply({"id": 1, "confidence": 40, "reasoning": "which call is this about?"})
 
-    assert parse_weighings(reply, subjects=SUBJECTS) == {}
+    assert parse(reply) == {}
 
 
 @pytest.mark.parametrize(
@@ -323,7 +354,7 @@ def test_a_malformed_restatement_is_absent_rather_than_invented(entry):
     # Absent means the caller keeps generation's own number. A parser that
     # filled in a default would be the mechanical discount this whole design
     # exists to avoid.
-    assert parse_weighings(json.dumps({"weighings": [entry]}), subjects=SUBJECTS[:2]) == {}
+    assert parse(json.dumps({"weighings": [entry]}), subjects=SUBJECTS[:2]) == {}
 
 
 def test_the_first_restatement_for_an_id_wins():
@@ -332,7 +363,7 @@ def test_the_first_restatement_for_an_id_wins():
         {"id": 1, "subject": "rucking vests", "confidence": 90, "reasoning": "second"},
     )
 
-    assert parse_weighings(reply, subjects=SUBJECTS[:1])[1].reasoning == "first"
+    assert parse(reply, subjects=SUBJECTS[:1])[1].reasoning == "first"
 
 
 def test_an_over_long_reasoning_is_trimmed_to_its_ledger_column():
@@ -340,15 +371,15 @@ def test_an_over_long_reasoning_is_trimmed_to_its_ledger_column():
         {"id": 1, "subject": "rucking vests", "confidence": 50, "reasoning": "x" * 6000}
     )
 
-    assert len(parse_weighings(reply, subjects=SUBJECTS[:1])[1].reasoning) == 4000
+    assert len(parse(reply, subjects=SUBJECTS[:1])[1].reasoning) == 4000
 
 
 def test_a_reply_without_the_key_is_refused_rather_than_read_as_empty():
     with pytest.raises(UnparseableWeighing, match="no 'weighings' key"):
-        parse_weighings(json.dumps({"predictions": []}), subjects=SUBJECTS[:1])
+        parse(json.dumps({"predictions": []}), subjects=SUBJECTS[:1])
 
     with pytest.raises(UnparseableWeighing, match="must be a list"):
-        parse_weighings(json.dumps({"weighings": {"1": {}}}), subjects=SUBJECTS[:1])
+        parse(json.dumps({"weighings": {"1": {}}}), subjects=SUBJECTS[:1])
 
 
 def test_a_fenced_reply_is_still_read():
@@ -357,4 +388,98 @@ def test_a_fenced_reply_is_still_read():
         '"confidence": 50, "reasoning": "ok"}]}\n```'
     )
 
-    assert parse_weighings(reply, subjects=SUBJECTS[:1])[1].confidence == 50
+    assert parse(reply, subjects=SUBJECTS[:1])[1].confidence == 50
+
+
+# --- the binding key: PREDICTION_ID, not the subject -----------------------
+#
+# Found during CRMA-766's review of the sweep, which had the same bug and
+# fixed it first (sweep/parse.py). SUBJECT_DESCRIPTOR is not unique:
+# generation dedupes on the whole four-part claim, so one reply can mint two
+# candidates that share a subject and differ in their directional claim.
+
+SAME_SUBJECT = ["rucking vests", "rucking vests"]
+SAME_SUBJECT_IDS = ["pred-one", "pred-two"]
+
+
+def _same_subject_entry(index, prediction_id, *, confidence):
+    return {
+        "id": index,
+        "prediction_id": prediction_id,
+        "subject": "rucking vests",
+        "confidence": confidence,
+        "reasoning": f"the case for {prediction_id}",
+    }
+
+
+def test_two_calls_on_the_same_subject_cannot_be_swapped():
+    swapped = _reply(
+        _same_subject_entry(1, "pred-two", confidence=95),
+        _same_subject_entry(2, "pred-one", confidence=40),
+    )
+
+    assert parse(swapped, subjects=SAME_SUBJECT, prediction_ids=SAME_SUBJECT_IDS) == {}
+
+
+def test_the_right_answers_for_two_same_subject_calls_still_bind():
+    # ...and the guard is not merely "a shared subject means nothing binds".
+    straight = _reply(
+        _same_subject_entry(1, "pred-one", confidence=40),
+        _same_subject_entry(2, "pred-two", confidence=95),
+    )
+
+    weighings = parse(straight, subjects=SAME_SUBJECT, prediction_ids=SAME_SUBJECT_IDS)
+
+    assert (weighings[1].confidence, weighings[2].confidence) == (40.0, 95.0)
+    assert weighings[1].reasoning == "the case for pred-one"
+
+
+def test_a_same_subject_entry_that_omits_the_identity_binds_to_neither():
+    # Without the id there is nothing in the entry that picks one of the two
+    # calls out, and position is not evidence. Both keep generation's number.
+    ambiguous = _reply(
+        {"id": 1, "subject": "rucking vests", "confidence": 40, "reasoning": "which one?"},
+        {"id": 2, "subject": "rucking vests", "confidence": 95, "reasoning": "or this one?"},
+    )
+
+    assert parse(ambiguous, subjects=SAME_SUBJECT, prediction_ids=SAME_SUBJECT_IDS) == {}
+
+
+def test_an_entry_whose_id_and_prediction_id_disagree_is_dropped():
+    reply = _reply(
+        {
+            "id": 1,
+            "prediction_id": IDS[1],
+            "subject": "rucking vests",
+            "confidence": 40,
+            "reasoning": "the right number under the wrong call",
+        }
+    )
+
+    assert parse(reply) == {}
+
+
+def test_an_entry_omitting_the_subject_still_binds_on_the_id():
+    # The id is the key; the subject is a second opinion when it is offered.
+    reply = _reply(
+        {"id": 1, "prediction_id": IDS[0], "confidence": 40, "reasoning": "bound by id"}
+    )
+
+    assert parse(reply)[1].reasoning == "bound by id"
+
+
+def test_an_entry_omitting_the_id_still_binds_on_an_unambiguous_subject():
+    # A PREDICTION_ID is minted fresh on the pass being weighed, so a recorded
+    # reply -- the offline loop's fixture, a route test's canned answer --
+    # cannot echo one. When the subject is unique in the batch it identifies
+    # the call exactly as well as the id would, so the entry binds.
+    reply = _reply(
+        {"id": 1, "subject": "rucking vests", "confidence": 40, "reasoning": "bound by subject"}
+    )
+
+    assert parse(reply)[1].reasoning == "bound by subject"
+
+
+def test_a_batch_whose_ids_and_subjects_disagree_in_length_is_refused():
+    with pytest.raises(ValueError, match="same batch"):
+        parse_weighings(_reply(), prediction_ids=IDS, subjects=SUBJECTS[:1])
