@@ -159,6 +159,16 @@ if [[ "$BUILD" == "1" ]]; then
   log "Appending layer onto ${BASE_IMAGE} and pushing..."
   tar -C "$CTX" -cf "$CTX/layer.tar" app
 
+  # Give crane its own throwaway Docker config, for two reasons. It keeps the
+  # Artifact Registry token out of ~/.docker/config.json, and it sidesteps a
+  # stale `credsStore` there: a machine that once had Docker Desktop keeps
+  # "credsStore": "desktop" long after the app is gone, and crane then fails
+  # even an ANONYMOUS pull of the base image with
+  #   error getting credentials - err: exec: "docker-credential-desktop":
+  #   executable file not found in $PATH
+  export DOCKER_CONFIG="$CTX/dockerconfig"
+  mkdir -p "$DOCKER_CONFIG"
+
   # Pipe the token to `crane auth login --password-stdin`; passing it as an
   # argv value would leave a live OAuth token in the process table.
   gcloud auth print-access-token \
