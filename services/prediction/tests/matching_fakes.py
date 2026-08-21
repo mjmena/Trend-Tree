@@ -221,7 +221,27 @@ class LedgerSimulator(RoutingFakeSnowflake):
             if current is None or _sort_key(row) > _sort_key(current):
                 latest[key] = row
 
-        live = [row for row in latest.values() if row.get("PREDICTION_STATUS") == "ACTIVE"]
+        # The statuses the reader asked for, read off the bind rather than
+        # assumed: the compare step asks for ACTIVE, the re-evaluation sweep
+        # asks for ACTIVE plus EXPIRED, and a simulator that always filtered
+        # to ACTIVE would silently hide the grace window from every sweep
+        # test.
+        wanted = {
+            str(status).upper()
+            for status in json.loads(str((params or {}).get("statuses") or '["ACTIVE"]'))
+        }
+        # The capped-scope filter is in the STATEMENT (CRMA-766), so the
+        # simulator has to honour it -- otherwise a route test asserting
+        # single-prediction mode would be exercising a client-side backstop
+        # rather than the read the deployed service issues.
+        raw_ids = (params or {}).get("prediction_ids")
+        wanted_ids = {str(pid) for pid in json.loads(str(raw_ids))} if raw_ids else None
+        live = [
+            row
+            for row in latest.values()
+            if str(row.get("PREDICTION_STATUS") or "").upper() in wanted
+            and (wanted_ids is None or str(row["PREDICTION_ID"]) in wanted_ids)
+        ]
         live.sort(key=_sort_key, reverse=newest_first)
         limit = int((params or {}).get("prediction_limit", len(live)))
         return [dict(row) for row in live[:limit]]
@@ -229,6 +249,11 @@ class LedgerSimulator(RoutingFakeSnowflake):
     def execute(self, sql: str, params: Mapping[str, Any] | None = None) -> int:
         rowcount = super().execute(sql, params)
         bound = dict(params or {})
+        if rowcount == 0:
+            # WHEN NOT MATCHED THEN INSERT: a MERGE that matched inserts
+            # nothing. A simulator that appended anyway would hide exactly the
+            # double-write a retry is supposed to be safe against.
+            return rowcount
         self.rows.append(
             {
                 "PREDICTION_ID": bound["prediction_id"],

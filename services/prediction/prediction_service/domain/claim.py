@@ -30,9 +30,15 @@ PredictionStatus = Literal[
     "WITHDRAWN",
 ]
 
-_VALID_STATUSES: frozenset[str] = frozenset(
+#: The ledger's status enum. Public because the re-evaluation sweep
+#: (CRMA-766) reads a *set* of statuses off the ledger and has to check the
+#: set it was given against the same vocabulary build_verdict enforces --
+#: two copies of an enum drift, and this one is bound into SQL.
+VALID_STATUSES: frozenset[str] = frozenset(
     {"ACTIVE", "RESOLVED_TRUE", "RESOLVED_FALSE", "EXPIRED", "WITHDRAWN"}
 )
+
+_VALID_STATUSES = VALID_STATUSES
 
 # Upper bound of each controlled band (strategy doc §7.5), in days.
 # HORIZON_AT is the timestamp by which the claim is due to be judged; the
@@ -144,10 +150,26 @@ class Claim:
             )
 
 
+def horizon_length(band: HorizonBand) -> timedelta:
+    """The band's own window.
+
+    Public because the grace window is exactly one of these past HORIZON_AT
+    (sweep/lifecycle.py): a prediction's re-check period is a property of its
+    frozen band, so it is derived from the same table the horizon date came
+    from rather than from any stored timestamp.
+    """
+    try:
+        return timedelta(days=_HORIZON_BAND_DAYS[band])
+    except KeyError as err:
+        raise InvalidClaim(
+            f"unknown horizon_band: {band!r} (expected one of {sorted(_HORIZON_BAND_DAYS)})"
+        ) from err
+
+
 def derive_horizon_at(band: HorizonBand, minted_at: datetime) -> datetime:
     """The real timestamp a horizon band resolves to, derived at mint (PRD:
     "HORIZON_AT is a real timestamp derived from the horizon band at mint")."""
-    return minted_at + timedelta(days=_HORIZON_BAND_DAYS[band])
+    return minted_at + horizon_length(band)
 
 
 @dataclass(frozen=True)

@@ -164,6 +164,21 @@ class SaturationPhase:
             ArticleBreadth(query=subject, available=False, error=ERROR_DEADLINE_EXCEEDED),
         )
 
+    def readings(self, subjects: list[str]) -> list[tuple[SaturationLookup, ArticleBreadth]]:
+        """Both oracles for each subject, in order, inside one wall-clock
+        budget -- the public seam.
+
+        ``weigh`` is the generation-side pass and does the floor, the lookups
+        and the weighing turn in one call. The re-evaluation sweep
+        (CRMA-766) needs only the lookups: the data-quality floor is a
+        MINT-time gate, and re-applying it to an already-minted prediction
+        would be a new mechanical rule that silently stops re-evaluating a
+        live call -- exactly the kind of thing the strategy says needs a
+        decision, not a commit. So the sweep refreshes ``EVIDENCE.saturation``
+        through this, and floors nothing.
+        """
+        return self._read_all(subjects)
+
     def _read_all(self, subjects: list[str]) -> list[tuple[SaturationLookup, ArticleBreadth]]:
         """Both oracles for each subject, in order, inside one wall-clock
         budget. See DEFAULT_LOOKUP_BUDGET_S for the arithmetic and for why the
