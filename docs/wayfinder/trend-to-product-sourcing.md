@@ -95,10 +95,11 @@ Measured state of the world. Falsified by re-measurement, never by a decision.
   retired — `sql/proc_promotion_apply.sql:261` states it outright. **Every trend also receives a
   `promotion_seed` ledger row at promotion carrying a topic-only vector**
   (`sql/proc_promotion_apply.sql:257-281`), so "has an enrichment row" is not the same
-  condition as "has been enriched". Verified 2026-08-20. **Not yet measured:** how many of the
-  ~484 trends hold a *non-seed* enrichment row. That number is the true size of the first poll
-  tick, and it is ≤ 484. Queries against `FCT_TREND_ENRICHMENT_LEDGER` timed out repeatedly on
-  2026-08-20; re-run before sizing the backfill.
+  condition as "has been enriched". Verified 2026-08-20. **Measured later that day at
+  CRMA-753**: 701 distinct trends hold a real (non-seed) enrichment row (`enrichment` 942
+  rows / 701 trends, `promotion` seeds 378/378, backfills 76/76, `lifecycle_request` 1/1);
+  **443** of them are live (non-RETIRED) with a persisted `TREND_VECTOR` — the size of the
+  first poll tick under a live-scoped poll.
 - **The taxonomy Marcelo asks for does not exist.** He specifies a "tertiary URL taxonomy
   subcategory". There is no URL taxonomy anywhere in this pipeline and no third level. What
   exists, both frozen at first enrichment on `FCT_TRENDS`: `CATEGORY`, a closed 14-value enum
@@ -186,7 +187,10 @@ Measured state of the world. Falsified by re-measurement, never by a decision.
   `Product Category` (Google taxonomy paths, 51 distinct) is present on 119 of 187. It is a
   multi-vendor Shopify Collective storefront; median price $35, range $5–603. **The export is
   a usable calibration corpus for the vector-space prototype** — the token remains necessary
-  only for the live sync path, not for calibration. Measured 2026-08-20.
+  only for the live sync path, not for calibration. **The catalog stocks no SPF or sun-care
+  product** — Marcelo's worked-example product ('brush-on mineral SPF powder') is not in the
+  store, so his literal test case is unrunnable against this catalog (measured at CRMA-753).
+  Measured 2026-08-20.
 - **Cloud Scheduler in `mcc-crm-automations` is self-service as of 2026-08-20.**
   `testIamPermissions` grants `cloudscheduler.jobs.create/list/run/update` and
   `cloudscheduler.googleapis.com` is enabled — superseding the fleet map's 2026-08-09 probe,
@@ -282,6 +286,14 @@ Settled decisions in binding present tense.
 - The Shopify token lands in **Secret Manager as `trend-tree-shopify-token`** — amending the
   CRMA-747 comment decision (Pipedream env var), which was premised on a Pipedream consumer.
   A Pipedream copy appears only if live hydration lands on the ecomm agent (open at CRMA-749).
+- Retrieval runs in **arctic-l/1024**, matching product vectors against the **persisted
+  `TREND_VECTOR`** on a trend's latest real enrichment row (`WRITTEN_BY <> 'promotion'`) —
+  no trend-side re-embed. The Shopify tier's embed doc is **`EMBED_DOC_VERSION='v1'`**:
+  `title. Type: <type>. Vendor: <vendor>. Tags: <tags>. <body_html stripped, first 600
+  chars>`, REST product-record fields only (`Type` skipped when it holds the literal `'0'`).
+  The Shopify tier's floor is **`SEMANTIC_THRESHOLD = 0.40`** — one global floor, not
+  category-aware — and retrieval shows the selector at most **`TOP_N = 10`** candidates,
+  score-descending. *Settled 2026-08-20 at CRMA-753.*
 
 ## Decisions so far
 
@@ -305,6 +317,9 @@ Settled decisions in binding present tense.
 - [Decide: catalog sync — cadence, change detection, and where product vectors live](https://mcclatchy.atlassian.net/browse/CRMA-752) — **Decided:** A Cloud Run job trend-tree-catalog-sync (`services/catalog-sync/`, daily Cloud Scheduler cron — self-service since the 2026-08-20 re-probe) does a full-catalog sweep diffed on an embed-doc hash into DIM_CATALOG_PRODUCT, soft-delisting disappeared products; staleness is guarded at the outcome layer only.
   **Binds:** CRMA-753's calibration corpus becomes DIM_CATALOG_PRODUCT and its embed doc owns EMBED_DOC_HASH/VERSION semantics; retrieval must filter `CATALOG_STATUS='active'`; the ecomm agent gains a 7-day freshness gate; the token home amends to Secret Manager `trend-tree-shopify-token` (CRMA-747 wizard updated); the spec's provisioning list adds the Cloud Scheduler cron and `run.jobs.run` for `crm-runtime@`.
 
+- [Prototype: calibrate the trend-to-product vector space — model, embed doc, threshold](https://mcclatchy.atlassian.net/browse/CRMA-753) — **Decided:** arctic-l/1024 against the persisted TREND_VECTOR (no trend-side re-embed; arctic-m/768 fails separation, 242/443 trends clearing a 0.45 top-1 vs 50/443); embed doc v1 = title/type/vendor/tags + 600-char stripped body, REST product-record fields only (the Google category adds nothing — correlation 0.997 without it); SEMANTIC_THRESHOLD=0.40, one global floor (a perfect match scored 0.45); TOP_N=10. Full readout: [crma-753-vector-calibration.md](assets/crma-753-vector-calibration.md).
+  **Binds:** CRMA-752's sync stays REST-only (the v1 doc needs no GraphQL-only field) and DIM_CATALOG_PRODUCT embeds doc v1. CRMA-754's selector receives ≤10 candidates ≥0.40, and its refusal permission is load-bearing in the 0.40–0.45 band — a perfect and a wrong match tied at 0.453, the inversion that justifies the selector, so retrieval is not collapsed. The first poll tick is measured: 443 live trends (701 counting RETIRED).
+
 ## Not yet specified
 
 - **Prompt versioning for the selector** — whether its prompt lands in `DIM_LLM_PROMPT` like
@@ -315,17 +330,10 @@ Settled decisions in binding present tense.
   still open is whether the ecomm agent will write it reliably: only about half of
   `FCT_TREND_ENRICHMENT_LEDGER` rows carry a cost value at all (`CRMA-442`), so the fleet's
   existing habit is not a clean model to copy.
-- **Whether the sourcing path should be built on GraphQL rather than REST.** REST
-  `products.json` is in maintenance mode and version 2026-04 expires 2027-04-16, so anything
-  built on it inherits a migration. REST is adequate while the embed doc draws only on the
-  product record, and collapses on cost the moment metafields or collection membership enter
-  it — both are inline on the GraphQL `Product` object. Sharpens once the embed doc is settled
-  at the calibration ticket; cost the migration before the doc grows, not after.
-- **Whether the selector's judgement is worth its latency** — still open, but CRMA-751 built the
-  apparatus to answer it: every candidate the selector saw is kept, carrying both `SEMANTIC_SCORE`
-  and `REASONED_FIT`. The measurement is to group by `REASONED_FIT` and inspect the score
-  distribution inside each group; a `strong` ranked below a `weak` is the inversion that justifies
-  the stage. If no such inversions appear, the selection stage may reduce to a threshold.
+- **A future embed-doc version that needs metafields or collection membership.** Doc v1
+  settled on REST product-record fields (CRMA-753), so GraphQL is off the table for now; it
+  returns only if a later doc version reaches for fields REST prices at one request per
+  product, or at the 2027-04-16 REST expiry already in Established facts.
 
 ## Out of scope
 
