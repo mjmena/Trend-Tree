@@ -47,12 +47,13 @@ WHEN NOT MATCHED THEN INSERT (
   PREDICTION_EVAL_ID, PREDICTION_ID, EVALUATED_AT, CHAIN_ID,
   SUBJECT_DESCRIPTOR, DIRECTIONAL_CLAIM, HORIZON_AT, HORIZON_BAND,
   OBSERVABLE_CHECK, CONFIDENCE, PREDICTION_STATUS, MATCHED_TREND_ID, EVIDENCE,
-  REASONING, WHAT_CHANGED, COMPUTATION_VERSION
+  REASONING, WHAT_CHANGED, ANGLE, AUDIENCE_QUESTION, COMPUTATION_VERSION
 ) VALUES (
   %(prediction_eval_id)s, %(prediction_id)s, %(evaluated_at)s, %(chain_id)s,
   %(subject_descriptor)s, %(directional_claim)s, %(horizon_at)s, %(horizon_band)s,
   %(observable_check)s, %(confidence)s, %(status)s,
   %(matched_trend_id)s, PARSE_JSON(%(evidence)s), %(reasoning)s, %(what_changed)s,
+  %(angle)s, %(audience_question)s,
   %(computation_version)s
 )
 """
@@ -76,5 +77,9 @@ def insert_params(verdict: Verdict) -> dict[str, Any]:
         "evidence": json.dumps(verdict.evidence),
         "reasoning": verdict.reasoning,
         "what_changed": verdict.what_changed,
+        # Strategist-facing narrative (CRMA-782). NULL on any row the model
+        # did not narrate, and on every row written before that change.
+        "angle": verdict.angle,
+        "audience_question": verdict.audience_question,
         "computation_version": COMPUTATION_VERSION,
     }

@@ -298,6 +298,41 @@ REASONING
   Say what the evidence is and why it supports THIS claim -- this text is
   shown to a strategist deciding whether to believe you.
 
+ANGLE and AUDIENCE_QUESTION -- the reader-facing half
+
+  Everything above is written to be GRADED. The subject is a machine-facing
+  noun, and the observable_check is a source plus a threshold, so that two
+  people looking at it on the horizon date write down the same verdict. That
+  is deliberate, and it is why none of it says why anyone should care.
+
+  These two fields are where that goes. Do NOT let them leak back into the
+  claim: the subject, the directional claim and the check keep the register
+  they already have.
+
+  angle -- ONE sentence, in ordinary reader-facing English, on why this
+    change matters. Name the human behavior underneath it, not the retail
+    mechanics of the check.
+
+      Claim:  "mainstream beauty retailers expand shelf placement of
+               color-changing UV detection patches"
+      Angle:  "Sunscreen compliance is becoming something you can see -- a
+               patch that changes color turns an invisible discipline into a
+               visible one, which is why it lands with parents before it
+               lands with skincare buyers."
+
+    Not the angle: "UV stickers are trending." That restates the claim in
+    softer words and tells a reader nothing they did not already have.
+
+  audience_question -- ONE question worth putting to readers, answerable by
+    an ordinary person from their own experience. "Would you trust a sticker
+    to tell you when to reapply?" -- not "What is the market size for UV
+    patches?"
+
+  Both are OPTIONAL and neither is a test you must pass. If a claim genuinely
+  has no angle beyond the claim itself, omit the field. A weak angle is worse
+  than none, and omitting one NEVER costs the prediction -- the claim is what
+  we are grading, and it stands on its own.
+
 OUTPUT
   Reply with JSON only -- a single object, no prose around it, no code fence:
 
@@ -311,7 +346,9 @@ OUTPUT
         "confidence": 0-100,
         "reasoning": "...",
         "emergence_path": "one of the five path names above",
-        "source_signals": ["signal id", "signal id"]
+        "source_signals": ["signal id", "signal id"],
+        "angle": "... (optional, one sentence)",
+        "audience_question": "... (optional, one question)"
       }}
     ]
   }}

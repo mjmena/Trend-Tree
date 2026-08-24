@@ -129,6 +129,19 @@ REASONING
   this row: the case for the call as it looks today, with the current
   evidence folded in. Do not write "as above" or refer to a previous version.
 
+ANGLE and AUDIENCE_QUESTION -- leave them alone unless the story moved
+
+  Each call already carries a one-sentence angle (why it matters, in
+  reader-facing English) and a question worth putting to readers. They were
+  written when the call was made and they are still on the strategist's card.
+
+  OMIT both fields. That is the normal answer, and it keeps what is stored.
+
+  Send a replacement ONLY when what you found this cycle changes what the
+  story IS -- not merely that the check moved a step closer. A firmer number
+  is not a new angle. If you send one, send a whole sentence in the same
+  register, never a fragment or a note about the update.
+
 OUTPUT
   Reply with JSON only -- a single object, no prose around it, no code fence.
   One entry per call you were shown, using the same id AND echoing that
@@ -142,7 +155,9 @@ OUTPUT
         "observation": "how you read the check, in one sentence",
         "confidence": 0-100,
         "reasoning": "...",
-        "what_changed": "..."}}
+        "what_changed": "...",
+        "angle": "... (OMIT unless the story itself changed)",
+        "audience_question": "... (OMIT unless the story itself changed)"}}
     ]
   }}
 

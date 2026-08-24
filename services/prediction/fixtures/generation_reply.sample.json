@@ -7,6 +7,8 @@
       "observable_check": "weighted/rucking vest listings appear under a house label at Target, Walmart or Dick's Sporting Goods in those retailers' own online catalogs, in the 12-20 lb range, at two or more of the three",
       "confidence": 68,
       "reasoning": "Four independent sources converge: a first-person community observation of local stockouts, four consecutive weeks on Amazon's Sports & Outdoors movers list still dominated by specialty brands, a breakout Google related query with inland regional spread, and lifestyle coverage reframing low-intensity walking as the successor to HIIT. Cultural relevance is high because the styling searches are outrunning the equipment searches, which historically precedes a category leaving the gym; white space is real because the mass-market labels are absent from the movers list today; plausibility is strong because the enabling behavior (walking) needs no skill acquisition; evidence breadth spans commerce, search, social and press; cross-category potential shows in the apparel styling searches; consumer interest is already measurable rather than projected.",
+      "angle": "Walking is being reclassified as training rather than recovery, and the vest is the object that makes the reclassification visible to everyone else on the trail.",
+      "audience_question": "Would you wear a weighted vest on an ordinary walk around your neighborhood?",
       "emergence_path": "signal convergence",
       "source_signals": [
         "bluesky:3lqz7a2xk4d2m",

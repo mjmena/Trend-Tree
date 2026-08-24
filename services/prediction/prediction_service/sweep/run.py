@@ -242,6 +242,48 @@ def _render_saturation(lookup: Any, reading: Any) -> str:
     return "\n".join((render_et(lookup), render_breadth(reading)))
 
 
+def narrative_for(
+    prediction: OpenPrediction, answer: Reevaluation | None
+) -> tuple[str | None, str | None]:
+    """This sweep's ANGLE and AUDIENCE_QUESTION: refreshed on news, carried
+    forward otherwise (CRMA-782).
+
+    **The rule is NOT "refresh when WHAT_CHANGED is non-null."** That was the
+    story's wording and it does not survive contact with this module:
+    ``compose_what_changed`` is total, falling back to ``NOTHING_MOVED``, so
+    WHAT_CHANGED is non-null on every sweep row ever written. Keyed on that,
+    "refresh only when something moved" would refresh unconditionally --
+    exactly the daily churn the story set out to prevent, and measurably so:
+    on 2026-08-23, 14 of 15 live rows read "Nothing moved since the previous
+    evaluation".
+
+    The real signal is the model's OWN note. ``answer.what_changed`` is the
+    sentence it wrote about this prediction, empty when it had nothing to
+    report, and ``answer`` itself is None unless the batched turn bound an
+    entry to this prediction by an echoed ``prediction_id`` agreeing with
+    its position (sweep/parse.py). So a refresh requires, in order: an entry
+    that proved which call it belonged to, a claim of news, and a usable
+    replacement sentence. Anything short of all three keeps what is stored.
+
+    Carrying forward is the safe default in both directions -- it cannot lose
+    an angle we already have, and it cannot invent one we do not.
+    """
+    if answer is None or not answer.what_changed.strip():
+        return prediction.angle, prediction.audience_question
+
+    def replace(fresh: str | None, stored: str | None) -> str | None:
+        # `.strip()` rather than a bare truthiness test: sweep/parse.py
+        # already maps a blank rewrite to None, but this function must not
+        # depend on that to avoid erasing a stored sentence. A caller that
+        # hands it "  " means "I have nothing", whatever the type says.
+        return fresh.strip() if fresh and fresh.strip() else stored
+
+    return (
+        replace(answer.angle, prediction.angle),
+        replace(answer.audience_question, prediction.audience_question),
+    )
+
+
 def _looked_at_nothing(lookup: Any, reading: Any) -> bool:
     """True when this evaluation consulted neither oracle successfully -- an
     ET miss AND an unavailable GDELT reading. Not the same as "we looked and
@@ -528,6 +570,7 @@ def sweep_predictions(
             else prediction.confidence
         )
         reasoning = (answer.reasoning if answer else "") or prediction.reasoning
+        angle, audience_question = narrative_for(prediction, answer)
         status = next_status(
             prior_status=prediction.status,
             horizon_at=prediction.horizon_at,
@@ -629,6 +672,10 @@ def sweep_predictions(
                 # date the claim is due to be judged -- and would move the
                 # grace window with it.
                 horizon_at=prediction.horizon_at,
+                # Refreshed only when this sweep found news; otherwise the
+                # stored sentence is handed back untouched (CRMA-782).
+                angle=angle,
+                audience_question=audience_question,
             )
         except InvalidClaim:
             log.exception(

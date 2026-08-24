@@ -38,7 +38,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from ..domain.claim import MAX_LENGTHS
+from ..domain.claim import MAX_LENGTHS, InvalidClaim, check_length, check_printable
 from ..generation.parse import extract_json_object
 from ..saturation.weigh import subject_key
 from .lifecycle import OBSERVATIONS, OBSERVED_NOT_YET, Observation
@@ -60,6 +60,11 @@ class Reevaluation:
     reasoning: str
     what_changed: str
     observation: Observation
+    #: A rewritten angle / question (CRMA-782), or None when the model left
+    #: it alone. None means "keep what is stored", never "erase it" -- see
+    #: ``sweep.run`` for the refresh rule.
+    angle: str | None = None
+    audience_question: str | None = None
 
 
 def _confidence(raw: Any) -> float | None:
@@ -77,6 +82,28 @@ def _text(raw: Any, *, limit: int) -> str:
         return ""
     value = raw.strip()
     return value[:limit].rstrip() if len(value) > limit else value
+
+
+def _narrative(name: str, raw: Any) -> str | None:
+    """One rewritten narrative field (CRMA-782), or None to leave the stored
+    one alone.
+
+    Truncation is deliberately NOT used here, unlike ``_text`` above. A
+    half-sentence angle reads as a bug on the card, and the stored one is
+    always a usable fallback -- so an over-long rewrite is discarded in
+    favour of what we already have, rather than trimmed into nonsense.
+    """
+    if not isinstance(raw, str):
+        return None
+    value = raw.strip()
+    if not value:
+        return None
+    try:
+        check_length(name, value)
+        check_printable(name, value)
+    except InvalidClaim:
+        return None
+    return value
 
 
 def _observation(entry: Mapping[str, Any]) -> Observation:
@@ -170,5 +197,7 @@ def parse_reevaluations(
             reasoning=_text(entry.get("reasoning"), limit=MAX_LENGTHS["reasoning"]),
             what_changed=_text(entry.get("what_changed"), limit=MAX_LENGTHS["what_changed"]),
             observation=_observation(entry),
+            angle=_narrative("angle", entry.get("angle")),
+            audience_question=_narrative("audience_question", entry.get("audience_question")),
         )
     return out

@@ -140,6 +140,8 @@ WITH LATEST AS (
         MATCHED_TREND_ID,
         EVIDENCE,
         REASONING,
+        ANGLE,
+        AUDIENCE_QUESTION,
         EVALUATED_AT,
         ROW_NUMBER() OVER (
             PARTITION BY PREDICTION_ID
@@ -160,6 +162,8 @@ SELECT
     MATCHED_TREND_ID,
     EVIDENCE,
     REASONING,
+    ANGLE,
+    AUDIENCE_QUESTION,
     EVALUATED_AT
 FROM LATEST
 WHERE EVAL_RANK = 1
@@ -229,6 +233,12 @@ class OpenPrediction:
     evidence: dict[str, Any] = field(default_factory=dict)
     reasoning: str = ""
     prior_eval_id: str | None = None
+    #: Strategist-facing narrative (CRMA-782), as last stored. Read so a
+    #: later phase can carry it forward: a re-evaluation that omitted it
+    #: would write NULL over a good angle, which is data loss dressed up as
+    #: a normal append.
+    angle: str | None = None
+    audience_question: str | None = None
 
     @classmethod
     def from_row(cls, row: Mapping[str, Any]) -> OpenPrediction:
@@ -253,6 +263,16 @@ class OpenPrediction:
             prior_eval_id=(
                 str(_get(row, "PREDICTION_EVAL_ID"))
                 if _get(row, "PREDICTION_EVAL_ID") is not None
+                else None
+            ),
+            # None, not "": these are nullable columns and every row written
+            # before CRMA-782 is NULL in both. An empty string would be
+            # written back as an empty string, quietly replacing "no angle
+            # yet" with "an angle that says nothing".
+            angle=(str(_get(row, "ANGLE")) if _get(row, "ANGLE") is not None else None),
+            audience_question=(
+                str(_get(row, "AUDIENCE_QUESTION"))
+                if _get(row, "AUDIENCE_QUESTION") is not None
                 else None
             ),
         )

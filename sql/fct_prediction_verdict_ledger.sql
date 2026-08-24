@@ -55,5 +55,21 @@ CREATE TABLE IF NOT EXISTS MCC_PRESENTATION.TREND_AGENT.FCT_PREDICTION_VERDICT_L
   REASONING            VARCHAR(4000)                         COMMENT 'the agent''s verdict rationale at this evaluation',
   WHAT_CHANGED         VARCHAR(4000)                         COMMENT 'what moved since the prior verdict on this PREDICTION_ID; NULL on first mint',
 
+  -- Strategist-facing narrative (CRMA-782). Deliberately NOT part of the
+  -- claim: the four claim columns are machine-facing (ADR-0003's register,
+  -- plus OBSERVABLE_CHECK's named-source-and-threshold rule) so that two
+  -- people grade a claim identically. That leaves nowhere for "why does this
+  -- matter" to live, and putting it in DIRECTIONAL_CLAIM would break
+  -- gradability. Both are NULLABLE: NOT NULL stays attached to the claim
+  -- alone, where the falsifiability guarantee belongs, and every row written
+  -- before this change reads back valid.
+  --
+  -- Neither column may ever feed CONFIDENCE, PREDICTION_STATUS,
+  -- MATCHED_TREND_ID, or the dashboard's PREDICTION_SCORE / _FLAG /
+  -- _ELIGIBLE. Same rule EVIDENCE.trend_context carries: addressed context,
+  -- never a filter.
+  ANGLE                VARCHAR(512)                          COMMENT 'one sentence, reader-facing register, on why this change matters culturally; NULL when the model did not narrate it',
+  AUDIENCE_QUESTION    VARCHAR(256)                          COMMENT 'the question this call invites us to put to readers; NULL when the model did not narrate it',
+
   COMPUTATION_VERSION  VARCHAR(16)   DEFAULT 'v1'            COMMENT 'bump when the verdict/evidence contract changes; auditable lineage'
 );
