@@ -34,6 +34,7 @@ the only safe one.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -42,6 +43,8 @@ from ..domain.claim import MAX_LENGTHS, InvalidClaim, check_length, check_printa
 from ..generation.parse import extract_json_object
 from ..saturation.weigh import subject_key
 from .lifecycle import OBSERVATIONS, OBSERVED_NOT_YET, Observation
+
+log = logging.getLogger(__name__)
 
 
 class UnparseableReevaluation(ValueError):
@@ -101,7 +104,14 @@ def _narrative(name: str, raw: Any) -> str | None:
     try:
         check_length(name, value)
         check_printable(name, value)
-    except InvalidClaim:
+    except InvalidClaim as err:
+        # See the sibling in generation/parse.py: a discarded rewrite and a
+        # model that stayed quiet both leave the stored value in place, so
+        # only a log tells the two apart.
+        log.info(
+            "narrative rewrite discarded",
+            extra={"field": name, "chars": len(value), "reason": str(err)},
+        )
         return None
     return value
 

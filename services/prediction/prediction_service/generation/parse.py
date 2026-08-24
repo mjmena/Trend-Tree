@@ -14,6 +14,7 @@ reasons so a run that emitted nothing is legible instead of merely empty.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
@@ -26,6 +27,8 @@ from ..domain.claim import (
     check_length,
     check_printable,
 )
+
+log = logging.getLogger(__name__)
 
 #: A model that ignores "no code fence" is still answering the question --
 #: strip the fence rather than throwing the run away.
@@ -154,7 +157,16 @@ def _narrative(name: str, raw: Any) -> str | None:
     try:
         check_length(name, value)
         check_printable(name, value)
-    except InvalidClaim:
+    except InvalidClaim as err:
+        # Logged, because the row that results is indistinguishable from one
+        # where the model simply declined -- both are NULL. Without this an
+        # operator cannot tell "it had nothing to say" from "we threw its
+        # answer away", and a prompt that routinely overruns its limit would
+        # look like a quiet model.
+        log.info(
+            "narrative field discarded",
+            extra={"field": name, "chars": len(value), "reason": str(err)},
+        )
         return None
     return value
 

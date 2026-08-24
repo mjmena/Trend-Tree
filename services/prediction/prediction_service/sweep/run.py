@@ -245,8 +245,8 @@ def _render_saturation(lookup: Any, reading: Any) -> str:
 def narrative_for(
     prediction: OpenPrediction, answer: Reevaluation | None
 ) -> tuple[str | None, str | None]:
-    """This sweep's ANGLE and AUDIENCE_QUESTION: refreshed on news, carried
-    forward otherwise (CRMA-782).
+    """This sweep's ANGLE and AUDIENCE_QUESTION: written when absent,
+    refreshed on news, carried forward otherwise (CRMA-782).
 
     **The rule is NOT "refresh when WHAT_CHANGED is non-null."** That was the
     story's wording and it does not survive contact with this module:
@@ -268,19 +268,34 @@ def narrative_for(
     Carrying forward is the safe default in both directions -- it cannot lose
     an angle we already have, and it cannot invent one we do not.
     """
-    if answer is None or not answer.what_changed.strip():
+    if answer is None:
         return prediction.angle, prediction.audience_question
 
-    def replace(fresh: str | None, stored: str | None) -> str | None:
+    # News, as the model itself reported it for THIS call. Empty when it had
+    # nothing to say.
+    reported_news = bool(answer.what_changed.strip())
+
+    def resolve(fresh: str | None, stored: str | None) -> str | None:
         # `.strip()` rather than a bare truthiness test: sweep/parse.py
         # already maps a blank rewrite to None, but this function must not
         # depend on that to avoid erasing a stored sentence. A caller that
         # hands it "  " means "I have nothing", whatever the type says.
-        return fresh.strip() if fresh and fresh.strip() else stored
+        if not (fresh and fresh.strip()):
+            return stored
+        # A FIRST write needs no news. Every prediction minted before
+        # CRMA-782 carries NULL here, and generation is the only other
+        # writer -- so without this branch those calls could never acquire an
+        # angle at all, however many times they were swept.
+        if stored is None:
+            return fresh.strip()
+        # Replacing one that already reads well is the churn case, and it
+        # costs us a sentence a human may have come to rely on. Require the
+        # model to have said what moved.
+        return fresh.strip() if reported_news else stored
 
     return (
-        replace(answer.angle, prediction.angle),
-        replace(answer.audience_question, prediction.audience_question),
+        resolve(answer.angle, prediction.angle),
+        resolve(answer.audience_question, prediction.audience_question),
     )
 
 
@@ -546,6 +561,12 @@ def sweep_predictions(
             matched_trend_topic=(
                 resolution.decision.trend.trend_topic if resolution.decision.trend else None
             ),
+            # Shown, not just stored: the prompt asks whether the story has
+            # changed, and that question is unanswerable about a sentence the
+            # model cannot read. A None here is also load-bearing -- it is how
+            # a pre-CRMA-782 call gets told it has no angle yet.
+            angle=prediction.angle,
+            audience_question=prediction.audience_question,
             trend_context=resolution.context.as_evidence() if resolution.context else None,
             saturation=(
                 _render_saturation(lookup, reading) if lookup is not None else None

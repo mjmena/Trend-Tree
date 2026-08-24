@@ -32,6 +32,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from ..domain.claim import MAX_LENGTHS
 from .lifecycle import OBSERVED_FAILED, OBSERVED_MET, OBSERVED_NOT_YET
 
 #: A stable phrase in the system prompt. The fakes and the local loop tell
@@ -60,6 +61,13 @@ class ReevaluationItem:
     #: horizon, and rendered only then.
     days_of_grace_left: float
     matched_trend_topic: str | None = None
+    #: The stored strategist-facing narrative (CRMA-782), shown so the model
+    #: can judge whether it still fits. Asking "has the story changed?" about
+    #: a sentence the model cannot see produces a paraphrase, not an answer.
+    #: None means this call has no angle yet -- every prediction minted
+    #: before CRMA-782 is in that state, and the prompt asks for a first one.
+    angle: str | None = None
+    audience_question: str | None = None
     trend_context: dict[str, Any] | None = None
     saturation: str | None = None
 
@@ -67,6 +75,11 @@ class ReevaluationItem:
 def build_system_prompt() -> str:
     """The re-evaluation turn's standing instructions. Pure -- same string
     every time."""
+    # Read from MAX_LENGTHS rather than written as literals: the parser
+    # discards an over-long narrative silently, so a prompt quoting a stale
+    # number would teach the model to write values we then throw away.
+    angle_limit = MAX_LENGTHS["angle"]
+    question_limit = MAX_LENGTHS["audience_question"]
     return f"""You are the Trend Tree prediction agent, {REEVALUATION_MARKER}.
 
 Every call you made is written down in an append-only ledger, one row per
@@ -131,16 +144,33 @@ REASONING
 
 ANGLE and AUDIENCE_QUESTION -- leave them alone unless the story moved
 
-  Each call already carries a one-sentence angle (why it matters, in
-  reader-facing English) and a question worth putting to readers. They were
-  written when the call was made and they are still on the strategist's card.
+  Each call is shown to you with "its angle" (why it matters, in ordinary
+  reader-facing English) and "its reader question". Read them before you
+  decide whether to touch either.
 
-  OMIT both fields. That is the normal answer, and it keeps what is stored.
+  If both read NONE YET, WRITE THEM. That call was made before we started
+  recording either one, and it will never get them from anywhere else. Give
+  it a one-sentence angle naming the human behavior underneath the claim --
+  not a restatement of the claim in softer words -- and one question an
+  ordinary person could answer from their own experience.
 
-  Send a replacement ONLY when what you found this cycle changes what the
+  If an angle is already there, OMIT both fields. That is the normal answer
+  and it keeps what is stored.
+
+  Replace a stored angle ONLY when what you found this cycle changes what the
   story IS -- not merely that the check moved a step closer. A firmer number
-  is not a new angle. If you send one, send a whole sentence in the same
-  register, never a fragment or a note about the update.
+  is not a new angle. Send a whole sentence in the same register, never a
+  fragment or a note about the update.
+
+  One mechanical rule: a replacement is only read when you ALSO fill
+  "what_changed" for that same call. If the story moved enough to rewrite the
+  angle, say what moved. A replacement sent with an empty what_changed is
+  discarded and the stored sentence stands. (Writing a FIRST angle, where you
+  were shown NONE YET, does not need this -- send it either way.)
+
+  Keep both inside their limits: the angle at most {angle_limit} characters,
+  the question at most {question_limit}. Anything longer is discarded whole
+  rather than cut short, because half a sentence reads as a bug on the card.
 
 OUTPUT
   Reply with JSON only -- a single object, no prose around it, no code fence.
@@ -231,6 +261,14 @@ def build_user_prompt(items: Sequence[ReevaluationItem]) -> str:
             )
             if rendered:
                 lines.append(f"      trend context: {rendered}")
+        if item.angle:
+            lines.append(f"      its angle: {item.angle}")
+        else:
+            lines.append("      its angle: NONE YET -- this call has no angle written")
+        if item.audience_question:
+            lines.append(f"      its reader question: {item.audience_question}")
+        else:
+            lines.append("      its reader question: NONE YET")
         if item.saturation:
             lines.append("      SATURATION EVIDENCE:")
             lines.append(item.saturation)

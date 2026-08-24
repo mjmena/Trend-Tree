@@ -156,8 +156,13 @@ Pipedream scorer retires at cutover.
   (the strategy's coverage → integrity trade).
 - Additive columns from the same verdict: the rendered claim sentence (four
   claim parts composed in the projection SQL), `REASONING`, `WHAT_CHANGED`,
-  evaluated-at. Evidence JSON stays ledger-only. White-space predictions reach
-  no strategist surface in v1.
+  evaluated-at, plus `ANGLE` and `AUDIENCE_QUESTION` (CRMA-782 — the
+  reader-facing half the machine-facing claim has no room for; both nullable,
+  so the card must degrade gracefully when either is absent). Evidence JSON
+  stays ledger-only, with one narrow exception: `EVIDENCE:source_signals`
+  projects as cited examples, so a card can lead with what is already true
+  before it states the claim. White-space predictions reach no strategist
+  surface in v1.
 - The data-contract doc and its Confluence mirror update in the same change,
   including the new `NULL` semantics and the additive columns.
 

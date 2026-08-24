@@ -30,7 +30,7 @@ from __future__ import annotations
 import unicodedata
 from collections.abc import Sequence
 
-from ..domain.claim import HORIZON_BANDS
+from ..domain.claim import HORIZON_BANDS, MAX_LENGTHS
 from .signals import SignalRecord
 
 #: How much of a signal's body reaches the prompt.
@@ -327,6 +327,11 @@ ANGLE and AUDIENCE_QUESTION -- the reader-facing half
     an ordinary person from their own experience. "Would you trust a sticker
     to tell you when to reapply?" -- not "What is the market size for UV
     patches?"
+
+  Keep both inside their limits: the angle at most {MAX_LENGTHS["angle"]}
+  characters, the question at most {MAX_LENGTHS["audience_question"]}. Anything
+  longer is discarded whole rather than cut short, because half a sentence
+  reads as a bug on the card. One sentence fits comfortably; two do not.
 
   Both are OPTIONAL and neither is a test you must pass. If a claim genuinely
   has no angle beyond the claim itself, omit the field. A weak angle is worse

@@ -28,7 +28,9 @@ from prediction_service.generation.prompt import build_system_prompt
 from prediction_service.matching.predictions import OpenPrediction
 from prediction_service.sweep.lifecycle import Observation
 from prediction_service.sweep.parse import Reevaluation, parse_reevaluations
+from prediction_service.sweep.prompt import ReevaluationItem
 from prediction_service.sweep.prompt import build_system_prompt as build_sweep_system_prompt
+from prediction_service.sweep.prompt import build_user_prompt as build_sweep_user_prompt
 from prediction_service.sweep.run import narrative_for
 
 _VALID_EVIDENCE = {
@@ -253,9 +255,83 @@ def test_a_refresh_cannot_erase_an_angle_we_already_have():
     assert narrative_for(_prior(), answer) == (ANGLE, QUESTION)
 
 
-def test_a_prediction_with_no_stored_angle_stays_without_one():
+def test_a_prediction_with_no_stored_angle_and_no_answer_stays_without_one():
     bare = _prior(angle=None, audience_question=None)
     assert narrative_for(bare, None) == (None, None)
+
+
+def test_a_first_angle_needs_no_news():
+    """Every prediction minted before CRMA-782 carries NULL in both columns,
+    and generation is the only other writer. Without this branch those calls
+    could never acquire an angle however often they were swept -- the feature
+    would only ever reach predictions minted after the deploy."""
+    bare = _prior(angle=None, audience_question=None)
+    answer = _answer(what_changed="", angle=ANGLE, audience_question=QUESTION)
+    assert narrative_for(bare, answer) == (ANGLE, QUESTION)
+
+
+def test_a_first_write_and_a_replacement_are_judged_separately():
+    """One field absent, one present: the absent one is written, the present
+    one is left alone because no news was reported."""
+    half = _prior(angle=None)
+    answer = _answer(what_changed="", angle=ANGLE, audience_question="a rewrite")
+    assert narrative_for(half, answer) == (ANGLE, QUESTION)
+
+
+def test_the_sweep_prompt_shows_the_model_the_stored_angle():
+    """The prompt asks whether the story changed. That is unanswerable about
+    a sentence the model was never shown."""
+    rendered = build_sweep_user_prompt(
+        [
+            ReevaluationItem(
+                prediction_id="pred-1",
+                subject_descriptor="UV sensor stickers",
+                directional_claim="retailers expand shelf placement",
+                horizon_band="emerging_3_6mo",
+                observable_check="Target or Ulta lists three brands",
+                horizon_at="2027-02-17T00:00:00+00:00",
+                status="ACTIVE",
+                confidence=72.0,
+                reasoning="convergent evidence",
+                days_to_horizon=176.0,
+                days_of_grace_left=0.0,
+                angle=ANGLE,
+                audience_question=QUESTION,
+            )
+        ]
+    )
+    assert ANGLE in rendered
+    assert QUESTION in rendered
+
+
+def test_the_sweep_prompt_says_when_a_call_has_no_angle_yet():
+    rendered = build_sweep_user_prompt(
+        [
+            ReevaluationItem(
+                prediction_id="pred-1",
+                subject_descriptor="UV sensor stickers",
+                directional_claim="retailers expand shelf placement",
+                horizon_band="emerging_3_6mo",
+                observable_check="Target or Ulta lists three brands",
+                horizon_at="2027-02-17T00:00:00+00:00",
+                status="ACTIVE",
+                confidence=72.0,
+                reasoning="convergent evidence",
+                days_to_horizon=176.0,
+                days_of_grace_left=0.0,
+            )
+        ]
+    )
+    assert "NONE YET" in rendered
+
+
+@pytest.mark.parametrize("field", ["angle", "audience_question"])
+def test_both_prompts_quote_the_real_limit(field):
+    """A prompt quoting a stale limit teaches the model to write values the
+    parser then discards, so the number comes from MAX_LENGTHS."""
+    limit = str(MAX_LENGTHS[field])
+    assert limit in build_system_prompt()
+    assert limit in build_sweep_system_prompt()
 
 
 def test_the_sweep_parser_drops_an_unusable_rewrite():

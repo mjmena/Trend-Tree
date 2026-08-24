@@ -68,8 +68,15 @@ CREATE TABLE IF NOT EXISTS MCC_PRESENTATION.TREND_AGENT.FCT_PREDICTION_VERDICT_L
   -- MATCHED_TREND_ID, or the dashboard's PREDICTION_SCORE / _FLAG /
   -- _ELIGIBLE. Same rule EVIDENCE.trend_context carries: addressed context,
   -- never a filter.
-  ANGLE                VARCHAR(512)                          COMMENT 'one sentence, reader-facing register, on why this change matters culturally; NULL when the model did not narrate it',
-  AUDIENCE_QUESTION    VARCHAR(256)                          COMMENT 'the question this call invites us to put to readers; NULL when the model did not narrate it',
+  COMPUTATION_VERSION  VARCHAR(16)   DEFAULT 'v1'            COMMENT 'bump when the verdict/evidence contract changes; auditable lineage',
 
-  COMPUTATION_VERSION  VARCHAR(16)   DEFAULT 'v1'            COMMENT 'bump when the verdict/evidence contract changes; auditable lineage'
+  -- LAST, deliberately. The live table gets these by ALTER ... ADD COLUMN
+  -- (sql/alter_prediction_verdict_ledger_add_narrative.sql), which can only
+  -- append. Declaring them anywhere else here would give a freshly-built
+  -- environment a different column ORDER from the migrated one, and anything
+  -- positional -- a SELECT * diff between environments, an INSERT ... SELECT,
+  -- a fixture captured from cursor order -- would then behave differently
+  -- depending on which way the table was made.
+  ANGLE                VARCHAR(512)                          COMMENT 'one sentence, reader-facing register, on why this change matters culturally; NULL when the model did not narrate it',
+  AUDIENCE_QUESTION    VARCHAR(256)                          COMMENT 'the question this call invites us to put to readers; NULL when the model did not narrate it'
 );

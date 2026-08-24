@@ -258,11 +258,12 @@ def build_verdict(
     check_length("prediction_id", prediction_id)
     check_length("prediction_eval_id", prediction_eval_id)
     check_length("chain_id", chain_id)
-    # Both render on the strategist's card verbatim, which is the surface
-    # check_printable exists to protect -- a right-to-left override in the
-    # angle reverses the display of everything after it. REASONING predates
-    # that check and still only gets a length bound; these two do not inherit
-    # that gap.
+    # Both are written to be displayed verbatim -- that is the whole point of
+    # them -- so they get the check that protects a display surface: a
+    # right-to-left override reverses everything after it. The card itself is
+    # CRMA-769 and does not exist yet; checking at the write is what stops a
+    # bad row being there waiting when it does. REASONING predates the check
+    # and still gets only a length bound; these two do not inherit that gap.
     for name, narrative in (("angle", angle), ("audience_question", audience_question)):
         check_length(name, narrative)
         if narrative is not None:
