@@ -114,6 +114,26 @@
 #   PROBE_ID_TOKEN=...        use this identity token for the authenticated probe
 #   PROBE_TOKEN_AUDIENCE=...  mint the probe token for this audience
 #
+# Where a PROBE_ID_TOKEN comes from when the user credential is stale -- which
+# is the normal case on a dev Mac, because a lapsed SSO session cannot be
+# refreshed non-interactively and `gcloud auth print-identity-token` then has
+# nothing to sign with. Impersonate crm-automations@, which carries
+# roles/iam.serviceAccountTokenCreator for group:crm@mcclatchy.com as a binding
+# on the service account itself. It needs no human:
+#
+#   export CLOUDSDK_AUTH_ACCESS_TOKEN=$(gcloud auth application-default print-access-token)
+#   SA=crm-automations@mcc-crm-automations.iam.gserviceaccount.com
+#   PROBE_ID_TOKEN=$(curl -s -X POST \
+#     -H "Authorization: Bearer $CLOUDSDK_AUTH_ACCESS_TOKEN" \
+#     -H "Content-Type: application/json" \
+#     "https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/$SA:generateIdToken" \
+#     -d "{\"audience\":\"<service-url>\",\"includeEmail\":true}" | jq -r .token)
+#
+# The same CLOUDSDK_AUTH_ACCESS_TOKEN export also carries the gcloud calls in
+# this script, including the crane push. crm-automations@ must additionally
+# hold roles/run.invoker on this service or probe 2 comes back 403; it was
+# granted 2026-08-24. Note that IAM propagation takes about 90 seconds.
+#
 # ---------------------------------------------------------------------------
 # SCHEMA MIGRATIONS RUN BEFORE THIS SCRIPT.
 # ---------------------------------------------------------------------------
@@ -129,13 +149,16 @@
 # `invalid identifier '<COLUMN>'`; if a deploy starts erroring that way, look
 # for an unapplied migration before you look at the code.
 #
-# Outstanding at the time of writing:
+# Nothing is outstanding as of 2026-08-24. The last one was
+# sql/alter_prediction_verdict_ledger_add_narrative.sql (CRMA-782, ANGLE +
+# AUDIENCE_QUESTION); it is APPLIED, and revision 00013 -- the first to write
+# those columns -- is serving. Do NOT run it again: ADD COLUMN in this form is
+# not idempotent and a second run errors rather than no-opping.
 #
-#   sql/alter_prediction_verdict_ledger_add_narrative.sql   (CRMA-782)
-#     Adds ANGLE + AUDIENCE_QUESTION. Run the single ALTER by hand -- it is
-#     not idempotent, so check the columns are absent first:
-#       SHOW COLUMNS LIKE 'ANGLE' IN TABLE
-#         MCC_PRESENTATION.TREND_AGENT.FCT_PREDICTION_VERDICT_LEDGER;
+# When the next migration lands here, check the column is absent before running
+# it, for that same reason:
+#   SHOW COLUMNS LIKE '<COLUMN>' IN TABLE
+#     MCC_PRESENTATION.TREND_AGENT.FCT_PREDICTION_VERDICT_LEDGER;
 #
 # The smoke test below will NOT catch a missed migration: its three probes hit
 # /health and the auth path, none of which writes a verdict row.
