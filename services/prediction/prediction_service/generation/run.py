@@ -246,6 +246,14 @@ def generate_predictions(
                     prediction_eval_id=eval_id,
                     chain_id=chain,
                     minted_at=minted,
+                    # Strategist-facing narrative (CRMA-782). Generation is
+                    # where these are written: the corpus is in hand, so the
+                    # angle rests on the same evidence as the claim, and no
+                    # later phase needs an LLM call to invent one. Either may
+                    # be None -- parse.py drops an unusable value rather than
+                    # letting it reject the claim.
+                    angle=candidate.angle,
+                    audience_question=candidate.audience_question,
                 )
             )
         except InvalidClaim as err:

@@ -383,6 +383,13 @@ def match_open_predictions(
                 # Frozen at mint. Re-deriving it here would silently move the
                 # date the claim is due to be judged.
                 horizon_at=prediction.horizon_at,
+                # Carried forward verbatim (CRMA-782). This phase decides
+                # whether a prediction corroborates a trend; it has no
+                # opinion about the narrative and calls no model that could
+                # form one. Omitting these would write NULL over a good
+                # angle on every match run.
+                angle=prediction.angle,
+                audience_question=prediction.audience_question,
             )
         except InvalidClaim:
             # A ledger row this service cannot re-state is a bug worth

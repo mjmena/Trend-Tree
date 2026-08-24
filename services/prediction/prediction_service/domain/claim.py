@@ -84,6 +84,8 @@ MAX_LENGTHS: dict[str, int] = {
     "matched_trend_id": 64,
     "reasoning": 4000,
     "what_changed": 4000,
+    "angle": 512,
+    "audience_question": 256,
 }
 
 
@@ -198,6 +200,14 @@ class Verdict:
     reasoning: str
     what_changed: str | None
     minted_at: datetime
+    #: Strategist-facing narrative (CRMA-782). Both are optional and neither
+    #: is part of the claim: the 4-part claim is machine-facing by design
+    #: (ADR-0003's register plus the observable check's named-source rule),
+    #: which leaves nowhere for "why does this matter" to live. Every row
+    #: written before CRMA-782 carries NULL in both, so they default rather
+    #: than joining the required arguments.
+    angle: str | None = None
+    audience_question: str | None = None
 
 
 def build_verdict(
@@ -214,6 +224,8 @@ def build_verdict(
     chain_id: str | None = None,
     minted_at: datetime | None = None,
     horizon_at: datetime | None = None,
+    angle: str | None = None,
+    audience_question: str | None = None,
 ) -> Verdict:
     """Mint a new verdict row for ``claim``. Re-evaluations of the same
     prediction call this again with the same ``prediction_id`` and the same
@@ -246,6 +258,16 @@ def build_verdict(
     check_length("prediction_id", prediction_id)
     check_length("prediction_eval_id", prediction_eval_id)
     check_length("chain_id", chain_id)
+    # Both are written to be displayed verbatim -- that is the whole point of
+    # them -- so they get the check that protects a display surface: a
+    # right-to-left override reverses everything after it. The card itself is
+    # CRMA-769 and does not exist yet; checking at the write is what stops a
+    # bad row being there waiting when it does. REASONING predates the check
+    # and still gets only a length bound; these two do not inherit that gap.
+    for name, narrative in (("angle", angle), ("audience_question", audience_question)):
+        check_length(name, narrative)
+        if narrative is not None:
+            check_printable(name, narrative)
 
     minted = minted_at or datetime.now(UTC)
     return Verdict(
@@ -261,4 +283,6 @@ def build_verdict(
         reasoning=reasoning,
         what_changed=what_changed,
         minted_at=minted,
+        angle=angle,
+        audience_question=audience_question,
     )

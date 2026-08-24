@@ -14,12 +14,21 @@ reasons so a run that emitted nothing is legible instead of merely empty.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from ..domain.claim import HORIZON_BANDS, Claim, InvalidClaim, check_length
+from ..domain.claim import (
+    HORIZON_BANDS,
+    Claim,
+    InvalidClaim,
+    check_length,
+    check_printable,
+)
+
+log = logging.getLogger(__name__)
 
 #: A model that ignores "no code fence" is still answering the question --
 #: strip the fence rather than throwing the run away.
@@ -40,6 +49,10 @@ class Candidate:
     reasoning: str
     source_signals: tuple[str, ...]
     emergence_path: str | None
+    #: Strategist-facing narrative (CRMA-782). None when the model did not
+    #: narrate, or when what it wrote was unusable -- see ``_narrative``.
+    angle: str | None = None
+    audience_question: str | None = None
 
 
 @dataclass(frozen=True)
@@ -123,6 +136,39 @@ def extract_json_object(text: str) -> dict[str, Any]:
 
 def _text(raw: Any) -> str:
     return raw.strip() if isinstance(raw, str) else ""
+
+
+def _narrative(name: str, raw: Any) -> str | None:
+    """One optional narrative field (CRMA-782), or None if unusable.
+
+    Never raises, and never contributes a rejection. That is the whole point
+    of routing it through here: ``build_verdict`` DOES raise ``InvalidClaim``
+    on an over-long or bidi-carrying narrative, and generation/run.py turns
+    any ``InvalidClaim`` into a dropped candidate -- so an angle that reached
+    the domain layer unchecked would let a badly-worded sentence cost us a
+    real, gradable prediction. The angle is additive to a claim that already
+    stands on its own; the claim never depends on it.
+    """
+    if not isinstance(raw, str):
+        return None
+    value = raw.strip()
+    if not value:
+        return None
+    try:
+        check_length(name, value)
+        check_printable(name, value)
+    except InvalidClaim as err:
+        # Logged, because the row that results is indistinguishable from one
+        # where the model simply declined -- both are NULL. Without this an
+        # operator cannot tell "it had nothing to say" from "we threw its
+        # answer away", and a prompt that routinely overruns its limit would
+        # look like a quiet model.
+        log.info(
+            "narrative field discarded",
+            extra={"field": name, "chars": len(value), "reason": str(err)},
+        )
+        return None
+    return value
 
 
 def _confidence(raw: Any) -> float | None:
@@ -243,6 +289,10 @@ def parse_candidates(
                 reasoning=reasoning,
                 source_signals=source_signals,
                 emergence_path=_text(raw.get("emergence_path")) or None,
+                angle=_narrative("angle", raw.get("angle")),
+                audience_question=_narrative(
+                    "audience_question", raw.get("audience_question")
+                ),
             )
         )
 

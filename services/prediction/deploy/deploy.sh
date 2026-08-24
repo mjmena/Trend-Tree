@@ -113,6 +113,32 @@
 #
 #   PROBE_ID_TOKEN=...        use this identity token for the authenticated probe
 #   PROBE_TOKEN_AUDIENCE=...  mint the probe token for this audience
+#
+# ---------------------------------------------------------------------------
+# SCHEMA MIGRATIONS RUN BEFORE THIS SCRIPT.
+# ---------------------------------------------------------------------------
+#
+# This script deploys code. It does NOT apply DDL, and sql/*.sql is not part of
+# the image. A release that widens the ledger's column list therefore has an
+# ORDER: migrate first, deploy second.
+#
+# The failure mode is not partial. Every phase -- generate, match and sweep --
+# writes through the one MERGE in domain/ledger.py, so a column the live table
+# does not have yet makes that statement fail to compile and takes the whole
+# service down, not just the new field. Snowflake reports it as
+# `invalid identifier '<COLUMN>'`; if a deploy starts erroring that way, look
+# for an unapplied migration before you look at the code.
+#
+# Outstanding at the time of writing:
+#
+#   sql/alter_prediction_verdict_ledger_add_narrative.sql   (CRMA-782)
+#     Adds ANGLE + AUDIENCE_QUESTION. Run the single ALTER by hand -- it is
+#     not idempotent, so check the columns are absent first:
+#       SHOW COLUMNS LIKE 'ANGLE' IN TABLE
+#         MCC_PRESENTATION.TREND_AGENT.FCT_PREDICTION_VERDICT_LEDGER;
+#
+# The smoke test below will NOT catch a missed migration: its three probes hit
+# /health and the auth path, none of which writes a verdict row.
 set -euo pipefail
 
 PROJECT=mcc-crm-automations

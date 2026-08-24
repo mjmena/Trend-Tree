@@ -241,7 +241,20 @@ def test_the_parser_has_no_field_a_claim_part_could_arrive_in():
     from prediction_service.sweep.parse import Reevaluation
 
     names = {f.name for f in fields(Reevaluation)}
-    assert names == {"confidence", "reasoning", "what_changed", "observation"}
+    # An exact set, so that adding a field to the sweep's parser is a
+    # deliberate act reviewed against the frozen-claim rule rather than a
+    # quiet widening. `angle` and `audience_question` (CRMA-782) were added
+    # under that review: both are strategist-facing narrative ABOUT the
+    # call, neither is a claim part, and neither is read by anything that
+    # grades one. The `forbidden` assertion below is the rule itself.
+    assert names == {
+        "confidence",
+        "reasoning",
+        "what_changed",
+        "observation",
+        "angle",
+        "audience_question",
+    }
     forbidden = (
         "subject",
         "subject_descriptor",
