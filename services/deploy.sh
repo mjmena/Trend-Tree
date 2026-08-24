@@ -279,9 +279,14 @@ SMOKE_SA="${SMOKE_SA:-crm-automations@mcc-crm-automations.iam.gserviceaccount.co
 #      on the SERVICE ACCOUNT resource, so a project-level testIamPermissions
 #      sweep does not reveal it (verified 2026-08-24, CRMA-778).
 #
-#      Here --audiences IS required and must be the URL actually being called:
-#      Cloud Run validates the token's `aud` against it, and the candidate tag
-#      URL is not the base service URL.
+#      Here --audiences IS required, and it must be the BASE service URL ($URL)
+#      even though the request goes to the candidate TAG url. Cloud Run
+#      validates `aud` against the service, not against the hostname dialled.
+#      Measured 2026-08-24 against this very service: aud=$URL -> 200,
+#      aud=$CANDIDATE_URL -> 401. Note it is a 401 and not a 403 — the token is
+#      read and then rejected as the wrong token, which is the same signature a
+#      raw OAuth access token produces, so do not read a 401 here as "the
+#      invoker binding is missing" (that is the 403).
 #
 #      $SMOKE_SA needs roles/run.invoker on the service. That is self-service:
 #        gcloud run services add-iam-policy-binding "$SERVICE" \
@@ -301,7 +306,7 @@ smoke_identity_token() {
   adc=$(gcloud auth application-default print-access-token 2>/dev/null) || return 1
   CLOUDSDK_AUTH_ACCESS_TOKEN="$adc" gcloud auth print-identity-token \
     --impersonate-service-account="$SMOKE_SA" \
-    --audiences="$CANDIDATE_URL" 2>/dev/null
+    --audiences="$URL" 2>/dev/null
 }
 
 ID_TOKEN="$(smoke_identity_token || true)"
