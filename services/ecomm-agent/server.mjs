@@ -3,7 +3,7 @@
 // end-to-end (retrieval -> Gemini 3.7 Flash selector -> PROC_SOURCING_APPLY
 // ledger rows) from a single authenticated HTTP call.
 //
-// Two routes, and deliberately only two:
+// Three routes, and deliberately only three:
 //   GET  /health   -> 200. What the CRMA-440 dark-deploy smoke test hits at
 //                     the `candidate` tag URL before traffic is promoted.
 //                     NOT `/healthz`: Google's edge swallows that exact path
@@ -12,12 +12,19 @@
 //                     smoke test. Diagnosed on CRMA-762; `/health`, `/livez`
 //                     and `/readyz` all route through normally.
 //   POST /source   -> {"trend_id": "<uuid>"} in, a synchronous JSON receipt
-//                     out. The SAME endpoint the CRMA-778 Cloud Scheduler
-//                     poller will call per trend (Google OIDC token) and a
-//                     human curls for a manual fire or repair. Cloud Run
-//                     answers synchronously, so the Pipedream hi_/dc_ trigger
-//                     split — and its write-once custom_response toggle — are
-//                     gone; there is one endpoint with one caller contract.
+//                     out. One trend, fired by a human for a manual run or a
+//                     repair. Cloud Run answers synchronously, so the Pipedream
+//                     hi_/dc_ trigger split — and its write-once
+//                     custom_response toggle — are gone.
+//   POST /poll     -> {} (or {"limit": n}) in, a tick receipt out. The batch
+//                     endpoint Cloud Scheduler calls (CRMA-778), and the reason
+//                     it is a batch: Scheduler cannot enumerate trends, so it
+//                     cannot call /source per trend. The SERVICE owns the loop.
+//                     See run_poll.mjs.
+//
+// /poll does not reimplement /source — it drives the same fetchContext ->
+// runSourcing path per trend, so a bug seen under the poll always reproduces
+// under a single manual /source fire.
 //
 // AUTHENTICATION IS THE PLATFORM'S, NOT THIS PROCESS'S. The service is
 // deployed --no-allow-unauthenticated per CRMA-441: Cloud Run's front end
@@ -43,9 +50,11 @@
 
 import http from "node:http";
 import { pathToFileURL } from "node:url";
+import { normalizePollRequest } from "../lib/sourcing_poll.mjs";
 import { loadConfig } from "./config.mjs";
 import { fetchContext } from "./fetch_context.mjs";
 import { BadRequestError, normalizeEvent } from "./normalize_event.mjs";
+import { runPoll } from "./run_poll.mjs";
 import { runSourcing } from "./run_sourcing.mjs";
 
 // A /source body is a single uuid; anything approaching this cap is not a
@@ -145,6 +154,27 @@ export async function handleSource({ config, body }) {
   return { status, receipt };
 }
 
+// A tick always answers 200 once its claim read succeeded, however its
+// individual trends fared. A trend that failed has a recorded 'failed' header
+// and the next tick retries it; surfacing that as a 5xx would make Scheduler
+// retry the WHOLE tick, re-running every trend that had just succeeded.
+// The one genuine 5xx is the claim read itself failing — that throws out of
+// runPoll and reaches createServer's catch, and retrying it is safe because
+// claiming is read-only.
+export async function handlePoll({ config, body }) {
+  let limit;
+  try {
+    ({ limit } = normalizePollRequest(body));
+  } catch (err) {
+    // The lib stays free of HTTP concepts, so it raises RangeError and the
+    // translation to a 400 happens here.
+    throw new BadRequestError(err.message);
+  }
+
+  const receipt = await runPoll({ config, limit });
+  return { status: 200, receipt };
+}
+
 export function createServer(config) {
   return http.createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
@@ -171,7 +201,21 @@ export function createServer(config) {
         return;
       }
 
-      sendJson(res, 404, { error: `no such route: ${req.method} ${route}`, routes: ["GET /health", "POST /source"] });
+      if (route === "/poll") {
+        if (req.method !== "POST") {
+          sendJson(res, 405, { error: "method not allowed", allow: "POST" });
+          return;
+        }
+        const body = parseBody(await readBody(req));
+        const { status, receipt } = await handlePoll({ config, body });
+        sendJson(res, status, receipt);
+        return;
+      }
+
+      sendJson(res, 404, {
+        error: `no such route: ${req.method} ${route}`,
+        routes: ["GET /health", "POST /source", "POST /poll"],
+      });
     } catch (err) {
       if (err instanceof BadRequestError) {
         console.log(`ecomm-agent: bad request — ${err.message}`);
