@@ -39,6 +39,7 @@ import pytest
 
 from prediction_service.domain.claim import (
     HORIZON_BANDS,
+    REQUIRED_EVIDENCE_KEYS,
     VALID_STATUSES,
     Claim,
     build_verdict,
@@ -731,12 +732,10 @@ def test_the_service_binds_no_grade_parameter():
         ),
         confidence=74.0,
         reasoning="because",
-        evidence={
-            "source_signals": [],
-            "saturation": None,
-            "trend_context": None,
-            "coverage": None,
-        },
+        # Built from the required-key list rather than spelled out, so a
+        # story that adds a key does not fail this test for a reason that
+        # has nothing to do with grades.
+        evidence={key: None for key in REQUIRED_EVIDENCE_KEYS},
         status="RESOLVED_TRUE",
         minted_at=datetime(2026, 8, 21, tzinfo=UTC),
     )

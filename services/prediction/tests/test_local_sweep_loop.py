@@ -142,3 +142,44 @@ def test_print_prompt_dumps_the_re_evaluation_instructions():
 def test_a_nonsense_now_is_refused(moment):
     with pytest.raises(ValueError):
         local_sweep.parse_now(moment)
+
+
+# --- the strategist tier, rehearsed offline (CRMA-768 AC5) ----------------
+
+DECISIONS = FIXTURES / "strategist_decisions.sample.json"
+
+
+def test_the_default_run_leaves_every_call_where_automation_left_it():
+    # The deployed posture: Insights Postgres is not reachable, and the loop
+    # says so rather than printing an empty tier that reads as "nobody acted".
+    output = _run()
+    assert "strategist source     the Insights Postgres" in output
+    assert "calibration labels" not in output
+
+
+def test_the_decisions_fixture_shows_both_halves_of_the_ladder():
+    output = _run("--decisions", str(DECISIONS))
+    # An Approve holds act standing...
+    assert "POSTURE            act (settled by strategist_action)" in output
+    # ...and a Dismiss withdraws the call even though its observable check
+    # has just come true, which is the ladder's whole point.
+    assert "STATUS             EXPIRED -> WITHDRAWN" in output
+    assert "POSTURE            withdrawn (settled by strategist_action)" in output
+
+
+def test_every_decision_read_is_printed_as_a_retained_calibration_label():
+    output = _run("--decisions", str(DECISIONS))
+    assert "calibration labels    2 retained for later regression tuning" in output
+    assert "never read back at runtime" in output
+
+
+def test_the_decisions_fixture_is_the_shape_the_reader_reads():
+    rows = json.loads(DECISIONS.read_text())
+    live = {row["PREDICTION_ID"] for row in json.loads(
+        (FIXTURES / "sweep_predictions.sample.json").read_text()
+    )}
+    for row in rows:
+        assert row["decision"] in ("APPROVE", "DISMISS")
+        # Bound by PREDICTION_ID: a fixture naming a prediction that is not
+        # in the ledger fixture would silently rehearse nothing.
+        assert row["prediction_id"] in live
