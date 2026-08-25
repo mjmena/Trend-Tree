@@ -3,9 +3,9 @@
 // Single Gemini 3.1 Pro agent loop. Purely observational — no live HTTP,
 // no Snowflake from inside the loop. All inputs prefetched in workflow.yaml
 // (pipeline_freshness, dashboard_freshness, stuck_trends, cost_24h_rows,
-// audit_prompts, pipedream_errors, catalog_freshness). The four query tools
-// just slice and filter that prefetched data; propose_audit_report is the
-// terminal capture.
+// audit_prompts, pipedream_errors, catalog_freshness, prompt_drift). The
+// query tools just slice and filter that prefetched data;
+// propose_audit_report is the terminal capture.
 //
 // =====================================================================
 // Helper code below is INLINED. Pipedream packages each step as a single
@@ -125,6 +125,7 @@ const TOOL_SCHEMAS = {
         lifecycle: { type: "object", description: "{ status, ledger_inserts_24h, last_eval_age_minutes, gemini_cost_24h_usd }" },
         dashboard: { type: "object", description: "{ status, last_refresh_age_minutes, target_lag_minutes }" },
         data_hygiene: { type: "object", description: "{ status, active_orphan_trends }" },
+        governance: { type: "object", description: "{ status, prompt_drift_count, prompt_drift_keys } — DIM_LLM_PROMPT drift vs. the committed manifest (CRMA-469)" },
         workflow_health: { type: "object", description: "{ audited_count, active_count, errored_24h: [{workflow_name, count, top_error}] }" },
         cost_24h_usd: { type: "number" },
         alerts: {
@@ -401,6 +402,7 @@ export default defineComponent({
     catalog_freshness_rows: { type: "any", optional: true },
     pipedream_errors: { type: "any" },
     prompts_rows: { type: "any" },
+    prompt_drift_rows: { type: "any", optional: true },
   },
   async run({ $ }) {
     const ev = this.event || {};
@@ -467,6 +469,31 @@ export default defineComponent({
       `timeout / "key not configured". Some rejects are healthy (ET genuinely misses); ` +
       `judge the RATIO over time, not a single day. This funnel is INFORMATIONAL — only ` +
       `raise an alert on the structural anomalies above, not on normal reject volume.`;
+
+    // DIM_LLM_PROMPT drift guardrail (CRMA-469). q_prompt_drift already did the
+    // deterministic compare (live ACTIVE version vs. the committed manifest);
+    // this just formats the non-OK rows and hands the agent fixed interpretation
+    // rules, mirroring the et_rescue_block pattern above.
+    const promptDriftRows = this.prompt_drift_rows || [];
+    const promptDriftIssues = promptDriftRows.filter((r) => r.DRIFT_STATUS !== "OK");
+    const promptDriftBlock = promptDriftRows.length === 0
+      ? "(prefetch returned no rows — q_prompt_drift may have failed; treat as WARN, not proof of health)"
+      : promptDriftIssues.length === 0
+        ? `all ${promptDriftRows.length} tracked prompt keys match their committed sql/update_prompts_*.sql version (no drift)`
+        : fmtJson(promptDriftIssues.map((r) => ({
+            prompt_key: r.PROMPT_KEY,
+            live_version: r.LIVE_VERSION,
+            committed_version: r.COMMITTED_VERSION,
+            drift_status: r.DRIFT_STATUS,
+          }))) +
+          `\nInterpretation: DIM_LLM_PROMPT is a live, runtime-loaded table with no deploy ` +
+          `gate — a prompt edited directly instead of via a committed sql/update_prompts_*.sql ` +
+          `migration is a governance violation, not a normal operational blip (CLAUDE.md rule, ` +
+          `CRMA-469). LIVE_AHEAD_OF_REPO or UNTRACKED_IN_MANIFEST means a prompt is running in ` +
+          `production that nobody can review or roll back from git — always RED, area='governance', ` +
+          `name every affected PROMPT_KEY. REPO_AHEAD_OF_LIVE or MANIFEST_KEY_NOT_LIVE usually means ` +
+          `a migration was committed but not yet applied, or a key was retired — WARN unless it has ` +
+          `been stale across multiple audit runs.`;
     const pipedreamHealthBlock = fmtJson({
       summary: pipedream_health.summary,
       note: "active flag is NOT surfaced — Pipedream REST has no GET endpoint for it. Do not infer 'workflow deactivated' from missing active field.",
@@ -489,6 +516,7 @@ export default defineComponent({
       orphan_trends_block: orphanTrendsBlock,
       et_rescue_block: etRescueBlock,
       catalog_freshness_block: catalogFreshnessBlock,
+      prompt_drift_block: promptDriftBlock,
       cost_24h_block: cost24hBlock,
       pipedream_health_block: pipedreamHealthBlock,
     });
