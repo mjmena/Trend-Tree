@@ -15,7 +15,7 @@
 // final statement; anything after it is the component body, which needs a
 // Pipedream runtime we do not have.
 
-import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, basename, dirname } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -23,11 +23,29 @@ import { pathToFileURL } from "node:url";
 const CACHE = new Map();
 
 /**
+ * Accept a step entry named either `entry.js` or `entry.mjs`.
+ *
+ * Steps are being renamed to `.mjs` one at a time — CRMA-775 did it to
+ * run_audit_agent on 2026-08-21 — while every lane hardcodes `entry.js`. A
+ * rename would otherwise break the lane pointing at it with ENOENT, so resolve
+ * the sibling extension instead of making each lane track the churn.
+ */
+function resolveEntry(entryPath) {
+  if (existsSync(entryPath)) return entryPath;
+  const swapped = entryPath.endsWith(".mjs")
+    ? entryPath.replace(/\.mjs$/, ".js")
+    : entryPath.replace(/\.js$/, ".mjs");
+  if (swapped !== entryPath && existsSync(swapped)) return swapped;
+  return entryPath; // let readFileSync raise the real ENOENT
+}
+
+/**
  * @param {string} entryPath  Absolute path to a step's entry.js / entry.mjs.
  * @param {string[]} names    Top-level binding names to re-export.
  * @returns {Promise<Object>} The requested bindings.
  */
 export async function loadStep(entryPath, names) {
+  entryPath = resolveEntry(entryPath);
   const cacheKey = `${entryPath}::${names.join(",")}`;
   if (CACHE.has(cacheKey)) return CACHE.get(cacheKey);
 
@@ -83,7 +101,7 @@ export async function loadStep(entryPath, names) {
 
 /** Read the pinned model id and rate table straight from the deployed step. */
 export function readPin(entryPath) {
-  const src = readFileSync(entryPath, "utf8");
+  const src = readFileSync(resolveEntry(entryPath), "utf8");
   const model = src.match(/const\s+(?:MODEL|GEMINI_MODEL|DEFAULT_MODEL)\s*=\s*["']([^"']+)["']/);
   const rates = src.match(/const\s+RATES_PER_M\s*=\s*\{\s*input:\s*([\d.]+)\s*,\s*output:\s*([\d.]+)/);
   const scalarIn = src.match(/const\s+INPUT_PER_M\s*=\s*([\d.]+)/);
