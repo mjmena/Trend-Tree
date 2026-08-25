@@ -1,0 +1,51 @@
+{
+  "_comment": [
+    "Recorded saturation readings for the local loop (CRMA-765). Keyed by",
+    "subject descriptor, matched case- and whitespace-insensitively. A subject",
+    "absent from this file is an explicit Exploding Topics MISS and an",
+    "available GDELT reading of zero articles -- which is the point: a miss is",
+    "the normal path, and it carries no penalty.",
+    "'rucking vests' is deliberately recorded as peaked with broad news",
+    "breadth, so the offline loop exercises the reading the strategy singles",
+    "out. 'cottage cheese' is exploding with narrow breadth."
+  ],
+  "rucking vests": {
+    "exploding_topics": {
+      "matched": true,
+      "keyword": "rucking vest",
+      "path": "rucking-vest",
+      "total": 3,
+      "absolute_volume": 40500,
+      "classifications": {"3": "peaked", "6": "peaked", "12": "peaked", "24": "exploding"},
+      "growth": {"12": "+318%", "24": "+1120%"}
+    },
+    "gdelt": {
+      "available": true,
+      "article_count": 44,
+      "distinct_domains": 19,
+      "top_domains": [
+        "runnersworld.com", "menshealth.com", "outsideonline.com", "today.com",
+        "self.com", "washingtonpost.com", "nytimes.com", "gearjunkie.com"
+      ],
+      "window_days": 7
+    }
+  },
+  "cottage cheese": {
+    "exploding_topics": {
+      "matched": true,
+      "keyword": "cottage cheese recipes",
+      "path": "cottage-cheese-recipes",
+      "total": 5,
+      "absolute_volume": 165000,
+      "classifications": {"3": "exploding", "6": "exploding", "12": "exploding"},
+      "growth": {"12": "+92%"}
+    },
+    "gdelt": {
+      "available": true,
+      "article_count": 6,
+      "distinct_domains": 4,
+      "top_domains": ["eatingwell.com", "allrecipes.com", "bonappetit.com", "delish.com"],
+      "window_days": 7
+    }
+  }
+}

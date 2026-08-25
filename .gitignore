@@ -9,6 +9,14 @@ devenv.lock
 # Node
 node_modules/
 
+# Python (services/ namespace, CRMA-762)
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+/services/*/build/
+
 # Environment secrets
 .envrc.local
 
