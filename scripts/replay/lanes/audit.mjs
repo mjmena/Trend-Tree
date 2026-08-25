@@ -89,6 +89,10 @@ export async function build(c) {
     "fmtJson",
   ]);
 
+  // Bind the compare axes to the schema this run actually drives (CRMA-760).
+  const derived = sectionKeysFrom(TOOL_SCHEMAS);
+  if (derived.length) SECTIONS = derived;
+
   const freshnessRows = rows.q_pipeline_freshness;
   const pipeline_freshness = {
     ingestion: freshnessRows.filter((r) => r.AREA === "ingestion"),
@@ -170,12 +174,28 @@ export async function build(c) {
 }
 
 /**
- * Every field named here must exist in propose_audit_report's input_schema.
- * The old `report` axis did not — the schema declares the per-section findings
- * at the top level, so `a.report` / `b.report` were undefined on both sides and
- * the seven sections that ARE the audit report went uncompared (CRMA-760).
+ * The per-section findings, read OUT OF the terminal tool schema rather than
+ * listed here.
+ *
+ * The old `report` axis read a.report / b.report, which propose_audit_report
+ * never declared — so it was blank on both sides and the sections that ARE the
+ * audit report went uncompared (CRMA-760). Hardcoding the section names would
+ * fix today and re-break the moment someone adds one: CRMA-722 adds
+ * `data_hygiene` and CRMA-469 adds `governance`, both to this same schema.
+ * Deriving them means a new section is compared the day it is declared.
+ *
+ * Every object-typed property is a section; the scalars are the verdict fields
+ * (overall_status, cost_24h_usd, reasoning) and are compared explicitly.
  */
-const SECTIONS = [
+export function sectionKeysFrom(toolSchemas) {
+  const props = toolSchemas?.propose_audit_report?.input_schema?.properties ?? {};
+  return Object.entries(props)
+    .filter(([, spec]) => spec?.type === "object")
+    .map(([k]) => k);
+}
+
+/** Populated by build() from the deployed step; the fallback keeps compareRows pure-testable. */
+let SECTIONS = [
   "ingestion",
   "distillation",
   "promotion",

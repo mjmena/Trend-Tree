@@ -14,10 +14,13 @@
 //
 //   node scripts/replay/axes_check.mjs
 
-import audit from "./lanes/audit.mjs";
+import { join } from "node:path";
+import audit, { sectionKeysFrom } from "./lanes/audit.mjs";
 import nameReviewer from "./lanes/name-reviewer.mjs";
 import enrichment from "./lanes/enrichment.mjs";
 import { noteAxisLiveness } from "./lib/runner.mjs";
+import { loadStep } from "./lib/entry_module.mjs";
+import { REPO_ROOT } from "./lib/runner.mjs";
 
 let failures = 0;
 const check = (name, cond, detail) => {
@@ -132,6 +135,45 @@ check(
 );
 check("treats 0 as a value, not a blank", deadAfter([{ field: "alert count", left: 0, right: 0 }]).length === 0);
 check("treats an empty string as blank", deadAfter([{ field: "intro", left: "", right: "" }]).includes("intro"));
+
+// ── the audit section list is derived from the DEPLOYED schema, not listed ──
+// This is the half that stops CRMA-760 from recurring: CRMA-722 adds
+// data_hygiene and CRMA-469 adds governance to this same schema, and a derived
+// list compares them the day they land.
+console.log("audit sections derive from the deployed schema");
+const { TOOL_SCHEMAS } = await loadStep(
+  join(REPO_ROOT, "audit-agent-p_xMC9nm3", "run_audit_agent", "entry.js"),
+  ["TOOL_SCHEMAS"],
+);
+const derived = sectionKeysFrom(TOOL_SCHEMAS);
+const declared = Object.keys(TOOL_SCHEMAS?.propose_audit_report?.input_schema?.properties ?? {});
+check("derivation found sections", derived.length > 0, JSON.stringify(derived));
+check(
+  "every derived section is declared in propose_audit_report",
+  derived.every((k) => declared.includes(k)),
+  JSON.stringify(derived.filter((k) => !declared.includes(k))),
+);
+check(
+  "no scalar verdict field is mistaken for a section",
+  !derived.some((k) => ["overall_status", "cost_24h_usd", "reasoning", "slack_summary_md", "alerts"].includes(k)),
+  JSON.stringify(derived),
+);
+console.log(`       sections now declared: ${derived.join(", ")}`);
+
+// Prove the derivation picks a new section up rather than needing an edit here.
+const withIncoming = sectionKeysFrom({
+  propose_audit_report: {
+    input_schema: {
+      properties: {
+        ...TOOL_SCHEMAS.propose_audit_report.input_schema.properties,
+        data_hygiene: { type: "object", description: "{ status, active_orphan_trends }" },
+        governance: { type: "object", description: "{ status, prompt_drift_count }" },
+      },
+    },
+  },
+});
+check("picks up data_hygiene (CRMA-722, PR #100) with no edit here", withIncoming.includes("data_hygiene"));
+check("picks up governance (CRMA-469, PR #99) with no edit here", withIncoming.includes("governance"));
 
 console.log(failures === 0 ? "\nall axis checks passed" : `\n${failures} failed`);
 process.exit(failures === 0 ? 0 : 1);
