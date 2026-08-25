@@ -184,6 +184,13 @@ lane against real Snowflake and the live registry, makes no model calls, and
 catches the failure that actually bites: a step renamed or re-bound underneath a
 lane adapter.
 
+Run `node scripts/replay/axes_check.mjs` after editing any `compareRows`. A dry
+run makes no emission, so `smoke.sh` never executes `compareRows` — an axis that
+names a field the terminal tool schema does not declare renders blank instead of
+failing, and the diff reads as if the model emitted nothing. CRMA-734 lost a
+lifecycle decision to that, and CRMA-760 found two more. This check needs no
+model calls and no Snowflake.
+
 ## Findings this harness produced while being built
 
 Recorded here because each one changes something a lane ticket would otherwise

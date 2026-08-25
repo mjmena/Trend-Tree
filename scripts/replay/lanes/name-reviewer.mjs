@@ -127,20 +127,38 @@ export async function build(c) {
   };
 }
 
+/**
+ * The two sides are keyed differently ON PURPOSE, and CRMA-760 confirms the
+ * asymmetry is correct in principle but was wrong in three names:
+ *
+ *   left  — the persisted PAYLOAD:name_reviewer record, whose keys come from
+ *           run_name_reviewer/entry.js: decoder_guess, score, decode_pass,
+ *           alternate (SINGULAR).
+ *   right — this lane replays the DECODER ONLY, and the decoder prompt
+ *           declares exactly one key: { "guess": "..." }.
+ *
+ * So score / decode_pass / alternate are incumbent-only by construction — the
+ * verifier that produces them is not replayed. They render "—" on the right
+ * rather than reading a key the decoder can never emit.
+ *
+ * Verified against 1035 ledger rows: `decode_score` and `alternates` (plural)
+ * appear 0 times; `score` appears 504 times and `alternate` 29 times.
+ */
 export function compareRows(incumbent, candidate, result) {
   const a = incumbent?.emission ?? {};
   const b = candidate?.emission ?? {};
   const topic = result?.built?.input_notes?.trend_topic;
+  const NOT_REPLAYED = "— (verifier not replayed)";
   return [
     {
       field: "decoder_guess",
       left: a.decoder_guess,
-      right: b.guess ?? b.decoder_guess,
+      right: b.guess,
       note: `actual topic: ${topic ?? "?"} — judge which guess is closer`,
     },
-    { field: "confidence", left: a.decode_score, right: b.confidence ?? b.score },
-    { field: "decode_pass (incumbent verdict)", left: a.decode_pass, right: "—" },
-    { field: "alternates offered", left: a.alternates, right: b.alternates ?? "—" },
+    { field: "score (incumbent verdict)", left: a.score, right: NOT_REPLAYED },
+    { field: "decode_pass (incumbent verdict)", left: a.decode_pass, right: NOT_REPLAYED },
+    { field: "alternate offered (incumbent)", left: a.alternate ?? "—", right: NOT_REPLAYED },
   ];
 }
 

@@ -257,6 +257,8 @@ export function report(run) {
   out.push(diff.dim(`  ${lane.summary}`));
   out.push("");
 
+  const axisLiveness = new Map();
+
   for (const r of results) {
     out.push(diff.rule(r.case.label));
 
@@ -289,6 +291,7 @@ export function report(run) {
         ? r.incumbentRerun
         : r.case.incumbent;
     const rows = lane.compareRows(left, r.candidate, r);
+    noteAxisLiveness(axisLiveness, rows);
     out.push(
       diff.sideBySide({
         leftLabel: `INCUMBENT — ${lane.incumbentModel}${r.case.incumbentAt ? ` (${r.case.incumbentAt})` : ""}`,
@@ -401,8 +404,50 @@ export function report(run) {
     }
   }
 
+  const dead = [...axisLiveness.entries()].filter(([, live]) => !live).map(([f]) => f);
+  if (dead.length) {
+    out.push(diff.rule("dead axes"));
+    out.push(
+      diff.bad(
+        `  ${dead.length} axis/axes were blank on BOTH sides in EVERY case: ${dead.join(", ")}`,
+      ),
+    );
+    out.push(
+      diff.dim(
+        "  An axis reading a field the terminal tool schema does not declare renders blank rather\n" +
+          "  than failing, so a naming slip looks like the model emitted nothing (CRMA-734, CRMA-760).\n" +
+          "  Check these field names against the lane's terminal schema before trusting this diff.",
+      ),
+    );
+    out.push("");
+  }
+
   out.push(diff.rule("verdict is yours"));
   out.push(diff.dim(`  This harness does not score a lane. It shows the diff; the lane ticket decides.`));
   out.push(diff.dim(`  Full run artifact: ${artifact}`));
   return out.join("\n");
+}
+
+/**
+ * Track, per axis, whether EITHER side ever carried a value.
+ *
+ * CRMA-760 asked for a loud failure when an axis names a field the terminal
+ * schema does not declare. A purely static check is not available: an axis's
+ * `field` is a human label ("category / subcategory"), and the real key lives
+ * inside the `left`/`right` expressions, so there is nothing to match against
+ * the schema without annotating all ten lanes. This is the cheap equivalent —
+ * an axis blank on both sides across every case is the signature of exactly
+ * that slip, and it costs nothing on a run that was happening anyway.
+ *
+ * A constant placeholder (an em dash) counts as blank on purpose: an axis
+ * deliberately marked "not replayed" on one side still has to prove itself on
+ * the other.
+ */
+export function noteAxisLiveness(seen, rows) {
+  const blank = (v) =>
+    v == null || v === "" || v === "—" || (typeof v === "string" && v.trimStart().startsWith("— "));
+  for (const row of rows ?? []) {
+    const live = !blank(row.left) || !blank(row.right);
+    seen.set(row.field, (seen.get(row.field) ?? false) || live);
+  }
 }

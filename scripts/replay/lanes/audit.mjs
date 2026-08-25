@@ -45,10 +45,15 @@ export async function cases({ limit = 1 }) {
     label: `audit ${String(r.EVALUATED_AT).slice(0, 16)} — ${r.OVERALL_STATUS} (${r.ALERT_COUNT} alerts)`,
     incumbentAt: String(r.EVALUATED_AT).slice(0, 10),
     incumbent: {
+      // The ledger nests the per-section findings under REPORT, but
+      // propose_audit_report declares them at the top level. Spread them so
+      // both sides of a diff are keyed the way the schema declares them —
+      // otherwise the rerun-failed fallback path compares a nested incumbent
+      // against a flat candidate and every section reads as empty (CRMA-760).
       emission: {
         overall_status: r.OVERALL_STATUS,
         alerts: variant(r.ALERTS) || [],
-        report: variant(r.REPORT) || r.REPORT,
+        ...(variant(r.REPORT) || {}),
       },
       telemetry: {
         model: r.MODEL_USED,
@@ -164,15 +169,38 @@ export async function build(c) {
   };
 }
 
+/**
+ * Every field named here must exist in propose_audit_report's input_schema.
+ * The old `report` axis did not — the schema declares the per-section findings
+ * at the top level, so `a.report` / `b.report` were undefined on both sides and
+ * the seven sections that ARE the audit report went uncompared (CRMA-760).
+ */
+const SECTIONS = [
+  "ingestion",
+  "distillation",
+  "promotion",
+  "enrichment",
+  "lifecycle",
+  "dashboard",
+  "workflow_health",
+];
+
 export function compareRows(incumbent, candidate) {
   const a = incumbent?.emission ?? {};
   const b = candidate?.emission ?? {};
   const alerts = (x) => (Array.isArray(x) ? x : []).map((al) => al.title || al.summary || JSON.stringify(al));
+  // A section is an object whose shape varies per section; show its status
+  // verdict, which is the axis a human actually judges, and keep the rest
+  // available as the serialized body underneath it.
+  const sect = (o, k) => (o?.[k] == null ? undefined : (o[k].status ?? JSON.stringify(o[k])));
+
   return [
     { field: "overall_status", left: a.overall_status, right: b.overall_status, note: "ledger row is a DIFFERENT day" },
     { field: "alert count", left: alerts(a.alerts).length, right: alerts(b.alerts).length },
     { field: "alerts", left: alerts(a.alerts).join("\n"), right: alerts(b.alerts).join("\n") },
-    { field: "report", left: a.report, right: b.report },
+    ...SECTIONS.map((k) => ({ field: `${k}.status`, left: sect(a, k), right: sect(b, k) })),
+    { field: "cost_24h_usd", left: a.cost_24h_usd, right: b.cost_24h_usd },
+    { field: "reasoning", left: a.reasoning, right: b.reasoning },
   ];
 }
 

@@ -270,8 +270,10 @@ export function compareRows(incumbent, candidate) {
 
   const rows = [
     { field: "trend_name", left: a.trend_name, right: b.trend_name },
-    { field: "trend_name_b2c", left: a.trend_name_b2c, right: b.trend_name_b2c },
-    { field: "trend_name_b2b", left: a.trend_name_b2b, right: b.trend_name_b2b },
+    // trend_name_b2c / trend_name_b2b were dropped here by CRMA-760: neither is
+    // declared in propose_enrichment (the per-audience names went away in the
+    // 2026-05-27 single-name cutover), and neither appears in any of the 504
+    // ledger payloads. Both axes rendered blank on both sides.
     { field: "summary_short", left: a.summary_short, right: b.summary_short },
     { field: "category / subcategory", left: `${a.category} / ${a.subcategory}`, right: `${b.category} / ${b.subcategory}` },
     { field: "specificity_score", left: a.specificity_score, right: b.specificity_score },
@@ -279,7 +281,7 @@ export function compareRows(incumbent, candidate) {
       field: "descriptor.statement",
       left: pick(a, "descriptor.statement"),
       right: pick(b, "descriptor.statement"),
-      note: "ADR-0003 axis — see --descriptor-neighbors",
+      note: "ADR-0003 axis — see --descriptor-neighbors. Only 333 of 504 ledger payloads carry a descriptor; on an older case this reads blank on the LEFT and populated on the right, which is the row predating the field, not the incumbent failing to emit.",
     },
     { field: "descriptor.query", left: pick(a, "descriptor.query"), right: pick(b, "descriptor.query") },
     {
