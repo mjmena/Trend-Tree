@@ -42,10 +42,17 @@ derives a claim value, and the model is not given a field it could return one
 in. Falsifiability depends on it: a claim that can be reworded under a
 re-evaluation is a claim nobody can be wrong about.
 
+Between steps 5 and 7 it also records **internal coverage** (CRMA-767):
+which McClatchy stories, if any, already cover the subject. Detection happens
+*before* the model turn and consumption *after* it, and the gap is the
+guarantee -- the model restates confidence having never been shown a coverage
+detection, so coverage cannot raise a number it never saw. What it can do is
+lower the prediction's posture to ``watch_covered``; see coverage/posture.py.
+
 **What this module does not do.** It does not grade. Correct / Early-Late /
-Incorrect is derived in SQL from these rows (CRMA-771). It does not detect
-coverage (CRMA-767), read strategist decisions (CRMA-768), or project
-anything to the dashboard (CRMA-769).
+Incorrect is derived in SQL from these rows (CRMA-771). It does not read
+strategist decisions or apply the human-tier precedence ladder (CRMA-768),
+or project anything to the dashboard (CRMA-769).
 """
 
 from __future__ import annotations
@@ -57,6 +64,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+from ..coverage import CoveragePhase, ExternalDemand, record_coverage
 from ..domain.claim import InvalidClaim, Verdict, build_verdict
 from ..generation.llm import PredictionLLM
 from ..matching.decide import DEFAULT_MIN_SIMILARITY, MatchDecision
@@ -488,6 +496,7 @@ def sweep_predictions(
     trends: TrendReader,
     llm: PredictionLLM | None = None,
     saturation: SaturationPhase | None = None,
+    coverage: CoveragePhase | None = None,
     scope: SweepScope | None = None,
     chain_id: str | None = None,
     now: datetime | None = None,
@@ -540,6 +549,12 @@ def sweep_predictions(
         if saturation is not None
         else [(None, None)] * len(subjects)
     )
+    # Detected here, BEFORE the re-evaluation turn is built, and consumed
+    # after it -- see the module docstring. A None reading means no detector
+    # was wired, which leaves the prior row's `coverage` standing.
+    coverage_readings = (
+        coverage.readings(subjects) if coverage is not None else [None] * len(subjects)
+    )
 
     items = [
         ReevaluationItem(
@@ -580,8 +595,8 @@ def sweep_predictions(
     answers, provenance = _reevaluations(items, llm)
 
     outcomes: list[SweepOutcome] = []
-    for position, (prediction, resolution, (lookup, reading)) in enumerate(
-        zip(live, resolutions, readings, strict=True), 1
+    for position, (prediction, resolution, (lookup, reading), covered) in enumerate(
+        zip(live, resolutions, readings, coverage_readings, strict=True), 1
     ):
         answer = answers.get(position)
         observation = answer.observation if answer else Observation()
@@ -656,6 +671,16 @@ def sweep_predictions(
         note = "; ".join(notes) or None
         evidence["reevaluation"] = block
 
+        # Verdict-side, demote-only, and after the model turn: `confidence`
+        # above was restated by a model that was never shown `covered`.
+        direction = confidence_direction(prediction.confidence, confidence)
+        delta = confidence_delta(prediction.confidence, confidence)
+        evidence = record_coverage(
+            evidence,
+            covered,
+            demand=ExternalDemand(confidence_direction=direction, confidence_delta=delta),
+        )
+
         what_changed = compose_what_changed(
             prior_confidence=prediction.confidence,
             confidence=confidence,
@@ -717,8 +742,8 @@ def sweep_predictions(
                 context=resolution.context,
                 status=status,
                 observation=observation,
-                confidence_direction=confidence_direction(prediction.confidence, confidence),
-                confidence_delta=confidence_delta(prediction.confidence, confidence),
+                confidence_direction=direction,
+                confidence_delta=delta,
                 reevaluated=answer is not None,
                 note=note,
             )

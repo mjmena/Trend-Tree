@@ -41,6 +41,7 @@ from tt_services_lib.auth import CallerIdentity
 from tt_services_lib.snowflake_client import SnowflakeClient
 
 from ..config import Settings
+from ..coverage import build_coverage_phase
 from ..domain.claim import MAX_LENGTHS
 from ..generation.blindness import BlindnessViolation
 from ..generation.llm import PredictionLLM
@@ -264,6 +265,11 @@ def sweep_router(
     # the choice local_sweep.py already makes. sweep/run.py holds the same
     # line for a wired phase whose lookups came back empty.
     sweep_saturation = saturation
+    # Coverage detection is one read through the client this route already
+    # holds -- no key, no outbound HTTP at construction time -- so it is
+    # built here rather than in server.py. Off in config (or a warehouse
+    # outage) degrades to "we could not look", which demotes nothing.
+    coverage_phase = build_coverage_phase(settings, snowflake)
     table = settings.qualify(VERDICT_LEDGER_TABLE)
 
     @router.post("/sweep", response_model=SweepResponse)
@@ -301,6 +307,7 @@ def sweep_router(
                 trends=trends,
                 llm=llm,
                 saturation=sweep_saturation,
+                coverage=coverage_phase,
                 scope=scope,
                 chain_id=chain_id,
             )
