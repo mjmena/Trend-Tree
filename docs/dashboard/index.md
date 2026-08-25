@@ -5,7 +5,7 @@
 **Audience:** Insights Agent users (strategy, content, leadership).
 **Purpose:** Explain every field shown on an ATLAS trend card — what it measures, what scale it's on, where the number comes from, and how to read it.
 **Source of truth:** This page (hub). Mirrored from the canonical Markdown in the [Trend-Tree repo](../../docs/dashboard/).
-**Last updated:** 2026-05-26
+**Last updated:** 2026-08-25
 
 ATLAS is the main trend dashboard in the Insights Agent. Each row on ATLAS is one **trend** — a cultural pattern our pipeline identified from public signals, named, categorized, and tracked over time. The fields on each card describe how the trend is performing, what it's about, where it comes from, and how likely it is to grow.
 
@@ -15,7 +15,7 @@ This document covers every field a strategist sees on an ATLAS card. Field surfa
 
 ## How a trend is found
 
-![How a trend gets to your ATLAS card — 6-stage pipeline flow](../images/atlas-flow.svg)
+![How a trend gets to your ATLAS card — 7-stage pipeline flow](../images/atlas-flow.svg)
 
 <!-- Diagram source: docs/images/atlas-flow.mmd. To regenerate after a pipeline change,
      edit the .mmd file, render via mermaid.live (paste, export SVG), then edit the SVG's
@@ -78,7 +78,15 @@ Prediction is distinct from heat: heat says *how active is this now*, prediction
 
 → See [prediction deep dive](fields/prediction.md).
 
-### 6. Display — ATLAS assembles the card
+### 6. Source — what can we sell against this?
+
+Every 15 minutes, an **ecomm agent** takes a batch of live trends and matches each one against a commerce catalog. It finds the nearest products by vector similarity, then judges which of them a shopper would actually accept as an answer to the trend. Products that clear both tests land on the card; everything else is rejected and the trend reads `no_match`.
+
+This stage runs on its own cadence, not at enrichment time, so a trend can appear on ATLAS before it has products — and can gain them later without anything else about it changing.
+
+→ See [product sourcing](fields/sourcing.md).
+
+### 7. Display — ATLAS assembles the card
 
 ATLAS reads the Snowflake dynamic table `DT_TREND_DASHBOARD`, which joins the latest output from each agent into one row per trend, refreshing every 15 minutes. What you see on a card is always the most recent evaluation from each stage above.
 
@@ -145,6 +153,14 @@ Every score in this table is on a **0–100 scale unless otherwise noted**. The 
 | `RELATED_TRENDS` | Top 5 related trends by vector cosine similarity (≥ 0.65) | array of `{trend_id, trend_name, category, similarity}` | Dashboard (live) | [→](fields/related-trends.md) |
 | `MACROTREND_TAGS` | Higher-level theme labels the trend rolls up into | array | Enrichment agent | [→](fields/macrotrend-tags.md) |
 
+### Commerce
+
+| Field | What it means | Scale | Computed by | More |
+|---|---|---|---|---|
+| `SOURCING_STATUS` | Outcome of the latest product match: `not_sourced` / `running` / `matched` / `no_match` / `failed`. Never blank. | enum | Ecomm agent (every 15 min) | [→](fields/sourcing.md) |
+| `SOURCED_PRODUCTS` | The products picked for this trend, best semantic match first | array of `{tier, catalog_product_id, product_title, vendor, product_type, semantic_score, reasoned_fit, reasoned_fit_rationale, …}` | Ecomm agent (every 15 min) | [→](fields/sourcing.md) |
+| `SOURCED_AT` | When that latest product match finished | timestamp | Ecomm agent (every 15 min) | [→](fields/sourcing.md) |
+
 ### Timestamps & provenance
 
 | Field | What it means | Scale | Computed by |
@@ -173,6 +189,7 @@ Every score in this table is on a **0–100 scale unless otherwise noted**. The 
 ## Further reading
 
 - **[Field deep dives](fields/)** — one page per field on the card.
+- **[Product sourcing](fields/sourcing.md)** — the products matched to a trend, and why a trend shows none.
 - **[Where the signals come from](sources.md)** — direct platform sources, discovery agents, and on-demand agent search tools.
 - **[🟡 Migrating fields](migrating.md)** — Insights Agent backend fields being moved into McClatchy's pipeline.
 - **[FAQ](faq.md)** — 10 most-asked questions.
