@@ -5,7 +5,7 @@
 
 **Purpose:** The full column schema, type, meaning, and an example value for the two dynamic tables the downstream platforms read.
 
-**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`), `sql/task_recompute_content_matches.sql` (+ `sql/fct_trend_content_matches_ledger.sql`). This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-08-18.
+**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`), `sql/task_recompute_content_matches.sql` (+ `sql/fct_trend_content_matches_ledger.sql`), `sql/fct_prediction_verdict_ledger.sql`. This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-08-24.
 
 **Example values are real, pulled 2026-06-08** — mostly from the live trend **Hyper-Tactile Interiors** (`c51f1620-a832-4f13-a443-a7df03bf6a99`). A few fields that are null for that trend (geographic hotspots, macrotrend tags, the social-evidence object) use a populated row from another live trend to show the shape. Column names and types are authoritative.
 
@@ -17,7 +17,7 @@
 
 ## DT_TREND_DASHBOARD
 
-One row per trend, joining trend identity, the latest enrichment payload, lifecycle state, and prediction scoring. Dynamic table, `TARGET_LAG = '15 minutes'`, `REFRESH_MODE = AUTO` on `TREND_AGENT_WH`.
+One row per trend, joining trend identity, the latest enrichment payload, lifecycle state, and the current prediction verdict. Dynamic table, `TARGET_LAG = '15 minutes'`, `REFRESH_MODE = AUTO` on `TREND_AGENT_WH`.
 
 **Never** `SELECT *`**.** Select columns explicitly so the \~4 KB/row `TREND_VECTOR_ARCTIC_EMBED_L_V2_0` doesn't ride into payloads that don't need it.
 
@@ -74,15 +74,63 @@ One row per trend, joining trend identity, the latest enrichment payload, lifecy
 | `DISTINCT_PUBLISHER_COUNT` | NUMBER | Alias for `DISTINCT_SOURCE_COUNT` — same value, clearer name. | `27` |
 | `ORIGINALLY_SURFACED_AT` | TIMESTAMP | When the trend first appeared in the distillation pipeline. | `2026-04-27T00:39:45Z` |
 
-### Prediction (emergence)
+### Prediction (verdict projection)
 
-Written daily by the prediction agent. **Additive and isolated** — never read by HEAT_INDEX, LIFECYCLE_STATUS, or any scoring path. See [Prediction (Score / Flag / Eligible)](https://mcclatchy.atlassian.net/wiki/x/GQAjdw).
+Projected from the **latest active matched verdict per trend** in `FCT_PREDICTION_VERDICT_LEDGER` — the append-only ledger the prediction pillar's Cloud Run service writes on every evaluation. **Additive and isolated** — never read by `HEAT_INDEX`, `LIFECYCLE_STATUS`, or any other scoring path. See [Prediction (Score / Flag / Eligible)](https://mcclatchy.atlassian.net/wiki/x/GQAjdw).
+
+> ⚠ **Semantics changed 2026-08-24 (CRMA-769). Names, types and ranges did not.**
+>
+> These three columns used to hold a deterministic emergence score — a week-over-week formula run daily over every trend old enough to divide. They now describe **the system's current call about the trend**: the calibrated confidence of the latest active, matched prediction, its banding, and whether such a prediction exists at all.
+>
+> The consequences, in order of how likely they are to bite:
+>
+> 1. **`NULL` means "no active call", not "scored low"** and not "too young to score". A trend reads `NULL` in all three whenever no active prediction currently matches it — which is most trends.
+> 2. **`PREDICTION_ELIGIBLE` is `TRUE` or `NULL`, never `FALSE`.** It says "has an active queued prediction"; the pillar has no mechanism for saying no. `WHERE PREDICTION_ELIGIBLE` and `WHERE PREDICTION_ELIGIBLE IS NOT TRUE` keep working. **`WHERE PREDICTION_ELIGIBLE = FALSE` silently returns nothing** — it matched 490 of 506 trends before the cutover.
+> 3. **The scored population shrinks and does not overlap the old one.** At cutover: 279 scored trends → 4, and none of the 4 were scored by the old formula (all were younger than its 14-day floor). Do not trend the mean score across the cutover — the population changed, not the scale. Measurements in [Prediction projection — shadow run](prediction-projection-shadow-run.md).
+> 4. **White-space predictions — those matching no trend — reach no column here.** They are ledger-only in v1; read `FCT_PREDICTION_VERDICT_LEDGER` directly for them.
+>
+> The old `FCT_TREND_PREDICTION_LEDGER` is **frozen, not dropped** — v1/v2 history stays queryable and is fenced by `COMPUTATION_VERSION`.
 
 | Column | Type | What it is | Example value |
 | --- | --- | --- | --- |
-| `PREDICTION_SCORE` | NUMBER(5,1) | 0–100 emergence signal. Equal-weighted blend of velocity acceleration, low base volume, source-diversity expansion, cluster formation (all WoW). `NULL` for trends < 14 days old. | `76.7` |
-| `PREDICTION_FLAG` | VARCHAR | `Emerging` (40–65), `Watchlist` (65–80), `High Potential` (80+). `NULL` below 40 / NULL score. | `Watchlist` |
-| `PREDICTION_ELIGIBLE` | BOOLEAN | TRUE = qualifies for the Predictions Queue (heat not peaked + positive acceleration + new publisher/signal in 7d + age ≥ 14d + top-30% percentile). | `true` |
+| `PREDICTION_SCORE` | NUMBER(5,1) | Calibrated confidence of the current verdict, 0–100. **Not** an emergence score — it is how sure the system is of a specific falsifiable claim. `NULL` when no active matched prediction. | `72.0` |
+| `PREDICTION_FLAG` | VARCHAR | Banding of `PREDICTION_SCORE`, thresholds unchanged: `Emerging` (40–65), `Watchlist` (65–80), `High Potential` (80+). `NULL` below 40 / NULL score. | `Watchlist` |
+| `PREDICTION_ELIGIBLE` | BOOLEAN | `TRUE` = an active matched prediction exists, so the trend belongs in the Predictions Queue. `NULL` otherwise. **Never `FALSE`.** | `true` |
+
+**One card per trend.** Several active predictions can match the same trend. The projection elects one: most recently evaluated, then most confident, then lowest `PREDICTION_ID` — a total order, so the dashboard does not flicker between them across refreshes. The others are **not suppressed**; they remain queryable in `FCT_PREDICTION_VERDICT_LEDGER` and continue to be re-evaluated. A trend's dashboard row is a summary of the system's strongest current call about it, not the complete set.
+
+**Narrative columns (additive, 2026-08-24).** All from the same verdict as the three above, all `NULL` when no active matched prediction. Appended at the **end** of the row, after `NEAREST_CONTENT`, so the change is additive by ordinal position as well as by name. Listed here in the order a card reads them.
+
+| Column | Type | What it is | Example value |
+| --- | --- | --- | --- |
+| `PREDICTION_CITED_EXAMPLES` | ARRAY | Up to 5 already-true source signals behind the call, in the order the agent cited them. Shape: `{ url, title, source }`. `NULL` — never an empty array — when the prediction cited nothing. | see shape below |
+| `PREDICTION_CLAIM` | VARCHAR | The rendered claim sentence — the four frozen claim parts (subject, directional claim, horizon, observable check) composed in SQL, so the card states an explicit call. Never `NULL` when `PREDICTION_SCORE` is not: all four parts are `NOT NULL` on the ledger and frozen at mint. | `matcha perfume: prestige beauty retail listings for tea-gourmand fragrance profiles expand beyond indie perfume houses by Feb 2027, observable when Sephora US online catalog returns at least five distinct full-size eau de parfum or eau de toilette SKUs featuring 'matcha' in their title or primary scent profile.` |
+| `PREDICTION_REASONING` | VARCHAR | The agent's rationale for this verdict. | `Gourmand tea notes satisfy consumer demand for comforting, subtle, wellness-adjacent skin scents…` |
+| `PREDICTION_WHAT_CHANGED` | VARCHAR | What moved since the prior verdict on this prediction. `NULL` on a prediction's first mint — there was nothing to change from. | `Nothing moved since the previous evaluation: confidence held at 65.0…` |
+| `PREDICTION_EVALUATED_AT` | TIMESTAMP | When this verdict was written. | `2026-08-24T19:10:43Z` |
+| `PREDICTION_ANGLE` | VARCHAR | One sentence, reader-facing, on why this change matters culturally. **Nullable** — a run where the model declined to narrate still mints its predictions. | `Fragrance buyers are turning away from heavy florals and musks toward calming, tea-inspired gourmands that feel like subtle skin scents.` |
+| `PREDICTION_AUDIENCE_QUESTION` | VARCHAR | The question this call invites us to put to readers. **Nullable**, same reason. | `Have you noticed perfume scents shifting toward calming beverages like matcha and milky tea blends?` |
+
+```json
+[
+  {
+    "url":    "https://x.com/SmallFeetHeat/status/2088639975361245438",
+    "title":  "@SmallFeetHeat: The author posts about being on the hunt for a good matcha fragrance.",
+    "source": "x.com"
+  },
+  {
+    "url":    "https://dearaugustfragrance.com/en-us/blogs/news/2026-fragrance-trends-the-perfume-styles-to-know-this-year",
+    "title":  "Refined Gourmand Fragrance Preference",
+    "source": "dearaugustfragrance.com"
+  }
+]
+```
+
+**Render examples above the claim.** The card leads with what is already true and then states the call — the evidence is what makes a prediction readable. On live data 2 predictions in 20 cite nothing; those render **without** an examples block rather than with an empty one, and are never suppressed for it. `url` is absent (not empty, not a placeholder) on the rare citation that resolves to no public link, so render an unlinked citation rather than a dead one.
+
+**Nothing here feeds the score.** `PREDICTION_ANGLE`, `PREDICTION_AUDIENCE_QUESTION`, `PREDICTION_CITED_EXAMPLES`, `PREDICTION_REASONING` and `PREDICTION_WHAT_CHANGED` are readable context. None is read by `PREDICTION_SCORE` / `_FLAG` / `_ELIGIBLE`, nor by the ordering that decides which verdict wins a trend. The only mechanical gate anywhere in the pillar is the mint-time data-quality floor, and it lives in the service, not here.
+
+**The rest of `EVIDENCE` stays in the ledger.** `EVIDENCE:source_signals` is the one key that projects. `saturation`, `trend_context` and `coverage` are readable only from `FCT_PREDICTION_VERDICT_LEDGER` — deliberately, because `trend_context` holds the four measures the retired scorer gated on and projecting them is how they would find their way back into a filter.
 
 ### Source metrics
 
@@ -259,4 +307,5 @@ ORDER BY SCORE DESC;
 ## See also
 
 * [ATLAS Dashboard — Field Reference](https://mcclatchy.atlassian.net/wiki/x/CgARdw) — plain-English, strategist-facing version of the dashboard fields.
-* [Prediction (Score / Flag / Eligible)](https://mcclatchy.atlassian.net/wiki/x/GQAjdw) — emergence scoring deep dive.
+* [Prediction (Score / Flag / Eligible)](https://mcclatchy.atlassian.net/wiki/x/GQAjdw) — what the three retained columns mean now, in plain English.
+* [Prediction projection — shadow run](prediction-projection-shadow-run.md) — the before/after measurements behind the 2026-08-24 semantics change.

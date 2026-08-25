@@ -57,6 +57,29 @@
 -- compared. NULL (not []) when a trend has no row in the latest chain,
 -- matching RELATED_TRENDS' existing null-when-absent convention.
 --
+-- 2026-08-24 (CRMA-769 prediction cutover): PREDICTION_SCORE /
+-- PREDICTION_FLAG / PREDICTION_ELIGIBLE no longer read the deterministic
+-- scorer's FCT_TREND_PREDICTION_LEDGER (frozen as v1/v2 history). They now
+-- project the latest ACTIVE, MATCHED verdict per trend from
+-- FCT_PREDICTION_VERDICT_LEDGER: score = calibrated confidence, flag = its
+-- banding on the same 40/65/80 thresholds, eligible = "has an active queued
+-- prediction". Names, types and ranges are unchanged; the semantics are
+-- deliberately not (the strategy's coverage -> integrity trade, documented
+-- in docs/dashboard/data-contract.md and measured in
+-- docs/dashboard/prediction-projection-shadow-run.md).
+--
+-- A trend with no active matched prediction reads NULL in all three. The
+-- retired scorer coalesced PREDICTION_ELIGIBLE to FALSE, which dressed "no
+-- call" up as "a negative call"; that COALESCE is gone, and FALSE is no
+-- longer a value this column takes.
+--
+-- Additive narrative columns from the same verdict -- the rendered claim
+-- sentence, reasoning, what-changed, evaluated-at, angle, audience question,
+-- and the cited examples -- are appended at the END of the row (see the
+-- final SELECT). None of them is read by any scoring path, here or upstream.
+--
+-- White-space predictions (MATCHED_TREND_ID NULL) reach no column here.
+--
 -- Output column shape preserved for Steeple consumers (minus the two dropped
 -- promotion-* columns and TOP_SIGNALS.pagerank_score).
 
@@ -78,18 +101,67 @@ WITH latest_lifecycle AS (
       FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
     ) WHERE rn = 1
 ),
-latest_prediction AS (
-    -- Latest prediction-agent row per trend. Additive columns for the
-    -- Predictions Queue UI. ISOLATED from HEAT_INDEX / LIFECYCLE_STATUS —
-    -- not read by any scoring path, only surfaced for the frontend.
-    SELECT TREND_ID,
-           PREDICTION_SCORE,
-           PREDICTION_FLAG,
-           PREDICTION_ELIGIBLE
-    FROM (
-      SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
-      FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_PREDICTION_LEDGER
-    ) WHERE rn = 1
+latest_verdict AS (
+    -- CRMA-769: one row per PREDICTION_ID -- the prediction's *current*
+    -- state. FCT_PREDICTION_VERDICT_LEDGER is append-only and re-evaluates
+    -- append rather than update, so "what the system says about this call
+    -- today" is the newest row and nothing else. Reading any older row would
+    -- resurrect a call a later verdict already withdrew, unmatched, or
+    -- resolved.
+    SELECT PREDICTION_ID,
+           EVALUATED_AT,
+           PREDICTION_STATUS,
+           MATCHED_TREND_ID,
+           CONFIDENCE,
+           SUBJECT_DESCRIPTOR,
+           DIRECTIONAL_CLAIM,
+           HORIZON_AT,
+           OBSERVABLE_CHECK,
+           REASONING,
+           WHAT_CHANGED,
+           ANGLE,
+           AUDIENCE_QUESTION,
+           -- The ONE evidence key that leaves the ledger. Everything else
+           -- under EVIDENCE (saturation, trend_context, coverage) is
+           -- deliberately ledger-only -- see the projection notes at the top
+           -- of this file.
+           EVIDENCE:source_signals AS SOURCE_SIGNALS
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_PREDICTION_VERDICT_LEDGER
+    -- PREDICTION_EVAL_ID only breaks an exact EVALUATED_AT tie, where
+    -- neither row is the newer one -- it is there to make the pick
+    -- deterministic across refreshes, not to express recency.
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY PREDICTION_ID
+        ORDER BY EVALUATED_AT DESC, PREDICTION_EVAL_ID
+    ) = 1
+),
+queued_prediction AS (
+    -- The latest ACTIVE, MATCHED verdict per trend -- the row the three
+    -- retained PREDICTION_* columns and every additive narrative column read.
+    --
+    -- MATCHED_TREND_ID IS NOT NULL is the white-space filter (CRMA-764 AC3,
+    -- carried to CRMA-769 AC3). A white-space prediction -- one whose claim
+    -- matches no current trend -- is ledger-only in v1 and reaches no
+    -- strategist surface. The join below would drop a NULL id anyway; saying
+    -- it here makes the guarantee legible instead of incidental.
+    --
+    -- PREDICTION_STATUS = 'ACTIVE' is the other half: a WITHDRAWN call is one
+    -- a strategist dismissed and automation must never re-surface, and a
+    -- RESOLVED_* / EXPIRED call has already been graded.
+    --
+    -- Several predictions can match one trend, and a batch run stamps them
+    -- all with the same EVALUATED_AT, so the tie-break has to be total or the
+    -- dashboard would flicker between them across refreshes. Highest
+    -- confidence wins the card; PREDICTION_ID settles an exact tie. Nothing
+    -- in this ordering reads a narrative field (AC9).
+    SELECT *
+    FROM latest_verdict
+    WHERE PREDICTION_STATUS = 'ACTIVE'
+      AND MATCHED_TREND_ID IS NOT NULL
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY MATCHED_TREND_ID
+        ORDER BY EVALUATED_AT DESC, CONFIDENCE DESC, PREDICTION_ID
+    ) = 1
 ),
 latest_enrichment AS (
     SELECT r.TREND_ID, r.WRITTEN_AT AS ENRICHED_AT,
@@ -314,6 +386,68 @@ nearest_content AS (
     JOIN latest_content_match_chain c ON c.CHAIN_ID = m.CHAIN_ID
     GROUP BY m.TREND_ID
 ),
+prediction_cited_examples AS (
+    -- CRMA-769 AC6: the cited examples a card leads with, before it states
+    -- the claim. This is the ONLY key that leaves EVIDENCE -- saturation,
+    -- trend_context and coverage stay ledger-only.
+    --
+    -- EVIDENCE:source_signals holds FCT_SIGNALS ids, and this pipeline's
+    -- signal id IS the source URL (sql/swap_signal_id_to_url.sql), so the
+    -- join back to FCT_SIGNALS turns a bare id into a rendered link: title
+    -- to read, publisher domain to attribute. OBJECT_CONSTRUCT drops null
+    -- values, so a signal whose title or domain cannot be resolved yields a
+    -- smaller object rather than one padded with nulls -- the same shape
+    -- convention EVIDENCE entries already follow.
+    --
+    -- Capped at the first 5 in the order the agent cited them, matching
+    -- TOP_SIGNALS / RELATED_TRENDS / NEAREST_CONTENT.
+    --
+    -- The FLATTEN is deliberately NOT `OUTER => TRUE`: a prediction that
+    -- cited nothing produces no row here, so PREDICTION_CITED_EXAMPLES reads
+    -- NULL rather than an empty array, and a card renders no examples block
+    -- instead of a bare one (AC7). It is still projected -- the prediction is
+    -- never suppressed for having cited nothing. On 2026-08-24, 2 of the 20
+    -- live predictions cite nothing -- roughly 1 in 10, routine rather than
+    -- exceptional, which is why the absent case gets a shape of its own.
+    SELECT
+        cited.TREND_ID,
+        ARRAY_AGG(OBJECT_CONSTRUCT(
+            -- Post-swap_signal_id_to_url.sql the id IS the canonical URL, so
+            -- it passes straight through. Legacy bluesky rows still carry an
+            -- opaque `bsky_<hash>`; rebuild their permalink from METADATA:uri.
+            -- This mirrors the at:// -> web expression in
+            -- alter_stg_external_signals_url_migration.sql -- a second copy,
+            -- because Snowflake DDL files cannot share one. If that
+            -- expression ever changes, change it here too.
+            -- Anything else resolves to no link, and OBJECT_CONSTRUCT drops
+            -- the key -- an unlinked citation reads better than a dead one.
+            'url',    CASE
+                          WHEN cited.SIGNAL_ID LIKE 'http%' THEN cited.SIGNAL_ID
+                          WHEN s.SOURCE_NAME = 'bluesky'
+                               AND s.METADATA:uri::STRING LIKE 'at://%'
+                              THEN 'https://bsky.app/profile/'
+                                || SPLIT_PART(s.METADATA:uri::STRING, '/', 3)
+                                || '/post/'
+                                || SPLIT_PART(s.METADATA:uri::STRING, '/', 5)
+                          ELSE NULL
+                      END,
+            'title',  s.SIGNAL_TITLE,
+            'source', sd.DOMAIN
+        )) WITHIN GROUP (ORDER BY cited.CITED_IDX) AS PREDICTION_CITED_EXAMPLES
+    -- The FLATTEN sits in its own subquery because Snowflake will not put a
+    -- lateral view on the left of a join.
+    FROM (
+        SELECT qp.MATCHED_TREND_ID AS TREND_ID,
+               f.value::STRING     AS SIGNAL_ID,
+               f.index             AS CITED_IDX
+        FROM queued_prediction qp,
+             LATERAL FLATTEN(input => qp.SOURCE_SIGNALS) f
+        WHERE f.index < 5
+    ) cited
+    LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS s ON s.SIGNAL_ID = cited.SIGNAL_ID
+    LEFT JOIN signal_domains sd                          ON sd.SIGNAL_ID = cited.SIGNAL_ID
+    GROUP BY cited.TREND_ID
+),
 trend_base AS (
     -- Sourced from FCT_TRENDS only. Legacy FCT_TREND_METRICS union removed
     -- 2026-04-28 to test dashboard scoped exclusively to agent-promoted trends.
@@ -348,11 +482,29 @@ SELECT
     e.SUMMARY_SHORT,
     e.SUMMARY_LONG,
     ROUND(COALESCE(tb.TREND_HEAT_INDEX, 0), 1)                            AS HEAT_INDEX,
-    -- Prediction-agent additive columns. Isolated from HEAT_INDEX by design;
-    -- read by the Insights Agent Predictions Queue only.
-    pred.PREDICTION_SCORE,
-    pred.PREDICTION_FLAG,
-    COALESCE(pred.PREDICTION_ELIGIBLE, FALSE)                              AS PREDICTION_ELIGIBLE,
+    -- The three retained prediction columns. Same names, same types, same
+    -- ranges as the retired deterministic scorer's -- and deliberately
+    -- different semantics (CRMA-769). They now describe the latest ACTIVE,
+    -- MATCHED verdict about this trend, and NULL means the system is making
+    -- no call about it, not that it scored the trend badly.
+    --
+    -- Still isolated from HEAT_INDEX / LIFECYCLE_STATUS by design: nothing
+    -- below is read by any trend-scoring path.
+    qp.CONFIDENCE                                                          AS PREDICTION_SCORE,
+    -- Cast pins the width. The live column is VARCHAR(32) -- inherited from
+    -- the retired ledger's own column -- and a bare CASE over string
+    -- literals would widen it to VARCHAR(16MB). Harmless to read, but AC1
+    -- says the type does not change, so it does not.
+    CASE
+        WHEN qp.CONFIDENCE IS NULL  THEN NULL
+        WHEN qp.CONFIDENCE >= 80    THEN 'High Potential'
+        WHEN qp.CONFIDENCE >= 65    THEN 'Watchlist'
+        WHEN qp.CONFIDENCE >= 40    THEN 'Emerging'
+        ELSE NULL
+    END::VARCHAR(32)                                                       AS PREDICTION_FLAG,
+    -- "Has an active queued prediction", nothing more. TRUE or NULL only --
+    -- never FALSE, which would read as a judgement the pillar never makes.
+    CASE WHEN qp.PREDICTION_ID IS NOT NULL THEN TRUE END                   AS PREDICTION_ELIGIBLE,
     tb.TOTAL_CLUSTER_SIZE,
     tb.DISTINCT_SOURCE_COUNT,
     tb.DISTINCT_SOURCE_COUNT                                               AS DISTINCT_PUBLISHER_COUNT,
@@ -426,7 +578,39 @@ SELECT
 
     -- 2026-08-18 (CRMA-452): top-N nearest published-content matches, see
     -- the nearest_content CTE + fct_trend_content_matches_ledger.sql.
-    nc.NEAREST_CONTENT
+    nc.NEAREST_CONTENT,
+
+    -- 2026-08-24 (CRMA-769): the narrative half of the prediction card, from
+    -- the same queued_prediction row as PREDICTION_SCORE / _FLAG / _ELIGIBLE
+    -- above. Appended at the end, not inserted beside the retained trio, so
+    -- the change is additive by ordinal position too. Every one of these is
+    -- readable context: none is read by any scoring path, here or upstream.
+
+    -- Cited examples come FIRST, because that is the order the card reads
+    -- in: what is already true, then what we think happens next. NULL, not
+    -- [], when the prediction cited nothing -- see the CTE.
+    pce.PREDICTION_CITED_EXAMPLES,
+
+    -- The rendered claim: all four frozen claim parts composed into one
+    -- sentence, so a strategist reads an explicit call instead of assembling
+    -- one from columns. Safe to concatenate because all four are NOT NULL on
+    -- the ledger -- and for that reason nothing nullable is concatenated in.
+    -- The trailing-period trims stop a claim or check that already ends in
+    -- one from rendering '..'.
+    qp.SUBJECT_DESCRIPTOR
+        || ': '                || RTRIM(TRIM(qp.DIRECTIONAL_CLAIM), '.')
+        || ' by '              || TO_VARCHAR(qp.HORIZON_AT, 'Mon YYYY')
+        || ', observable when ' || RTRIM(TRIM(qp.OBSERVABLE_CHECK), '.')
+        || '.'                                                            AS PREDICTION_CLAIM,
+    qp.REASONING                                                          AS PREDICTION_REASONING,
+    -- NULL on a prediction's first mint -- there was nothing to change from.
+    qp.WHAT_CHANGED                                                       AS PREDICTION_WHAT_CHANGED,
+    qp.EVALUATED_AT                                                       AS PREDICTION_EVALUATED_AT,
+    -- CRMA-782. Both nullable: a run where the model declined to narrate
+    -- still mints its predictions, and the card degrades to claim +
+    -- reasoning rather than blanking.
+    qp.ANGLE                                                              AS PREDICTION_ANGLE,
+    qp.AUDIENCE_QUESTION                                                  AS PREDICTION_AUDIENCE_QUESTION
 
 FROM trend_base tb
 LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t  ON tb.TREND_ID = t.TREND_ID
@@ -437,5 +621,6 @@ LEFT JOIN top_signals ts                              ON tb.TREND_ID = ts.TREND_
 LEFT JOIN macro_tags mt                               ON tb.TREND_ID = mt.TREND_ID
 LEFT JOIN related_trends r                            ON tb.TREND_ID = r.TREND_ID
 LEFT JOIN trend_vectors tv                            ON tb.TREND_ID = tv.TREND_ID
-LEFT JOIN latest_prediction pred                      ON tb.TREND_ID = pred.TREND_ID
-LEFT JOIN nearest_content nc                          ON tb.TREND_ID = nc.TREND_ID;
+LEFT JOIN queued_prediction qp                        ON tb.TREND_ID = qp.MATCHED_TREND_ID
+LEFT JOIN nearest_content nc                          ON tb.TREND_ID = nc.TREND_ID
+LEFT JOIN prediction_cited_examples pce               ON tb.TREND_ID = pce.TREND_ID;
