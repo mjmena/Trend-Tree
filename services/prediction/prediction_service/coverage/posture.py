@@ -70,6 +70,14 @@ class ExternalDemand:
     never rendered into a prompt (sweep/prompt.py has no coverage field), so
     a rising confidence cannot be an echo of our own publishing.
 
+    **It is a proxy, and worth naming as one.** The strategy says "external
+    demand may re-raise a covered prediction", and v1 has no first-party
+    demand series wired into the pillar -- GSC and Google Trends feed the
+    opportunity axis, not this one. What this reads instead is the model's
+    own restatement of confidence, which is a *reading of* external evidence
+    rather than a demand measurement. When a demand series is available it
+    belongs here as a second field, not as a replacement for the valve.
+
     The default is "no reading" -- an empty direction, which is not
     ``strengthened``, so it never re-raises. A caller who has no demand
     reading gets the demotion, which is the safe half of a demote-only

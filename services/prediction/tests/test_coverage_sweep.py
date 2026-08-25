@@ -20,6 +20,7 @@ from fastapi.testclient import TestClient
 from prediction_service.app import create_app
 from prediction_service.config import settings_from_env
 from prediction_service.coverage import (
+    NOT_RE_READ_NOTE,
     POSTURE_ACT,
     POSTURE_WATCH_COVERED,
     CoverageDetection,
@@ -349,3 +350,50 @@ def test_the_sweep_route_detects_coverage_and_writes_it_to_the_ledger():
     assert payload["detected"] is True
     assert payload["posture"] == POSTURE_WATCH_COVERED
     assert payload["detections"][0]["content_id"] == "316520398"
+
+
+# --- an outage must not un-demote a covered call (AC4's direction) --------
+
+
+def covered_prior() -> dict:
+    """A ledger row that already carries a real detection."""
+    return {
+        "source_signals": ["bluesky:3lqz7a2xk4d2m"],
+        "saturation": None,
+        "trend_context": None,
+        "coverage": {
+            "detected": True,
+            "story_count": 1,
+            "posture": POSTURE_WATCH_COVERED,
+            "demoted": True,
+            "detections": [{"content_id": "316520398", "headline": "the story"}],
+        },
+    }
+
+
+def test_a_detector_outage_cannot_re_raise_a_covered_prediction():
+    # The failure this guards: an unavailable reading overwriting a real
+    # detection would flip posture back to "act" -- a re-raise that no
+    # external demand drove, which is exactly what AC4 forbids.
+    outage = CoverageReading(
+        subject=SUBJECT, available=False, miss_reason="outage", error="RuntimeError: boom"
+    )
+    result = sweep(coverage=phase(outage), rows=[open_prediction_row(evidence=covered_prior())])
+    payload = coverage_of(result)
+
+    assert payload["detected"] is True
+    assert payload["posture"] == POSTURE_WATCH_COVERED
+    assert payload["note"] == NOT_RE_READ_NOTE
+    assert payload["error"] == "RuntimeError: boom"
+
+
+def test_looking_and_finding_nothing_does_replace_a_prior_detection():
+    # The other half: a pass that actually looked and found the stories gone
+    # from the window IS a reading, and it must be allowed to lift the
+    # demotion. Otherwise a demotion would be permanent.
+    looked = CoverageReading(subject=SUBJECT, available=True, detections=())
+    result = sweep(coverage=phase(looked), rows=[open_prediction_row(evidence=covered_prior())])
+    payload = coverage_of(result)
+
+    assert payload["detected"] is False
+    assert payload["posture"] == POSTURE_ACT

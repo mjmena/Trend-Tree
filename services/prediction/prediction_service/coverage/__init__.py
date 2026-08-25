@@ -42,13 +42,14 @@ from .detect import (
     SnowflakeCoverageDetector,
     StaticCoverageDetector,
     build_detection_sql,
-    fold_headline,
 )
 from .evidence import (
     COVERAGE_KEY,
+    NOT_RE_READ_NOTE,
     ONE_WAY_VALVE_NOTE,
     attach_coverage,
     build_coverage_evidence,
+    carries_a_detection,
     record_coverage,
 )
 from .isolation import (
@@ -78,6 +79,7 @@ __all__ = [
     "EMBED_MODEL",
     "MISS_LOOKUP_FAILED",
     "MISS_NOT_CONFIGURED",
+    "NOT_RE_READ_NOTE",
     "ONE_WAY_VALVE_NOTE",
     "POSTURE_ACT",
     "POSTURE_WATCH_COVERED",
@@ -94,8 +96,8 @@ __all__ = [
     "build_coverage_evidence",
     "build_coverage_phase",
     "build_detection_sql",
+    "carries_a_detection",
     "coverage_demotes",
-    "fold_headline",
     "posture_for",
     "record_coverage",
 ]

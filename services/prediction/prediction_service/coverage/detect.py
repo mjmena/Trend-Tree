@@ -46,7 +46,11 @@ join to reach a column that would tell it which class a story is.
 
   This is pool hygiene on the *content* side, not a gate on predictions:
   nothing here can filter, suppress or refuse a prediction, and a subject
-  with no detections gets a verdict exactly as one with ten does.
+  with no detections gets a verdict exactly as one with ten does. It is
+  still a new mechanical rule about what counts as coverage, and the
+  strategy is explicit that those "require a decision, not a commit" -- so
+  it is called out here and in the ticket rather than buried, and it is the
+  one number in this module that wants an explicit blessing.
 
 **The dedupe rule (AC1, AC6): one detection per folded headline.** A
 syndicated story runs on many McClatchy sites and lands in
@@ -170,8 +174,10 @@ FOLDED AS (
     SELECT
         s.SUBJECT_DESCRIPTOR,
         p.HEADLINE_FOLD,
-        MIN(p.CONTENTID)      AS CONTENT_ID,
-        MIN(p.HEADLINE)       AS HEADLINE,
+        MIN(p.CONTENTID)                     AS CONTENT_ID,
+        -- Paired with the row CONTENT_ID came from: two independent MINs
+        -- could report a headline belonging to a different copy.
+        MIN_BY(p.HEADLINE, p.CONTENTID)      AS HEADLINE,
         MIN(p.PUBLISHED_DATE) AS FIRST_PUBLISHED_DATE,
         MAX(p.PUBLISHED_DATE) AS LAST_PUBLISHED_DATE,
         COUNT(*)              AS SYNDICATED_COPIES,
@@ -202,6 +208,15 @@ ORDER BY SUBJECT_DESCRIPTOR ASC, SIMILARITY DESC, CONTENT_ID ASC
 MISS_NOT_CONFIGURED = "no coverage detector is wired for this service"
 MISS_LOOKUP_FAILED = "the coverage detection query failed"
 MISS_NO_SUBJECTS = "no subjects were submitted for detection"
+
+
+def _get(row: Mapping[str, Any], name: str) -> Any:
+    """Read a column from a warehouse row (upper-case keys) or a fixture dict
+    (lower-case keys) -- the local loop and the deployed run share the code
+    below this line, the same way matching/trends.py does."""
+    if name in row:
+        return row[name]
+    return row.get(name.lower())
 
 
 def _text(value: Any) -> str | None:
@@ -242,20 +257,6 @@ def bounded_cosine(name: str, value: Any) -> float:
     return coerced
 
 
-def fold_headline(headline: str) -> str:
-    """The dedupe key, in Python.
-
-    The same fold the SQL does, kept here so the rule can be read and tested
-    without a warehouse (AC1) and so a fixture-backed detector dedupes the
-    way the deployed one does. Deliberately the coarse ASCII fold the SQL
-    expression performs -- not ``matching.subject.fold``, which also strips
-    accents and plurals. Two headlines that differ by an accent are two
-    headlines; two that differ by punctuation or case are one story.
-    """
-    kept = "".join(ch if ch.isalnum() and ch.isascii() else " " for ch in headline.lower())
-    return " ".join(kept.split())
-
-
 @dataclass(frozen=True)
 class CoverageDetection:
     """One McClatchy story, deduped across its syndicated copies."""
@@ -272,16 +273,13 @@ class CoverageDetection:
 
     @classmethod
     def from_row(cls, row: Mapping[str, Any]) -> CoverageDetection:
-        def get(name: str) -> Any:
-            return row[name] if name in row else row.get(name.lower())
-
         return cls(
-            headline=_text(get("HEADLINE")) or "",
-            similarity=_float(get("SIMILARITY")) or 0.0,
-            content_id=_text(get("CONTENT_ID")),
-            first_published_date=_text(get("FIRST_PUBLISHED_DATE")),
-            last_published_date=_text(get("LAST_PUBLISHED_DATE")),
-            syndicated_copies=max(1, _int(get("SYNDICATED_COPIES"), 1)),
+            headline=_text(_get(row, "HEADLINE")) or "",
+            similarity=_float(_get(row, "SIMILARITY")) or 0.0,
+            content_id=_text(_get(row, "CONTENT_ID")),
+            first_published_date=_text(_get(row, "FIRST_PUBLISHED_DATE")),
+            last_published_date=_text(_get(row, "LAST_PUBLISHED_DATE")),
+            syndicated_copies=max(1, _int(_get(row, "SYNDICATED_COPIES"), 1)),
         )
 
     def as_evidence(self) -> dict[str, Any]:
@@ -337,8 +335,16 @@ class CoverageReading:
 
 
 class CoverageDetector(Protocol):
-    """The one external seam. Implementations must not raise: an outage is a
-    miss, and a miss must not stop the pillar writing verdicts."""
+    """The one external seam.
+
+    Implementations must not raise **on an outage**: a warehouse that does
+    not answer is a miss, and a miss must not stop the pillar writing
+    verdicts. What they may still raise is a *configuration* error -- an
+    isolation violation, or a bound that is not a bound -- because those are
+    not readings of the world and swallowing them would hide a broken deploy
+    behind rows that quietly say "we could not look". The deployed detector
+    raises those at construction (``__post_init__``) and inside the guard,
+    never from a live query."""
 
     def detect(self, subjects: Sequence[str]) -> list[CoverageReading]:
         """One reading per subject, in the order given."""
@@ -415,6 +421,23 @@ class SnowflakeCoverageDetector:
     detection_limit: int = DEFAULT_DETECTION_LIMIT
     subject_limit: int = DEFAULT_SUBJECT_LIMIT
 
+    def __post_init__(self) -> None:
+        """Coerce and range-check every bound here, once, rather than at
+        query time.
+
+        Checked at query time, a ``min_similarity`` of ``78`` (someone
+        writing the threshold as a percentage) loaded fine, raised on every
+        sweep, and was swallowed into the phase's "an outage is a miss"
+        catch -- coverage silently dead for every row, with nothing but a
+        warning to say so. Raised from the constructor it surfaces where
+        ``build_coverage_phase`` can act on it, which is once, at startup.
+        """
+        object.__setattr__(
+            self, "min_similarity", bounded_cosine("min_similarity", self.min_similarity)
+        )
+        for name in ("window_days", "min_headline_chars", "detection_limit", "subject_limit"):
+            object.__setattr__(self, name, positive_int(name, getattr(self, name)))
+
     def detect(self, subjects: Sequence[str]) -> list[CoverageReading]:
         wanted = list(subjects)
         if not wanted:
@@ -432,24 +455,20 @@ class SnowflakeCoverageDetector:
         if unique:
             sql = build_detection_sql(len(unique), content_vectors=self.content_vectors)
             assert_coverage_sql(sql, allowed_tables=(CONTENT_VECTORS_OBJECT,))
+            # Every numeric bound was coerced in __post_init__, so nothing
+            # here can change the statement's shape after the guard has run.
             params: dict[str, Any] = {
                 "embed_model": self.embed_model,
-                "window_days": positive_int("window_days", self.window_days),
-                "min_headline_chars": positive_int(
-                    "min_headline_chars", self.min_headline_chars
-                ),
-                "min_similarity": bounded_cosine("min_similarity", self.min_similarity),
-                "detection_limit": positive_int("detection_limit", self.detection_limit),
+                "window_days": self.window_days,
+                "min_headline_chars": self.min_headline_chars,
+                "min_similarity": self.min_similarity,
+                "detection_limit": self.detection_limit,
             }
             for position, subject in enumerate(unique):
                 params[f"subject_{position}"] = subject
             try:
                 for row in self.client.query(sql, params):
-                    key = _text(
-                        row["SUBJECT_DESCRIPTOR"]
-                        if "SUBJECT_DESCRIPTOR" in row
-                        else row.get("subject_descriptor")
-                    )
+                    key = _text(_get(row, "SUBJECT_DESCRIPTOR"))
                     if key is not None:
                         rows_by_subject.setdefault(key, []).append(row)
             except Exception as err:  # noqa: BLE001 - an outage is a miss, not a failed run

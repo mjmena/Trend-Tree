@@ -18,6 +18,16 @@ evidence afterwards. So "coverage cannot raise confidence" is not a rule the
 prompt has to keep -- there is no path along which a detection could reach
 the number.
 
+**Detection runs in the re-evaluation sweep only, not at mint.** A newly
+minted prediction's first row carries ``coverage: null`` and acquires a
+reading on its first sweep -- one cycle later. Closing that gap means the
+generation routes issuing a coverage read, and ``tests/test_blindness.py``
+(CRMA-763) fences the generation routes to an exact allowlist of objects
+they may read. Widening another story's structural guard is not this
+story's call, so the gap is recorded here rather than closed quietly. The
+strategy is unaffected either way: the sweep is the "next verdict" AC2
+names, and a mint row that says "we have not looked yet" is honest.
+
 **Nothing in this phase can drop a prediction.** A detection, an empty
 result, a detector that was never wired and a warehouse outage all produce
 the same set of verdicts; they differ only in what ``EVIDENCE.coverage``
@@ -96,8 +106,8 @@ def build_coverage_phase(settings: Settings, client: CoverageQueryRunner) -> Cov
     coverage = settings.coverage
     if not coverage.enabled:
         return CoveragePhase.offline()
-    return CoveragePhase(
-        detector=SnowflakeCoverageDetector(
+    try:
+        detector = SnowflakeCoverageDetector(
             client=client,
             content_vectors=coverage.content_vectors_table or CONTENT_VECTORS_TABLE,
             min_similarity=coverage.min_similarity,
@@ -105,4 +115,17 @@ def build_coverage_phase(settings: Settings, client: CoverageQueryRunner) -> Cov
             min_headline_chars=coverage.min_headline_chars,
             detection_limit=coverage.detection_limit,
         )
-    )
+    except ValueError:
+        # A bound that is not a bound -- a threshold written as 78 instead of
+        # 0.78, say. Loud once, here, rather than raised on every sweep and
+        # swallowed into "an outage is a miss": that shape leaves coverage
+        # silently dead for every row. Not a boot refusal either, because
+        # coverage can only ever demote and must not be able to stop the
+        # pillar writing verdicts.
+        log.exception(
+            "coverage settings are out of range; this service will detect no coverage "
+            "until they are corrected",
+            extra={"min_similarity": coverage.min_similarity},
+        )
+        return CoveragePhase.offline()
+    return CoveragePhase(detector=detector)

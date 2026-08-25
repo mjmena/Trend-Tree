@@ -29,7 +29,6 @@ from prediction_service.coverage import (
     SnowflakeCoverageDetector,
     StaticCoverageDetector,
     build_detection_sql,
-    fold_headline,
 )
 from prediction_service.coverage.detect import (
     MISS_LOOKUP_FAILED,
@@ -180,17 +179,6 @@ def test_syndicated_duplicates_count_as_one_story():
     assert reading.detections[0].last_published_date == "2026-04-01"
 
 
-def test_the_dedupe_fold_collapses_punctuation_and_case_but_not_two_stories():
-    # What actually varies between syndicated copies of one story: casing and
-    # the punctuation a per-site CMS renders. The fold is the coarse ASCII
-    # one the SQL performs -- it does NOT stem or de-pluralize, because two
-    # headlines that differ by a word are two stories.
-    assert fold_headline("Protein Coffee: How the Trend Is Changing Mornings") == (
-        fold_headline("protein coffee -- how the trend is changing mornings")
-    )
-    assert fold_headline("Protein coffee is here") != fold_headline("Oat coffee is here")
-
-
 def test_a_row_the_reader_cannot_place_is_ignored_rather_than_misfiled():
     # The recurring bug class on this epic is a result bound to the wrong
     # domain object. A row whose SUBJECT_DESCRIPTOR is missing belongs to
@@ -306,3 +294,30 @@ def test_a_detection_row_renders_the_calibration_it_was_found_under():
     assert payload["content_id"] == "316520398"
     assert payload["syndicated_copies"] == 1
     assert payload["similarity"] == pytest.approx(0.8172)
+
+
+# --- a bad bound fails once, at construction, not silently per sweep ------
+
+
+def test_a_threshold_written_as_a_percentage_is_refused_at_construction():
+    # 78 instead of 0.78. Checked at query time this loaded fine, raised on
+    # every sweep, and was swallowed into "an outage is a miss" -- coverage
+    # silently dead for every row.
+    with pytest.raises(ValueError, match="cosine in"):
+        SnowflakeCoverageDetector(client=FakeSnowflake(), min_similarity=78)
+    with pytest.raises(ValueError, match="at least 1"):
+        SnowflakeCoverageDetector(client=FakeSnowflake(), window_days=0)
+
+
+def test_a_bad_bound_degrades_coverage_to_offline_rather_than_stopping_the_service():
+    from prediction_service.config import settings_from_env
+    from prediction_service.coverage import build_coverage_phase
+
+    settings = settings_from_env({"PREDICTION_COVERAGE_MIN_SIMILARITY": "78"})
+    phase = build_coverage_phase(settings, FakeSnowflake())
+
+    # Coverage can only ever demote, so a broken setting must not be able to
+    # stop the pillar writing verdicts.
+    reading = phase.readings(["protein coffee"])[0]
+    assert reading.available is False
+    assert reading.miss_reason == MISS_NOT_CONFIGURED

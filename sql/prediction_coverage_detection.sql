@@ -84,6 +84,18 @@
 --     pickleball matches..." returns as ONE row with SYNDICATED_COPIES = 2,
 --     FIRST_PUBLISHED_DATE 2026-03-04, LAST_PUBLISHED_DATE 2026-04-01.
 --
+-- That verification is also automated, opt-in:
+--   PREDICTION_COVERAGE_LIVE_SQL=1 .venv/bin/python -m pytest \
+--       services/prediction/tests/test_coverage_sql_live.py
+-- It executes THIS file (subjects and threshold swapped, statement otherwise
+-- untouched) and asserts all three outcomes above. Skipped by default --
+-- there is no warehouse in CI.
+--
+-- NOTE for review: MIN_HEADLINE_CHARS is a new mechanical rule about what
+-- counts as coverage. It gates the content pool, never a prediction, but the
+-- strategy says new mechanical rules "require a decision, not a commit" --
+-- so it wants an explicit blessing rather than silent adoption.
+--
 -- The service binds subjects one per %(subject_N)s and the four numbers as
 -- named binds; the params CTE below is the same statement with the binds
 -- written out, so it can be pasted into a worksheet unchanged.
@@ -125,8 +137,10 @@ FOLDED AS (
     SELECT
         s.SUBJECT_DESCRIPTOR,
         p.HEADLINE_FOLD,
-        MIN(p.CONTENTID)      AS CONTENT_ID,
-        MIN(p.HEADLINE)       AS HEADLINE,
+        MIN(p.CONTENTID)                     AS CONTENT_ID,
+        -- Paired with the row CONTENT_ID came from: two independent MINs
+        -- could report a headline belonging to a different copy.
+        MIN_BY(p.HEADLINE, p.CONTENTID)      AS HEADLINE,
         MIN(p.PUBLISHED_DATE) AS FIRST_PUBLISHED_DATE,
         MAX(p.PUBLISHED_DATE) AS LAST_PUBLISHED_DATE,
         COUNT(*)              AS SYNDICATED_COPIES,

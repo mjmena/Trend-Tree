@@ -142,10 +142,14 @@ class SaturationSettings:
 class CoverageSettings:
     """Internal-coverage detection (CRMA-767).
 
-    **No value here can refuse a boot, and none of them can gate anything.**
-    Coverage is demote-only: the worst a misconfiguration can do is leave
-    ``EVIDENCE.coverage`` reading "we could not look", which changes no
-    prediction's posture and costs no verdict.
+    **No coverage outage can refuse a boot, and nothing here can gate
+    anything.** Coverage is demote-only, so the worst an unavailable source
+    can do is leave ``EVIDENCE.coverage`` reading "we could not look", which
+    changes no prediction's posture and costs no verdict. A value that is not
+    a number *at all* is a deploy typo and is refused by ``_number`` like
+    every other numeric setting; a value that parses but is out of range
+    degrades this phase to offline with a logged exception rather than
+    stopping the service (coverage/run.py).
 
     The threshold and the window are settings for the reason AC6 asks that
     they be written down: they were tuned against live data at one moment
