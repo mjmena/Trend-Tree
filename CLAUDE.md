@@ -8,10 +8,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A GitHub-synced Pipedream project. Each top-level directory is one Pipedream workflow. Pipedream watches this repo and redeploys workflows when commits land on `production`.
+A GitHub-synced Pipedream project **plus** a Cloud Run services tree. Every top-level directory except `services/` (and the usual `docs/`, `sql/`, `test/`, `scripts/`, `agents/`) is one Pipedream workflow; Pipedream watches this repo and redeploys those workflows when commits land on `production`.
 
 - **Pipedream project**: `proj_x9sLmqO` ("Trend Tree")
 - Workspace, network, and Snowflake account IDs are in the imported `mcclatchy-stack.md`.
+
+### `services/` — the Cloud Run tier (CRMA-429 fleet migration)
+
+Pipedream does **not** deploy anything under `services/`. These are containerized Cloud Run services in the shared `mcc-crm-automations` GCP project (`us-east4`), deployed by `services/deploy.sh <name>` — a git-SHA-tagged amd64 build to the `mcc` Artifact Registry repo, dark-deployed `--no-traffic --tag candidate`, smoke-tested, then promoted by moving the traffic pointer. Rollback is the same `update-traffic` command aimed at the prior revision.
+
+- `services/lib/` — shared pure-function modules (CRMA-439). Unit-tested by `scripts/test_services_lib.sh`. The Pipedream-era `agents/lib/` still serves the Pipedream workflows and is unaffected.
+- `services/<name>/` — one service: its HTTP server, `Dockerfile`, and `deploy.env` (config + Secret Manager names, never secret values). **Build context is the repo root**, so a Dockerfile can see `services/lib/`.
+- **Do not add a `package.json` at the repo root** — Pipedream's GitHub sync watches the root. Node dependencies live in the service's own directory.
+- `services/ecomm-agent` — the ecomm (trend-to-product sourcing) agent, `POST /source {trend_id}` + `GET /healthz`. See [`docs/prd/trend-to-product-sourcing.md`](docs/prd/trend-to-product-sourcing.md).
 
 ## Workflow defaults
 

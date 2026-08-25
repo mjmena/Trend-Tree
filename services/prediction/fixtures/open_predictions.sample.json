@@ -1,0 +1,42 @@
+[
+  {
+    "PREDICTION_ID": "814a38cb-3935-4ce2-b640-b3154bfa84f4",
+    "PREDICTION_EVAL_ID": "a2b7c9d1-0e3f-4a5b-8c6d-7e8f9a0b1c2d",
+    "SUBJECT_DESCRIPTOR": "rucking vests",
+    "DIRECTIONAL_CLAIM": "mainstream retail adoption expands beyond specialty fitness",
+    "HORIZON_BAND": "emerging_3_6mo",
+    "HORIZON_AT": "2027-02-14 00:00:00.000",
+    "OBSERVABLE_CHECK": "weighted/rucking vest listings appear under a house label at two of Target, Walmart or Dick's Sporting Goods",
+    "CONFIDENCE": 68.0,
+    "PREDICTION_STATUS": "ACTIVE",
+    "MATCHED_TREND_ID": null,
+    "EVIDENCE": {
+      "source_signals": ["bluesky:3lqz7a2xk4d2m"],
+      "saturation": null,
+      "trend_context": null,
+      "coverage": null
+    },
+    "REASONING": "Four independent sources converge on the same behaviour while the shelf is still specialty-brand dominated.",
+    "EVALUATED_AT": "2026-08-20 14:02:00.000"
+  },
+  {
+    "PREDICTION_ID": "7dfe9315-9934-4f48-9471-6570f0d739ba",
+    "PREDICTION_EVAL_ID": "b3c8d0e2-1f4a-4b6c-9d7e-8f9a0b1c2d3e",
+    "SUBJECT_DESCRIPTOR": "probiotic nasal spray",
+    "DIRECTIONAL_CLAIM": "Major retail pharmacy chains expand over-the-counter stocking of microbiome-targeted nasal wellness sprays beyond seasonal test assortments.",
+    "HORIZON_BAND": "cultural_shift_6_12mo",
+    "HORIZON_AT": "2027-08-14 00:00:00.000",
+    "OBSERVABLE_CHECK": "national planogram listings at two of CVS, Walgreens or Rite Aid outside the seasonal cold-and-flu endcap",
+    "CONFIDENCE": 66.0,
+    "PREDICTION_STATUS": "ACTIVE",
+    "MATCHED_TREND_ID": null,
+    "EVIDENCE": {
+      "source_signals": ["gdelt:2026-08-18:nasal-microbiome"],
+      "saturation": null,
+      "trend_context": null,
+      "coverage": null
+    },
+    "REASONING": "Clinical coverage and specialty-retail listings appear together, but no mass pharmacy has moved.",
+    "EVALUATED_AT": "2026-08-20 14:02:00.000"
+  }
+]

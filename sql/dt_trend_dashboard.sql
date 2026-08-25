@@ -57,6 +57,23 @@
 -- compared. NULL (not []) when a trend has no row in the latest chain,
 -- matching RELATED_TRENDS' existing null-when-absent convention.
 --
+-- 2026-08-21 (CRMA-779 trend-to-product sourcing exposure): additive
+-- SOURCING_STATUS / SOURCED_PRODUCTS / SOURCED_AT columns, read from the
+-- LATEST sourcing-run header per trend in FCT_TREND_SOURCING_LEDGER (a
+-- per-trend ROW_NUMBER — deliberately NOT a global generation like
+-- nearest_content's CHAIN_ID, because sourcing runs are per-trend and
+-- independent, with no chain to pin to). SOURCED_PRODUCTS carries the
+-- SELECTED candidates of that run only; shown-but-rejected candidates stay
+-- out of the dashboard and are read straight off
+-- FCT_TREND_SOURCING_CANDIDATES as retrieval-calibration data. See
+-- docs/prd/trend-to-product-sourcing.md and fct_trend_sourcing_ledger.sql.
+-- latest_sourcing partitions by TREND_ID alone, NOT (TREND_ID, TIER): the
+-- dashboard is one row per trend and this is three columns, so it shows the
+-- latest run whatever tier it ran against. 'shopify' is the only tier live
+-- today; when a second tier lands, per-tier exposure needs a shape decision
+-- (nested per-tier objects vs. a merged pick list), not just a wider
+-- PARTITION BY.
+--
 -- Output column shape preserved for Steeple consumers (minus the two dropped
 -- promotion-* columns and TOP_SIGNALS.pagerank_score).
 
@@ -314,6 +331,76 @@ nearest_content AS (
     JOIN latest_content_match_chain c ON c.CHAIN_ID = m.CHAIN_ID
     GROUP BY m.TREND_ID
 ),
+latest_sourcing AS (
+    -- CRMA-779: the latest sourcing-run header per trend. Same windowed-latest
+    -- idiom as latest_lifecycle / latest_prediction above.
+    --
+    -- PROC_SOURCING_APPLY mutates this header in place exactly once
+    -- (running -> matched|no_match|failed), so "latest header" is the run whose
+    -- state the dashboard reports — including the transient 'running' and the
+    -- terminal 'failed'. Telling 'failed' apart from 'no_match' and from
+    -- 'not sourced' in one SELECT is the whole reason the ledger records
+    -- computed-but-empty results (see fct_trend_sourcing_ledger.sql), so those
+    -- states are surfaced rather than filtered. A failed retry therefore
+    -- supersedes an earlier matched run until the next tick re-sources the
+    -- trend, which is the intended read of "latest".
+    --
+    -- SOURCING_RUN_ID is a deterministic tiebreak on identical STARTED_AT, so
+    -- an incremental refresh can't flip between two rows.
+    SELECT SOURCING_RUN_ID, TREND_ID, STATUS, COMPLETED_AT
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_LEDGER
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY TREND_ID
+        -- NULLS LAST because STARTED_AT is DEFAULT, not NOT NULL, and Snowflake
+        -- sorts NULLS FIRST on DESC — a header written with an explicit null
+        -- STARTED_AT would otherwise win "latest" forever.
+        ORDER BY STARTED_AT DESC NULLS LAST, SOURCING_RUN_ID DESC
+    ) = 1
+),
+sourced_products AS (
+    -- Selector PICKS of the latest run only, ordered by retrieval geometry
+    -- (SEMANTIC_SCORE desc — the presentation order the candidates table
+    -- deliberately stores no rank column for). Rejects (SELECTED = FALSE) are
+    -- excluded on purpose: they are calibration evidence for re-tuning the
+    -- retrieval threshold, not something to show an operator.
+    --
+    -- OBJECT_CONSTRUCT_KEEP_NULL, not the plain OBJECT_CONSTRUCT used by
+    -- nearest_content / top_signals above: the _AT_MATCH snapshots are
+    -- legitimately null (a catalog row can lack a price, an image, or an
+    -- availability flag), and plain OBJECT_CONSTRUCT would silently DROP those
+    -- keys, giving consumers a per-row-variable object shape. Keeping the keys
+    -- makes the entry shape fixed and the absence explicit.
+    --
+    -- 'tier' rides on each entry because CATALOG_PRODUCT_ID is only unique
+    -- within (TIER, CATALOG_PRODUCT_ID) — it is part of product identity, not a
+    -- fourth dashboard column.
+    SELECT
+        ls.TREND_ID,
+        ARRAY_AGG(
+            OBJECT_CONSTRUCT_KEEP_NULL(
+                'tier',                   c.TIER,
+                'catalog_product_id',     c.CATALOG_PRODUCT_ID,
+                'product_handle',         c.PRODUCT_HANDLE,
+                'product_title',          c.PRODUCT_TITLE,
+                'product_type',           c.PRODUCT_TYPE,
+                'vendor',                 c.VENDOR,
+                'product_url',            c.PRODUCT_URL,
+                'price_at_match',         c.PRICE_AT_MATCH,
+                'image_url_at_match',     c.IMAGE_URL_AT_MATCH,
+                'available_at_match',     c.AVAILABLE_AT_MATCH,
+                'semantic_score',         c.SEMANTIC_SCORE,
+                'reasoned_fit',           c.REASONED_FIT,
+                'reasoned_fit_rationale', c.REASONED_FIT_RATIONALE
+            )
+        ) WITHIN GROUP (ORDER BY c.SEMANTIC_SCORE DESC NULLS LAST,
+                        c.CATALOG_PRODUCT_ID) AS SOURCED_PRODUCTS
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_CANDIDATES c
+    JOIN latest_sourcing ls
+      ON ls.SOURCING_RUN_ID = c.SOURCING_RUN_ID
+     AND ls.TREND_ID        = c.TREND_ID
+    WHERE c.SELECTED = TRUE
+    GROUP BY ls.TREND_ID
+),
 trend_base AS (
     -- Sourced from FCT_TRENDS only. Legacy FCT_TREND_METRICS union removed
     -- 2026-04-28 to test dashboard scoped exclusively to agent-promoted trends.
@@ -426,7 +513,21 @@ SELECT
 
     -- 2026-08-18 (CRMA-452): top-N nearest published-content matches, see
     -- the nearest_content CTE + fct_trend_content_matches_ledger.sql.
-    nc.NEAREST_CONTENT
+    nc.NEAREST_CONTENT,
+
+    -- 2026-08-21 (CRMA-779): trend-to-product sourcing, from the latest
+    -- sourcing header per trend. SOURCING_STATUS is COALESCEd so a trend with
+    -- no header reads 'not_sourced' and NEVER null — null would re-open the
+    -- exact "did this run and find nothing, or never run?" ambiguity the
+    -- ledger exists to close. SOURCED_PRODUCTS is null (not []) when the
+    -- latest run picked nothing — and while a re-source is in flight, since a
+    -- fresh header opens as 'running' with no candidate rows yet — matching
+    -- NEAREST_CONTENT / RELATED_TRENDS' null-when-absent convention. SOURCED_AT is when that run completed, so
+    -- staleness is visible; it is null while a run is still 'running' and for
+    -- a trend that has never been sourced.
+    COALESCE(ls.STATUS, 'not_sourced')                                    AS SOURCING_STATUS,
+    sp.SOURCED_PRODUCTS,
+    ls.COMPLETED_AT                                                       AS SOURCED_AT
 
 FROM trend_base tb
 LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t  ON tb.TREND_ID = t.TREND_ID
@@ -438,4 +539,6 @@ LEFT JOIN macro_tags mt                               ON tb.TREND_ID = mt.TREND_
 LEFT JOIN related_trends r                            ON tb.TREND_ID = r.TREND_ID
 LEFT JOIN trend_vectors tv                            ON tb.TREND_ID = tv.TREND_ID
 LEFT JOIN latest_prediction pred                      ON tb.TREND_ID = pred.TREND_ID
-LEFT JOIN nearest_content nc                          ON tb.TREND_ID = nc.TREND_ID;
+LEFT JOIN nearest_content nc                          ON tb.TREND_ID = nc.TREND_ID
+LEFT JOIN latest_sourcing ls                          ON tb.TREND_ID = ls.TREND_ID
+LEFT JOIN sourced_products sp                         ON tb.TREND_ID = sp.TREND_ID;

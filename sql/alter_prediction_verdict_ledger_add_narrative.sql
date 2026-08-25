@@ -1,0 +1,51 @@
+-- Adds the two strategist-facing narrative columns to the live
+-- FCT_PREDICTION_VERDICT_LEDGER (CRMA-782).
+--
+-- Run this as ONE statement, not as a file. The table already exists and
+-- holds real verdict rows, so sql/fct_prediction_verdict_ledger.sql -- which
+-- is CREATE TABLE IF NOT EXISTS -- is a no-op against it and will NOT add
+-- these columns. This file is the migration; that file is the shape a fresh
+-- environment gets.
+--
+-- ---------------------------------------------------------------------------
+-- Why these are columns and not part of the claim
+-- ---------------------------------------------------------------------------
+--
+-- The four claim columns are machine-facing on purpose. ADR-0003 fixes
+-- SUBJECT_DESCRIPTOR's register at an atomic consumer-vernacular noun with no
+-- flavor and no call to action, and OBSERVABLE_CHECK must name a source and a
+-- threshold concrete enough that two people grade it identically. Those
+-- properties are what make a verdict gradable, and they leave nowhere for
+-- "why does this matter" to live. Writing an angle into DIRECTIONAL_CLAIM
+-- would buy readability by giving up gradability, so the narrative gets its
+-- own columns instead.
+--
+-- ---------------------------------------------------------------------------
+-- Why NULLABLE
+-- ---------------------------------------------------------------------------
+--
+-- NOT NULL on this table is the falsifiability guarantee, and it belongs to
+-- the claim alone: a claim can never be stored incomplete. The narrative is
+-- additive. Every row written before this change carries NULL in both
+-- columns and must still read back valid, and a run where the model declines
+-- to narrate must still mint its predictions.
+--
+-- ---------------------------------------------------------------------------
+-- The isolation invariant, restated
+-- ---------------------------------------------------------------------------
+--
+-- Neither column may ever feed CONFIDENCE, PREDICTION_STATUS,
+-- MATCHED_TREND_ID, or the dashboard's PREDICTION_SCORE / PREDICTION_FLAG /
+-- PREDICTION_ELIGIBLE. This is the same rule EVIDENCE.trend_context already
+-- carries -- addressed context for a human, never a filter. The behavioural
+-- proof lives in services/prediction/tests/test_angle_fields.py.
+--
+-- ADD COLUMN is metadata-only in Snowflake: no rewrite, no downtime, and the
+-- existing rows read NULL. Safe to re-run only after checking -- Snowflake
+-- has no ADD COLUMN IF NOT EXISTS for this form, so a second run errors
+-- rather than no-opping.
+
+ALTER TABLE MCC_PRESENTATION.TREND_AGENT.FCT_PREDICTION_VERDICT_LEDGER
+  ADD COLUMN
+    ANGLE             VARCHAR(512) COMMENT 'one sentence, reader-facing register, on why this change matters culturally; NULL when the model did not narrate it',
+    AUDIENCE_QUESTION VARCHAR(256) COMMENT 'the question this call invites us to put to readers; NULL when the model did not narrate it';
