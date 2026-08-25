@@ -1,0 +1,24 @@
+{
+  "reevaluations": [
+    {
+      "id": 1,
+      "prediction_id": "814a38cb-3935-4ce2-b640-b3154bfa84f4",
+      "subject": "rucking vests",
+      "observable_check": "not_yet",
+      "observation": "No house-label listing has appeared at any of the three named retailers; the shelf is still specialty-brand only.",
+      "confidence": 74.0,
+      "reasoning": "The behaviour keeps widening past the fitness-specialist audience: the subject now sits on a trend the pipeline is tracking in its own right, and the evidence pool behind it has grown rather than repeated. The observable check has not moved -- no house-label listing has appeared at Target, Walmart or Dick's -- but the horizon is still five months out, and mass retail's own private-label cycle would not have surfaced one yet even on the fastest version of this. The case rests on adoption reaching people who are not buying it as gym equipment, and that is what the newer evidence shows.",
+      "what_changed": "The subject stopped being white space -- the pipeline now carries a trend for it, and its evidence pool widened rather than repeating one loud source, which is what moved the number up."
+    },
+    {
+      "id": 2,
+      "prediction_id": "7dfe9315-9934-4f48-9471-6570f0d739ba",
+      "subject": "probiotic nasal spray",
+      "observable_check": "met",
+      "observation": "Both CVS and Walgreens now list microbiome nasal sprays in the year-round wellness planogram rather than only on the seasonal cold-and-flu endcap, which is exactly what the check named.",
+      "confidence": 92.0,
+      "reasoning": "The observable check reads TRUE. Two of the three named chains now carry microbiome-targeted nasal sprays in year-round planogram space rather than in seasonal test assortments, which is the condition the claim was written against. It arrived after the horizon date rather than before it, so this is a late truth, not an early one -- but it is a truth, and the claim is settled in its favour.",
+      "what_changed": "The check the claim was written against is now satisfied at two of the three named chains, arriving inside the grace window rather than before the horizon."
+    }
+  ]
+}

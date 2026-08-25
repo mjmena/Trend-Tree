@@ -1,0 +1,106 @@
+[
+  {
+    "PREDICTION_ID": "814a38cb-3935-4ce2-b640-b3154bfa84f4",
+    "PREDICTION_EVAL_ID": "a2b7c9d1-0e3f-4a5b-8c6d-7e8f9a0b1c2d",
+    "SUBJECT_DESCRIPTOR": "rucking vests",
+    "DIRECTIONAL_CLAIM": "mainstream retail adoption expands beyond specialty fitness",
+    "HORIZON_BAND": "emerging_3_6mo",
+    "HORIZON_AT": "2027-02-14 00:00:00.000",
+    "OBSERVABLE_CHECK": "weighted/rucking vest listings appear under a house label at two of Target, Walmart or Dick's Sporting Goods",
+    "CONFIDENCE": 68.0,
+    "PREDICTION_STATUS": "ACTIVE",
+    "MATCHED_TREND_ID": null,
+    "EVIDENCE": {
+      "source_signals": [
+        "bluesky:3lqz7a2xk4d2m"
+      ],
+      "saturation": null,
+      "trend_context": null,
+      "coverage": null
+    },
+    "REASONING": "Four independent sources converge on the same behaviour while the shelf is still specialty-brand dominated.",
+    "EVALUATED_AT": "2026-08-20 14:02:00.000"
+  },
+  {
+    "PREDICTION_ID": "7dfe9315-9934-4f48-9471-6570f0d739ba",
+    "PREDICTION_EVAL_ID": "b3c8d0e2-1f4a-4b6c-9d7e-8f9a0b1c2d3e",
+    "SUBJECT_DESCRIPTOR": "probiotic nasal spray",
+    "DIRECTIONAL_CLAIM": "Major retail pharmacy chains expand over-the-counter stocking of microbiome-targeted nasal wellness sprays beyond seasonal test assortments.",
+    "HORIZON_BAND": "cultural_shift_6_12mo",
+    "HORIZON_AT": "2026-06-01 00:00:00.000",
+    "OBSERVABLE_CHECK": "national planogram listings at two of CVS, Walgreens or Rite Aid outside the seasonal cold-and-flu endcap",
+    "CONFIDENCE": 66.0,
+    "PREDICTION_STATUS": "EXPIRED",
+    "MATCHED_TREND_ID": null,
+    "EVIDENCE": {
+      "source_signals": [
+        "gdelt:2026-08-18:nasal-microbiome"
+      ],
+      "saturation": null,
+      "trend_context": null,
+      "coverage": null
+    },
+    "REASONING": "Clinical coverage and specialty-retail listings appear together, but no mass pharmacy has moved.",
+    "EVALUATED_AT": "2026-08-20 14:02:00.000"
+  },
+  {
+    "PREDICTION_ID": "364cd1f6-8387-4417-a739-807f22d86ed3",
+    "PREDICTION_EVAL_ID": "c4d9e1f3-2a5b-4c7d-8e9f-0a1b2c3d4e5f",
+    "SUBJECT_DESCRIPTOR": "air-dry clay",
+    "DIRECTIONAL_CLAIM": "hobby-craft clay kits move from craft specialists into general mass-retail seasonal aisles",
+    "HORIZON_BAND": "near_term_1_3mo",
+    "HORIZON_AT": "2025-01-10 00:00:00.000",
+    "OBSERVABLE_CHECK": "air-dry clay kits listed in the seasonal-gifting aisle at two national mass retailers",
+    "CONFIDENCE": 41.0,
+    "PREDICTION_STATUS": "EXPIRED",
+    "MATCHED_TREND_ID": null,
+    "EVIDENCE": {
+      "source_signals": [
+        "pinterest:air-dry-clay-2024"
+      ],
+      "saturation": null,
+      "trend_context": null,
+      "coverage": null,
+      "reevaluation": {
+        "chain_id": "pred-sweep-daily-2025-04-01",
+        "evaluated_at": "2025-04-11T14:00:00+00:00",
+        "prior_status": "EXPIRED",
+        "observable_check": "not_yet",
+        "grace_ends_at": "2025-04-10T00:00:00+00:00",
+        "final_evaluation": true
+      }
+    },
+    "REASONING": "A single platform's search volume moved and nothing corroborated it.",
+    "EVALUATED_AT": "2025-04-11 14:00:00.000"
+  },
+  {
+    "PREDICTION_ID": "0b5f2c17-4f2e-4a1c-9a1d-2c9f4b6e77a1",
+    "PREDICTION_EVAL_ID": "9f1c7a30-51de-4a6b-8f2c-11d0c2b3a4e5",
+    "SUBJECT_DESCRIPTOR": "linen bedding sets",
+    "DIRECTIONAL_CLAIM": "washed-linen bedding moves from direct-to-consumer into mass-retail house labels",
+    "HORIZON_BAND": "near_term_1_3mo",
+    "HORIZON_AT": "2026-02-20 00:00:00.000",
+    "OBSERVABLE_CHECK": "a house-label washed-linen set listed at two national mass retailers",
+    "CONFIDENCE": 38.0,
+    "PREDICTION_STATUS": "EXPIRED",
+    "MATCHED_TREND_ID": null,
+    "EVIDENCE": {
+      "source_signals": [
+        "pinterest:linen-bedding-2026"
+      ],
+      "saturation": null,
+      "trend_context": null,
+      "coverage": null,
+      "reevaluation": {
+        "chain_id": "pred-sweep-daily-2026-05-20",
+        "evaluated_at": "2026-05-20T14:00:00+00:00",
+        "prior_status": "EXPIRED",
+        "observable_check": "not_yet",
+        "grace_ends_at": "2026-05-21T00:00:00+00:00",
+        "final_evaluation": false
+      }
+    },
+    "REASONING": "Two sources described the same shift and neither widened after the first month.",
+    "EVALUATED_AT": "2026-05-20 14:00:00.000"
+  }
+]

@@ -1,0 +1,72 @@
+[
+  {
+    "SIGNAL_ID": "bluesky:3lqz7a2xk4d2m",
+    "SOURCE_NAME": "bluesky",
+    "SIGNAL_TIMESTAMP": "2026-08-14 13:02:11.000",
+    "SIGNAL_TITLE": "everyone at my gym is suddenly wearing a weighted vest on the treadmill",
+    "SIGNAL_TEXT": "three months ago it was two guys. today the incline treadmills are all weighted vests. the 20lb ones sold out at the local sporting goods store."
+  },
+  {
+    "SIGNAL_ID": "amazon_trends:sports-outdoors:weighted-vest:2026-08-12",
+    "SOURCE_NAME": "amazon_trends",
+    "SIGNAL_TIMESTAMP": "2026-08-12 06:00:00.000",
+    "SIGNAL_TITLE": "Weighted vests enter the Sports & Outdoors movers list for a fourth consecutive week",
+    "SIGNAL_TEXT": "Adjustable weighted vests in the 12-20 lb range hold four consecutive weeks on the category movers list; the leading listings are specialty fitness brands rather than the mass-market house labels that dominate the rest of the category."
+  },
+  {
+    "SIGNAL_ID": "google_trends_explore:rucking-vest:2026-08-11",
+    "SOURCE_NAME": "google_trends_explore",
+    "SIGNAL_TIMESTAMP": "2026-08-11 00:00:00.000",
+    "SIGNAL_TITLE": "Breakout related query: 'rucking vest' against the 'weighted vest' topic",
+    "SIGNAL_TEXT": "Rising related queries include 'rucking vest women', 'rucking vest walking', 'weighted vest for walking'. Regional interest is broadest in the Carolinas, Texas and the Kansas City metro."
+  },
+  {
+    "SIGNAL_ID": "gdelt:20260810:retail-fitness-walking",
+    "SOURCE_NAME": "gdelt",
+    "SIGNAL_TIMESTAMP": "2026-08-10 18:41:00.000",
+    "SIGNAL_TITLE": "Walking-first fitness coverage keeps displacing high-intensity training in lifestyle press",
+    "SIGNAL_TEXT": "A cluster of lifestyle articles frames low-intensity walking, weighted or otherwise, as the replacement for high-intensity interval training among readers over 35. Coverage is concentrated in regional outlets rather than national fitness titles."
+  },
+  {
+    "SIGNAL_ID": "pinterest:trend:weighted-walk:2026-08-09",
+    "SOURCE_NAME": "pinterest",
+    "SIGNAL_TIMESTAMP": "2026-08-09 09:15:00.000",
+    "SIGNAL_TITLE": "Search growth on 'weighted walk outfit' and 'vest over dress gym'",
+    "SIGNAL_TEXT": "Styling searches pairing fitness vests with everyday outfits are growing faster than the equipment searches themselves, a pattern that historically precedes a category leaving the gym."
+  },
+  {
+    "SIGNAL_ID": "gemini_food_drink:2026-08-13:cottage-cheese-savory",
+    "SOURCE_NAME": "gemini_food_drink",
+    "SIGNAL_TIMESTAMP": "2026-08-13 11:00:00.000",
+    "SIGNAL_TITLE": "Savory cottage cheese preparations displace the sweet-bowl format in creator recipe content",
+    "SIGNAL_TEXT": "Creator recipe content around cottage cheese has shifted from sweet breakfast bowls toward savory dinner applications - whipped into pasta sauce, folded into flatbread dough. Grocery private-label lines have started listing higher-fat tubs aimed at cooking rather than snacking."
+  },
+  {
+    "SIGNAL_ID": "amazon_trends:grocery:cottage-cheese:2026-08-12",
+    "SOURCE_NAME": "amazon_trends",
+    "SIGNAL_TIMESTAMP": "2026-08-12 06:00:00.000",
+    "SIGNAL_TITLE": "Full-fat cottage cheese SKUs outgrow low-fat SKUs in the grocery movers list",
+    "SIGNAL_TEXT": "For the first time in the tracked window, full-fat (4% and above) cottage cheese listings outnumber low-fat listings among the category's fastest-moving items."
+  },
+  {
+    "SIGNAL_ID": "bluesky:3lqx91mm2c22t",
+    "SOURCE_NAME": "bluesky",
+    "SIGNAL_TIMESTAMP": "2026-08-13 21:30:04.000",
+    "SIGNAL_TITLE": "cottage cheese is the new ricotta and I will not be taking questions",
+    "SIGNAL_TEXT": "made lasagna with cottage cheese instead of ricotta, cheaper, more protein, nobody could tell. this is going to be everywhere by winter."
+  },
+  {
+    "SIGNAL_ID": "gdelt:20260807:supplement-stack-coverage",
+    "SOURCE_NAME": "gdelt",
+    "SIGNAL_TIMESTAMP": "2026-08-07 14:20:00.000",
+    "SIGNAL_TITLE": "Wellness press interest in personalized supplement routines continues",
+    "SIGNAL_TEXT": "General coverage of people combining multiple supplements. No specific ingredient, product or measurable behavior is named across the cluster."
+  },
+  {
+    "SIGNAL_ID": "google_trends_explore:head-spa:2026-08-06",
+    "SOURCE_NAME": "google_trends_explore",
+    "SIGNAL_TIMESTAMP": "2026-08-06 00:00:00.000",
+    "SIGNAL_TITLE": "'head spa near me' sustains growth outside the coastal metros it started in",
+    "SIGNAL_TEXT": "Interest in Japanese-style head spa treatments now grows fastest in mid-size inland metros, months after peaking in Los Angeles and New York."
+  }
+]

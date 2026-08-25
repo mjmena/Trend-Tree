@@ -1,0 +1,117 @@
+-- PROPOSED, NOT APPLIED. Do not run this file as a file.
+--
+-- Re-stamps the six pre-CRMA-764 rows of FCT_PREDICTION_VERDICT_LEDGER whose
+-- EVALUATED_AT carries a session-LOCAL timestamp instead of UTC. Written as
+-- part of CRMA-766, which is the first story whose behaviour reads that
+-- column against another one, and deliberately left unexecuted: this is an
+-- UPDATE against an append-only agent ledger, so it wants a human decision
+-- and a witnessed run, not a commit.
+--
+-- ---------------------------------------------------------------------------
+-- What is wrong with those rows
+-- ---------------------------------------------------------------------------
+--
+-- EVALUATED_AT's DDL default is CURRENT_TIMESTAMP(), which Snowflake evaluates
+-- in the SESSION timezone. HORIZON_AT has always been written by the service
+-- from an aware UTC datetime. Both columns are TIMESTAMP_NTZ, so nothing in
+-- the type system flags the mismatch. CRMA-764 fixed the writer -- the service
+-- now binds EVALUATED_AT from the same aware UTC value HORIZON_AT comes from
+-- (services/prediction/prediction_service/domain/ledger.py) -- but it did not
+-- touch the rows already written.
+--
+-- Measured, read-only, 2026-08-21. For each of the six rows, HORIZON_AT minus
+-- EVALUATED_AT should equal the row's own horizon band exactly:
+--
+--   PREDICTION_EVAL_ID   BAND                    as stored   after conversion   band
+--   9bbd785e...          emerging_3_6mo          15,566,398  15,551,998         15,552,000
+--   28b70e74...          emerging_3_6mo          15,566,400  15,552,000         15,552,000
+--   67e5e87a...          emerging_3_6mo          15,566,386  15,551,986         15,552,000
+--   3e89f9f7...          cultural_shift_6_12mo   31,550,386  31,535,986         31,536,000
+--   900f7387...          emerging_3_6mo          15,566,385  15,551,985         15,552,000
+--   eaf8f4b1...          longer_range_12_24mo    63,086,385  63,071,985         63,072,000
+--
+-- Every row is 14,400 seconds (4h, America/New_York in DST) long as stored,
+-- and lands within 15 seconds of its exact band once converted -- the residual
+-- being the real gap between the service deriving HORIZON_AT and the warehouse
+-- stamping the default. So the skew is uniform, the timezone is unambiguous,
+-- and the conversion is exact.
+--
+-- ---------------------------------------------------------------------------
+-- What actually depends on it, and what does not
+-- ---------------------------------------------------------------------------
+--
+-- NOT the lifecycle. CRMA-766's status machine derives both of its boundaries
+-- from the frozen claim -- HORIZON_AT (UTC by construction on every row) plus
+-- the horizon band's own window -- and never reads EVALUATED_AT. That is
+-- deliberate: a grace window that a four-hour skew could move would be a
+-- grace window nobody could reason about. So none of these six rows can
+-- expire early, expire late, or have its grade frozen at the wrong moment.
+--
+-- NOT the latest-row-per-prediction read either. The stale values are four
+-- hours BEHIND true UTC, so every correctly-stamped row written from now on
+-- sorts after them regardless.
+--
+-- What it does affect is arithmetic ON the column: "how long since this
+-- prediction was last evaluated" over-reports by four hours for these six
+-- until each is swept once, and any freshness check the audit agent later
+-- puts on this ledger reads them four hours staler than they are. Both are
+-- cosmetic today and both stop being true after the first sweep. That is the
+-- honest case for doing this: it is small, and it is cheap, and leaving six
+-- rows on a different clock in an append-only ledger is the kind of thing
+-- nobody remembers in a year.
+--
+-- ---------------------------------------------------------------------------
+-- If it is approved, run exactly this one statement
+-- ---------------------------------------------------------------------------
+--
+-- Bounded by PREDICTION_EVAL_ID, not by a date cutoff: a cutoff would silently
+-- re-convert any row written near the boundary if this were ever run twice,
+-- and converting an already-UTC row moves it four hours the WRONG way. Naming
+-- the six ids makes a second run a no-op on anything that was not already
+-- listed here, and makes the blast radius readable in review.
+--
+-- Read this first, to see what would change:
+--
+--   SELECT PREDICTION_EVAL_ID, EVALUATED_AT AS BEFORE_UTC_FIX,
+--          CONVERT_TIMEZONE('America/New_York', 'UTC', EVALUATED_AT) AS AFTER,
+--          HORIZON_AT
+--   FROM MCC_PRESENTATION.TREND_AGENT.FCT_PREDICTION_VERDICT_LEDGER
+--   WHERE PREDICTION_EVAL_ID IN (
+--     '9bbd785e-5f28-4b0c-9675-2e6f80f5161b',
+--     '28b70e74-ee9a-4b6f-a6f3-d75c1fbfb55a',
+--     '67e5e87a-409f-54a3-87f2-29810144c64f',
+--     '3e89f9f7-c6c5-50fd-bff1-74f8cae761ea',
+--     '900f7387-9bae-543e-a4bc-ed220d82ae9f',
+--     'eaf8f4b1-3d11-53ac-8848-2d9fb0f9c448'
+--   );
+--
+-- Then, and only with that read reviewed:
+--
+--   UPDATE MCC_PRESENTATION.TREND_AGENT.FCT_PREDICTION_VERDICT_LEDGER
+--   SET EVALUATED_AT = CONVERT_TIMEZONE('America/New_York', 'UTC', EVALUATED_AT)
+--   WHERE PREDICTION_EVAL_ID IN (
+--     '9bbd785e-5f28-4b0c-9675-2e6f80f5161b',
+--     '28b70e74-ee9a-4b6f-a6f3-d75c1fbfb55a',
+--     '67e5e87a-409f-54a3-87f2-29810144c64f',
+--     '3e89f9f7-c6c5-50fd-bff1-74f8cae761ea',
+--     '900f7387-9bae-543e-a4bc-ed220d82ae9f',
+--     'eaf8f4b1-3d11-53ac-8848-2d9fb0f9c448'
+--   );
+--
+-- ---------------------------------------------------------------------------
+-- The alternative, which is also defensible
+-- ---------------------------------------------------------------------------
+--
+-- Leave them. The ledger is append-only and these are its first six rows;
+-- every one of them will carry a correctly-stamped successor the first time
+-- the daily sweep runs, and the wrong values then sit in history where wrong
+-- values from a fixed bug arguably belong. Nothing in the pillar's behaviour
+-- turns on them. Choose this if the preference is that an agent-owned ledger
+-- is never edited, full stop -- which is a coherent position and the reason
+-- this file does not simply do it.
+--
+-- A guard against the whole class, either way (a real schema change, out of
+-- scope here): drop the DDL's DEFAULT CURRENT_TIMESTAMP() on EVALUATED_AT.
+-- The service has bound the value explicitly since CRMA-764, so the default
+-- now serves only ad-hoc inserts -- and it serves them by reintroducing
+-- exactly this bug.

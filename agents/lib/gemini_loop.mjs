@@ -20,16 +20,27 @@
 // Tool dispatch is delegated to dispatchTool / getToolSchemas (caller-
 // supplied or imported from tool_catalog.mjs). This file drives the loop,
 // not the tools themselves.
+//
+// model / function_calling_mode / temperature / rates_per_m are all
+// caller-overridable (CRMA-776): the ecomm agent's selector pins a
+// different model (gemini-3.7-flash vs. this file's gemini-3.1-pro-preview
+// default), forces functionCallingConfig.mode="ANY" instead of "AUTO", and
+// omits `temperature` entirely (deprecated fleet-wide 2026-07-21, the
+// CRMA-726 migration strips it) — pass `temperature: null` to omit it from
+// the request. Every existing caller that doesn't pass these gets the
+// original gemini-3.1-pro-preview / AUTO / temperature=1.0 behavior
+// unchanged.
 
 const MODEL = "gemini-3.1-pro-preview";
-const RATES_PER_M = { input: 2.0, output: 12.0 }; // sub-200k context tier
+const RATES_PER_M = { input: 2.0, output: 12.0 }; // sub-200k context tier, gemini-3.1-pro-preview
 
 const DEFAULTS = {
   max_iterations: 12,
   budget_usd: 5.0,
   per_call_max_tokens: 8192,
   thinking_level: "medium",
-  temperature: 1.0, // required to be 1.0 when thinking is enabled
+  temperature: 1.0, // required to be 1.0 when thinking is enabled; pass null to omit entirely
+  function_calling_mode: "AUTO", // "AUTO" | "ANY" | "NONE"
   request_timeout_ms: 180_000,
 };
 
@@ -59,6 +70,11 @@ export function toFunctionDeclarations(toolNames, allSchemas) {
  * @param {number} [args.budget_usd]
  * @param {number} [args.per_call_max_tokens]
  * @param {string} [args.thinking_level]
+ * @param {string} [args.model]                  Overrides the default gemini-3.1-pro-preview pin.
+ * @param {string} [args.function_calling_mode]   "AUTO" (default) | "ANY" | "NONE" — toolConfig.functionCallingConfig.mode.
+ * @param {number|null} [args.temperature]        Defaults to 1.0 (required when thinking is enabled on 3.1 Pro);
+ *                                                 pass null to omit the field entirely (deprecated fleet-wide on newer models).
+ * @param {{input:number,output:number}} [args.rates_per_m]  $/M-token rates for cost_usd — defaults to the 3.1 Pro sub-200k tier.
  * @returns {Promise<object>} { stop_reason, turns, tokens, cost_usd, reasoning_trace, tool_calls, final_text, model }
  */
 export async function runAgentLoop({
@@ -73,6 +89,10 @@ export async function runAgentLoop({
   budget_usd = DEFAULTS.budget_usd,
   per_call_max_tokens = DEFAULTS.per_call_max_tokens,
   thinking_level = DEFAULTS.thinking_level,
+  model = MODEL,
+  function_calling_mode = DEFAULTS.function_calling_mode,
+  temperature = DEFAULTS.temperature,
+  rates_per_m = RATES_PER_M,
 }) {
   if (!google_gemini?.$auth?.api_key) throw new Error("google_gemini app prop missing $auth.api_key");
   if (!Array.isArray(tool_names) || tool_names.length === 0) throw new Error("tool_names is required");
@@ -103,16 +123,23 @@ export async function runAgentLoop({
       break;
     }
 
+    const generationConfig = {
+      maxOutputTokens: per_call_max_tokens,
+      thinkingConfig: { thinkingLevel: thinking_level },
+    };
+    // Omit temperature entirely when null/undefined — newer models
+    // (gemini-3.7-flash) deprecate the param fleet-wide; older callers keep
+    // sending 1.0 (required alongside thinking on 3.1 Pro) unless they opt out.
+    if (temperature !== null && temperature !== undefined) {
+      generationConfig.temperature = temperature;
+    }
+
     const reqBody = {
       systemInstruction: { parts: [{ text: system }] },
       contents,
       tools,
-      toolConfig: { functionCallingConfig: { mode: "AUTO" } },
-      generationConfig: {
-        temperature: DEFAULTS.temperature,
-        maxOutputTokens: per_call_max_tokens,
-        thinkingConfig: { thinkingLevel: thinking_level },
-      },
+      toolConfig: { functionCallingConfig: { mode: function_calling_mode } },
+      generationConfig,
     };
 
     let resp;
@@ -120,7 +147,7 @@ export async function runAgentLoop({
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), DEFAULTS.request_timeout_ms);
       resp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -146,7 +173,7 @@ export async function runAgentLoop({
     tokens.input += tin;
     tokens.output += tout;
     tokens.total = tokens.input + tokens.output;
-    cost_usd += (tin / 1_000_000) * RATES_PER_M.input + (tout / 1_000_000) * RATES_PER_M.output;
+    cost_usd += (tin / 1_000_000) * rates_per_m.input + (tout / 1_000_000) * rates_per_m.output;
 
     const candidate = (data.candidates || [])[0] || {};
     const parts = (candidate.content && candidate.content.parts) || [];
@@ -211,7 +238,7 @@ export async function runAgentLoop({
     reasoning_trace,
     tool_calls,
     final_text,
-    model: MODEL,
+    model,
   };
 }
 
