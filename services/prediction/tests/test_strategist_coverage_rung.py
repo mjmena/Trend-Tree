@@ -314,6 +314,138 @@ def test_a_call_that_only_held_steady_stays_on_the_coverage_rung():
     assert payload["precedence_tier"] == TIER_COVERAGE_DEMOTION
 
 
+# --- 4. one row, one posture: the detector-outage case -------------------
+
+
+def _covered_prior() -> dict:
+    """A ledger row that already carries a real detection and the demotion
+    derived from it -- what the previous sweep wrote."""
+    return {
+        "source_signals": ["bluesky:3lqz7a2xk4d2m"],
+        "saturation": None,
+        "trend_context": None,
+        "strategist": None,
+        "coverage": {
+            "detected": True,
+            "story_count": 1,
+            "posture": POSTURE_WATCH_COVERED,
+            "demoted": True,
+            "detections": [{"content_id": "316520398", "headline": STORY.headline}],
+        },
+    }
+
+
+def _outage() -> CoveragePhase:
+    """The detector was wired and the warehouse did not answer."""
+    return CoveragePhase(
+        detector=StaticCoverageDetector(
+            readings={
+                SUBJECT: CoverageReading(
+                    subject=SUBJECT,
+                    available=False,
+                    miss_reason="outage",
+                    error="RuntimeError: boom",
+                )
+            }
+        )
+    )
+
+
+def _sweep_over(prior: dict, *, coverage, decision=None, confidence=PRIOR_CONFIDENCE):
+    return sweep_predictions(
+        predictions=StaticOpenPredictionReader(
+            [open_prediction_row(evidence=prior)], statuses=LIVE_STATUSES
+        ),
+        trends=_trends(),
+        llm=_llm(confidence),
+        coverage=coverage,
+        decisions=_decisions(decision),
+        scope=SweepScope(),
+        now=NOW,
+    )
+
+
+def test_a_detector_outage_leaves_both_evidence_blocks_saying_watch_covered():
+    """The contradiction this pair of stories shipped without a test.
+
+    ``record_coverage`` deliberately keeps a prior detection when the
+    detector could not answer -- overwriting it with a miss would re-raise a
+    covered call with no external demand behind it (CRMA-767 AC4). The
+    ladder therefore has to read the coverage that *lands*, not this pass's
+    unavailable reading: asked about the reading, the valve says "no
+    demotion", and the one row then states two postures. CRMA-769 projects
+    ``EVIDENCE.strategist.posture`` for queue standing, so the wrong one is
+    the one a strategist sees.
+    """
+    result = _sweep_over(_covered_prior(), coverage=_outage())
+    evidence = result.outcomes[0].verdict.evidence
+
+    assert evidence["coverage"]["posture"] == POSTURE_WATCH_COVERED
+    assert evidence["strategist"]["posture"] == POSTURE_WATCH_COVERED
+    assert evidence["strategist"]["coverage_demoted"] is True
+    assert evidence["strategist"]["precedence_tier"] == TIER_COVERAGE_DEMOTION
+    # And the row still says it could not look, so the posture is readable as
+    # a carried-forward one rather than a fresh detection.
+    assert evidence["coverage"]["error"] == "RuntimeError: boom"
+
+
+def test_an_approve_still_overrules_a_carried_forward_demotion():
+    # The two fixes meeting: the demotion survives the outage, and the human
+    # tier still outranks it -- recorded as overruled, not as absent.
+    result = _sweep_over(_covered_prior(), coverage=_outage(), decision="APPROVE")
+    evidence = result.outcomes[0].verdict.evidence
+
+    assert evidence["coverage"]["posture"] == POSTURE_WATCH_COVERED
+    assert evidence["strategist"]["posture"] == POSTURE_ACT
+    assert evidence["strategist"]["precedence_tier"] == TIER_STRATEGIST_ACTION
+    assert evidence["strategist"]["coverage_demoted"] is True
+    assert evidence["strategist"]["protected_from_demotion"] is True
+
+
+def test_an_unwired_detector_also_leaves_the_two_blocks_agreeing():
+    # No coverage phase at all -- local runs, and any deploy without the
+    # detector. `record_coverage` returns the evidence untouched, so the
+    # prior payload is what lands, and the ladder must read that rather than
+    # treating "nobody looked" as "not covered".
+    result = _sweep_over(_covered_prior(), coverage=None)
+    evidence = result.outcomes[0].verdict.evidence
+
+    assert evidence["coverage"]["posture"] == POSTURE_WATCH_COVERED
+    assert evidence["strategist"]["posture"] == POSTURE_WATCH_COVERED
+    assert evidence["strategist"]["coverage_demoted"] is True
+
+
+def test_a_pass_that_looked_and_found_nothing_lifts_both_blocks_together():
+    # The other direction, so the agreement is not just "always demoted": a
+    # reading that actually looked and found the stories gone from the window
+    # lifts the demotion, and both blocks move together.
+    result = _sweep_over(_covered_prior(), coverage=_uncovered())
+    evidence = result.outcomes[0].verdict.evidence
+
+    assert evidence["coverage"]["posture"] == POSTURE_ACT
+    assert evidence["strategist"]["posture"] == POSTURE_ACT
+    assert evidence["strategist"]["coverage_demoted"] is False
+    assert evidence["strategist"]["precedence_tier"] == TIER_AUTOMATED_EVIDENCE
+
+
+def test_a_row_with_no_prior_coverage_is_not_read_as_covered():
+    # The null case: a prediction minted before the detector existed carries
+    # `coverage: None`, which must read as "no demotion", not as a demotion.
+    prior = {
+        "source_signals": [],
+        "saturation": None,
+        "trend_context": None,
+        "coverage": None,
+        "strategist": None,
+    }
+    result = _sweep_over(prior, coverage=None)
+    evidence = result.outcomes[0].verdict.evidence
+
+    assert evidence["coverage"] is None
+    assert evidence["strategist"]["coverage_demoted"] is False
+    assert evidence["strategist"]["posture"] == POSTURE_ACT
+
+
 # --- through the deployed route ------------------------------------------
 
 

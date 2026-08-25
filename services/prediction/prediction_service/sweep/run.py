@@ -69,7 +69,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from ..coverage import CoveragePhase, ExternalDemand, coverage_demotes, record_coverage
+from ..coverage import COVERAGE_KEY, CoveragePhase, ExternalDemand, record_coverage
 from ..domain.claim import InvalidClaim, Verdict, build_verdict
 from ..generation.llm import PredictionLLM
 from ..matching.decide import DEFAULT_MIN_SIMILARITY, MatchDecision
@@ -353,6 +353,31 @@ def _carries_a_reading(saturation: Any) -> bool:
     matched = isinstance(et, Mapping) and bool(et.get("matched"))
     available = isinstance(gdelt, Mapping) and bool(gdelt.get("available"))
     return matched or available
+
+
+def _coverage_demotes_now(evidence: Mapping[str, Any]) -> bool:
+    """Whether the ``EVIDENCE.coverage`` block that will actually be written
+    demotes this call's posture.
+
+    Read off the payload rather than re-asked of this pass's raw reading,
+    because the two disagree in the one case that matters.
+    ``record_coverage`` keeps the prior row's detection when the detector
+    could not answer -- an outage must not un-demote a covered call
+    (CRMA-767 AC4) -- while the valve, asked again about that unavailable
+    reading, answers "no demotion". Deriving the ladder's rung from the
+    reading would then put two postures on one row: ``EVIDENCE.coverage``
+    saying watch/covered and ``EVIDENCE.strategist`` saying act. CRMA-769's
+    projection reads the second for queue standing, so a strategist would
+    see a covered call back at "act" during an outage, with no external
+    demand behind it -- the un-driven re-raise the one-way valve exists to
+    prevent.
+
+    Mirrors ``_carries_a_reading`` above: the sweep reads a documented key
+    off a block another package owns, rather than that package growing an
+    accessor for its one caller.
+    """
+    block = evidence.get(COVERAGE_KEY)
+    return isinstance(block, Mapping) and block.get("demoted") is True
 
 
 def _final_row_written(evidence: Mapping[str, Any] | None) -> bool:
@@ -651,11 +676,29 @@ def sweep_predictions(
         direction = confidence_direction(prediction.confidence, confidence)
         delta = confidence_delta(prediction.confidence, confidence)
         demand = ExternalDemand(confidence_direction=direction, confidence_delta=delta)
-        # Held in a variable rather than passed inline because the SAME value
-        # has to reach the evidence below -- deriving it back out of the
+
+        evidence = build_match_evidence(
+            prediction.evidence, decision=resolution.decision, context=resolution.context
+        )
+        # Coverage is recorded BEFORE the posture is settled, because
+        # `record_coverage` is what decides the *effective* coverage: this
+        # pass's detection, or the prior row's carried forward when the
+        # detector could not answer. The ladder then reads that payload
+        # (`_coverage_demotes_now`) instead of re-asking the valve about the
+        # raw reading, which is what kept an outage from re-raising a covered
+        # call in one evidence block while un-demoting it in the other.
+        #
+        # Still after the model turn, which is the guarantee that matters:
+        # `confidence` above was restated by a model that was never shown a
+        # coverage detection, so what the world outside McClatchy did is the
+        # only thing that can re-raise a covered call. Asserted as ordering
+        # in tests/test_coverage_isolation.py, not left to this comment.
+        evidence = record_coverage(evidence, covered, demand=demand)
+        # Held in a variable because the SAME value has to reach
+        # EVIDENCE.strategist below -- deriving it back out of the settled
         # posture would read `false` in exactly the case AC3 exists for, an
         # Approve overruling a real coverage demotion.
-        coverage_demoted = coverage_demotes(covered, demand=demand)
+        coverage_demoted = _coverage_demotes_now(evidence)
         posture = resolve_posture(decision, coverage_demoted=coverage_demoted)
         status = next_status(
             prior_status=prediction.status,
@@ -666,9 +709,6 @@ def sweep_predictions(
             strategist=decision,
         )
 
-        evidence = build_match_evidence(
-            prediction.evidence, decision=resolution.decision, context=resolution.context
-        )
         evidence_notes: list[str] = []
         saturation_note: str | None = None
         if lookup is not None and reading is not None:
@@ -730,8 +770,6 @@ def sweep_predictions(
             notes.append(saturation_note)
         note = "; ".join(notes) or None
         evidence["reevaluation"] = block
-
-        evidence = record_coverage(evidence, covered, demand=demand)
 
         what_changed = compose_what_changed(
             prior_confidence=prediction.confidence,
