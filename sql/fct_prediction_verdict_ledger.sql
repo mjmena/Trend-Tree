@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS MCC_PRESENTATION.TREND_AGENT.FCT_PREDICTION_VERDICT_L
   MATCHED_TREND_ID     VARCHAR(64)                           COMMENT 'FCT_TRENDS.TREND_ID this verdict corroborates; NULL = white-space prediction (ledger-only in v1, strategy §2)',
 
   -- Evidence + narrative.
-  EVIDENCE             VARIANT                               COMMENT 'contracted keys, all required to be present even when null: source_signals (FCT_SIGNALS ids), saturation (ET + GDELT), trend_context (heat/accel/growth/age, NULL for white-space), coverage (internal-coverage detections)',
+  EVIDENCE             VARIANT                               COMMENT 'contracted keys, all required to be present even when null: source_signals (FCT_SIGNALS ids), saturation (ET + GDELT), trend_context (heat/accel/growth/age, NULL for white-space), coverage (internal-coverage detections), strategist (latest Approve/Dismiss, the queue posture it settled, and which rung of the precedence ladder settled it)',
   REASONING            VARCHAR(4000)                         COMMENT 'the agent''s verdict rationale at this evaluation',
   WHAT_CHANGED         VARCHAR(4000)                         COMMENT 'what moved since the prior verdict on this PREDICTION_ID; NULL on first mint',
 

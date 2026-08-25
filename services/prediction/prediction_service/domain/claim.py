@@ -62,7 +62,20 @@ HORIZON_BANDS: tuple[str, ...] = tuple(_HORIZON_BAND_DAYS)
 # *present*, even when a value is legitimately null (e.g. trend_context is
 # NULL for a white-space prediction). The key's presence is the contract, not
 # its value.
-REQUIRED_EVIDENCE_KEYS = ("source_signals", "saturation", "trend_context", "coverage")
+#
+# ``strategist`` (CRMA-768) is the human tier: the latest Approve/Dismiss on
+# this prediction, the posture it settled on, and which rung of the
+# precedence ladder settled it. Present on every row -- including the rows
+# where nobody has acted and the rows written while the decision source is
+# unreachable -- because "we asked and nobody had acted" and "we could not
+# ask" are different facts and the ledger has to be able to say which.
+REQUIRED_EVIDENCE_KEYS = (
+    "source_signals",
+    "saturation",
+    "trend_context",
+    "coverage",
+    "strategist",
+)
 
 
 class InvalidClaim(ValueError):

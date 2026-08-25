@@ -16,7 +16,8 @@
       ],
       "saturation": null,
       "trend_context": null,
-      "coverage": null
+      "coverage": null,
+      "strategist": null
     },
     "REASONING": "Four independent sources converge on the same behaviour while the shelf is still specialty-brand dominated.",
     "EVALUATED_AT": "2026-08-20 14:02:00.000"
@@ -38,7 +39,8 @@
       ],
       "saturation": null,
       "trend_context": null,
-      "coverage": null
+      "coverage": null,
+      "strategist": null
     },
     "REASONING": "Clinical coverage and specialty-retail listings appear together, but no mass pharmacy has moved.",
     "EVALUATED_AT": "2026-08-20 14:02:00.000"
@@ -68,7 +70,8 @@
         "observable_check": "not_yet",
         "grace_ends_at": "2025-04-10T00:00:00+00:00",
         "final_evaluation": true
-      }
+      },
+      "strategist": null
     },
     "REASONING": "A single platform's search volume moved and nothing corroborated it.",
     "EVALUATED_AT": "2025-04-11 14:00:00.000"
@@ -98,7 +101,8 @@
         "observable_check": "not_yet",
         "grace_ends_at": "2026-05-21T00:00:00+00:00",
         "final_evaluation": false
-      }
+      },
+      "strategist": null
     },
     "REASONING": "Two sources described the same shift and neither widened after the first month.",
     "EVALUATED_AT": "2026-05-20 14:00:00.000"

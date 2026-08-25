@@ -138,8 +138,12 @@ Pipedream scorer retires at cutover.
   (the signal ids behind the call), `saturation` (Exploding Topics
   classification via `descriptor.query` + GDELT article breadth),
   `trend_context` (heat / acceleration / cumulative growth / age; NULL for
-  white-space), `coverage` (the internal-coverage detections). Rule:
-  filterable facts are columns; readable context is JSON.
+  white-space), `coverage` (the internal-coverage detections), `strategist`
+  (CRMA-768 — the latest Approve/Dismiss on this prediction, the queue
+  posture it settled on, and which rung of the precedence ladder settled it;
+  present on every row, so "we asked and nobody had acted" and "the decision
+  source was unreachable" are distinguishable). Rule: filterable facts are
+  columns; readable context is JSON.
 - The existing `FCT_TREND_PREDICTION_LEDGER` freezes — no new writes;
   `COMPUTATION_VERSION` fences the eras. The deterministic scorer's Pipedream
   workflow is deactivated at cutover, its daily cron deleted, and its
@@ -180,9 +184,13 @@ Pipedream scorer retires at cutover.
   separate mechanical rule.
 - Human tier precedence: strategist action > coverage demotion > automated
   evidence. Dismiss → the agent records `WITHDRAWN`; Approve → protection from
-  automated demotion until the next human touch. Strategist decisions (Insights
-  Postgres `prediction_decisions`) are read as inputs and retained as a
-  calibration label tier — never live-trained.
+  automated demotion until the next human touch. What an Approve protects is
+  *queue posture*, not the call's truth — an approved prediction still expires
+  on its horizon and still resolves on its observable check. Strategist
+  decisions (Insights Postgres `prediction_decisions`) are read as inputs and
+  retained as a calibration label tier in its own append-only table,
+  `FCT_PREDICTION_STRATEGIST_LABELS` (CRMA-768) — write-only at runtime, read
+  by an offline tuning pass later, never live-trained.
 - The **only mechanical gate** anywhere in the pillar is the data-quality
   floor: no verdict is requested on trends/subjects too young or sparse to
   judge. Any new mechanical gate, discount, or eviction rule contradicts the

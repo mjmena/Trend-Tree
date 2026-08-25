@@ -95,12 +95,17 @@ discovery agents (every 2h) → STG_EXTERNAL_SIGNALS
                                   ↓
                           DT_TREND_DASHBOARD reads latest status
 
-                          prediction agent (deterministic SQL, daily 14:00 UTC)
-                                  ↓ INSERT...SELECT (score + write in one statement)
-                          FCT_TREND_PREDICTION_LEDGER
-                                  ↓
+                          prediction pillar (Cloud Run, daily)
+                                  ↓ generate -> match -> verdict
+                          FCT_PREDICTION_VERDICT_LEDGER
+                                  ↓ latest ACTIVE + MATCHED verdict per trend
                           DT_TREND_DASHBOARD adds PREDICTION_SCORE / FLAG / ELIGIBLE
-                          (additive, isolated from HEAT_INDEX)
+                          + claim / reasoning / what-changed / angle /
+                            audience question / cited examples
+                          (additive, isolated from HEAT_INDEX; NULL = no call)
+
+                          FCT_TREND_PREDICTION_LEDGER — frozen v1/v2 history,
+                          no longer read by the dashboard (CRMA-769)
 ```
 
 **FCT_TRENDS is the canonical trend identity table** (post-2026-04-27 agent-owned-ledgers refactor — slim, immutable). All mutable state (heat, lifecycle status, enrichment payload, supporting signals) lives in dedicated append-only ledgers / link tables. The legacy `FCT_TREND_METRICS` is frozen — 324 historical rows from the suspended SQL Louvain clustering job; don't write new code that reads it.
