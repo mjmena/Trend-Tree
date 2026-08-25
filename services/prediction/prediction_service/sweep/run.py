@@ -30,8 +30,12 @@ route does the writing, after the sweep has returned.
    mechanical rule the strategy does not permit.
 5. Asks the model, in one batched turn, to read the observable check,
    restate confidence, rewrite reasoning and say what changed.
-6. Applies the status machine and composes ``WHAT_CHANGED``.
-7. Appends one row -- **carrying the four claim columns forward
+6. Reads the strategist tier and settles the precedence ladder -- strategist
+   action > coverage demotion > automated evidence (CRMA-768). A Dismissed
+   call records ``WITHDRAWN``; an Approved one holds its queue standing
+   against a demotion. Both land in ``EVIDENCE.strategist``.
+7. Applies the status machine and composes ``WHAT_CHANGED``.
+8. Appends one row -- **carrying the four claim columns forward
    byte-identically**.
 
 **The claim columns never move.** ``SUBJECT_DESCRIPTOR``,
@@ -50,9 +54,10 @@ detection, so coverage cannot raise a number it never saw. What it can do is
 lower the prediction's posture to ``watch_covered``; see coverage/posture.py.
 
 **What this module does not do.** It does not grade. Correct / Early-Late /
-Incorrect is derived in SQL from these rows (CRMA-771). It does not read
-strategist decisions or apply the human-tier precedence ladder (CRMA-768),
-or project anything to the dashboard (CRMA-769).
+Incorrect is derived in SQL from these rows (CRMA-771). It does not project
+anything to the dashboard (CRMA-769). It does not write the calibration
+labels either: like the verdicts, they are returned and the route writes
+them.
 """
 
 from __future__ import annotations
@@ -64,7 +69,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from ..coverage import CoveragePhase, ExternalDemand, record_coverage
+from ..coverage import CoveragePhase, ExternalDemand, coverage_demotes, record_coverage
 from ..domain.claim import InvalidClaim, Verdict, build_verdict
 from ..generation.llm import PredictionLLM
 from ..matching.decide import DEFAULT_MIN_SIMILARITY, MatchDecision
@@ -78,6 +83,17 @@ from ..matching.run import resolve_match
 from ..matching.trends import DEFAULT_CANDIDATE_LIMIT, TrendContext, TrendReader
 from ..saturation import SaturationPhase, attach_saturation, build_saturation_evidence
 from ..saturation.weigh import render_breadth, render_et
+from ..strategist import (
+    STRATEGIST_KEY,
+    TIER_COVERAGE_DEMOTION,
+    DecisionLookup,
+    PostureDecision,
+    StrategistDecision,
+    StrategistDecisionReader,
+    read_decisions,
+    resolve_posture,
+    strategist_evidence,
+)
 from .changes import compose_what_changed
 from .direction import confidence_delta, confidence_direction
 from .lifecycle import (
@@ -198,6 +214,15 @@ class SweepOutcome:
     context: TrendContext | None
     status: StatusDecision
     observation: Observation
+    #: Where the precedence ladder landed for this call, and which rung
+    #: settled it (CRMA-768). Reported at the API surface and written into
+    #: EVIDENCE.strategist, so AC3's "precedence is observable" is a property
+    #: of the run's output rather than of this code.
+    posture: PostureDecision
+    #: The latest strategist action on this call, or None when there has been
+    #: none (or the decision source could not be read -- ``SweepResult.
+    #: strategist`` says which).
+    strategist_decision: StrategistDecision | None
     #: Derived here, stored nowhere -- see sweep/direction.py.
     confidence_direction: str
     confidence_delta: float | None
@@ -219,6 +244,10 @@ class SweepResult:
     skipped: list[SkippedPrediction] = field(default_factory=list)
     predictions_read: int = 0
     trends_indexed: int = 0
+    #: The strategist decisions this sweep read, bound by PREDICTION_ID.
+    #: Carried on the result so the route can retain them as calibration
+    #: labels without reading the source a second time.
+    strategist: DecisionLookup = field(default_factory=DecisionLookup)
     model: str = ""
     input_tokens: int = 0
     output_tokens: int = 0
@@ -497,6 +526,7 @@ def sweep_predictions(
     llm: PredictionLLM | None = None,
     saturation: SaturationPhase | None = None,
     coverage: CoveragePhase | None = None,
+    decisions: StrategistDecisionReader | None = None,
     scope: SweepScope | None = None,
     chain_id: str | None = None,
     now: datetime | None = None,
@@ -542,6 +572,12 @@ def sweep_predictions(
         )
         for prediction in live
     ]
+
+    # The human tier, read once for the whole sweep and bound by
+    # PREDICTION_ID (strategist/decisions.py). Never raises: an unreachable
+    # decision source leaves every call exactly where automation left it,
+    # and the evidence records that we could not ask.
+    tier = read_decisions(decisions, [prediction.prediction_id for prediction in live])
 
     subjects = [prediction.claim.subject_descriptor for prediction in live]
     readings = (
@@ -607,12 +643,27 @@ def sweep_predictions(
         )
         reasoning = (answer.reasoning if answer else "") or prediction.reasoning
         angle, audience_question = narrative_for(prediction, answer)
+        decision = tier.for_prediction(prediction.prediction_id)
+        # Verdict-side, demote-only, and after the model turn: `confidence`
+        # above was restated by a model that was never shown `covered`, so
+        # what the world outside McClatchy did is the only thing that can
+        # re-raise a covered call.
+        direction = confidence_direction(prediction.confidence, confidence)
+        delta = confidence_delta(prediction.confidence, confidence)
+        demand = ExternalDemand(confidence_direction=direction, confidence_delta=delta)
+        # Held in a variable rather than passed inline because the SAME value
+        # has to reach the evidence below -- deriving it back out of the
+        # posture would read `false` in exactly the case AC3 exists for, an
+        # Approve overruling a real coverage demotion.
+        coverage_demoted = coverage_demotes(covered, demand=demand)
+        posture = resolve_posture(decision, coverage_demoted=coverage_demoted)
         status = next_status(
             prior_status=prediction.status,
             horizon_at=prediction.horizon_at,
             band=prediction.claim.horizon_band,
             now=moment,
             observation=observation,
+            strategist=decision,
         )
 
         evidence = build_match_evidence(
@@ -642,6 +693,15 @@ def sweep_predictions(
                     evidence_notes.append(
                         f"Exploding Topics now reads {lookup.classification!r} for this subject"
                     )
+        evidence[STRATEGIST_KEY] = strategist_evidence(
+            decision, posture, lookup=tier, coverage_demoted=coverage_demoted
+        )
+        if posture.protected or posture.tier == TIER_COVERAGE_DEMOTION:
+            # Only a demotion that actually happened, or one a human
+            # overruled, is news. An Approve that nothing argued with is a
+            # standing fact, and repeating it in WHAT_CHANGED every day is
+            # the churn CRMA-782 already had to design out.
+            evidence_notes.append(posture.reason)
         block = dict(provenance)
         block["chain_id"] = chain
         block["evaluated_at"] = moment.isoformat()
@@ -671,15 +731,7 @@ def sweep_predictions(
         note = "; ".join(notes) or None
         evidence["reevaluation"] = block
 
-        # Verdict-side, demote-only, and after the model turn: `confidence`
-        # above was restated by a model that was never shown `covered`.
-        direction = confidence_direction(prediction.confidence, confidence)
-        delta = confidence_delta(prediction.confidence, confidence)
-        evidence = record_coverage(
-            evidence,
-            covered,
-            demand=ExternalDemand(confidence_direction=direction, confidence_delta=delta),
-        )
+        evidence = record_coverage(evidence, covered, demand=demand)
 
         what_changed = compose_what_changed(
             prior_confidence=prediction.confidence,
@@ -742,6 +794,8 @@ def sweep_predictions(
                 context=resolution.context,
                 status=status,
                 observation=observation,
+                posture=posture,
+                strategist_decision=decision,
                 confidence_direction=direction,
                 confidence_delta=delta,
                 reevaluated=answer is not None,
@@ -766,6 +820,7 @@ def sweep_predictions(
         skipped=skipped,
         predictions_read=len(read),
         trends_indexed=len(index),
+        strategist=tier,
         model=str(provenance.get("model") or ""),
         input_tokens=int(provenance.get("batch_input_tokens") or 0),
         output_tokens=int(provenance.get("batch_output_tokens") or 0),

@@ -19,6 +19,13 @@ make the scheduler's retry re-run work that is already done. Generation's
 failure comes back in the response body and in the log, and it surfaces where
 the PRD asks for it -- as verdict-ledger staleness in the audit agent's view.
 
+**The strategist tier runs inside the same request** (CRMA-768). The sweep
+reads the Approve/Dismiss decisions, applies the precedence ladder, and this
+route retains every decision it read as a calibration label in
+``FCT_PREDICTION_STRATEGIST_LABELS``. A failed label write is a note, never a
+502: the verdict rows are the pillar's output, the labels are for a tuning
+pass that has not happened yet, and losing the second must not lose the first.
+
 **Manual and scheduled fires are the same request.** There is no scheduler
 mode: Cloud Scheduler POSTs this route with an OIDC token exactly the way a
 human does with ``gcloud auth print-identity-token``, and the capped-scope
@@ -33,6 +40,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
 from fastapi.exceptions import HTTPException
@@ -68,6 +76,13 @@ from ..matching.trends import (
     SnowflakeTrendReader,
 )
 from ..saturation import SaturationPhase, floor_from_settings
+from ..strategist import (
+    LABEL_TABLE,
+    LabelWriteFailed,
+    StrategistDecisionReader,
+    calibration_labels,
+    write_calibration_labels,
+)
 from ..sweep import (
     SweepResult,
     SweepScope,
@@ -174,6 +189,14 @@ class SweepOut(BaseModel):
     observable_check: str
     matched_trend_id: str | None
     what_changed: str
+    #: Queue standing after the precedence ladder -- act / watch_covered /
+    #: withdrawn -- and which rung settled it. AC3's "precedence is
+    #: observable", at the API surface as well as in EVIDENCE.strategist.
+    posture: str
+    posture_tier: str
+    #: The latest strategist action on this call (APPROVE / DISMISS), or None
+    #: when there has been none or the decision source was unreachable.
+    strategist_decision: str | None
     #: Whether the model answered for this prediction.
     reevaluated: bool
     note: str | None
@@ -218,6 +241,15 @@ class SweepResponse(BaseModel):
     generation_note: str | None
     predictions_minted: int
     generated: list[GeneratedOut]
+    #: Strategist decisions retained for later regression tuning (AC4). Never
+    #: read back at runtime -- see strategist/labels.py.
+    calibration_labels_written: int
+    #: Why the labels did not land, when they did not. Never fails the
+    #: request: the verdict rows are already in the ledger.
+    calibration_label_note: str | None
+    #: Why no strategist decision was read at all, when the source could not
+    #: be reached. Distinct from "nobody has acted", which is silence here.
+    strategist_source_note: str | None
     llm_token_usage: dict[str, int]
     llm_cost_estimate: float | None
 
@@ -239,6 +271,11 @@ def _to_out(result: SweepResult, *, written: set[str]) -> list[SweepOut]:
             observable_check=outcome.observation.outcome,
             matched_trend_id=outcome.verdict.matched_trend_id,
             what_changed=outcome.verdict.what_changed or "",
+            posture=outcome.posture.posture,
+            posture_tier=outcome.posture.tier,
+            strategist_decision=(
+                outcome.strategist_decision.decision if outcome.strategist_decision else None
+            ),
             reevaluated=outcome.reevaluated,
             note=outcome.note,
             written=outcome.verdict.prediction_eval_id in written,
@@ -253,6 +290,7 @@ def sweep_router(
     require_caller: Callable[..., CallerIdentity],
     llm: PredictionLLM | None,
     saturation: SaturationPhase | None = None,
+    decisions: StrategistDecisionReader | None = None,
 ) -> APIRouter:
     router = APIRouter()
     # Same shape /generate uses: None is the offline phase -- no outbound
@@ -271,6 +309,7 @@ def sweep_router(
     # outage) degrades to "we could not look", which demotes nothing.
     coverage_phase = build_coverage_phase(settings, snowflake)
     table = settings.qualify(VERDICT_LEDGER_TABLE)
+    label_table = settings.qualify(LABEL_TABLE)
 
     @router.post("/sweep", response_model=SweepResponse)
     def sweep(
@@ -308,6 +347,7 @@ def sweep_router(
                 llm=llm,
                 saturation=sweep_saturation,
                 coverage=coverage_phase,
+                decisions=decisions,
                 scope=scope,
                 chain_id=chain_id,
             )
@@ -346,6 +386,36 @@ def sweep_router(
                         "MERGEs into the rows this run already wrote."
                     ),
                 ) from err
+
+        # AC4: every decision this sweep read is retained, with its
+        # prediction id and its timestamp, in its own table. Written after
+        # the verdicts and never in their way -- a label is evidence for a
+        # tuning pass that has not happened yet, a verdict is the product.
+        labels_written = 0
+        calibration_label_note: str | None = None
+        labels = calibration_labels(
+            result.strategist,
+            verdicts={
+                outcome.prediction_id: (outcome.verdict.confidence, outcome.verdict.status)
+                for outcome in result.outcomes
+            },
+            recorded_at=datetime.now(UTC),
+            chain_id=chain_id,
+        )
+        if labels and not body.dry_run:
+            try:
+                labels_written = len(
+                    write_calibration_labels(
+                        snowflake, label_table, labels, chain_id=chain_id
+                    )
+                )
+            except LabelWriteFailed as err:
+                log.exception("calibration label write failed", extra={"chain_id": chain_id})
+                calibration_label_note = (
+                    f"{err} The verdict rows above are unaffected; re-firing with "
+                    f"chain_id={chain_id!r} re-reads the same decisions and MERGEs into "
+                    "the label rows that landed."
+                )
 
         log.info(
             "sweep run",
@@ -478,6 +548,9 @@ def sweep_router(
             generation_note=generation_note,
             predictions_minted=minted,
             generated=generated,
+            calibration_labels_written=labels_written,
+            calibration_label_note=calibration_label_note,
+            strategist_source_note=result.strategist.unavailable_reason,
             llm_token_usage={
                 "input": tokens_in,
                 "output": tokens_out,

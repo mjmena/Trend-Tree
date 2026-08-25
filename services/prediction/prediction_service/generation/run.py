@@ -140,18 +140,21 @@ def eval_id_for(chain_id: str, claim: Claim) -> str:
 def build_evidence(candidate: Candidate, *, model: str, chain_id: str) -> dict[str, object]:
     """The contracted EVIDENCE VARIANT for a freshly-generated prediction.
 
-    All four required keys are present -- the presence is the contract, the
-    value need not be (domain.claim.REQUIRED_EVIDENCE_KEYS). ``trend_context``
-    is null because this verdict is unmatched *and* because generation could
-    not have read heat or lifecycle to fill it in; ``saturation`` is filled in
+    Every required key is present -- the presence is the contract, the value
+    need not be (domain.claim.REQUIRED_EVIDENCE_KEYS). ``trend_context`` is
+    null because this verdict is unmatched *and* because generation could not
+    have read heat or lifecycle to fill it in; ``saturation`` is filled in
     after this phase returns (saturation/run.py, CRMA-765); ``coverage`` is
-    null pending the coverage detector.
+    null pending the coverage detector; ``strategist`` is null because a
+    prediction minted in this pass has not existed long enough for a human to
+    have acted on it (CRMA-768 -- the sweep is where the human tier is read).
     """
     return {
         "source_signals": list(candidate.source_signals),
         "saturation": None,
         "trend_context": None,
         "coverage": None,
+        "strategist": None,
         # Provenance, not a contracted key -- readable context, per the
         # strategy's "filterable facts are columns, readable context is JSON".
         "generation": {

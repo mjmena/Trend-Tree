@@ -44,6 +44,7 @@ _EMPTY_EVIDENCE = {
     "saturation": None,
     "trend_context": None,
     "coverage": None,
+    "strategist": None,
 }
 
 _DEFAULT_REASONING = (

@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from prediction_service.matching.trends import TrendCandidate, TrendContext
+from prediction_service.strategist import LABEL_TABLE
 
 from .fakes import RecordedCall
 
@@ -199,6 +200,10 @@ class LedgerSimulator(RoutingFakeSnowflake):
     """
 
     rows: list[dict[str, Any]] = field(default_factory=list)
+    #: LABEL_IDs already in the calibration label table, so a re-read of a
+    #: standing decision MERGEs rather than appending a row per sweep.
+    label_ids: set[str] = field(default_factory=set)
+    fail_labels_with: Exception | None = None
 
     _ORDER_BY = re.compile(
         r"ORDER BY\s+EVALUATED_AT\s+(ASC|DESC)\s*,\s*PREDICTION_EVAL_ID\s+(ASC|DESC)\s*\n?LIMIT",
@@ -247,6 +252,20 @@ class LedgerSimulator(RoutingFakeSnowflake):
         return [dict(row) for row in live[:limit]]
 
     def execute(self, sql: str, params: Mapping[str, Any] | None = None) -> int:
+        # The calibration label tier writes to its own table (CRMA-768) and
+        # is not a verdict row -- routed before the append below, which reads
+        # the verdict MERGE's bind names.
+        if LABEL_TABLE in sql.upper():
+            self.calls.append(RecordedCall(sql, params, kind="execute"))
+            if self.fail_labels_with:
+                raise self.fail_labels_with
+            label_id = str((params or {}).get("label_id"))
+            if label_id in self.label_ids:
+                # WHEN NOT MATCHED THEN INSERT: a standing decision re-read on
+                # a later sweep MERGEs into the row it already wrote.
+                return 0
+            self.label_ids.add(label_id)
+            return 1
         rowcount = super().execute(sql, params)
         bound = dict(params or {})
         if rowcount == 0:

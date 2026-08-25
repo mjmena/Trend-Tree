@@ -15,6 +15,7 @@ from .routes.match import match_router
 from .routes.run import run_router
 from .routes.sweep import sweep_router
 from .saturation import SaturationPhase
+from .strategist import StrategistDecisionReader
 
 
 def create_app(
@@ -24,6 +25,7 @@ def create_app(
     verify_token: TokenVerifier | None = None,
     llm: PredictionLLM | None = None,
     saturation: SaturationPhase | None = None,
+    decisions: StrategistDecisionReader | None = None,
 ) -> FastAPI:
     # None means "the real verifier for settings.auth_mode" -- so only an
     # injected (test) verifier is exempt from the audience check below.
@@ -119,5 +121,12 @@ def create_app(
     # request. `llm=None` degrades it the same way it degrades /generate --
     # the time-based status transitions still happen, because EXPIRED needs a
     # clock, not a model.
-    app.include_router(sweep_router(settings, snowflake, require_caller, llm, saturation))
+    # `decisions=None` is the deployed posture today (CRMA-768): Insights
+    # Postgres read access is not provisioned, so server.py passes the
+    # explicitly-unavailable reader and every verdict records that we could
+    # not ask rather than that nobody had acted. Tests inject the offline
+    # reader here.
+    app.include_router(
+        sweep_router(settings, snowflake, require_caller, llm, saturation, decisions)
+    )
     return app
