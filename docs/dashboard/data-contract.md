@@ -3,11 +3,11 @@
 
 **Audience:** Engineers consuming the Trend Tree Snowflake tables — the Insights Agent backend and the Trend Hunter B2C feed. (For the plain-English, strategist-facing card reference, see [ATLAS Dashboard — Field Reference](https://mcclatchy.atlassian.net/wiki/x/CgARdw).)
 
-**Purpose:** The full column schema, type, meaning, and an example value for the two dynamic tables the downstream platforms read.
+**Purpose:** The full column schema, type, meaning, and an example value for the three dynamic tables the downstream platforms read, plus the product-sourcing tables behind the dashboard's commerce columns.
 
-**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`), `sql/task_recompute_content_matches.sql` (+ `sql/fct_trend_content_matches_ledger.sql`), `sql/fct_trend_sourcing_ledger.sql` (+ `sql/fct_trend_sourcing_candidates.sql`). This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-08-21.
+**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`), `sql/task_recompute_content_matches.sql` (+ `sql/fct_trend_content_matches_ledger.sql`), `sql/fct_trend_sourcing_ledger.sql` (+ `sql/fct_trend_sourcing_candidates.sql`, `sql/dim_catalog_product.sql`). This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-08-25.
 
-**Example values are real, pulled 2026-06-08** — mostly from the live trend **Hyper-Tactile Interiors** (`c51f1620-a832-4f13-a443-a7df03bf6a99`). A few fields that are null for that trend (geographic hotspots, macrotrend tags, the social-evidence object) use a populated row from another live trend to show the shape. Column names and types are authoritative.
+**Example values are real** — pulled 2026-06-08 except in the product-sourcing sections, which were pulled 2026-08-25. Mostly from the live trend **Hyper-Tactile Interiors** (`c51f1620-a832-4f13-a443-a7df03bf6a99`). A few fields that are null for that trend (geographic hotspots, macrotrend tags, the social-evidence object) use a populated row from another live trend to show the shape. Column names and types are authoritative.
 
 **Three tables, three questions.** `DT_TREND_DASHBOARD` answers _"what is this trend right now"_ — one row per trend, latest state. `DT_TREND_DAILY` answers _"how did it get here, day by day"_ — one row per `(TREND_ID, DAY)`. `DT_TREND_CONNECTIONS` answers _"which trends relate to each other"_ — one row per undirected trend pair, latest recompute. All three join on `TREND_ID` (`DT_TREND_CONNECTIONS` via `TREND_ID_A` / `TREND_ID_B`).
 
@@ -271,6 +271,89 @@ ORDER BY SCORE DESC;
 ```
 
 > **Isolated from `RELATED_TRENDS`.** `DT_TREND_DASHBOARD.RELATED_TRENDS` (top-5, flat ≥ 0.65) and `DT_TREND_CONNECTIONS` (category-aware, capped, undirected) are computed separately for now and may differ; reconcile deliberately rather than assume they match.
+
+---
+
+## Product-sourcing tables
+
+The dashboard's `SOURCING_STATUS` / `SOURCED_PRODUCTS` / `SOURCED_AT` columns are a projection of the latest row in these tables. Read them directly when you need run history, the candidates a run rejected, or the catalog itself. They are **not** dynamic tables — writes land immediately, without the dashboard's 15-minute lag.
+
+Written by the **ecomm agent**, a Cloud Run service (`trend-tree-ecomm-agent`, `mcc-crm-automations` / `us-east4`) via `PROC_SOURCING_APPLY`. Cloud Scheduler job `trend-tree-ecomm-poll` calls `POST /poll` every 15 minutes for a batch of 25 trends, oldest enrichment first; `POST /source {trend_id}` sources a single trend on demand.
+
+### FCT_TREND_SOURCING_LEDGER
+
+One row per sourcing run — the header. Append-only. The trend's current sourcing state is the latest row for that `TREND_ID`, ordered `STARTED_AT DESC NULLS LAST, SOURCING_RUN_ID DESC`.
+
+| Column | Type | Null | What it is |
+| --- | --- | --- | --- |
+| `SOURCING_RUN_ID` | VARCHAR | no | Run identity. Joins to `FCT_TREND_SOURCING_CANDIDATES`. |
+| `TREND_ID` | VARCHAR | no | The trend sourced. |
+| `TIER` | VARCHAR | no | Which catalog this run searched. `shopify` is the only live tier. |
+| `STARTED_AT` | TIMESTAMP_NTZ | no | Run open time. **This is the ordering key for "latest run"**, not `COMPLETED_AT` — a `running` row has no completion time. |
+| `COMPLETED_AT` | TIMESTAMP_NTZ | yes | Run close time. Surfaces as the dashboard's `SOURCED_AT`. |
+| `STATUS` | VARCHAR | no | `running` / `matched` / `no_match` / `failed`. Surfaces as `SOURCING_STATUS` (which adds `not_sourced` for trends with no row here at all). |
+| `ERROR_MESSAGE` | VARCHAR | yes | Populated on `failed`. |
+| `SEMANTIC_THRESHOLD` | FLOAT | yes | The retrieval floor this run used. Recorded per run so a threshold change is auditable against outcomes. |
+| `CANDIDATE_COUNT` | NUMBER | yes | How many products the run showed the selector. |
+| `SELECTED_COUNT` | NUMBER | yes | How many it picked. `0` on `no_match`. |
+| `SELECTOR_NOTE` | VARCHAR | yes | The selector's own comment on the run. |
+| `MODEL_USED` | VARCHAR | yes | Model that judged fit. |
+| `EMBED_DOC_VERSION` | VARCHAR | yes | Version of the embedding-document recipe. Changes here invalidate score comparisons across runs. |
+| `COMPUTATION_VERSION` | VARCHAR | yes | Version of the sourcing logic. |
+| `AGENT_SESSION_ID` | VARCHAR | yes | Correlates a run to its agent session and cost rows. |
+
+### FCT_TREND_SOURCING_CANDIDATES
+
+One row per product a run considered — **including the ones it rejected**. This is the retrieval-calibration evidence: replaying `SEMANTIC_SCORE` against actual `SELECTED` outcomes is how the threshold gets re-tuned.
+
+| Column | Type | Null | What it is |
+| --- | --- | --- | --- |
+| `SOURCING_CANDIDATE_ID` | VARCHAR | no | Row identity. |
+| `SOURCING_RUN_ID` | VARCHAR | no | The run that considered this product. |
+| `TREND_ID` | VARCHAR | no | Denormalized from the header for direct filtering. |
+| `TIER` | VARCHAR | no | Catalog the product came from. |
+| `CATALOG_PRODUCT_ID` | VARCHAR | no | Product identity **within its tier** — unique only as `(TIER, CATALOG_PRODUCT_ID)`. |
+| `PRODUCT_HANDLE` | VARCHAR | yes | Catalog slug. |
+| `PRODUCT_TITLE` | VARCHAR | yes | Display title at match time. |
+| `PRODUCT_TYPE` | VARCHAR | yes | Catalog's own type string. May be empty, not just null. |
+| `VENDOR` | VARCHAR | yes | Seller. |
+| `PRODUCT_URL` | VARCHAR | yes | **Always null today** — `DIM_CATALOG_PRODUCT` carries no presentation fields yet. |
+| `PRICE_AT_MATCH` | NUMBER | yes | Frozen snapshot, not live price. **Always null today.** |
+| `IMAGE_URL_AT_MATCH` | VARCHAR | yes | Frozen snapshot. **Always null today.** |
+| `AVAILABLE_AT_MATCH` | BOOLEAN | yes | Frozen snapshot of stock. **Always null today.** |
+| `SEMANTIC_SCORE` | FLOAT | yes | `VECTOR_COSINE_SIMILARITY` between the trend vector and the product vector. Reproducible from stored data. |
+| `REASONED_FIT` | VARCHAR | yes | Selector verdict: `strong` / `partial` / `weak`. Never a number, never blended with `SEMANTIC_SCORE`. |
+| `REASONED_FIT_RATIONALE` | VARCHAR | yes | One sentence justifying the verdict. |
+| `SELECTED` | BOOLEAN | yes | `TRUE` for picks. Only these reach `SOURCED_PRODUCTS`. |
+| `CATALOG_PAYLOAD` | VARIANT | yes | The raw catalog record as read, for replay. |
+| `CREATED_AT` | TIMESTAMP_NTZ | yes | Row write time. |
+
+**A `no_match` run persists zero candidate rows.** The rejected products it read leave no trace — the branch returns an empty candidate list. So absence of rows here does not mean the run saw nothing, and `no_match` runs contribute no calibration evidence today. A `matched` run, by contrast, records every reject with `SELECTED = FALSE`.
+
+### DIM_CATALOG_PRODUCT
+
+The product catalog the agent searches. One row per `(TIER, CATALOG_PRODUCT_ID)`.
+
+| Column | Type | What it is |
+| --- | --- | --- |
+| `TIER` | VARCHAR | Catalog this product belongs to. Half of the identity key. |
+| `CATALOG_PRODUCT_ID` | VARCHAR | Product identity within the tier. |
+| `TITLE` | VARCHAR | Product title. |
+| `VENDOR` | VARCHAR | Seller. |
+| `PRODUCT_TYPE` | VARCHAR | Catalog's own type string. |
+| `TAGS` | VARCHAR | Catalog tags. |
+| `EMBED_DOC` | VARCHAR | The text actually embedded — what retrieval matches against. |
+| `EMBED_DOC_HASH` | VARCHAR | Hash of `EMBED_DOC`; lets a sync skip re-embedding unchanged products. |
+| `EMBED_DOC_VERSION` | VARCHAR | Recipe version behind `EMBED_DOC`. |
+| `PRODUCT_VECTOR` | VECTOR | The product embedding. Nearest-neighbour target for a trend's vector. |
+| `CATALOG_STATUS` | VARCHAR | Whether the product is still live in the catalog. |
+| `FIRST_SEEN_AT` | TIMESTAMP_NTZ | First sync that saw this product. |
+| `LAST_SEEN_AT` | TIMESTAMP_NTZ | Most recent sync that saw it. **Drives the freshness gate** — a run declines when the catalog's newest `LAST_SEEN_AT` is more than 7 days old. |
+| `UPDATED_AT` | TIMESTAMP_NTZ | Last write to this row. |
+
+**No presentation fields.** There is no price, URL, image or stock column here. That is why the `_AT_MATCH` fields and `PRODUCT_URL` downstream are structurally null: nothing upstream supplies them. A live catalog sync adds these columns; until then a consumer cannot link or price a sourced product.
+
+**The catalog is seeded, not synced.** Rows arrive from a one-off seed, not a recurring job, so `LAST_SEEN_AT` does not advance on its own. Combined with the 7-day freshness gate, this means sourcing stops on its own unless the catalog is re-seeded or a live sync lands.
 
 ---
 

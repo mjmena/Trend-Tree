@@ -9,6 +9,8 @@ Every score on the dashboard is **0–100** unless specifically noted. The excep
 - `CATEGORY_CONFIDENCE` is on a 0–1 scale.
 - Cosine similarities in `RELATED_TRENDS` are 0–1.
 - Counts (`DISTINCT_PUBLISHER_COUNT`, `TOTAL_CLUSTER_SIZE`) are integers, no upper bound.
+- `SEMANTIC_SCORE` inside `SOURCED_PRODUCTS` is 0–1.
+- `SOURCING_STATUS` and `REASONED_FIT` are text enums, not numbers at all.
 
 [→ See the at-a-glance table for every field's scale](index.md#at-a-glance--field-reference).
 
@@ -20,7 +22,7 @@ Each trend has a single **canonical name** (`TREND_NAME`), frozen on its first e
 
 #### Where does the data on this dashboard come from?
 
-About 14 sources feed signals into our pipeline — news (GDELT), social (Bluesky, X via Grok), commerce (Amazon), search (Google Trends), and a set of AI discovery agents that proactively search the public web every 2 hours. Some sources ingest on a schedule; others (GDELT, X via Grok) are pulled on-demand when the agents reason about a specific trend.
+About 14 sources feed signals into our pipeline — news (GDELT), social (Bluesky, X via Grok), commerce (Amazon), search (Google Trends), and a set of AI discovery agents that proactively search the public web every 2 hours. The products on a card come from a separate input, a commerce catalog, and are matched to the trend afterwards rather than ingested as signals. Some sources ingest on a schedule; others (GDELT, X via Grok) are pulled on-demand when the agents reason about a specific trend.
 
 [→ How a trend gets to your ATLAS card](index.md#how-a-trend-gets-to-your-atlas-card) · [→ Source catalog](sources.md).
 
@@ -72,6 +74,21 @@ Both are 0–100 and both go up when things "look good," so they're easy to conf
 - `PREDICTION_SCORE` says **how likely the trend is to grow from here**.
 
 A trend can have low heat and a high prediction score (early-stage, accelerating). A trend can also have very high heat and a low prediction score (already peaked, unlikely to grow further). Use them together, not interchangeably.
+
+#### Why does this trend show no products?
+
+Check `SOURCING_STATUS` — it distinguishes four different reasons, and only one of them is a problem:
+
+- `no_match` — we looked and rejected everything we saw. This is the **most common** outcome and it is working as intended: the agent declines rather than putting an irrelevant product on a good trend.
+- `not_sourced` — no attempt has been recorded for this trend yet.
+- `running` — an attempt is in flight; check back within 15 minutes.
+- `failed` — the attempt errored. The next tick retries it automatically.
+
+A trend that matched yesterday can read `failed` or `running` today with no products showing. The products were not withdrawn — these fields always describe the **latest** attempt.
+
+Separately, sourced products currently have **no price, image or link**. The catalog we seeded does not carry those fields yet, so a card cannot link out to a product until a live catalog sync lands.
+
+[→ Product sourcing deep dive](fields/sourcing.md).
 
 #### Why did this trend disappear from ATLAS?
 

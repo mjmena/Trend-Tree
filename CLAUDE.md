@@ -20,7 +20,7 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 - `services/lib/` — shared pure-function modules (CRMA-439). Unit-tested by `scripts/test_services_lib.sh`. The Pipedream-era `agents/lib/` still serves the Pipedream workflows and is unaffected.
 - `services/<name>/` — one service: its HTTP server, `Dockerfile`, and `deploy.env` (config + Secret Manager names, never secret values). **Build context is the repo root**, so a Dockerfile can see `services/lib/`.
 - **Do not add a `package.json` at the repo root** — Pipedream's GitHub sync watches the root. Node dependencies live in the service's own directory.
-- `services/ecomm-agent` — the ecomm (trend-to-product sourcing) agent, `POST /source {trend_id}` + `GET /healthz`. See [`docs/prd/trend-to-product-sourcing.md`](docs/prd/trend-to-product-sourcing.md).
+- `services/ecomm-agent` — the ecomm (trend-to-product sourcing) agent. `POST /source {trend_id}` sources one trend; `POST /poll` sources a batch and is what Cloud Scheduler `trend-tree-ecomm-poll` calls every 15 minutes; `GET /health` is the health check (**not** `/healthz` — Google's edge swallows that exact path on `*.run.app`). See [`docs/prd/trend-to-product-sourcing.md`](docs/prd/trend-to-product-sourcing.md).
 
 ## Workflow defaults
 
