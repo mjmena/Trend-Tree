@@ -124,6 +124,7 @@ const TOOL_SCHEMAS = {
         enrichment: { type: "object", description: "{ status, ledger_inserts_24h, p50_lag_minutes, sonnet_cost_24h_usd }" },
         lifecycle: { type: "object", description: "{ status, ledger_inserts_24h, last_eval_age_minutes, gemini_cost_24h_usd }" },
         dashboard: { type: "object", description: "{ status, last_refresh_age_minutes, target_lag_minutes }" },
+        data_hygiene: { type: "object", description: "{ status, active_orphan_trends }" },
         workflow_health: { type: "object", description: "{ audited_count, active_count, errored_24h: [{workflow_name, count, top_error}] }" },
         cost_24h_usd: { type: "number" },
         alerts: {

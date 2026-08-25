@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS MCC_PRESENTATION.TREND_AGENT.FCT_AUDIT_LEDGER (
   OVERALL_STATUS      VARCHAR(8)                                 COMMENT 'GREEN | YELLOW | RED',
   WORKFLOWS_AUDITED   NUMBER                                     COMMENT 'how many Pipedream workflows were inspected this run',
   ALERT_COUNT         NUMBER                                     COMMENT 'count of alerts in REPORT.alerts',
-  REPORT              VARIANT                                    COMMENT 'full agent emission: ingestion, distillation, promotion, enrichment, lifecycle, dashboard sub-blocks, alerts[], slack_summary_md',
+  REPORT              VARIANT                                    COMMENT 'full agent emission: ingestion, distillation, promotion, enrichment, lifecycle, dashboard, data_hygiene sub-blocks, alerts[], slack_summary_md',
   ALERTS              VARIANT                                    COMMENT 'flattened {severity, area, summary, evidence} list extracted from REPORT for cheap filtering',
   COST_24H_USD        FLOAT                                      COMMENT 'rolling 24h spend reported by the agent (UNION across the three agent ledgers)',
   AGENT_COST_USD      FLOAT                                      COMMENT 'this audit run cost (Gemini tokens)',
