@@ -254,18 +254,74 @@ CANDIDATE_REVISION="$(gcloud run services describe "$SERVICE" --region "$REGION"
 # 5. Smoke test — authenticated, because ingress is not public.
 # ---------------------------------------------------------------------------
 log "Smoke-testing ${CANDIDATE_URL}${HEALTH_PATH} (authenticated)..."
-# Bare `print-identity-token`, no --audiences: this is the form Google's own
-# "test a private Cloud Run service" docs use, and for USER credentials
-# --audiences is rejected outright ("Invalid audiences") — it is a
-# service-account-credential flag. If this script is ever run by an
-# impersonated service account instead of a human, add
-# `--audiences "$CANDIDATE_URL"` here. UNVERIFIED either way: gcloud auth
-# could not be exercised on the machine this was written on (CRMA-776).
+
+# The service account this script impersonates to mint an ID token when the
+# human's own gcloud credential cannot. Overridable for a future service that
+# uses a different caller identity.
+SMOKE_SA="${SMOKE_SA:-crm-automations@mcc-crm-automations.iam.gserviceaccount.com}"
+
+# Two ways to get an ID token, tried in order.
+#
+#   1. `gcloud auth print-identity-token` — bare, no --audiences: the form
+#      Google's own "test a private Cloud Run service" docs use, and for USER
+#      credentials --audiences is rejected outright ("Invalid audiences"), it
+#      being a service-account-credential flag.
+#
+#   2. Impersonate $SMOKE_SA. This is the path that makes a deploy work with no
+#      human at the keyboard, and it is why (1) is allowed to fail quietly: an
+#      SSO credential goes stale on a cadence nobody controls, and before this
+#      fallback existed a stale one failed the deploy at the smoke test with a
+#      perfectly healthy candidate revision already up.
+#
+#      ADC cannot mint an ID token directly — but it CAN mint one for a service
+#      account the caller may impersonate, and group:crm@mcclatchy.com holds
+#      roles/iam.serviceAccountTokenCreator ON $SMOKE_SA. Note that binding is
+#      on the SERVICE ACCOUNT resource, so a project-level testIamPermissions
+#      sweep does not reveal it (verified 2026-08-24, CRMA-778).
+#
+#      Here --audiences IS required, and it must be the BASE service URL ($URL)
+#      even though the request goes to the candidate TAG url. Cloud Run
+#      validates `aud` against the service, not against the hostname dialled.
+#      Measured 2026-08-24 against this very service: aud=$URL -> 200,
+#      aud=$CANDIDATE_URL -> 401. Note it is a 401 and not a 403 — the token is
+#      read and then rejected as the wrong token, which is the same signature a
+#      raw OAuth access token produces, so do not read a 401 here as "the
+#      invoker binding is missing" (that is the 403).
+#
+#      $SMOKE_SA needs roles/run.invoker on the service. That is self-service:
+#        gcloud run services add-iam-policy-binding "$SERVICE" \
+#          --project "$PROJECT" --region "$REGION" \
+#          --member="serviceAccount:${SMOKE_SA}" --role=roles/run.invoker
+#      The fallback re-drives gcloud with an ADC access token
+#      (CLOUDSDK_AUTH_ACCESS_TOKEN). Without that, gcloud reaches for the same
+#      stale user credential to authorize the impersonation and fails for the
+#      same reason (1) did — verified 2026-08-24.
+smoke_identity_token() {
+  local tok
+  if tok=$(gcloud auth print-identity-token 2>/dev/null) && [[ -n "$tok" ]]; then
+    printf '%s' "$tok"
+    return 0
+  fi
+  local adc
+  adc=$(gcloud auth application-default print-access-token 2>/dev/null) || return 1
+  CLOUDSDK_AUTH_ACCESS_TOKEN="$adc" gcloud auth print-identity-token \
+    --impersonate-service-account="$SMOKE_SA" \
+    --audiences="$URL" 2>/dev/null
+}
+
+ID_TOKEN="$(smoke_identity_token || true)"
+if [[ -z "$ID_TOKEN" ]]; then
+  echo "Smoke test FAILED: could not mint an ID token." >&2
+  echo "Neither the local gcloud credential nor impersonation of ${SMOKE_SA} produced one." >&2
+  echo "Candidate ${CANDIDATE_REVISION} stays at 0% traffic; ${PRIOR_REVISION:-the current revision} keeps serving." >&2
+  exit 1
+fi
+
 # `|| true`: a connection-level curl failure must reach the friendly failure
 # branch below (as HTTP_CODE=000), not abort the script via `set -e` with a
 # bare curl exit code and no explanation of what stays serving.
 HTTP_CODE=$(curl -sS -o /tmp/"${SERVICE}"-smoke.json -w '%{http_code}' \
-  -H "Authorization: Bearer $(gcloud auth print-identity-token)" \
+  -H "Authorization: Bearer ${ID_TOKEN}" \
   "${CANDIDATE_URL}${HEALTH_PATH}" || true)
 if [[ "$HTTP_CODE" != "200" ]]; then
   echo "Smoke test FAILED: expected 200 from ${HEALTH_PATH}, got HTTP ${HTTP_CODE}." >&2
