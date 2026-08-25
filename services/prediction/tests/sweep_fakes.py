@@ -41,12 +41,21 @@ def reevaluation_reply(*entries: Mapping[str, Any]) -> str:
 
 @dataclass
 class SweepLedgerSimulator(LedgerSimulator):
-    """The ledger, plus the two reads the generation pass makes."""
+    """The ledger, plus the two reads the generation pass makes and the one
+    the coverage phase makes."""
 
     signals: list[dict[str, Any]] = field(default_factory=list)
+    #: What the coverage detection read returns (CRMA-767). Rows carry a
+    #: SUBJECT_DESCRIPTOR, exactly as the real statement's do, because the
+    #: reader binds each row to the subject it names rather than to its
+    #: position.
+    coverage_rows: list[dict[str, Any]] = field(default_factory=list)
 
     def query(self, sql: str, params: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
         upper = sql.upper()
+        if "CUE_CONTENT_VECTORS" in upper:
+            self.calls.append(RecordedCall(sql, params, kind="query"))
+            return [dict(row) for row in self.coverage_rows]
         # The live-subject read is against the ledger too, but it is a
         # different statement with a different shape -- route it before the
         # simulator's open-prediction branch, which would assert on its
