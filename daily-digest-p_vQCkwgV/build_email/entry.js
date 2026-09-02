@@ -8,7 +8,9 @@
 //   - Single list of trend cards, sorted by heat desc
 //   - Each card: name, category + velocity chips, summary, sources list (title → URL)
 
-const DASHBOARD_URL = "https://staging-insights-agent.trendhunteragents.ai/trends";
+const DASHBOARD_URL = "https://atlas.mcclatchy.com/trends";
+// The per-trend route is singular, and is not DASHBOARD_URL + id.
+const TREND_URL_BASE = "https://atlas.mcclatchy.com/trend";
 const TIMEZONE = "America/Los_Angeles";
 
 // Per-trend deep links. Each card headline points at that trend's own page
@@ -176,7 +178,7 @@ const relatedNamesFor = (row) => (parseVariant(row.RELATED_TRENDS) || [])
 const trendUrl = (row) => {
   if (!TREND_DEEP_LINKS) return null;
   const id = row?.TREND_ID ?? row?.trend_id;
-  return id ? `${DASHBOARD_URL}/${encodeURIComponent(id)}` : null;
+  return id ? `${TREND_URL_BASE}/${encodeURIComponent(id)}` : null;
 };
 
 // Tier labels for the section dividers, indexed by velocityRank
