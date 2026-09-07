@@ -34,6 +34,9 @@ Each of TikTok, Reddit, and Kickstarter has a decided ingest route — entry mec
 - [Research: Reddit ingest routes — official Data API vs scrape](https://mcclatchy.atlassian.net/browse/CRMA-978) — **Decided:** Reddit: official API stalled (commercial-gated, ~$12k/mo reported floor, outreach unanswered), unauthenticated .json dead (403), vendor scrape viable at ~$20–50/mo and passes both hard requirements
   **Binds:** CRMA-982 chooses between vendor-scrape-now (+ parallel outreach, switch if Reddit replies) — the .json route is struck from the map
 
+- [Research: TikTok data shapes beyond hashtags — can any clear the reopen condition?](https://mcclatchy.atlassian.net/browse/CRMA-979) — **Decided:** TikTok: vendor-scraped keyword-driven video-level records (description + sound + engagement + public URL, ~$1–2/1k) clear the reopen condition; Research API is closed to commercial applicants and Creative Center stays hashtag-coarse
+  **Binds:** CRMA-983 reopen is conditional on CRMA-985 delivering acceptable scraper-durability terms; hashtag-class surfaces stay ruled out
+
 ## Not yet specified
 
 - A reusable source-onboarding playbook (rubric checks, API vetting, mechanism choice). Interest expressed; value unclear until the three platforms have been walked.
