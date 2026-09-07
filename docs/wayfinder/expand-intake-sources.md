@@ -46,6 +46,9 @@ Each of TikTok, Reddit, and Kickstarter has a decided ingest route — entry mec
 - [Decide: the Reddit ingest route](https://mcclatchy.atlassian.net/browse/CRMA-982) — **Decided:** Reddit is in by vendor scrape (~$20–50/mo) as a direct platform source — post-level records from curated subreddits via new + top?t=day, velocity by re-poll deltas; API inquiry stays open with a standing switch intent; ToS-risk acceptance recorded as ADR-0006
   **Binds:** CRMA-985 must weigh vendor legal posture, and is NOT constrained to native rising-sort coverage; a search-reddit agent search tool is out of this decision
 
+- [Decide: TikTok — reopen with a new data shape, or stay retired](https://mcclatchy.atlassian.net/browse/CRMA-983) — **Decided:** TikTok reopens conditionally as vendor-scraped video-level records (~$1–2/1k): direct platform source now (hashtag-funnel-first hybrid, curated repo-maintained lists, ~7-day freshness guard, few hundred videos/day), search-tiktok tool named the higher-quality second role; lapses back to retired if CRMA-985 finds no acceptable vendor; ToS acceptance ADR-0007
+  **Binds:** CRMA-985 must cover TikTok hashtag+keyword surfaces, pilot-verify recency filtering on both input modes, and weigh search-tool latency/per-call cost first-class; hashtag-class OUTPUT stays ruled out (input funnels fine); CRMA-1005 decides the search-tiktok lane; oracle/metrics roles deferred, TikTok Shop out of scope
+
 ## Not yet specified
 
 - A reusable source-onboarding playbook (rubric checks, API vetting, mechanism choice). Interest expressed; value unclear until the three platforms have been walked.
