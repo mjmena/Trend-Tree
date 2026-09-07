@@ -25,7 +25,12 @@ WORKDIR /deps
 # services/ecomm-agent/Dockerfile, and it means adding a first dependency is a
 # one-line package.json change rather than a Dockerfile restructure.
 COPY services/scrape-gateway/package.json services/scrape-gateway/package-lock.json ./
-RUN npm ci --omit=dev
+# `mkdir -p` is load-bearing, not defensive. With zero dependencies `npm ci`
+# succeeds but creates NO node_modules directory at all, and the runtime
+# stage's `COPY --from=deps /deps/node_modules` then fails the build on a
+# missing source path. Verified against this lockfile on 2026-09-07.
+# It is a no-op the moment this service gains its first dependency.
+RUN npm ci --omit=dev && mkdir -p /deps/node_modules
 
 FROM node:22-slim
 WORKDIR /app

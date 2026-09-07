@@ -78,6 +78,25 @@ for (const service of SERVICES) {
     assert.match(dockerfile, /npm ci --omit=dev/);
   });
 
+  // A service with no dependencies is a real case here (scrape-gateway needs
+  // only Node 22's global fetch), and it breaks the deps-stage pattern in a
+  // way that is invisible until a build: `npm ci` with nothing to install
+  // creates NO node_modules directory, so the runtime stage's
+  // `COPY --from=deps /deps/node_modules` fails on a missing source path.
+  // deploy.sh is unaffected — it installs in place in the staged tree — so
+  // this breaks only local reproduction, which is exactly the Dockerfile/crane
+  // drift this file exists to catch.
+  test(`${service}: a zero-dependency image still creates the node_modules it copies`, () => {
+    const deps = Object.keys(lock.packages ?? {}).filter((k) => k !== "");
+    if (deps.length > 0) return;
+    assert.match(
+      dockerfile,
+      /mkdir -p \/deps\/node_modules/,
+      `${service} declares no dependencies, so npm ci creates no node_modules and ` +
+        `the runtime stage's COPY --from=deps would fail — the deps stage must mkdir it`,
+    );
+  });
+
   // The cross-build is only sound because every dependency is pure JavaScript.
   // A package with an install script or an os/cpu constraint has platform
   // -specific content, and resolving it on macOS would ship the wrong
