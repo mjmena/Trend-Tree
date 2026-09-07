@@ -27,7 +27,7 @@ Each of TikTok, Reddit, and Kickstarter has a decided ingest route — entry mec
 - Recurring paid APIs are acceptable; each platform decision weighs the researched real cost.
 - Pass bar for any new source: specificity-rubric pass + evidence purity (verifiable URLs) are hard requirements; volume and cost are per-platform judgment calls.
 - The scraping tool is a commercial scraping API wrapped behind a thin internal service — not homegrown scraping infrastructure, not an agent-driven fetcher.
-- Route precedence: API-first, scrape-fallback. Scraping TikTok/Reddit sits against their ToS, and a scraped surface can vanish without notice (the TikTok precedent) — every approved scrape route must carry audit-agent freshness coverage.
+- Route precedence: API-first, scrape-fallback. Scraping TikTok, Reddit, and Kickstarter each sits against that platform's ToS, and a scraped surface can vanish without notice (the TikTok precedent) — every approved scrape route must carry audit-agent freshness coverage.
 
 ## Decisions so far
 
