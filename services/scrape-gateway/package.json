@@ -1,0 +1,15 @@
+{
+  "name": "trend-tree-scrape-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Normalizing proxy in front of the commercial scraping vendor (CRMA-986) — Cloud Run service.",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {}
+}
