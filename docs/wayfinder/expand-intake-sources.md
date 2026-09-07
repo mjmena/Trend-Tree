@@ -17,6 +17,7 @@ Each of TikTok, Reddit, and Kickstarter has a decided ingest route — entry mec
 - `ingestion/tiktok-p_yKCm9Am` (Creative Center hashtag scraper) was deactivated 2026-06-09: the scraped page 301s to "TikTok One Creative Suite" and the `creative_radar_api` XHR is gone; its hashtag-level output also failed the distillation specificity rubric (#18). Source: CLAUDE.md, verified 2026-09-06.
 - The Grok discovery lane covers the TikTok cultural niche today. Source: CLAUDE.md, 2026-09-06.
 - Reddit and Kickstarter have no prior ingester or prior ruling in this repo. Source: repo survey, 2026-09-06.
+- McClatchy has already attempted outreach to Reddit about commercial API access and received no response to date. The API-first route for Reddit is stalled by silence, not by a quoted price. Source: Martin, 2026-09-06.
 
 ## Standing constraints
 
