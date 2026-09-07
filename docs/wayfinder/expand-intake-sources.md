@@ -43,6 +43,9 @@ Each of TikTok, Reddit, and Kickstarter has a decided ingest route — entry mec
 - [Research: commercial scraping vendors against TikTok, Reddit, Kickstarter](https://mcclatchy.atlassian.net/browse/CRMA-981) — **Decided:** Apify is the strongest single vendor — only pre-built coverage of all three platforms on the needed surfaces, ~$150–250/mo; Bright Data is cheaper (~$113/mo TT+Reddit) with the best litigation record but has decisive surface gaps and zero contractual indemnity
   **Binds:** CRMA-985 weighs Apify coverage vs Bright Data legal posture; suggested paid pilot Apify (all 3) vs EnsembleData (TikTok) before committing
 
+- [Decide: the Reddit ingest route](https://mcclatchy.atlassian.net/browse/CRMA-982) — **Decided:** Reddit is in by vendor scrape (~$20–50/mo) as a direct platform source — post-level records from curated subreddits via new + top?t=day, velocity by re-poll deltas; API inquiry stays open with a standing switch intent; ToS-risk acceptance recorded as ADR-0006
+  **Binds:** CRMA-985 must weigh vendor legal posture, and is NOT constrained to native rising-sort coverage; a search-reddit agent search tool is out of this decision
+
 ## Not yet specified
 
 - A reusable source-onboarding playbook (rubric checks, API vetting, mechanism choice). Interest expressed; value unclear until the three platforms have been walked.
