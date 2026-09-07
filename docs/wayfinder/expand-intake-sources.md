@@ -37,6 +37,9 @@ Each of TikTok, Reddit, and Kickstarter has a decided ingest route — entry mec
 - [Research: TikTok data shapes beyond hashtags — can any clear the reopen condition?](https://mcclatchy.atlassian.net/browse/CRMA-979) — **Decided:** TikTok: vendor-scraped keyword-driven video-level records (description + sound + engagement + public URL, ~$1–2/1k) clear the reopen condition; Research API is closed to commercial applicants and Creative Center stays hashtag-coarse
   **Binds:** CRMA-983 reopen is conditional on CRMA-985 delivering acceptable scraper-durability terms; hashtag-class surfaces stay ruled out
 
+- [Research: Kickstarter ingest routes and data shape](https://mcclatchy.atlassian.net/browse/CRMA-980) — **Decided:** Kickstarter: no official API exists — scrape-only via the discover/advanced JSON surface behind a Cloudflare-defeating intermediary; shape passes both hard requirements, ~25–40 relevant projects/day, velocity by re-poll diffing
+  **Binds:** CRMA-984 picks Apify actor vs proxy-DIY; no direct unproxied fetches, no RSS shims; Web Robots dumps are backfill/QA only
+
 ## Not yet specified
 
 - A reusable source-onboarding playbook (rubric checks, API vetting, mechanism choice). Interest expressed; value unclear until the three platforms have been walked.
