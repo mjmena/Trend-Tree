@@ -50,7 +50,6 @@ Each of TikTok, Reddit, and Kickstarter has a decided ingest route — entry mec
 
 - A reusable source-onboarding playbook (rubric checks, API vetting, mechanism choice). Interest expressed; value unclear until the three platforms have been walked.
 - Source naming + `METADATA` provenance for whichever platforms land — `CONTEXT.md` flags that `SOURCE_NAME` does not encode the entry mechanism; new sources should not repeat that mess.
-- How audit-agent freshness coverage gets wired for scraped sources — sharpens once the first scrape route is approved.
 
 ## Out of scope
 
