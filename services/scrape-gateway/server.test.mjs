@@ -68,6 +68,31 @@ test("a kickstarter pull calls no vendor endpoint and encodes its request in the
   assert.equal(out.body.job_id, "bd.kickstarter.c22-r2");
 });
 
+// A warning must reach the caller, not just the log. sort_by=Top with no time
+// window silently returns all-time posts, which repeat on every pull — an
+// invisible mistake unless the response says so.
+test("a request that will misbehave still runs, but returns its warning", async () => {
+  const out = await handlePull({
+    config: config(),
+    body: { source: "reddit", params: { subreddit_urls: ["https://www.reddit.com/r/cooking/"], sort_by: "Top" } },
+    deps: { triggerCollection: async () => "s_1" },
+  });
+  assert.equal(out.status, 202, "a warning is not a rejection");
+  assert.match(out.body.warnings[0], /ALL-TIME/);
+});
+
+test("a clean request carries no warnings key at all", async () => {
+  const out = await handlePull({
+    config: config(),
+    body: {
+      source: "reddit",
+      params: { subreddit_urls: ["https://www.reddit.com/r/cooking/"], sort_by: "Top", sort_by_time: "Today" },
+    },
+    deps: { triggerCollection: async () => "s_1" },
+  });
+  assert.equal("warnings" in out.body, false);
+});
+
 // The kill switch is the lever for the TikTok precedent: a scraped surface
 // that vanishes while the scraper keeps reporting success.
 test("a disabled source is refused with 403 and never reaches the vendor", async () => {

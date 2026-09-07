@@ -152,13 +152,28 @@ export async function handlePull({ config, body, deps = {} }) {
     );
   }
 
+  // A warning is not a rejection: the request is valid and will run. It flags
+  // a param combination that returns something other than what the caller
+  // almost certainly wants — sort_by=Top with no time window being the one
+  // that matters, since it silently returns all-time posts. Dropping these
+  // would leave the mistake invisible until someone noticed the same posts
+  // arriving on every pull.
+  const warnings = req.warnings?.length ? { warnings: req.warnings } : {};
+  if (warnings.warnings) {
+    for (const w of req.warnings) console.warn(`scrape-gateway: warning source=${req.source}: ${w}`);
+  }
+
   if (req.kind === "unlocker") {
     if (!config.webUnlockerZone) {
       throw new HttpError(503, "kickstarter is enabled but BD_WEB_UNLOCKER_ZONE is not configured");
     }
     return {
       status: 202,
-      body: { job_id: formatJobId({ vendor: "bd", platform: req.source, handle: req.handle }), source: req.source },
+      body: {
+        job_id: formatJobId({ vendor: "bd", platform: req.source, handle: req.handle }),
+        source: req.source,
+        ...warnings,
+      },
     };
   }
 
@@ -173,7 +188,11 @@ export async function handlePull({ config, body, deps = {} }) {
 
   return {
     status: 202,
-    body: { job_id: formatJobId({ vendor: "bd", platform: req.source, handle: snapshotId }), source: req.source },
+    body: {
+      job_id: formatJobId({ vendor: "bd", platform: req.source, handle: snapshotId }),
+      source: req.source,
+      ...warnings,
+    },
   };
 }
 

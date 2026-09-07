@@ -108,6 +108,30 @@ test("reddit: sort_by passes through verbatim, in any casing", () => {
 test("reddit: sort_by is omitted entirely when not given", () => {
   const [input] = reddit({ subreddit_urls: ["https://www.reddit.com/r/cooking/"] }).input;
   assert.equal("sort_by" in input, false);
+  assert.equal("sort_by_time" in input, false);
+});
+
+// The undocumented field that makes CRMA-982's top?t=day route possible.
+// Enumerated on 2026-09-07 from Bright Data's own validation errors.
+test("reddit: sort_by_time carries the top?t=day half of CRMA-982", () => {
+  const url = "https://www.reddit.com/r/cooking/";
+  const [input] = reddit({ subreddit_urls: [url], sort_by: "Top", sort_by_time: "Today" }).input;
+  assert.deepEqual(input, { url, sort_by: "Top", sort_by_time: "Today" });
+});
+
+// Verified end-to-end: Top alone returned r/Cooking posts from 2020, 2021 and
+// 2024 at 25k-35k upvotes — the same canonical posts every pull would return.
+// Top + Today returned three posts inside 24 hours.
+test("reddit: a Top pull with no time window warns rather than silently returning all-time", () => {
+  const req = reddit({ subreddit_urls: ["https://www.reddit.com/r/cooking/"], sort_by: "Top" });
+  assert.equal(req.warnings.length, 1);
+  assert.match(req.warnings[0], /ALL-TIME/);
+});
+
+test("reddit: no warning once a time window is given, or for time-free sorts", () => {
+  const url = "https://www.reddit.com/r/cooking/";
+  assert.deepEqual(reddit({ subreddit_urls: [url], sort_by: "Top", sort_by_time: "Today" }).warnings, []);
+  assert.deepEqual(reddit({ subreddit_urls: [url], sort_by: "New" }).warnings, []);
 });
 
 // --- kickstarter ------------------------------------------------------------

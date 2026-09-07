@@ -118,21 +118,33 @@ function buildTikTok(params) {
   };
 }
 
-// CRMA-982: post-level records from curated subreddits.
+// CRMA-982: post-level records from curated subreddits, `new` + `top?t=day`.
 //
-// THE `top?t=day` HALF OF THAT DECISION HAS NO VENDOR PARAMETER. Verified
-// 2026-09-07: discover-by-subreddit-url accepts exactly two input fields,
-// `url` and `sort_by`, with no time filter of any kind. A day-scoped Reddit
-// pull exists only in `discover_by=keyword`, which is a different surface.
-// CRMA-986's gate check 1 settles whether an undocumented time field is
-// accepted and whether `Top` is day-bounded in practice.
+// `top?t=day` IS EXPRESSIBLE, THROUGH AN UNDOCUMENTED FIELD. Bright Data's
+// docs describe only `url` and `sort_by` for this mode and no time filter at
+// all. But its validation errors echo the NORMALIZED input, which leaked three
+// undocumented fields — `sort_by_time`, `keyword`, `start_date`. Enumerated on
+// 2026-09-07 (CRMA-986 gate check 1) by pairing each candidate with a
+// deliberately invalid `sort_by`, so validation failed before any job ran:
 //
-// So `sort_by` is passed through as the caller gives it rather than being
-// constrained to an enum here: the vendor publishes no authoritative enum and
-// its own docs contradict each other on case (the API reference says values
-// are case-sensitive and rejects lowercase `hot`, while its own example passes
-// `"sort_by": "top"`). Guessing an enum in code would turn a vendor quirk into
-// a gateway bug. The vendor validates it; the gateway reports what came back.
+//   sort_by       Top | New | Hot | Rising
+//   sort_by_time  Now | Today | This Week | This Month | This Year | All Time
+//
+// Both are CASE-SENSITIVE and capitalized; lowercase `top` is a 400. The API
+// reference's own example passing `"sort_by": "top"` is simply wrong.
+//
+// SORT_BY_TIME IS NOT OPTIONAL IN PRACTICE for a Top pull. Verified end-to-end:
+// `Top` alone returns ALL-TIME top posts (r/Cooking gave 2020, 2021 and 2024
+// posts at 25k-35k upvotes), which is useless for trend detection because every
+// pull returns the same canonical posts. `Top` + `Today` returned three posts
+// all inside 24 hours. A caller asking for Top without a time window is almost
+// certainly making that mistake, so this warns rather than silently obeying.
+//
+// Values are still passed through rather than validated against the enum above:
+// it was recovered by probing an undocumented surface, so the vendor — not this
+// file — stays the authority on what it accepts.
+export const REDDIT_SORTS_NEEDING_TIME = new Set(["Top", "Rising"]);
+
 function buildReddit(params) {
   const subreddits = strArray(params, "subreddit_urls", { max: 50 });
   if (!subreddits) throw new InvalidRequestError("params.subreddit_urls is required for reddit");
@@ -142,13 +154,28 @@ function buildReddit(params) {
     }
   }
   const sortBy = str(params, "sort_by");
+  const sortByTime = str(params, "sort_by_time");
   const limit = posInt(params, "limit_per_input", { max: 500 });
+
+  const warnings = [];
+  if (sortBy && REDDIT_SORTS_NEEDING_TIME.has(sortBy) && !sortByTime) {
+    warnings.push(
+      `sort_by=${sortBy} without sort_by_time returns ALL-TIME results, which repeat on every ` +
+        `pull — pass sort_by_time (e.g. "Today") for CRMA-982's top?t=day route`,
+    );
+  }
+
   return {
     source: "reddit",
     kind: "dataset",
     discoverBy: "subreddit_url",
-    input: subreddits.map((url) => (sortBy ? { url, sort_by: sortBy } : { url })),
+    input: subreddits.map((url) => ({
+      url,
+      ...(sortBy ? { sort_by: sortBy } : {}),
+      ...(sortByTime ? { sort_by_time: sortByTime } : {}),
+    })),
     limitPerInput: limit,
+    warnings,
   };
 }
 
