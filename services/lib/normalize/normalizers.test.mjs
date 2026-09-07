@@ -67,9 +67,36 @@ test("tiktok: no sound field anywhere leaves sound null, which rejects the recor
   assert.deepEqual(out.reject_reasons, { "missing:sound": 1 });
 });
 
-test("tiktok: the url falls back to `url` when the product-page name is used", () => {
-  const raw = bdTikTok({ video_url: undefined, url: "https://www.tiktok.com/@cook/video/7" });
-  assert.equal(normalizeTikTokBrightData(raw).url, "https://www.tiktok.com/@cook/video/7");
+// Verified against a real payload on 2026-09-07: BOTH fields are present and
+// they are not interchangeable. `video_url` is a signed CDN link carrying an
+// `expire` timestamp — it plays today and 404s later. This map makes
+// verifiable URLs a hard requirement, so picking it would ship signals whose
+// evidence rots silently.
+test("tiktok: the stable permalink wins over the expiring CDN link", () => {
+  const raw = bdTikTok({
+    url: "https://www.tiktok.com/@cook/video/7123456789",
+    video_url: "https://v16-webapp-prime.us.tiktok.com/video/tos/x/?expire=1788994296&signature=abc",
+  });
+  assert.equal(normalizeTikTokBrightData(raw).url, "https://www.tiktok.com/@cook/video/7123456789");
+  assert.doesNotMatch(normalizeTikTokBrightData(raw).url, /expire=/);
+});
+
+test("tiktok: video_url is still used when no permalink is present", () => {
+  const raw = bdTikTok({ url: undefined, video_url: "https://cdn.example/v.mp4" });
+  assert.equal(normalizeTikTokBrightData(raw).url, "https://cdn.example/v.mp4");
+});
+
+// The vendor returns `share_count` as a string and `num_share_count` as a
+// number on the same record. A lone string among numeric engagement fields
+// makes downstream comparisons silently wrong rather than loudly broken.
+test("tiktok: the numeric share count wins over the string one", () => {
+  const raw = bdTikTok({ share_count: "1391", num_share_count: 1391 });
+  assert.equal(normalizeTikTokBrightData(raw).share_count, 1391);
+});
+
+test("tiktok: a string share count is still used when it is all the vendor sends", () => {
+  const raw = bdTikTok({ share_count: "1391", num_share_count: undefined });
+  assert.equal(normalizeTikTokBrightData(raw).share_count, "1391");
 });
 
 test("tiktok: create_time falls back to the product page's `timestamp`", () => {

@@ -161,16 +161,13 @@ test("scrape-gateway names the Bright Data key it expects provisioning to create
 });
 
 // The Web Unlocker zone is Kickstarter's, and it is a control-panel object
-// created during provisioning rather than a dataset id that can be read off a
-// docs page. The placeholder is deliberate; this test is the reminder that it
-// must be replaced before Kickstarter can pull anything.
-test("scrape-gateway's Web Unlocker zone is still an unreplaced placeholder", () => {
+// rather than a dataset id that can be read off a docs page. Provisioned
+// 2026-09-07 and verified end-to-end: it returned Kickstarter's discover JSON
+// through Turnstile with no challenge (CRMA-986 gate check 2).
+test("scrape-gateway names the provisioned Web Unlocker zone", () => {
   const env = read("scrape-gateway", "deploy.env");
   const zone = env.match(/^BD_WEB_UNLOCKER_ZONE: '([^']*)'$/m)?.[1];
   assert.ok(zone, "deploy.env must declare BD_WEB_UNLOCKER_ZONE");
-  assert.equal(
-    zone,
-    "REPLACE_ME_AFTER_PROVISIONING",
-    "the zone was provisioned — replace this assertion with the real zone name check",
-  );
+  assert.equal(zone, "trend_tree_scoping");
+  assert.doesNotMatch(zone, /REPLACE_ME/, "the placeholder was never replaced");
 });

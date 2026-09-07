@@ -29,10 +29,28 @@
 // `missing:sound` means TikTok reopens at CRMA-983.
 const SOUND_KEYS = ["music", "sound", "music_name", "original_sound", "song", "music_info", "sound_name"];
 
-// Same defensive treatment for the two fields whose names differ between the
-// vendor's own pages.
-const URL_KEYS = ["video_url", "url"];
+// URL ORDER IS LOAD-BEARING — `url` FIRST, and never `video_url` first.
+// Verified against a real payload on 2026-09-07: both fields exist and they
+// are not interchangeable.
+//
+//   url       https://www.tiktok.com/@motherhoodmanaged/video/7243240490517318958
+//   video_url https://v16-webapp-prime.us.tiktok.com/video/tos/...&expire=1788994296
+//             &signature=7ce5761c...
+//
+// `video_url` is a SIGNED CDN LINK WITH AN EXPIRY. It plays today and 404s
+// later. This map makes evidence purity — verifiable URLs — a hard
+// requirement, and CRMA-983 reopened TikTok on a shape that includes a public
+// URL, so an expiring link fails the requirement that justified the reopen.
+// Preferring it would have shipped signals whose evidence rots silently.
+const URL_KEYS = ["url", "video_url"];
+
 const LIKE_KEYS = ["digg_count", "like_count", "likes"];
+
+// `share_count` comes back as a STRING ("1391") while `num_share_count` is a
+// number (verified 2026-09-07 on the same payload). Prefer the numeric one:
+// the rest of the engagement fields are numbers, and a lone string would make
+// any downstream comparison silently wrong rather than loudly broken.
+const SHARE_KEYS = ["num_share_count", "share_count"];
 
 function firstPresent(raw, keys) {
   for (const key of keys) {
@@ -69,7 +87,7 @@ export function normalizeTikTokBrightData(raw) {
     create_time: raw.create_time ?? raw.timestamp ?? null,
 
     play_count: raw.play_count ?? null,
-    share_count: raw.share_count ?? null,
+    share_count: firstPresent(raw, SHARE_KEYS),
     comment_count: raw.comment_count ?? null,
     collect_count: raw.collect_count ?? null,
     like_count: firstPresent(raw, LIKE_KEYS),
