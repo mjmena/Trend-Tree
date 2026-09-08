@@ -1,12 +1,16 @@
 # TikTok reopens as vendor-scraped video-level records
 
-**Status:** accepted (2026-09-07); **partly superseded (2026-09-08)** — see
-CRMA-1021. Do not implement from this ADR as written. Five of the decisions
-below have moved: the role framing (emergence detection -> corroboration and
-evidence breadth), the freshness guard (~7 days -> 90 days), the volume target
-(requirement -> placeholder), the query posture (the hashtag-page funnel has no
-working surface), and the cost model (~$1-2/1k is the delivered price, not the
-usable one). A replacement ADR follows once CRMA-1023 settles the query posture.
+**Status:** accepted (2026-09-07); **superseded (2026-09-08) by
+[ADR-0009](0009-tiktok-two-lane-posture-curated-creator-list.md)** — see
+CRMA-1021, CRMA-1023 and CRMA-1024. Do not implement from this ADR. Six of the
+decisions below have moved: the role framing (emergence detection ->
+corroboration and evidence breadth), the freshness guard (~7 days -> a 90-day
+backfill ceiling over a rolling pull window), the volume target (requirement ->
+dropped; the list is sized by curation capacity), the query posture (the
+hashtag-page funnel has no working surface; `profile_url` is the spine), the
+cost model (~$1-2/1k is the delivered price, not the usable one), and where the
+curated lists live (repo files -> a Snowflake table). Role B, the
+`search-tiktok` agent search tool, was settled separately on CRMA-1005.
 
 ## Context
 

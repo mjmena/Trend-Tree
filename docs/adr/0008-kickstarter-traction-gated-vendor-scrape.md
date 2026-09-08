@@ -30,7 +30,8 @@ Two facts checked during the decision sharpened it further:
 
 - **Kickstarter's Terms of Use ban scraping explicitly** — no "robot, spider,
   scripts, or other automatic device… to scrape the Services for any purpose."
-  Same risk class as Reddit (ADR-0006) and TikTok (ADR-0007).
+  Same risk class as Reddit (ADR-0006) and TikTok (ADR-0009, which
+  supersedes ADR-0007).
 - **`discover/advanced` filters traction server-side** — `raised` buckets,
   `state`, `category_id`, and `sort=most_funded` / `most_backed` alongside
   `newest`. This removes the need for the re-poll-and-diff velocity machinery
@@ -56,10 +57,13 @@ Kickstarter, the route lapses with no new decision needed.
   only state is a seen-id key — ordinary ingester idempotency, not a
   watchlist or a snapshot table.
 - **Query posture.** A curated, repo-maintained list of `category_id`s — Food,
-  Design, Fashion, Technology, Crafts as the starting set — mirroring the
-  curated-list pattern ADR-0007 set for TikTok. There is no keyword query at
-  all, so the evidence-purity question TikTok had to answer does not arise
-  here. **Daily cron**: campaigns run ~30 days, a funded project is still in
+  Design, Fashion, Technology, Crafts as the starting set. This was first
+  described as mirroring ADR-0007's curated-list pattern for TikTok; the two
+  have since diverged. ADR-0009 moved TikTok's creator list into a Snowflake
+  table because a job writes health state to each row, whereas these five
+  category ids are static and carry none — so the repo stays the right home
+  for them. There is no keyword query at all, so the evidence-purity question
+  TikTok had to answer does not arise here. **Daily cron**: campaigns run ~30 days, a funded project is still in
   the pool tomorrow, and a late sighting costs latency, not the signal.
 - **What the source is for.** Kickstarter adds a **commercial-intent family**
   to trends other sources surface, and occasionally leads them. It is not a
