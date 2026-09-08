@@ -1,6 +1,12 @@
 # TikTok reopens as vendor-scraped video-level records
 
-**Status:** accepted (2026-09-07)
+**Status:** accepted (2026-09-07); **partly superseded (2026-09-08)** — see
+CRMA-1021. Do not implement from this ADR as written. Five of the decisions
+below have moved: the role framing (emergence detection -> corroboration and
+evidence breadth), the freshness guard (~7 days -> 90 days), the volume target
+(requirement -> placeholder), the query posture (the hashtag-page funnel has no
+working surface), and the cost model (~$1-2/1k is the delivered price, not the
+usable one). A replacement ADR follows once CRMA-1023 settles the query posture.
 
 ## Context
 

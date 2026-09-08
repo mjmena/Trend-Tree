@@ -99,12 +99,21 @@ export function buildRequest(body) {
 // `search_keyword` and treats a "#tag" string as a hashtag search, so the
 // gateway does not need two modes.
 //
-// NO VENDOR-SIDE RECENCY FILTER EXISTS. Verified 2026-09-07: TikTok discovery
-// accepts only `search_keyword`, `num_of_posts` and `what_to_collect` — no
-// date or recency parameter in either keyword or URL mode. CRMA-983's ~7-day
-// freshness guard therefore CANNOT run at the vendor and must be applied after
-// the pull, on `create_time`. That is the ingester's job, not the gateway's:
-// the gateway is a normalizing proxy and does not drop records on policy.
+// NO VENDOR-SIDE RECENCY FILTER IN THIS MODE. `discover_by=keyword` accepts
+// only `search_keyword`, `num_of_posts` and `country`, so CRMA-1021's 90-day
+// freshness guard must run after the pull, on `create_time`. That is the
+// ingester's job, not the gateway's: the gateway is a normalizing proxy and
+// does not drop records on policy.
+//
+// BUT THE DATASET HAS A THIRD MODE THIS FUNCTION DOES NOT USE, and an earlier
+// version of this comment asserted no recency filter existed anywhere, which
+// stopped the next reader looking. `discover_by` accepts `keyword`, `url` and
+// `profile_url`. Only `profile_url` takes `start_date` / `end_date` /
+// `sort_by`. `url` is dead: 13 inputs across tag pages and video permalinks
+// returned 0 records on two separate days, including Bright Data's own
+// documented example (CRMA-1021). CRMA-1023 measures whether `profile_url`
+// should become the ambient base — if it does, the guard moves to the vendor
+// and stops costing an ~85% discard on every pull.
 function buildTikTok(params) {
   const keywords = strArray(params, "keywords", { max: 20 });
   if (!keywords) throw new InvalidRequestError("params.keywords is required for tiktok");
