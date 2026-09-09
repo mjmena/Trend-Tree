@@ -18,13 +18,63 @@
 //   }
 
 const SHORT_ID_OK = /^[A-Za-z0-9_\-]{1,64}$/;
-const ALLOWED_VERDICTS = new Set(["REAL_TREND", "NOISE", "CATEGORY_TOO_BROAD"]);
-const DUPLICATE_OF_PREFIX = "DUPLICATE_OF_";
 
 function sanitizeId(s) {
   if (!s) return "";
   const v = String(s);
   return SHORT_ID_OK.test(v) ? v : "";
+}
+
+// ── Inlined from agents/lib/promotion_verdict.mjs (source of truth — keep
+// in sync; Pipedream synced steps cannot import across files) ──────────
+//
+// Two writers, two shapes. Distillation writes the BARE "DUPLICATE_OF" and
+// carries the target in the separate DEDUP_OF_TREND_ID column. Older rows
+// and the promotion system prompt use "DUPLICATE_OF_<trend_id>". Both must
+// resolve: this step used to test startsWith("DUPLICATE_OF_") only, so every
+// bare verdict threw and its candidate was re-dispatched forever (CRMA-1029).
+
+const ALLOWED_VERDICTS = new Set(["REAL_TREND", "NOISE", "CATEGORY_TOO_BROAD"]);
+const DUPLICATE_OF = "DUPLICATE_OF";
+const DUPLICATE_OF_PREFIX = "DUPLICATE_OF_";
+const UNKNOWN_TARGET = "UNKNOWN";
+
+// Throws on a missing or unrecognized verdict. It does NOT throw when a
+// duplicate verdict has no usable target: throwing here is what stuck
+// cand-7jl1o8r7mt8quxk5 in a retry loop, because this step died before
+// writing PROMOTED_AT or REJECTED_AT — the exact condition the lead
+// re-dispatches on.
+function resolveDistillationVerdict(verdict, dedupTarget) {
+  const raw = String(verdict || "").trim();
+  if (!raw) throw new Error("missing 'distillation_verdict'");
+
+  const isDuplicateOf = raw === DUPLICATE_OF || raw.startsWith(DUPLICATE_OF_PREFIX);
+  if (!ALLOWED_VERDICTS.has(raw) && !isDuplicateOf) {
+    throw new Error(`unknown distillation_verdict '${raw}'`);
+  }
+
+  // The body target is authoritative — the lead reads it straight from
+  // DEDUP_OF_TREND_ID. The suffix is only a fallback for the legacy shape.
+  let target = null;
+  if (isDuplicateOf) {
+    const suffix = raw.startsWith(DUPLICATE_OF_PREFIX) ? raw.slice(DUPLICATE_OF_PREFIX.length) : "";
+    target = sanitizeId(dedupTarget) || sanitizeId(suffix) || null;
+  }
+
+  // sql/seed_prompts_promotion.sql routes the agent on four branches:
+  // verdict == 'REAL_TREND', starts with 'DUPLICATE_OF_', in ('NOISE',
+  // 'CATEGORY_TOO_BROAD'), and a DEFER catch-all. A bare "DUPLICATE_OF"
+  // matches none of the first three, so it lands on the catch-all and burns
+  // its 3 defers before the forced REJECT. Emit the canonical concatenated
+  // form so the duplicate branch fires for every shape, with no
+  // DIM_LLM_PROMPT migration. dedup_of_trend_id is absent from the
+  // distillation tool schema's `required` list, so the target really can be
+  // missing — UNKNOWN keeps that candidate routable without inventing a
+  // trend id, and fmtDistillationBlock tells the agent to find the match in
+  // the neighbor pool.
+  const promptVerdict = isDuplicateOf ? `${DUPLICATE_OF_PREFIX}${target || UNKNOWN_TARGET}` : raw;
+
+  return { verdict: raw, isDuplicateOf, dedupTarget: target, promptVerdict };
 }
 
 function fmtNeighborBlock(n, idx) {
@@ -66,11 +116,19 @@ function fmtCandidateBlock(b) {
   return parts.join("\n");
 }
 
-function fmtDistillationBlock(b) {
+function fmtDistillationBlock(b, resolved) {
   const parts = [];
-  parts.push(`- verdict: ${b.distillation_verdict}`);
+  parts.push(`- verdict: ${resolved?.promptVerdict || b.distillation_verdict}`);
   if (b.distillation_dedup_target) {
     parts.push(`- suggested_dedup_target: ${b.distillation_dedup_target}`);
+  } else if (resolved?.isDuplicateOf) {
+    // Distillation called this a duplicate but never named the target, which
+    // its tool schema permits. Say so plainly — otherwise the agent reads the
+    // UNKNOWN sentinel in the verdict as a trend id and hunts for a row that
+    // does not exist.
+    parts.push(
+      `- suggested_dedup_target: NONE SUPPLIED — distillation flagged this as a duplicate but did not name the trend. Find the matching trend in the neighbor pool yourself and merge into it; if no neighbor is the same topic, override to PROMOTE_NEW.`,
+    );
   }
   const reason = (b.distillation_reasoning || "").trim();
   if (reason) parts.push(`- reasoning: ${reason.slice(0, 1200).replace(/\n/g, " ")}`);
@@ -93,16 +151,14 @@ export default defineComponent({
     const candidate_topic = String(body.candidate_topic || "").trim();
     if (!candidate_topic) throw new Error("missing 'candidate_topic'");
 
-    const distillation_verdict = String(body.distillation_verdict || "").trim();
-    if (!distillation_verdict) throw new Error("missing 'distillation_verdict'");
-    const isDuplicateOf = distillation_verdict.startsWith(DUPLICATE_OF_PREFIX);
-    if (!ALLOWED_VERDICTS.has(distillation_verdict) && !isDuplicateOf) {
-      throw new Error(`unknown distillation_verdict '${distillation_verdict}'`);
-    }
-
-    const distillation_dedup_target = isDuplicateOf
-      ? sanitizeId(body.distillation_dedup_target || distillation_verdict.slice(DUPLICATE_OF_PREFIX.length))
-      : null;
+    // The raw verdict is kept for FCT_PROMOTION_AUDIT; prompt_verdict is the
+    // shape the system prompt routes on.
+    const resolved_verdict = resolveDistillationVerdict(
+      body.distillation_verdict,
+      body.distillation_dedup_target,
+    );
+    const distillation_verdict = resolved_verdict.verdict;
+    const distillation_dedup_target = resolved_verdict.dedupTarget;
 
     const neighbor_pool = Array.isArray(body.neighbor_pool) ? body.neighbor_pool.slice(0, 8) : [];
     // Filter out malformed neighbors but keep all valid ones
@@ -143,7 +199,7 @@ export default defineComponent({
 
     const system_vars = {
       candidate_block: fmtCandidateBlock(candidate),
-      distillation_recommendation_block: fmtDistillationBlock(candidate),
+      distillation_recommendation_block: fmtDistillationBlock(candidate, resolved_verdict),
       neighbor_count: valid_neighbors.length,
       neighbor_blocks: valid_neighbors.map((n, i) => fmtNeighborBlock(n, i)).join("\n\n") || "(no surfaced neighbors above sim 0.50)",
       et_rescue_block: et_rescue
