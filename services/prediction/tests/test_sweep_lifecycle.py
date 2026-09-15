@@ -19,6 +19,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from prediction_service.domain.claim import horizon_length
+from prediction_service.strategist import StrategistDecision
 from prediction_service.sweep.lifecycle import (
     OBSERVED_FAILED,
     OBSERVED_MET,
@@ -252,4 +253,117 @@ def test_a_terminal_prior_status_comes_back_untouched_and_final():
         observation=Observation(outcome=OBSERVED_MET, rationale="irrelevant"),
     )
     assert decision.status == "WITHDRAWN"
+    assert decision.final is True
+
+
+# --- the strategist tier outranks the status machine (CRMA-768 AC1/AC2) ----
+
+
+def _dismissed(**overrides) -> StrategistDecision:
+    return StrategistDecision(
+        prediction_id="814a38cb-3935-4ce2-b640-b3154bfa84f4",
+        decision="DISMISS",
+        decided_at=datetime(2026, 8, 22, 15, 4, tzinfo=UTC),
+        **overrides,
+    )
+
+
+def _approved(**overrides) -> StrategistDecision:
+    return StrategistDecision(
+        prediction_id="814a38cb-3935-4ce2-b640-b3154bfa84f4",
+        decision="APPROVE",
+        decided_at=datetime(2026, 8, 22, 15, 4, tzinfo=UTC),
+        **overrides,
+    )
+
+
+def test_a_dismissed_prediction_records_withdrawn_on_its_next_verdict():
+    decision = next_status(
+        prior_status="ACTIVE",
+        horizon_at=HORIZON,
+        band=BAND,
+        now=HORIZON - timedelta(days=30),
+        strategist=_dismissed(decided_by="jsmith@mcclatchy.com"),
+    )
+
+    assert decision.status == "WITHDRAWN"
+    assert decision.final is True
+    assert "jsmith@mcclatchy.com" in decision.reason
+
+
+@pytest.mark.parametrize("outcome", [OBSERVED_MET, OBSERVED_FAILED, OBSERVED_NOT_YET])
+def test_a_dismiss_outranks_whatever_the_observable_check_reads(outcome):
+    # The ladder's top rung: automated evidence -- including a settled
+    # observable check -- does not overrule a human who rejected the call.
+    decision = next_status(
+        prior_status="ACTIVE",
+        horizon_at=HORIZON,
+        band=BAND,
+        now=HORIZON - timedelta(days=1),
+        observation=Observation(outcome=outcome, rationale="the check reads clearly"),
+        strategist=_dismissed(),
+    )
+
+    assert decision.status == "WITHDRAWN"
+
+
+def test_a_dismiss_outranks_expiry_too():
+    decision = next_status(
+        prior_status="EXPIRED",
+        horizon_at=HORIZON,
+        band=BAND,
+        now=HORIZON + timedelta(days=10),
+        strategist=_dismissed(),
+    )
+
+    assert decision.status == "WITHDRAWN"
+
+
+def test_an_approve_does_not_move_the_status_at_all():
+    # AC2: an Approve protects queue standing, not the call's truth. It must
+    # not hold a prediction ACTIVE past its horizon, and it must not stop a
+    # resolution -- "external saturation resolution still applies".
+    still_open = next_status(
+        prior_status="ACTIVE",
+        horizon_at=HORIZON,
+        band=BAND,
+        now=HORIZON - timedelta(days=5),
+        strategist=_approved(),
+    )
+    expired = next_status(
+        prior_status="ACTIVE",
+        horizon_at=HORIZON,
+        band=BAND,
+        now=HORIZON + timedelta(days=5),
+        strategist=_approved(),
+    )
+    resolved = next_status(
+        prior_status="ACTIVE",
+        horizon_at=HORIZON,
+        band=BAND,
+        now=HORIZON - timedelta(days=5),
+        observation=Observation(outcome=OBSERVED_MET, rationale="two of three retailers list it"),
+        strategist=_approved(),
+    )
+
+    assert (still_open.status, expired.status, resolved.status) == (
+        "ACTIVE",
+        "EXPIRED",
+        "RESOLVED_TRUE",
+    )
+
+
+def test_a_settled_call_is_not_reopened_by_a_later_dismiss():
+    # A prediction whose grade is already final stays final. The sweep never
+    # selects a terminal status, and if one reaches here it is not this
+    # pass's job to relabel a closed call.
+    decision = next_status(
+        prior_status="RESOLVED_TRUE",
+        horizon_at=HORIZON,
+        band=BAND,
+        now=HORIZON + timedelta(days=1),
+        strategist=_dismissed(),
+    )
+
+    assert decision.status == "RESOLVED_TRUE"
     assert decision.final is True

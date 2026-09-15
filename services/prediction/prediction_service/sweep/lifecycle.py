@@ -37,6 +37,15 @@ reasons, and the second is the load-bearing one:
    that skew; one derived from a stored mint timestamp could be, by hours,
    silently, and only on the oldest rows.
 
+**The strategist tier sits above all of it** (CRMA-768). A Dismiss is the
+top rung of the precedence ladder -- strategist action > coverage demotion >
+automated evidence -- so a dismissed call records ``WITHDRAWN`` whatever the
+clock and the observable check read. An Approve changes nothing here on
+purpose: it protects *queue standing* (strategist/precedence.py), not the
+call's truth, so an approved prediction still expires on its horizon and
+still resolves when its check settles. "External saturation resolution still
+applies."
+
 **What ends a prediction.** A truth arriving at any point -- before the
 horizon, or inside the grace window -- resolves it. That is the point of
 re-checking an EXPIRED prediction at all: a claim that came true late reads
@@ -56,6 +65,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from ..domain.claim import HorizonBand, PredictionStatus, horizon_length
+from ..strategist import StrategistDecision, withdrawal_reason
 
 #: What the observable check currently reads. Three values, because "we
 #: looked and it has not happened yet" and "we could not tell" are the same
@@ -188,11 +198,17 @@ def next_status(
     band: HorizonBand,
     now: datetime,
     observation: Observation | None = None,
+    strategist: StrategistDecision | None = None,
 ) -> StatusDecision:
     """The status this evaluation writes.
 
     Precedence, highest first:
 
+    0. **A strategist Dismiss withdraws the call** (CRMA-768). The human tier
+       outranks automation, so this is checked before the observable check
+       and before the clock: a call a strategist rejected records
+       ``WITHDRAWN`` even if its check has just come true. An Approve appears
+       nowhere below -- it protects queue standing, not truth.
     1. **A settled observable check resolves the prediction**, whenever it
        arrives -- before the horizon or inside the grace window. AC4's
        "a truth arriving in that window flips it to RESOLVED_TRUE" is this
@@ -201,9 +217,11 @@ def next_status(
        EXPIRED (and re-checked) until the grace window closes.
     3. Otherwise it stays ACTIVE.
 
-    A terminal prior status is returned unchanged and marked final: the sweep
-    does not select those, and if one reaches here it is not this pass's job
-    to reopen it.
+    A terminal prior status is returned unchanged and marked final -- above
+    even the strategist tier. The sweep does not select those, and a call
+    whose grade is already frozen is not relabelled by a decision taken
+    afterwards: withdrawing a resolved prediction would erase a graded call
+    from the track record retrospectively.
     """
     reading = observation or Observation()
     prior = (prior_status or "ACTIVE").upper()
@@ -214,6 +232,17 @@ def next_status(
             status=prior,  # type: ignore[arg-type]
             final=True,
             reason=f"already settled as {prior}; this evaluation changes nothing",
+            grace_ends_at=closes_at,
+        )
+
+    if strategist is not None and strategist.is_dismiss:
+        return StatusDecision(
+            status="WITHDRAWN",
+            final=True,
+            # The same sentence the posture carries (strategist/precedence.py).
+            # A status and a posture are two readings of one event; written
+            # twice they would drift.
+            reason=withdrawal_reason(strategist),
             grace_ends_at=closes_at,
         )
 
