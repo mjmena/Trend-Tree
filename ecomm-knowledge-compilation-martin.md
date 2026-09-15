@@ -223,6 +223,124 @@ deciding. Three surfaced clearly:
   ask reads as a cost/approval formality catching up to work already in motion, not a live
   blocker.
 
+## 8. Where product sourcing belongs — a proposed boundary, and the Amazon call
+
+**This section is a proposal, not a compiled finding.** Sections 1–7 record what people said
+and what is built, each claim cited. This section argues a position from that evidence, so the
+Amazon question has something concrete to be argued against.
+
+### 8.1 What Trend Tree's sourcing pass actually answers
+
+The `ecomm-agent` runs at **trend time**. A poll tick picks up a trend once enrichment has
+written its ledger row, long before any article exists. It vector-matches the trend's persisted
+embedding against `DIM_CATALOG_PRODUCT`, and a Gemini 3.7 Flash selector filters the result. Its
+consumer is the **Decision Page** in `insights-agent`, which the PRD names as the only consumer
+surface it designs for.
+
+The pass does not answer "what products go in this article". It answers two narrower questions:
+
+1. **Does this trend have a purchasable shape at all?** A trend the selector rejects wholesale
+   has no product market — the same failure mode Gary Kirwan's API shows when it returns empty
+   for an invented editorial label (§1.3).
+2. **Does our own store stock it?** That is user story 17: the sourcing ledger doubles as a buy
+   list, read as a query over Shopify-tier `no_match` headers.
+
+Both answers are strategist-facing, and both are produced before an angle is chosen. Neither is
+a link a reader clicks.
+
+### 8.2 The ~91% no-match rate is the buy list working, not a gap to fill
+
+The last recorded measurement is **23 matched against 230 `no_match`** — a ~9% match rate, taken
+during the backfill drain of 2026-08-25. It is not re-measured for this document; re-run it
+before quoting it.
+
+That number reads as a failure only if you expect the Decision Page to show products for every
+trend. A 187-product store cannot stock 253 consumer trends. The pass was specified to say so
+honestly rather than fill the quota: the per-tier floor is never relaxed, and a trend no catalog
+stocks returns nothing.
+
+So the 9% is a **merchandising readout**, not a defect. Its fix is more owned inventory — Eric
+Stegeman's automated Shopify Collective importer (§1.4) — not a marketplace tier that makes
+every trend look stocked.
+
+### 8.3 An Amazon tier does not fit the multi-tier contract
+
+The contract defines a tier as **one product catalog** ranked by commercial preference. User
+story 22 promises that a new tier costs a sync job, a tier config, and rows in the same
+dimension and ledger. Both assume a catalog you can sync and embed. `DIM_CATALOG_PRODUCT` holds
+persisted vectors refreshed by a daily full sweep, with a revisit trigger at roughly 2,500
+products.
+
+Amazon has no catalog to sync. An Amazon tier must query a live API and then embed or judge the
+result at runtime. That is a different retrieval path, a different cost shape, and a different
+freshness model from the one the audit agent grades. **The specified contract does not
+accommodate Amazon. It accommodates a second owned catalog.**
+
+This is the sharpest reason to stop, and it is written down nowhere — the PRD only records that
+a second tier is out of scope, not that the tier abstraction itself excludes a marketplace.
+
+The mechanism that *would* work is the one Gary already built: a live query API taking a trend
+name plus a generated `product_query` (§1.3).
+
+### 8.4 Three reasons the timing is wrong even if the fit were right
+
+- **Tier 1 is broken first.** The Shopify catalog is a static CSV snapshot from 2026-08-20, the
+  live sync (CRMA-777) is blocked on the token (CRMA-747, still Backlog), and the stale catalog
+  is one of the causes holding the daily audit at RED (CRMA-1033). Adding a second tier while
+  the first sources against a three-week-old export is the wrong order.
+- **CRMA-780 is the stated gate.** That ticket says the multi-tier header ambiguity must be
+  resolved as the first step of whichever story adds a second tier. It is still Backlog, and
+  nobody has taken that step.
+- **Commerce ownership is unowned.** Who decides which content carries commerce links, and how
+  McClatchy gets paid for the traffic, is open with no confirmed owner (§4). Jason Smith punted
+  it to Andy on 2026-08-27 and no later meeting revisits it. Trend Tree cannot settle it, and
+  matches nobody may publish are worth nothing. Martin's own in-meeting decision from the same
+  day still stands: Amazon product data is **guidance, not article insertion**.
+
+### 8.5 The recommendation
+
+**Amazon is not worth bringing into Trend Tree as a sourcing tier now.** It belongs to the
+article step, where Gary's discovery API and CSA's Amazon search already operate.
+
+| Step | Owner | Question it answers | Input | Output |
+|---|---|---|---|---|
+| Trend time | Trend Tree `ecomm-agent` | Is this trend commercial, and do *we* stock it? | trend embedding | Decision Page panel + buy list |
+| Article time | Gary's discovery API / CSA ecomm mode | Which SKUs go in *this* piece? | `product_query` or meta-description keywords | linked, tracked products |
+
+Trend Tree's contribution to the article step is not a product list. It is the
+**commercial-shape verdict and the product-category description** that Gary's API takes as
+input — which Trend Tree already derives and currently discards.
+
+### 8.6 The seam nobody answered
+
+Marcelo Freitas asked Martin directly on 2026-06-18 whether Trend Tree's Shopify data could
+serve as *"a validation layer for his output or a fallback when his discovery doesn't find
+anything"* (§1.3). No reply exists anywhere.
+
+Under the boundary above, the answer to both halves is yes, and it costs far less than a tier.
+House inventory outranks a marketplace item — that is user story 18 — so "Shopify first, Gary's
+discovery as fallback" is the same commercial-preference order the multi-tier contract already
+encodes. It is executed across two systems instead of inside one.
+
+### 8.7 What would reopen the Amazon question
+
+- Commerce ownership resolves, and the decision is that **trend-level** Amazon matches are what
+  gets published.
+- Gary's discovery API is retired, or proves insufficient at article time.
+- Shopify Collective grows to the point where the buy list stops being the main value of the
+  Shopify tier.
+
+### 8.8 One contradiction to resolve first
+
+Section 5 records that the article-specific Amazon tracking link *"still has to be created
+manually"* (2026-08-27). A later note holds the opposite: that the in-CSA Amazon search already
+emits tracked links, and that Amazon attribution is a 24-hour cookie window rather than a
+per-article UTM parameter. Both cannot be current.
+
+This bears directly on the recommendation. If CSA already emits tracked Amazon links, Trend Tree
+adds nothing on the monetization axis and the case for an Amazon tier weakens further. One
+question to Patrick Al Khouri or Kathryn Sheplavy settles it.
+
 ## Sources
 
 - **Meeting transcripts read in full** ("Trend Hunter Tools Sync" / earlier "Trend Agent Sync"):
