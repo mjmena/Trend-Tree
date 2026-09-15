@@ -248,20 +248,25 @@ The pass does not answer "what products go in this article". It answers two narr
 Both answers are strategist-facing, and both are produced before an angle is chosen. Neither is
 a link a reader clicks.
 
-### 8.2 The ~91% no-match rate is the buy list working, not a gap to fill
+### 8.2 The ~94% no-match rate is the buy list working, not a gap to fill
 
-The last recorded measurement is **23 matched against 230 `no_match`** — a ~9% match rate, taken
-during the backfill drain of 2026-08-25. It is not re-measured for this document; re-run it
-before quoting it.
+Measured 2026-09-15 on the latest header per (trend, tier): **29 matched, 437 `no_match`, 1
+failed** — a 6.2% match rate across 467 trends. That is below the ~9% recorded during the August
+drain, and it is a **frozen** figure. Every one of those headers was written between 2026-08-21
+and 2026-08-26, and nothing has been sourced since (§8.4).
 
-That number reads as a failure only if you expect the Decision Page to show products for every
-trend. A 187-product store cannot stock 253 consumer trends. The pass was specified to say so
+The rate reads as a failure only if you expect the Decision Page to show products for every
+trend. A 187-product store cannot stock 467 consumer trends. The pass was specified to say so
 honestly rather than fill the quota: the per-tier floor is never relaxed, and a trend no catalog
 stocks returns nothing.
 
-So the 9% is a **merchandising readout**, not a defect. Its fix is more owned inventory — Eric
+So the 6.2% is a **merchandising readout**, not a defect. Its fix is more owned inventory — Eric
 Stegeman's automated Shopify Collective importer (§1.4) — not a marketplace tier that makes
 every trend look stocked.
+
+Treat the number as a floor, not a verdict. It was measured against a catalog that has never
+been refreshed since its CSV seed, so it describes what the 2026-08-20 store stocked, not what
+the store stocks.
 
 ### 8.3 An Amazon tier does not fit the multi-tier contract
 
@@ -284,10 +289,13 @@ name plus a generated `product_query` (§1.3).
 
 ### 8.4 Three reasons the timing is wrong even if the fit were right
 
-- **Tier 1 is broken first.** The Shopify catalog is a static CSV snapshot from 2026-08-20, the
-  live sync (CRMA-777) is blocked on the token (CRMA-747, still Backlog), and the stale catalog
-  is one of the causes holding the daily audit at RED (CRMA-1033). Adding a second tier while
-  the first sources against a three-week-old export is the wrong order.
+- **Tier 1 has not sourced anything since 2026-08-26.** Measured 2026-09-15: the Shopify
+  catalog's `MAX(LAST_SEEN_AT)` is still **2026-08-20** — 26 days old, 187 products, the original
+  CSV seed. The agent declines any catalog older than 7 days, so the gate tripped on 2026-08-27
+  and the sourcing ledger holds **zero rows** after 2026-08-26. **300 of 766 enriched trends have
+  never been sourced at all.** The live sync (CRMA-777) is still blocked on the token (CRMA-747,
+  still Backlog). Adding a second tier while the first has produced nothing for three weeks is
+  the wrong order.
 - **CRMA-780 is the stated gate.** That ticket says the multi-tier header ambiguity must be
   resolved as the first step of whichever story adds a second tier. It is still Backlog, and
   nobody has taken that step.
@@ -296,6 +304,19 @@ name plus a generated `product_query` (§1.3).
   it to Andy on 2026-08-27 and no later meeting revisits it. Trend Tree cannot settle it, and
   matches nobody may publish are worth nothing. Martin's own in-meeting decision from the same
   day still stands: Amazon product data is **guidance, not article insertion**.
+
+The three-week stall is **silent by design**, and that is worth naming separately.
+`services/ecomm-agent/run_sourcing.mjs` returns on a freshness decline before writing anything —
+no header, no candidate rows, no cost row. The intended surface is the audit agent's
+catalog-freshness row, not the ledger. But the daily audit has been RED for 16+ consecutive days
+on several causes at once (CRMA-1031, CRMA-1033), so the one signal that would surface this sits
+inside a saturated alarm. Read from the ledger alone, "declined every tick for three weeks" and
+"the poll stopped firing" are indistinguishable — the same ambiguity the PRD's problem statement
+set out to remove for the other two states.
+
+Which of those two is actually happening is unverified: checking the Cloud Scheduler job
+`trend-tree-ecomm-poll` needs a `gcloud auth login` that only a human can complete. It does not
+change the outcome — nothing has been sourced either way — but it changes the fix.
 
 ### 8.5 The recommendation
 
