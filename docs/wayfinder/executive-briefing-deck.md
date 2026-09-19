@@ -38,6 +38,9 @@ A finished, self-contained executive HTML deck (~12 slides) presenting Trend Tre
 
      `resolve` appends here. Do not hand-edit while a session is running. -->
 
+- [Decide: what the Future Plans section commits to](https://mcclatchy.atlassian.net/browse/CRMA-1200) — **Decided:** Future Plans = the Sep-16 roadmap page curated into two slides — 'Building now' (prediction-engine headline, intake expansion, lifecycle detection, one-line fleet-migration beat) and 'Exploring' (Reasoned Connections, external catalogue, proving-quality arc); no dates, no outage candor, nothing unwritten added
+  **Binds:** Outline (CRMA-1204) and build (CRMA-1206) carry the two buckets 1:1 with the roadmap lozenges and never scoop the roadmap page; 'visible on ATLAS today' splits CRMA-1203's current-state claims from Future Plans
+
 ## Not yet specified
 
 - How the presenter narration is carried for forwarded readers — visible notes, a toggle, or per-slide captions. Depends on the outline and the build approach.
