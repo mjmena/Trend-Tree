@@ -85,8 +85,9 @@ lift-and-shift extraction to Cloud Run.
 - **An account and API key already exist.** The key is in the macOS keychain under service
   `typesafe-trend-tree-scoping`, account `mmena@mcclatchy.com` — naming that mirrors the
   `brightdata-api` / zone `trend_tree_scoping` precedent. Live Jev calls are possible now.
-  Still missing: a Secret Manager entry in `mcc-crm-automations` (the deployed service needs
-  one), pricing, rate limits, and retry guidance.
+  **The Secret Manager entry now exists too** — `typesafe-api-key` in `mcc-crm-automations`
+  (v1, 107 chars, verified), readable by `crm-runtime@` through its existing project-level
+  `secretAccessor` binding, so no per-secret grant is needed. _Closed by CRMA-1215, 2026-09-20._
   > **Corrected 2026-09-20.** This line first read *"TypeSafe has no footprint in this repo —
   > no account, no key"*, from a repo search that could not see the keychain. Falsified the
   > same day by Martin. The repo-artifact half still holds: no Secret Manager entry, no
@@ -141,12 +142,29 @@ lift-and-shift extraction to Cloud Run.
   tokens, 1.065 s) and only breaks at the 50-candidate cap. **The docs alone predicted this wrong**
   — CRMA-1218's own doc-derived estimate called 15 candidates marginal, and measurement refuted it.
   _Source: CRMA-1218, 2026-09-20._
-- **The error surface does not match the SDK taxonomy.** Both capacity and semantic errors return
-  **HTTP 400**, not the 422 the SDK implies, so error handling **must key on `detail.error_type`,
-  not on status**. The `detail` field is variously an object, a bare string, or a list. The API docs
-  say to back off on **529**, but the default retryable range (408/429/500–599) **excludes it** — pin
-  `httpStatuses` explicitly. The 529 path is unverified; ~80 requests never hit a 429 or 529.
-  _Source: CRMA-1218, 2026-09-20._
+- **The error surface is polymorphic, and `error_type` is not always there.** Four shapes measured:
+  `401` → object with `error_type`; `400` → object with `error_type` (capacity); `400` → a **bare
+  string** (semantic); `422` → a **list** of Pydantic records (schema). So **422 = schema violation,
+  400 = semantic or capacity**, and code **must type-check `detail` before reading `error_type`** —
+  it is absent on two of the four. 400/401/422 all sit correctly outside the retryable set.
+  _Source: CRMA-1218 + [CRMA-1215](https://mcclatchy.atlassian.net/browse/CRMA-1215), 2026-09-20._
+  > **Corrected 2026-09-20.** This fact previously said the default retryable range
+  > "**excludes**" 529 and that `httpStatuses` must be pinned. **529 sits inside 500–599**, so the
+  > default already retries it — the literal is `{408, 429, *range(500, 600)}`. The real hazard is
+  > the Python docs' **example override** `http_statuses={429, 500, 502, 503, 504}`, which silently
+  > drops 529. **Keep the defaults; do not copy the example.** The 529 path is still unverified —
+  > ~85 requests have never drawn a 429 or a 529.
+- **Pricing is $42/Btok input, output free — and promotion's real shape measures $0.000038 per
+  candidate.** 904 input tokens for one candidate against 8 neighbour Nouls; **$0.00057 per
+  15-candidate run**, 0.04% of the $1.50/chain budget. Rate limits are 250k tokens/s and 1,200
+  rpm — but **no rate-limit headers exist on any response**, so the caps are invisible until the
+  429 fires. `x-typesafe-request-id` is the only correlation handle the vendor returns.
+  Budgets: 64k/request (state + all questions), 32k (state + longest question); Choice caps at 255
+  options, Score at 2–10 levels. _Source: CRMA-1215 live measurement, 2026-09-20._
+- **`jev-latest` is a moving alias and must be pinned.** `jev-latest` and `jev-preview` both resolve
+  to `jev-1.13.0` today; the cookbooks' numbers pin `jev-1.12`. Production must name the explicit
+  version, or a vendor bump moves the rubric underneath a governed `DIM_LLM_PROMPT` row with nothing
+  to flag it. _Source: CRMA-1215, 2026-09-20._
 
 ## Standing constraints
 
@@ -260,10 +278,6 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   later — where the decision logic sits, what it is injected with, whether the tool loop is a
   replaceable module or welded to the handler. Sharpens once the verdict decomposition lands.
   Feeds CRMA-429's template and CRMA-537's sequence.
-- **The cost and latency model at fan-out scale.** Today one candidate costs $0.0538 worst-case
-  across ≤6 serial turns. A fanned-out design asks many more questions, in fewer calls, of a
-  different vendor at unknown per-question pricing. Sharpens after the call-mechanics research and
-  the prototype produce real numbers.
 - **What telemetry the typed path must persist, and in what shape.** Promotion stores no turn
   telemetry today, and the redesign replaces turns with distributions and confidence — a different
   shape entirely. `FCT_TREND_LIFECYCLE_LEDGER` is the fleet's exemplar to copy from. Sharpens once
