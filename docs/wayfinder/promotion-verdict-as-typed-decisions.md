@@ -82,9 +82,15 @@ lift-and-shift extraction to Cloud Run.
   `DIM_LLM_PROMPT` **version 3**, and it appears in the audit agent's prompt-drift manifest
   at `audit-agent-p_xMC9nm3/workflow.yaml:530` and `:578` (both the `sql.value` and
   `sql.query` copies). _Source: repo read 2026-09-20._
-- **TypeSafe has no footprint in this repo.** No API key, no Secret Manager entry, no
-  `CLAUDE.md` mention, no account, no pricing or rate-limit terms on record.
-  _Source: repo search 2026-09-20._
+- **An account and API key already exist.** The key is in the macOS keychain under service
+  `typesafe-trend-tree-scoping`, account `mmena@mcclatchy.com` — naming that mirrors the
+  `brightdata-api` / zone `trend_tree_scoping` precedent. Live Jev calls are possible now.
+  Still missing: a Secret Manager entry in `mcc-crm-automations` (the deployed service needs
+  one), pricing, rate limits, and retry guidance.
+  > **Corrected 2026-09-20.** This line first read *"TypeSafe has no footprint in this repo —
+  > no account, no key"*, from a repo search that could not see the keychain. Falsified the
+  > same day by Martin. The repo-artifact half still holds: no Secret Manager entry, no
+  > `CLAUDE.md` mention.
 - **Jev's documented hard limits.** It does **not** generate text. It does **not** do
   arithmetic or date reasoning — both must be precomputed in code and passed in.
   `P(yes) + P(no)` is **not** guaranteed to sum to 1 across separate Noul calls. Text-only,
@@ -95,12 +101,36 @@ lift-and-shift extraction to Cloud Run.
   distribution is (e.g. `(3 × top_prob − 1) / 2` for 3 options). Choice and Score answers
   carry confidence; a bare **Noul does not** — its 0–1 probability *is* the whole signal.
   _Source: docs.typesafe.ai `/confidence`, 2026-09-20._
-- **The `entity_alignment` cookbook is the nearest published template.** One 3-level Score
-  ("different" / "closely related, may be same" / "same") plus 3 supporting Nouls over 450
-  pairs. Decision rule is **round the score** — no threshold fitting; the semantic meaning of
-  each level sets the cutoffs. Outcome: 80% unlinked, 11% curator queue, 9% auto-merged. It
-  is **pairwise**, so code still chooses which pairs to ask about.
-  _Source: docs.typesafe.ai cookbook, 2026-09-20._
+- **The `entity_alignment` cookbook is the nearest published template — and it publishes no
+  accuracy at all.** Its shape is one 3-level Score ("different" / "closely related, may be
+  same" / "same") plus 3 supporting Nouls, run over 450 pairs, with the decision rule being
+  **round the score** (no threshold fitting; each level's semantic meaning sets the cutoff).
+  But it loads the benchmark's own answer key (`known_same_as`, line 112) and **never scores
+  against it**. The published figures — 80% unlinked / 11% curator / 9% auto-merged — are an
+  **outcome split, not a measurement**, and "450 pairs" is a volume, not a result. Four
+  hand-picked pairs are shown. It is also **pairwise**, so code still chooses which pairs to ask.
+  _Source: [CRMA-1217](https://mcclatchy.atlassian.net/browse/CRMA-1217) doc read, 2026-09-20._
+- **The cookbooks' numbers are pinned to `jev-1.12`; the jaggedness list is `jev-1.13`.** Every
+  cookbook also ships a `json_cache.json` that replays the published numbers without calling
+  the API — "reproducible" means the page re-renders, not that the result was re-measured.
+  _Source: CRMA-1217, 2026-09-20._
+- **Jev does not buy determinism. TypeSafe's own consistency cookbook says so.** Picked labels
+  flip inside a single condition — "**including TypeSafe**" — with 90.8% plurality agreement
+  over 15 repeats and flips on 2 of 8 questions. That is the **same failure shape** as
+  CRMA-733's `decision_category` drifting on 2 of 7. Only deriving a value in code removes
+  that noise; asking a model for it does not.
+  _Source: CRMA-1217, `cookbooks/consistency_choice_cookbook`, 2026-09-20._
+- **Confidence does separate, on the one task the vendor measured it.** 60 SEC filings split 30
+  sure / 30 unsure scored 90% vs 40% correct — no clustering at the top. **But nothing published
+  measures confidence on a pairwise-sameness task with near-synonymous options**, which is
+  precisely promotion's hardest case and fit test 4.
+  _Source: CRMA-1217, 2026-09-20._
+- **The neighbor pool is small and hard-bounded: 0–8 neighbors**, gated at cosine ≥ 0.50 by a
+  `QUALIFY … <= 8` clause. So a total fan-out costs at most 8 pairwise questions per candidate.
+  Measured reference point: 13 questions in one call returned in **0.27 s**, input priced at
+  $0.042/Mtok with output free. **Watch the 32k cap on `state` plus the longest single question**
+  if neighbor detail rides inside structured instructions.
+  _Source: CRMA-1217, 2026-09-20. Supersedes nothing — CRMA-1218 still owns the measured cap._
 
 ## Standing constraints
 
