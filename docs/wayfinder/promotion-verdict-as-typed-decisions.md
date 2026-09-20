@@ -196,6 +196,9 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
 
      `resolve` appends here. Do not hand-edit while a session is running. -->
 
+- [Research: can Jev's primitives express promotion's judgments without losing distinctions](https://mcclatchy.atlassian.net/browse/CRMA-1217) — **Decided:** The 5-value comparison becomes a 3-level Score keyed on ACTION (merge / ambiguous / do-not-merge) plus ride-along Nouls carrying the reason; code reconstructs the 5 legacy labels. ET corroboration is also a 3-level Score, not a Noul. decision_category is derived in code, never asked.
+  **Binds:** A 5-level Score is UNSAFE: score is a probability-weighted mean and routing rounds, so a split between the two adjacent temporal_recurrence levels lands between them arbitrarily, and Score aliases (1.0 = all on level 1, or half each on 0 and 2). Jev buys NO determinism - TypeSafe's own cookbook flips labels on 2 of 8 questions at 90.8% plurality, the same shape as CRMA-733's 2-of-7 - so only code-side derivation removes that noise. Pool is hard-bounded 0-8 (QUALIFY <= 8, cosine >= 0.50), so fan-out should be TOTAL and deletes the model's unaudited pair-selection step. Watch the 32k cap on state + longest question. entity_alignment publishes NO accuracy (loads known_same_as, never scores against it) so it is a SHAPE template only, never evidence. hierarchical_classification is not the template for hierarchical_distinct (fixed taxonomy, n=4).
+
 ## Not yet specified
 
 <!-- The fog of war: in-scope decisions coming but not yet phraseable. -->
