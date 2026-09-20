@@ -179,10 +179,22 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   > that returns flat splits across many candidates is provably badly drawn, which no prose shows.
 - **Four fit tests, and any one of them fails the map.** (1) Fan-out holds across a
   **variable-sized** neighbor pool. (2) Added latency fits promotion's ceiling inside the
-  dispatcher's synchronous chain. (3) The 5-value `compare_topics` enum expresses as one Choice
-  **without losing the temporal-recurrence distinction**. (4) Confidence actually **separates**
+  dispatcher's synchronous chain. (3) ~~The 5-value `compare_topics` enum expresses as one Choice
+  without losing the temporal-recurrence distinction.~~ (4) Confidence actually **separates**
   cases on our data rather than clustering high everywhere. (4) is the real risk and the least
   knowable from vendor docs.
+  > **Fit test 3 retired 2026-09-20 by [CRMA-1217](https://mcclatchy.atlassian.net/browse/CRMA-1217),
+  > and it must not be read as a failure.** The enum does **not** express as one question — but
+  > the answer was to re-shape the question, not to accept a loss. Keyed on *action*, the five
+  > values collapse to a 3-level Score with the reason on ride-along Nouls, and **code
+  > reconstructs all five labels**. The distinction the test existed to protect is preserved, so
+  > this test is **answered by design, not passed by measurement**. Three fit tests remain live.
+- **The live-validation debt is real and belongs to the prototype.** CRMA-1217 answered from the
+  vendor docs alone — no call has ever been made against the real model from this repo. So fit
+  test 4 is **entirely unmeasured**, and the vendor publishes nothing on confidence behaviour for
+  a pairwise-sameness task with near-synonymous options. Every latency and cost figure quoted on
+  this map so far is **vendor-published**, not measured here. CRMA-1222 owns closing that gap;
+  CRMA-1218 closes the call-mechanics half.
 - **The adopt bar:** match the incumbent's 7/7 on `decision` and `target_trend_id`, **and**
   eliminate the turn-exhaustion DEFER. Cost is a tiebreak only — this lane is already cheap.
   The same bar applies to every arm tested.
