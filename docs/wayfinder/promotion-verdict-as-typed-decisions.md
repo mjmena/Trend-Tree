@@ -51,9 +51,14 @@ lift-and-shift extraction to Cloud Run.
   _Source: `run_subagent/entry.js:171`, 2026-09-20._
 - **`max_iterations: 6` has zero margin, and exhaustion silently becomes DEFER.** The
   incumbent already burns all 6 turns; when the loop ends with no terminal call,
-  `run_subagent/entry.js:713-717` defaults to DEFER behind a bare fallback. **5 of 38**
-  production DEFER rows came from that path.
-  _Source: [CRMA-733](https://mcclatchy.atlassian.net/browse/CRMA-733), 2026-08-20._
+  `run_subagent/entry.js:713-717` defaults to DEFER behind a bare fallback. **7 of the 26
+  DEFER rows on the gemini pin** came from that path — but only **3 distinct candidates**,
+  each re-deferred 2–3 times, and **all three ended in REJECT** days later. The fallback
+  stamps `AMBIGUOUS_TOPIC_JUDGMENT`, and **every** row carrying that category is one of
+  these tombstones: the model has never once chosen it deliberately.
+  _Source: [CRMA-1216](https://mcclatchy.atlassian.net/browse/CRMA-1216), 2026-09-20._
+  > **Restated 2026-09-20.** CRMA-733 measured "5 of 38" over a 21-day window that mixed
+  > pins. The line above is the full gemini-pin history.
 - **The promised defer cap does not exist.** `sql/seed_prompts_promotion.sql:83` tells the
   model defers are capped at 3 and "the system tracks this"; nothing does. There is no
   `DEFER_COUNT` in the repo. `cand-6nm5r52smodzwq5t` deferred **7 times**, 2026-04-26 →
@@ -161,6 +166,38 @@ lift-and-shift extraction to Cloud Run.
   429 fires. `x-typesafe-request-id` is the only correlation handle the vendor returns.
   Budgets: 64k/request (state + all questions), 32k (state + longest question); Choice caps at 255
   options, Score at 2–10 levels. _Source: CRMA-1215 live measurement, 2026-09-20._
+- **The decision boundary is ~0.70 cosine, and the contested band is narrow.** Across the
+  1,109 replayable candidates, `MAX_NEIGHBOR_SIM` separates the decisions almost cleanly —
+  PROMOTE tops out at **0.763** (only 2 cases ≥ 0.75), MERGE runs to 0.904, and above 0.82
+  the incumbent merges every time but once. The contested 0.70–0.80 band holds 109 cases,
+  of which only **23 went not-merge**. Separately, **28% of candidates (314) have no
+  neighbour pool at all**, so the pairwise check is vacuous for them.
+  | sim | PROMOTE | MERGE | REJECT |
+  |---|---:|---:|---:|
+  | none | 164 | 0 | 150 |
+  | <0.60 | 193 | 22 | 174 |
+  | 0.60–0.70 | 80 | 103 | 87 |
+  | 0.70–0.80 | 13 | 86 | 10 |
+  | ≥0.80 | 0 | 26 | 1 |
+  _Source: CRMA-1216, 2026-09-20._
+- **`OVER_DEDUP` has never fired, and three of the ten categories are structurally starved.**
+  Production has produced **9 of the 10** declared `decision_category` values in five months.
+  `CONFIRM_DUPE`, `OVER_DEDUP` and `CORRECTED_DEDUP_TARGET` all require distillation to emit
+  `DUPLICATE_OF`, which it has done **7 times in 2,093 candidates (0.33%)** — and that branch
+  *threw* until `148d3a1` ([CRMA-1029](https://mcclatchy.atlassian.net/browse/CRMA-1029))
+  landed on 2026-09-08. Both surviving rows post-date the fix. No result may claim
+  `OVER_DEDUP` coverage. _Source: CRMA-1216, 2026-09-20._
+- **Distillation's verdict is `REAL_TREND` 99.7% of the time.** 1,132 of 1,135 gemini-pin
+  decisions arrived on that verdict. It is a near-constant field, while promotion finds **235
+  duplicates of its own** under it. The verdict carries almost no information — which is an
+  argument to keep it out of `state` independent of the bias measurements.
+  _Source: CRMA-1216, 2026-09-20._
+- **1,017 of the 2,264 ledger rows are not subagent decisions**, and `MODEL_USED` cannot
+  separate them: `proc_promotion_apply.sql:142` stamps a stale `'claude-sonnet-4-6'` literal
+  on every lead-side row, including rows written last week. Discriminate on **zero tokens**.
+  The lead decides `REJECT`/`LOW_QUALITY` (873) and `MERGE_INTO_CANDIDATE`/`INTRA_BATCH_DUPE`
+  (42) deterministically, with no model call; 102 more are a 2026-04-28 backfill.
+  _Source: CRMA-1216, 2026-09-20._
 - **`jev-latest` is a moving alias and must be pinned.** `jev-latest` and `jev-preview` both resolve
   to `jev-1.13.0` today; the cookbooks' numbers pin `jev-1.12`. Production must name the explicit
   version, or a vendor bump moves the rubric underneath a governed `DIM_LLM_PROMPT` row with nothing
@@ -285,10 +322,6 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   telemetry today, and the redesign replaces turns with distributions and confidence — a different
   shape entirely. `FCT_TREND_LIFECYCLE_LEDGER` is the fleet's exemplar to copy from. Sharpens once
   the question set is known.
-- **Whether the widened replay set needs a ground truth separate from the incumbent's verdicts.**
-  The bar is parity with the incumbent, but the incumbent is known wrong on the turn-exhaustion
-  DEFERs — so on those cases "match the incumbent" is the wrong target and something else has to
-  say what right looks like. Sharpens once the widened set is built and its known-bad cases counted.
 
 ## Out of scope
 
