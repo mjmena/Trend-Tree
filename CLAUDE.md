@@ -184,7 +184,7 @@ A commit to `production` **is** the deploy — Pipedream redeploys changed workf
 
 ### Issue tracker
 
-Issues live in **JIRA project `CRMA`** (board 1626), scoped to this repo by the `trend-tree` **component**, via the Atlassian MCP tools. See `docs/agents/issue-tracker.md` — the tracker-consuming skills (`/triage`, `/to-spec`, `/to-tickets`, `/wayfinder`, `/board-standing`, `/epic-orchestrator`, `/implement`, `/grill-with-docs`) all read it by that exact path, and it is the single source of truth for where long-form artifacts live. GitHub Issues on `mjmena/Trend-Tree` are the pre-2026-08-07 archive — read-only history; new work goes to CRMA.
+Issues live in **JIRA project `CRMA`** (board 1626), scoped to this repo by the `trend-tree` **component**, via the Atlassian MCP tools. See `docs/agents/issue-tracker.md` — the tracker-consuming skills (`/triage`, `/to-spec`, `/to-tickets`, `/wayfinder`, `/board-standing`, `/implement`, `/grill-with-docs`) all read it by that exact path, and it is the single source of truth for where long-form artifacts live. GitHub Issues on `mjmena/Trend-Tree` are the pre-2026-08-07 archive — read-only history; new work goes to CRMA.
 
 If `docs/agents/issue-tracker.md` is missing, or references a skill name that
 no longer exists, stop and tell the user to run `/setup-crma-skills` — do not
