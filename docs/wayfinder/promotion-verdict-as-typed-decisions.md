@@ -194,6 +194,27 @@ lift-and-shift extraction to Cloud Run.
   to `jev-1.13.0` today; the cookbooks' numbers pin `jev-1.12`. Production must name the explicit
   version, or a vendor bump moves the rubric underneath a governed `DIM_LLM_PROMPT` row with nothing
   to flag it. _Source: CRMA-1215, 2026-09-20._
+- **Promotion has never rejected a genuinely two-vendor candidate, and the family rule is why.**
+  Of 1,247 token-bearing ledger rows, **345 rejections sit at one source family and 2 above it** —
+  and those 2 are `agent_grok_discovery` + `grok_live`, one vendor the agent correctly caught.
+  `sourceFamilyOf()` (`agents/lib/promotion_gate.mjs`) counts a **discovery agent** and an **agent
+  search tool** from the same vendor as independent, and does the same for the `gemini_*` vertical
+  shards: **43 live trends were promoted on same-vendor corroboration**, plus 18 merges. Filed
+  separately as a production defect — it is live now, and this map ships after the extraction.
+  _Source: CRMA-1220, 2026-09-20._
+- **The hard pre-gate is already dormant.** Lead-side deterministic rejections by month: 191 Apr ·
+  252 May · 356 Jun · 74 Jul · **0 Aug · 0 Sep**. ADR-0004 replaced its single-family arm with the
+  oracle route, and the `cluster_size < 2` arm was dropped earlier because distillation enforces two
+  signals by schema. The one surviving arm — one family **and** confidence or specificity below 0.5 —
+  has not fired in ten weeks. _Source: CRMA-1220, 2026-09-20._
+- **The corroboration oracle performs as ADR-0004 predicted; its input does not.** Since 2026-07-07
+  across 898 candidates: 542 calls, 236 matches, **120 supplied the missing source family** (~48/month
+  against the ~44 estimate). Its real ceiling is a **1,000-request monthly quota**, not the 60/min
+  rate; current use is ~215/month. But `QUERY` is null on **698 of 898** (78%) while `TOPIC` is null
+  on **zero**, and the match rate runs *against* ADR-0003's premise — 35.9% with a candidate query
+  (n=131) vs 46.0% without (n=411), supplied-family rate 20.6% vs 22.6%. The keyword actually sent
+  when `QUERY` was absent is unrecorded, so this is a flag, not a conclusion.
+  _Source: CRMA-1220, 2026-09-20._
 
 ## Standing constraints
 
@@ -269,6 +290,35 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   lane is already cheap. The same bar applies to every arm tested. Because the incumbent's
   DEFER rows have no counterpart in the new three-value verdict set, scoring those cases needs
   a ground-truth rule — [CRMA-1231](https://mcclatchy.atlassian.net/browse/CRMA-1231).
+- **The verdict is one Jev request per candidate, plus a conditional second.** Request A carries
+  `state` = the candidate alone (trend topic, candidate query, every source name with its signal
+  count, every signal) and at most 33 questions: `evidence_quality` (Score, 3 levels) once, plus per
+  neighbour a `pair_action` Score and three Nouls — `is_same_recurring_topic`,
+  `recurrence_deserves_own_row`, `is_narrower_instance`. **Each neighbour rides in its own question's
+  structured `instructions`, never in shared `state`**, which reconciles CRMA-1217's one-neighbour
+  rule with CRMA-1218's single-call measurement. Request B fires **only** on `evidence_quality`
+  level 1: one `oracle_match` Score (*different* / *adjacent but not the same* / *the same concept*)
+  per oracle result clearing the volume floor. The 5-value `compare_topics` enum is **dropped** — code
+  reconstructs the legacy labels from the Score plus the Nouls. `state` carries no `quality_flags`,
+  `CONFIDENCE`, `SPECIFICITY_SCORE` or distillation verdict; code still reads the verdict to derive
+  `decision_category`, but the model never sees it.
+- **`evidence_quality`'s three levels are three actions, and level 1 _is_ the "is corroboration
+  necessary" judgment** — asked once, never twice. 0 = not a real topic → `REJECT`/`LOW_QUALITY`,
+  oracle never runs. 1 = real but the evidence does not stand alone → the oracle decides. 2 = real and
+  stands alone → `PROMOTE_NEW`, oracle never runs. This **removes `classifyCandidate()`'s reject arm
+  and its source-family router**: code still groups source names into families to fill `state`, but
+  the count decides nothing. **ADR-0004 stands unamended** — at level 2 the oracle never runs, so it
+  can never veto a candidate whose evidence already stands.
+- **The composition rule is ordered, and reject precedes merge.** (1) level 0 → `REJECT`/
+  `LOW_QUALITY`. (2) neighbours whose `pair_action` rounds to merge → `MERGE_INTO_EXISTING`, target =
+  highest `pair_action` **confidence**; two or more clearing the bar means those two *trends* are
+  duplicates — merge into the older and raise an operational flag, which this map does not try to fix.
+  (3) level 2 → `PROMOTE_NEW`. (4) level 1 → code filters oracle results by the volume floor **before**
+  asking; any `oracle_match` level 2 → `PROMOTE_NEW`, else `REJECT`/`INSUFFICIENT_EVIDENCE`. Reject
+  precedes merge because a merge attaches the candidate's signals to a live trend. **Routing always
+  reads a Score's confidence, never a Choice's**, and `is_narrower_instance` never blocks a merge
+  alone. The oracle keyword is the candidate query when present and the trend topic otherwise, **and
+  which one was sent must be recorded**.
 
 ## Decisions so far
 
@@ -294,19 +344,15 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
 - [Decide: DEFER becomes bounded and visible](https://mcclatchy.atlassian.net/browse/CRMA-1219) — **Decided:** DEFER is REMOVED entirely from promotion's verdict set — the ticket asked how to bound it, production says it should not exist. The replacement rules are now a **Standing constraint**; the population and no-evidence measurements are **Established facts**. Read them there, not here.
   **Binds:** What is **only** here. Change sites for `/to-tickets`: `run_subagent/entry.js:189` (enum), `:210`/`:373-374`/`:393` (`defer_reason`), `:642`/`:699`/`:717` (the three fallbacks); `proc_promotion_apply.sql:76` (`ALLOWED_DECISIONS`), `:84` (`DECISION_ORDER`), `:163-164` (`overrode()` DEFER case), `:486`/`:520-531` (the mirrored-DEFER branch for followers — a leader can no longer defer, so it goes), `:560-573` (the DEFER branch), `:591` (`defer_count`); `eval_and_retrigger/entry.js:74`; `promotion-p_xMC99jg/workflow.yaml:41`/`:69` (the `DEFERRED_UNTIL` claim filter — safe to drop ONLY because the held population is zero, re-check immediately before shipping); `run_lead_agent/entry.js:494-496`; `seed_prompts_promotion.sql:83` (principle 6, as a migration PLUS the manifest bump at `audit-agent-p_xMC9nm3/workflow.yaml:530`/`:578`); `audit-agent-p_xMC9nm3/workflow.yaml:86-95` plus a new parked-candidate check. Supporting measurements: promotion runs ~6 h (55 runs/14 d, median gap 360 min), so a no-hold retry costs ~6 h not 48; the audit agent's `distillation_pending` check EXCLUDES held candidates by construction, so no alarm exists today. **VERIFICATION STATUS: decided, NOT proven** — no replay has shown what the agent decides on first look without DEFER, so CRMA-1229 → CRMA-1222 become a REGRESSION CHECK; if the 12 post-defer promotions collapse into rejections, revisit. `decision_category` moves from 10 values to 9. Rejected topics already resurface WITHOUT a hold — 8 of 15 deferred-then-rejected topics match a later-promoted trend at ≥0.80 cosine (arctic-embed-m on topic strings, NOT the pipeline's embedding space — directional only) via re-clustering in `distillation-revisit`, which yields a NEW fatter candidate with real new evidence. Premise-change notes are posted on CRMA-1223, CRMA-1229, CRMA-1231 and CRMA-1225.
 
+- [Decide: the question set — which atomic questions the verdict decomposes into](https://mcclatchy.atlassian.net/browse/CRMA-1220) — **Decided:** One Jev request per candidate (evidence_quality Score + per-neighbour pair_action Score and three Nouls, each neighbour in its own question's instructions), plus a conditional second request for oracle_match when evidence_quality lands on level 1. Level 1 IS the 'is corroboration necessary' judgment, which removes classifyCandidate()'s reject arm and its source-family router. The 5-value enum is dropped and the labels derived in code.
+
 ## Not yet specified
 
 <!-- The fog of war: in-scope decisions coming but not yet phraseable. -->
 
-- **What the Cloud Run extraction must leave open so it does not foreclose this redesign.**
-  The lift-and-shift ships first, so its seams decide how cheaply the typed path can be dropped in
-  later — where the decision logic sits, what it is injected with, whether the tool loop is a
-  replaceable module or welded to the handler. Sharpens once the verdict decomposition lands.
-  Feeds CRMA-429's template and CRMA-537's sequence.
-- **What telemetry the typed path must persist, and in what shape.** Promotion stores no turn
-  telemetry today, and the redesign replaces turns with distributions and confidence — a different
-  shape entirely. `FCT_TREND_LIFECYCLE_LEDGER` is the fleet's exemplar to copy from. Sharpens once
-  the question set is known.
+Empty. CRMA-1220 graduated the Cloud Run seam patch into a ticket, and the telemetry patch
+was already covered by [CRMA-1224](https://mcclatchy.atlassian.net/browse/CRMA-1224) once the
+question set was known.
 
 ## Out of scope
 
@@ -332,3 +378,11 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   ships the SQL and the manifest bump.
 - **A vendor privacy or legal review.** Not required — public trend data only, no McClatchy data
   transmitted. Ruled out at charter, 2026-09-20.
+- **Improving the candidate query distillation authors.** CRMA-1220 measured it missing on 78% of
+  candidates and matching *worse* than its absence, against ADR-0003's premise. Authoring it is the
+  distillation lane's job; promotion only consumes it. The typed path handles the gap with a
+  documented fallback to the trend topic and by recording which keyword it sent, which is what makes
+  a later investigation answerable.
+- **Fixing `sourceFamilyOf()`'s vendor blindness.** Filed as its own CRMA issue — it is a live
+  production defect affecting 43 promoted trends, and this map ships months later, after the Cloud
+  Run extraction. The evidence is in **Established facts** above.
