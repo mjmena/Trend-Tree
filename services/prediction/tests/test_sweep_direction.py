@@ -108,6 +108,7 @@ def test_the_service_binds_no_direction_parameter():
             "saturation": None,
             "trend_context": None,
             "coverage": None,
+            "strategist": None,
         },
         what_changed="Confidence strengthened from 68.0 to 74.0 (+6.0).",
         minted_at=datetime(2026, 8, 21, tzinfo=UTC),

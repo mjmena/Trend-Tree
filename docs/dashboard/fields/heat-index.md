@@ -67,7 +67,9 @@ new_heat   = 68.6 × 1.10         ≈ 75.4   (GROWING +10%)
 - Promotion seeds an initial heat from the same v2 formula using candidate-cluster proxies (source families for breadth, entropy assumed even); the first hourly lifecycle eval replaces it with the real per-publisher computation.
 - A trend with zero linked signals in 21 days scores only the confidence term — typically ~5–7. That's by design: it's what makes cold trends visible to retirement sweeps.
 
-**Where it appears in ATLAS** — Card badge color and value; sort key for the trend list. Also feeds the prediction agent as the `inverse_heat = 100 − heat` input and the `heat_now < 70` eligibility gate — **note** that gate was calibrated against the pre-v2 compressed scale and needs re-derivation against the v2 distribution (see `docs/prediction-contract.md`).
+**Where it appears in ATLAS** — Card badge color and value; sort key for the trend list.
+
+**No longer feeds prediction.** The retired deterministic scorer read heat twice — as an `inverse_heat = 100 − heat` term and as a `heat_now < 70` eligibility gate. Both retired with it (2026-08-24, CRMA-769). Heat now reaches the prediction pillar only as one piece of context a model reasons over, never as a threshold — see [Prediction](prediction.md).
 
 ---
 

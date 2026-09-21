@@ -25,6 +25,11 @@ dev = [
     "pytest>=8.3",
     "httpx>=0.28",
     "ruff>=0.9",
+    # Runs the shipped track-record SQL against fixture ledger rows offline
+    # (CRMA-771, tests/test_track_record.py). Dev-only and never imported by
+    # the service: the warehouse is Snowflake, and the view file is written in
+    # the subset both engines accept so the same text is what ships.
+    "duckdb>=1.1",
 ]
 
 [build-system]

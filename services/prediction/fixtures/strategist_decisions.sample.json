@@ -1,0 +1,18 @@
+[
+  {
+    "prediction_id": "814a38cb-3935-4ce2-b640-b3154bfa84f4",
+    "decision": "APPROVE",
+    "decided_at": "2026-08-20T16:41:00+00:00",
+    "decided_by": "strategist@mcclatchy.com",
+    "observed_confidence": 68.0,
+    "observed_flag": "High Potential"
+  },
+  {
+    "prediction_id": "7dfe9315-9934-4f48-9471-6570f0d739ba",
+    "decision": "DISMISS",
+    "decided_at": "2026-08-20T16:43:00+00:00",
+    "decided_by": "strategist@mcclatchy.com",
+    "observed_confidence": 41.0,
+    "observed_flag": "Watchlist"
+  }
+]

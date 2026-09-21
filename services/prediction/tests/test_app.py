@@ -26,6 +26,7 @@ from tt_services_lib.auth import (
 
 from prediction_service.app import create_app
 from prediction_service.config import ConfigError, settings_from_env
+from prediction_service.domain.claim import REQUIRED_EVIDENCE_KEYS
 from prediction_service.domain.ledger import COMPUTATION_VERSION
 
 from .fakes import FakeSnowflake
@@ -132,7 +133,7 @@ def test_run_with_no_body_writes_the_smoke_test_claim():
     assert call.params["status"] == "ACTIVE"
     assert call.params["matched_trend_id"] is None
     evidence = json.loads(call.params["evidence"])
-    assert set(evidence) == {"source_signals", "saturation", "trend_context", "coverage"}
+    assert set(evidence) == set(REQUIRED_EVIDENCE_KEYS)
 
 
 def test_run_with_custom_claim_writes_it():

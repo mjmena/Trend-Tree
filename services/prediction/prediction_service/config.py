@@ -31,6 +31,11 @@ from tt_services_lib.auth import (
     DEFAULT_AUTH_MODE,
 )
 
+from .coverage.detect import CONTENT_VECTORS_TABLE as COVERAGE_CONTENT_VECTORS_TABLE
+from .coverage.detect import DEFAULT_DETECTION_LIMIT as COVERAGE_DETECTION_LIMIT
+from .coverage.detect import DEFAULT_MIN_HEADLINE_CHARS as COVERAGE_MIN_HEADLINE_CHARS
+from .coverage.detect import DEFAULT_MIN_SIMILARITY as COVERAGE_MIN_SIMILARITY
+from .coverage.detect import DEFAULT_WINDOW_DAYS as COVERAGE_WINDOW_DAYS
 from .generation.llm import DEFAULT_MODEL as DEFAULT_GEMINI_MODEL
 from .generation.llm import rates_for
 
@@ -134,10 +139,47 @@ class SaturationSettings:
 
 
 @dataclass(frozen=True)
+class CoverageSettings:
+    """Internal-coverage detection (CRMA-767).
+
+    **No coverage outage can refuse a boot, and nothing here can gate
+    anything.** Coverage is demote-only, so the worst an unavailable source
+    can do is leave ``EVIDENCE.coverage`` reading "we could not look", which
+    changes no prediction's posture and costs no verdict. A value that is not
+    a number *at all* is a deploy typo and is refused by ``_number`` like
+    every other numeric setting; a value that parses but is out of range
+    degrades this phase to offline with a logged exception rather than
+    stopping the service (coverage/run.py).
+
+    The threshold and the window are settings for the reason AC6 asks that
+    they be written down: they were tuned against live data at one moment
+    (see coverage/detect.py for the measurement), the corpus moves, and
+    re-tuning the pillar's calibration should be a visible, deliberate
+    change rather than a code edit. Whatever is in force is recorded in
+    every ``EVIDENCE.coverage`` payload, so past rows stay readable against
+    the cutoff that produced them.
+
+    ``enabled`` is a kill switch, not a tuning knob: detection is a Cortex
+    embedding plus a cosine over a six-month content pool, and if that ever
+    starts costing more than it is worth it can be turned off without a code
+    change. Off means "we could not look" -- never "nobody has written about
+    this".
+    """
+
+    enabled: bool
+    content_vectors_table: str
+    min_similarity: float
+    window_days: int
+    min_headline_chars: int
+    detection_limit: int
+
+
+@dataclass(frozen=True)
 class Settings:
     snowflake: SnowflakeSettings
     gemini: GeminiSettings
     saturation: SaturationSettings
+    coverage: CoverageSettings
     port: int
     # Which ingress-auth layer fronts this service -- `oidc` (Cloud Run IAM,
     # the deployed posture) or `iap`. See tt_services_lib.auth for what each
@@ -309,6 +351,41 @@ def settings_from_env(env: Mapping[str, str] | None = None) -> Settings:
                 _number(
                     "PREDICTION_FLOOR_MIN_EVIDENCE_CHARS",
                     e.get("PREDICTION_FLOOR_MIN_EVIDENCE_CHARS", "120"),
+                )
+            ),
+        ),
+        coverage=CoverageSettings(
+            enabled=(e.get("PREDICTION_COVERAGE_ENABLED", "1").strip().lower()
+                     not in ("0", "false", "no", "off")),
+            content_vectors_table=e.get(
+                "PREDICTION_COVERAGE_CONTENT_VECTORS_TABLE", COVERAGE_CONTENT_VECTORS_TABLE
+            ).strip()
+            or COVERAGE_CONTENT_VECTORS_TABLE,
+            min_similarity=_number(
+                "PREDICTION_COVERAGE_MIN_SIMILARITY",
+                e.get("PREDICTION_COVERAGE_MIN_SIMILARITY", str(COVERAGE_MIN_SIMILARITY)),
+            ),
+            window_days=int(
+                _number(
+                    "PREDICTION_COVERAGE_WINDOW_DAYS",
+                    e.get("PREDICTION_COVERAGE_WINDOW_DAYS", str(COVERAGE_WINDOW_DAYS)),
+                )
+            ),
+            min_headline_chars=int(
+                _number(
+                    "PREDICTION_COVERAGE_MIN_HEADLINE_CHARS",
+                    e.get(
+                        "PREDICTION_COVERAGE_MIN_HEADLINE_CHARS",
+                        str(COVERAGE_MIN_HEADLINE_CHARS),
+                    ),
+                )
+            ),
+            detection_limit=int(
+                _number(
+                    "PREDICTION_COVERAGE_DETECTION_LIMIT",
+                    e.get(
+                        "PREDICTION_COVERAGE_DETECTION_LIMIT", str(COVERAGE_DETECTION_LIMIT)
+                    ),
                 )
             ),
         ),

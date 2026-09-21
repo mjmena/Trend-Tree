@@ -23,12 +23,26 @@ them cross.
     --model NAME     which model --live-llm calls
     --print-prompt   dump the re-evaluation prompt this run would send
     --now ISO8601    the moment to evaluate at (default: the fixture's own)
-    --predictions PATH / --trends PATH / --reply PATH
+    --predictions PATH / --trends PATH / --reply PATH / --decisions PATH
     --prediction-id ID   capped-scope mode; repeatable
     --min-similarity F / --prediction-limit N / --candidate-limit N
 
+``--decisions`` replays the strategist tier (CRMA-768) from a fixture, since
+Insights Postgres ``prediction_decisions`` is not reachable from this service
+yet (docs/access-requests/insights-postgres-prediction-decisions.md):
+
+    python local_sweep.py --decisions fixtures/strategist_decisions.sample.json
+
+The shipped fixture approves one live call and dismisses another, so one run
+shows both halves of the ladder -- the approved call keeps its act standing,
+the dismissed one records WITHDRAWN even though its observable check has just
+come true. The DEFAULT is deliberately the deployed posture instead: an
+unreachable decision source, where every call is left exactly where
+automation left it and the lifecycle demonstration above is undisturbed.
+
 This never writes to Snowflake in any mode. It prints the verdict rows the
-deployed run would append; landing them is POST /sweep's job.
+deployed run would append; landing them is POST /sweep's job. The calibration
+labels it would retain are printed too, and written by the route.
 """
 
 from __future__ import annotations
@@ -56,12 +70,23 @@ from prediction_service.matching.predictions import (
     StaticOpenPredictionReader,
 )
 from prediction_service.matching.trends import DEFAULT_CANDIDATE_LIMIT, FixtureTrendReader
+from prediction_service.strategist import (
+    StaticStrategistDecisionReader,
+    StrategistDecision,
+    UnavailableDecisionReader,
+    calibration_labels,
+)
 from prediction_service.sweep import SweepScope, sweep_predictions
 
 FIXTURES = Path(__file__).parent / "fixtures"
 DEFAULT_PREDICTIONS = FIXTURES / "sweep_predictions.sample.json"
 DEFAULT_TRENDS = FIXTURES / "trends.sample.json"
 DEFAULT_REPLY = FIXTURES / "sweep_reply.sample.json"
+#: The strategist-tier rehearsal fixture. NOT the default -- see
+#: ``--decisions``: the default run must keep showing the four lifecycle
+#: states CRMA-766's fixture was built around, and a dismissal would take one
+#: of them off the board.
+DEFAULT_DECISIONS = FIXTURES / "strategist_decisions.sample.json"
 
 #: The moment the shipped fixture is written around: one prediction before
 #: its horizon, one inside its grace window, one at the close of its window
@@ -76,6 +101,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--predictions", type=Path, default=DEFAULT_PREDICTIONS)
     parser.add_argument("--trends", type=Path, default=DEFAULT_TRENDS)
     parser.add_argument("--reply", type=Path, default=DEFAULT_REPLY)
+    parser.add_argument(
+        "--decisions",
+        type=str,
+        default="",
+        help=(
+            "strategist Approve/Dismiss fixture (CRMA-768), e.g. "
+            f"{DEFAULT_DECISIONS.name}. Default is the deployed posture: the decision "
+            "source is unreachable and every call is left where automation left it."
+        ),
+    )
     parser.add_argument("--live-llm", action="store_true")
     parser.add_argument("--model", default=None, help=f"default: {DEFAULT_MODEL}")
     parser.add_argument("--print-prompt", action="store_true")
@@ -95,6 +130,33 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--prediction-limit", type=int, default=50)
     parser.add_argument("--candidate-limit", type=int, default=DEFAULT_CANDIDATE_LIMIT)
     return parser
+
+
+def build_decisions(args: argparse.Namespace):
+    """The strategist tier for this run.
+
+    A path replays a fixture through the same ``StrategistDecisionReader``
+    the deployed route depends on. An empty ``--decisions`` gives the
+    deployed reader instead -- the one that says the source is unreachable --
+    so the loop can rehearse both the tier and its absence.
+    """
+    raw = (args.decisions or "").strip()
+    if not raw:
+        return UnavailableDecisionReader()
+    rows = json.loads(Path(raw).read_text())
+    return StaticStrategistDecisionReader(
+        decisions=[
+            StrategistDecision(
+                prediction_id=row["prediction_id"],
+                decision=row["decision"],
+                decided_at=datetime.fromisoformat(row["decided_at"]),
+                decided_by=row.get("decided_by"),
+                observed_confidence=row.get("observed_confidence"),
+                observed_flag=row.get("observed_flag"),
+            )
+            for row in rows
+        ]
+    )
 
 
 def build_llm(args: argparse.Namespace) -> PredictionLLM:
@@ -133,6 +195,7 @@ def run(argv: list[str] | None = None, out=sys.stdout) -> int:
         predictions=predictions,
         trends=trends,
         llm=build_llm(args),
+        decisions=build_decisions(args),
         # No saturation phase offline: the sweep leaves EVIDENCE.saturation
         # exactly as the prior row left it rather than overwriting a real
         # reading with a "we did not look" miss.
@@ -168,9 +231,40 @@ def run(argv: list[str] | None = None, out=sys.stdout) -> int:
             file=out,
         )
         print(f"  MATCHED_TREND_ID   {verdict.matched_trend_id or 'NULL (white space)'}", file=out)
+        print(
+            f"  POSTURE            {outcome.posture.posture} "
+            f"(settled by {outcome.posture.tier})",
+            file=out,
+        )
         print(f"  WHAT_CHANGED       {verdict.what_changed}", file=out)
         if outcome.note:
             print(f"  NOTE               {outcome.note}", file=out)
+
+    labels = calibration_labels(
+        result.strategist,
+        verdicts={
+            outcome.prediction_id: (outcome.verdict.confidence, outcome.verdict.status)
+            for outcome in result.outcomes
+        },
+        recorded_at=now,
+        chain_id=result.chain_id,
+    )
+    if labels:
+        print("", file=out)
+        print(
+            f"calibration labels    {len(labels)} retained for later regression tuning "
+            "(never read back at runtime)",
+            file=out,
+        )
+        for label in labels:
+            print(
+                f"  {label.decision:<8} {label.prediction_id} at "
+                f"{label.decided_at.isoformat()} by {label.decided_by or '(unnamed)'}",
+                file=out,
+            )
+    if result.strategist.unavailable_reason:
+        print("", file=out)
+        print(f"strategist source     {result.strategist.unavailable_reason}", file=out)
 
     for skipped in result.skipped:
         print("", file=out)

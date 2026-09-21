@@ -17,6 +17,7 @@ from .app import create_app
 from .config import Settings, settings_from_env
 from .generation.llm import GeminiPredictionLLM, PredictionLLM
 from .saturation import build_saturation_phase
+from .strategist import UnavailableDecisionReader
 
 logging.basicConfig(level=logging.INFO)
 
@@ -69,6 +70,14 @@ app = create_app(
     # process which reaches the network is the deployed one; every other
     # caller gets SaturationPhase.offline(), whose misses are explicit.
     saturation=build_saturation_phase(settings),
+    # The strategist tier's read seam (CRMA-768). Insights Postgres
+    # `prediction_decisions` is owned by the Insights Agent side and read
+    # access is not provisioned to this service yet -- see
+    # docs/access-requests/insights-postgres-prediction-decisions.md. This
+    # reader names that fact on every verdict it touches instead of returning
+    # an empty list that would read as "no strategist has acted". Swapping in
+    # the real adapter when the grant lands is one argument.
+    decisions=UnavailableDecisionReader(),
 )
 
 

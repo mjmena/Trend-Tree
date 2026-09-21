@@ -5,9 +5,9 @@
 **Audience:** Insights Agent users (strategy, content, leadership).
 **Purpose:** Explain every field shown on an ATLAS trend card — what it measures, what scale it's on, where the number comes from, and how to read it.
 **Source of truth:** This page (hub). Mirrored from the canonical Markdown in the [Trend-Tree repo](../../docs/dashboard/).
-**Last updated:** 2026-05-26
+**Last updated:** 2026-08-24
 
-ATLAS is the main trend dashboard in the Insights Agent. Each row on ATLAS is one **trend** — a cultural pattern our pipeline identified from public signals, named, categorized, and tracked over time. The fields on each card describe how the trend is performing, what it's about, where it comes from, and how likely it is to grow.
+ATLAS is the main trend dashboard in the Insights Agent. Each row on ATLAS is one **trend** — a cultural pattern our pipeline identified from public signals, named, categorized, and tracked over time. The fields on each card describe how the trend is performing, what it's about, where it comes from, and what — if anything — the system predicts happens next.
 
 This document covers every field a strategist sees on an ATLAS card. Field surfaces unique to other views (the Predictions Queue route, the Collections graph, the Decision Page) are out of scope and live in their own docs.
 
@@ -70,11 +70,11 @@ Heat reflects current volume and momentum. Lifecycle reflects the shape of the t
 
 → See [`HEAT_INDEX`](fields/heat-index.md) and [`LIFECYCLE_STATUS`](fields/lifecycle-status.md).
 
-### 5. Predict — how likely is this to grow?
+### 5. Predict — what does the system think happens next?
 
-Once a day, a **prediction agent** scores every live trend on week-over-week deltas: heat acceleration, base volume, source diversity expansion, and cluster growth. The result is a `PREDICTION_SCORE` (0–100) and a `PREDICTION_FLAG` (`Emerging` / `Watchlist` / `High Potential`).
+Once a day, a **prediction pillar** generates falsifiable claims from the signal corpus — each one a subject, a directional claim, a horizon, and an observable check that says how it will be graded — and matches them against live trends. A trend with a matching active claim carries that claim's calibrated confidence as its `PREDICTION_SCORE` (0–100) and a `PREDICTION_FLAG` (`Emerging` / `Watchlist` / `High Potential`), alongside the claim sentence, the reasoning, and the source links behind it. Most trends have no active claim and read `NULL`.
 
-Prediction is distinct from heat: heat says *how active is this now*, prediction says *is this trend still building or has it peaked*. Trends flagged `Emerging` or `High Potential` appear in the Predictions Queue.
+Prediction is distinct from heat: heat says *how broadly the world is validating this now*, prediction states *what we think happens next and how sure we are*. Trends with an active matching claim appear in the Predictions Queue; `NULL` means the system is making no call about the trend, not that it scored badly.
 
 → See [prediction deep dive](fields/prediction.md).
 
@@ -101,9 +101,9 @@ Every score in this table is on a **0–100 scale unless otherwise noted**. The 
 | `HEAT_INDEX` | How hot the trend is **right now** (EWMA-smoothed momentum) | 0–100 | Lifecycle agent (hourly) | [→](fields/heat-index.md) |
 | `LIFECYCLE_STATUS` | `NEW` / `GROWING` / `STABLE` / `DECLINING` / `DORMANT` / `RESURGENT` / `RETIRED` | enum | Lifecycle agent (hourly) | [→](fields/lifecycle-status.md) |
 | `VELOCITY_DIRECTION` | _Back-compat alias for `LIFECYCLE_STATUS`._ Same value under an older name. | enum | Lifecycle agent (hourly) | [→](fields/lifecycle-status.md) |
-| `PREDICTION_SCORE` | How likely the trend is to **grow** (deterministic emergence formula) | 0–100 | Prediction agent (daily) | [→](fields/prediction.md) |
-| `PREDICTION_FLAG` | `Emerging` / `Watchlist` / `High Potential` | enum | Prediction agent (daily) | [→](fields/prediction.md) |
-| `PREDICTION_ELIGIBLE` | Trend qualifies for the Predictions Queue | boolean | Prediction agent (daily) | [→](fields/prediction.md) |
+| `PREDICTION_SCORE` | Confidence in the system's current **claim** about this trend. `NULL` = no active claim. | 0–100 | Prediction pillar (daily) | [→](fields/prediction.md) |
+| `PREDICTION_FLAG` | `Emerging` / `Watchlist` / `High Potential` | enum | Prediction pillar (daily) | [→](fields/prediction.md) |
+| `PREDICTION_ELIGIBLE` | An active claim matches this trend, so it belongs in the Predictions Queue. `TRUE` or `NULL`, never `FALSE`. | boolean | Prediction pillar (daily) | [→](fields/prediction.md) |
 
 ### Counts
 

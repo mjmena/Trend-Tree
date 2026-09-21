@@ -40,7 +40,9 @@ Heat is **EWMA-smoothed** (α=0.5), meaning each hour's new heat value contribut
 
 #### Why isn't this emerging trend in the Predictions Queue?
 
-A trend qualifies for the Predictions Queue only when **all** of: `HEAT_INDEX < 70`, velocity actually accelerating, source diversity expanding, signal cluster forming, age ≥ 14 days, and score in the top 30% of all scored trends today. Missing any of these excludes the trend — and on days when the whole trend population is broadly decelerating, the queue can legitimately be empty.
+Because the system has not yet made an explicit call about it. The Predictions Queue is not a percentile cut of the trend list — it is the set of trends that a live, falsifiable claim currently matches. A trend can be visibly emerging and still carry no claim, in which case its prediction fields read `NULL`. That is the honest answer, not a low score.
+
+The old six-clause qualification (heat under 70, accelerating, publisher breadth expanding, cluster forming, age ≥ 14 days, top-30% percentile) retired on 2026-08-24 along with the deterministic scorer.
 
 [→ Prediction deep dive](fields/prediction.md).
 
@@ -62,16 +64,16 @@ A trend's lifecycle status describes its overall trajectory:
 
 #### How recent is this data?
 
-The dashboard refreshes every **15 minutes**, so changes upstream take at most 15 minutes to appear on a card. Per-source ingestion cadence varies: Bluesky streams continuously, discovery agents run every 2 hours, Google Trends polls run daily, lifecycle re-evaluations run hourly, and prediction scoring runs daily.
+The dashboard refreshes every **15 minutes**, so changes upstream take at most 15 minutes to appear on a card. Per-source ingestion cadence varies: Bluesky streams continuously, discovery agents run every 2 hours, Google Trends polls run daily, lifecycle re-evaluations run hourly, and the prediction pillar generates and re-evaluates claims daily.
 
 #### What's the difference between Heat Index and Prediction Score?
 
-Both are 0–100 and both go up when things "look good," so they're easy to conflate.
+Both are 0–100, so they're easy to conflate — but they are not two views of the same thing.
 
-- `HEAT_INDEX` says **how hot the trend is right now**.
-- `PREDICTION_SCORE` says **how likely the trend is to grow from here**.
+- `HEAT_INDEX` says **how broadly the world is validating this trend right now**. It is a measurement of the present.
+- `PREDICTION_SCORE` says **how confident we are in a specific claim about what happens next**. It is a statement about the future that can turn out to be wrong.
 
-A trend can have low heat and a high prediction score (early-stage, accelerating). A trend can also have very high heat and a low prediction score (already peaked, unlikely to grow further). Use them together, not interchangeably.
+Heat exists for every live trend. A prediction score exists only for the few trends an active claim currently matches; everything else reads `NULL`, which means "no call", not "scored low".
 
 #### Why did this trend disappear from ATLAS?
 
