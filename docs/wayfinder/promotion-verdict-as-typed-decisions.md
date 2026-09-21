@@ -221,6 +221,17 @@ lift-and-shift extraction to Cloud Run.
   (n=131) vs 46.0% without (n=411), supplied-family rate 20.6% vs 22.6%. The keyword actually sent
   when `QUERY` was absent is unrecorded, so this is a flag, not a conclusion.
   _Source: CRMA-1220, 2026-09-20._
+- **`RATIONALE` and `CONSIDERED_NEIGHBORS` are write-only — nothing in the repo reads either.**
+  `DT_TREND_DASHBOARD` does not select them, the audit agent never references them, and
+  `docs/dashboard/data-contract.md` does not carry them. The only path out is
+  `promotion-agent-p_yKCmm9r/respond/entry.js:31`, which echoes `rationale` into a response the lead
+  folds straight back into the same row. Any format change to either column is therefore free.
+  _Source: [CRMA-1224](https://mcclatchy.atlassian.net/browse/CRMA-1224), 2026-09-21._
+- **The claim filter cannot see a parked candidate, so CRMA-1219's 3-attempt bound does not hold.**
+  `promotion-p_xMC99jg/workflow.yaml:39-41` selects on `PROMOTED_AT IS NULL AND REJECTED_AT IS NULL
+  AND (DEFERRED_UNTIL IS NULL OR DEFERRED_UNTIL <= CURRENT_TIMESTAMP())`. A park sets none of those,
+  so the candidate returns to the pool on the next run (~6 h) and retries forever — the bound lives
+  in the ledger, and the claim filter never reads the ledger. _Source: CRMA-1224, 2026-09-21._
 
 ## Standing constraints
 
@@ -345,6 +356,31 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   `promotion.lead.system`** (governed by the drift audit, read by no code), and bumps both manifest
   copies at `audit-agent-p_xMC9nm3/workflow.yaml:530` and `:578` in the same commit. All six rows ship
   in one statement — nothing enforces coherence between them.
+- **The stored record is one ledger row per attempt, and it is fully typed.** Per-neighbour answers
+  widen `CONSIDERED_NEIGHBORS` **in place** (no DDL): `pair_sameness` verdict + probabilities +
+  confidence, the three Noul probabilities, the exact `instructions_sent`, and a derived legacy
+  `judgment` so one query spans both eras. Everything else rides in a new `JUDGMENT_DETAIL` VARIANT —
+  the `evidence_quality` answer, the `oracle_match` answers, and the per-request vendor ids. **Full
+  width, always on, never sampled**: the neighbour pool changes as trends are promoted, so a sampled
+  run cannot be reconstructed later. New columns: `RUN_OUTCOME` (`decided`/`failed`/`parked`),
+  `DECISION_RULE`, `ORACLE_KEYWORD`, `ORACLE_KEYWORD_SOURCE` (`candidate_query`/`trend_topic`).
+  `DECISION` becomes **nullable** — NULL is no verdict, never a sentinel, because a sentinel is how
+  DEFER spread through six files. `ITERATION` re-points at the subagent's attempt, making CRMA-1219's
+  retry bound a `COUNT(*)` with no counter to desync. `MODEL_USED` **loses its
+  `DEFAULT 'claude-sonnet-4-6'`** and is NULL when no model ran, retiring CRMA-1216's zero-tokens
+  hack. `OVERRODE_VERDICT` is **dropped** — derived, and it says nothing `DECISION_CATEGORY` does not.
+- **`DECISION_RULE` records what the code did, and is the only non-derivable field on the row.**
+  Five values, named for the judgment and never by index: `not_a_topic_reject`, `neighbour_merge`,
+  `recurrence_blocked_merge`, `stands_alone_promote`, `oracle_decided`. The third is CRMA-1221's
+  never-run path, visible the first time it fires. An audit that re-derives the composition rule in
+  SQL reproduces any wrong rule in code; this field cannot.
+- **`RATIONALE` is human-readable only, capped near 200 characters, and never parsed.** Its sole
+  consumer is a person running an ad-hoc query; the queryable truth is the two VARIANTs. One template
+  across all five rules — verdict, the fact that decided it, the number — reading in CRMA-1221's
+  verdict names, never level indices.
+- **A park is made to stick by `PARKED_AT` on `STG_TREND_CANDIDATES`, added to the claim filter.**
+  `REJECTED_AT` is never reused for it — a park is not a verdict. `DEFERRED_UNTIL` retires. The audit
+  agent gets a parked-candidate check, which is the operational alarm CRMA-1219 left empty.
 
 ## Decisions so far
 
@@ -371,6 +407,8 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
 - [Decide: the question set — which atomic questions the verdict decomposes into](https://mcclatchy.atlassian.net/browse/CRMA-1220) — **Decided:** One Jev request per candidate (evidence_quality Score + per-neighbour sameness Score and three Nouls, each neighbour in its own question's instructions), plus a conditional second request for oracle_match. `needs_corroboration` IS the 'is corroboration necessary' judgment, which removes classifyCandidate()'s reject arm and its source-family router. The 5-value enum is dropped and the labels derived in code. **Amended by CRMA-1221** on two points — the recurrence Nouls now override a merge, and `pair_action` is renamed `pair_sameness`; the Standing constraints carry the current rule.
 
 - [Decide: the rubric, expressed as typed question definitions](https://mcclatchy.atlassian.net/browse/CRMA-1221) — **Decided:** All six question definitions written literally to docs/wayfinder/assets/crma-1221-jev-questions.json. One DIM_LLM_PROMPT row per question (JSON in TEMPLATE), rounding with no fitted threshold, and named verdicts replacing level indices. AMENDS CRMA-1220: the recurrence Nouls override a merge, and pair_action becomes pair_sameness.
+
+- [Decide: what the typed path persists, and what RATIONALE carries](https://mcclatchy.atlassian.net/browse/CRMA-1224) — **Decided:** Per-neighbour answers widen CONSIDERED_NEIGHBORS in place; everything else goes in a new JUDGMENT_DETAIL VARIANT, full width and always on. DECISION becomes nullable (NULL = no verdict, never a sentinel), ITERATION re-points at the subagent's attempt, OVERRODE_VERDICT is dropped, MODEL_USED loses its stale default. RATIONALE is human-only, ~200 chars, never parsed. NEW FINDING: the claim filter cannot see a parked candidate, so CRMA-1219's 3-attempt bound does not hold — fixed by PARKED_AT on STG_TREND_CANDIDATES.
 
 ## Not yet specified
 
