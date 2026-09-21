@@ -36,26 +36,40 @@ export const summary =
 export const incumbentModel = "gemini-3.1-pro-preview";
 export const ticket = "CRMA-733";
 
-export async function cases({ limit = 3, caseId = null }) {
-  const where = caseId ? `AND p.CANDIDATE_ID = ${sqlStr(caseId)}` : "";
-  const rows = query(`
-    SELECT p.CANDIDATE_ID, p.DECIDED_AT, p.DECISION, p.DECISION_CATEGORY, p.CONFIDENCE,
+const CASE_COLUMNS = `p.AUDIT_ID, p.CANDIDATE_ID, p.DECIDED_AT, p.DECISION, p.DECISION_CATEGORY, p.CONFIDENCE,
            p.RATIONALE, p.MAX_NEIGHBOR_SIM, p.CONSIDERED_NEIGHBORS, p.DISTILLATION_VERDICT,
            p.OVERRODE_VERDICT, p.CLUSTER_SIZE, p.SOURCE_COUNT, p.MODEL_USED,
            p.INPUT_TOKENS, p.OUTPUT_TOKENS, p.COST_ESTIMATE,
-           c.TOPIC AS CANDIDATE_TOPIC
+           c.TOPIC AS CANDIDATE_TOPIC`;
+
+export async function cases({ limit = 3, caseId = null }) {
+  // caseId names one ledger row by AUDIT_ID, not by CANDIDATE_ID (CRMA-1229).
+  // The no-caseId path keeps the QUALIFY latest-per-candidate cut, which is
+  // right for "browse the N most recent cases". But DEFER is never a
+  // candidate's terminal state — every deferred candidate is re-decided later
+  // — so that same cut silently erases every DEFER row, and asking for one by
+  // its CANDIDATE_ID used to return the later, non-DEFER decision instead.
+  // Keying on AUDIT_ID (which docs/wayfinder/assets/crma-1216-replay-set.tsv
+  // carries for every case) names the exact row and skips the cut entirely.
+  const base = `
+    SELECT ${CASE_COLUMNS}
       FROM MCC_PRESENTATION.TREND_AGENT.FCT_PROMOTION_LEDGER p
       JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c USING (CANDIDATE_ID)
-     WHERE p.MODEL_USED = ${sqlStr(incumbentModel)}
-       ${where}
+     WHERE p.MODEL_USED = ${sqlStr(incumbentModel)}`;
+  const sql = caseId
+    ? `${base}
+       AND p.AUDIT_ID = ${sqlStr(caseId)}
+     LIMIT 1`
+    : `${base}
      QUALIFY ROW_NUMBER() OVER (PARTITION BY p.CANDIDATE_ID ORDER BY p.DECIDED_AT DESC) = 1
      ORDER BY p.DECIDED_AT DESC
-     LIMIT ${Number(limit)}
-  `);
+     LIMIT ${Number(limit)}`;
+  const rows = query(sql);
 
   return rows.map((r) => ({
     id: r.CANDIDATE_ID,
-    label: `${r.CANDIDATE_TOPIC ?? r.CANDIDATE_ID} · ${r.DECISION} @ ${String(r.DECIDED_AT).slice(0, 16)}`,
+    auditId: r.AUDIT_ID,
+    label: `${r.CANDIDATE_TOPIC ?? r.CANDIDATE_ID} · ${r.DECISION} @ ${String(r.DECIDED_AT).slice(0, 16)} · audit ${String(r.AUDIT_ID).slice(0, 8)}`,
     incumbentAt: String(r.DECIDED_AT).slice(0, 10),
     decidedAt: String(r.DECIDED_AT),
     incumbent: {
@@ -81,6 +95,19 @@ export async function cases({ limit = 3, caseId = null }) {
       },
     },
   }));
+}
+
+// handle_request/entry.js builds this block inline inside its run() body, not
+// as a top-level binding, so loadStep (which only extracts named top-level
+// const/function declarations) cannot pull it from the deployed step the way
+// fmtCandidateBlock/fmtDistillationBlock/fmtNeighborBlock are pulled. Mirrored
+// verbatim here — text and gating both — so the ET-rescue case actually
+// prompts the model to call verify_exploding_topics (CRMA-1229). Keep this in
+// sync with promotion-agent-p_yKCmm9r/handle_request/entry.js:205-207.
+export function fmtEtRescueBlock(candidate) {
+  if (!candidate?.et_rescue) return "";
+  const lookupKey = candidate.candidate_query || candidate.candidate_topic;
+  return `⚑ ET-RESCUE CANDIDATE. This candidate has only ONE independent source family, so it fails the two-source doctrine on signals alone. Its confidence/specificity cleared the routing threshold, so you MUST call verify_exploding_topics with the candidate_query ("${lookupKey}") before deciding. If ET independently recognizes the SAME concept (your judgment — /database-search is fuzzy) AND it has meaningful absolute_volume, count ET as the second source family and PROMOTE_NEW; set et_was_second_source=true. If ET misses, returns a different concept, or the volume is trivial, this candidate stays single-family — REJECT it as you would today.`;
 }
 
 const CANDIDATES_TABLE = "MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES";
@@ -162,10 +189,11 @@ export async function build(c) {
   if (!candidateRow) throw new Error(`no STG_TREND_CANDIDATES row for ${c.id}`);
   candidateRow.SOURCE_BREAKDOWN = variant(candidateRow.SOURCE_BREAKDOWN) || {};
 
-  const { qualityFlags, indexCombinedRows, buildDispatch } = await loadStep(LEAD_ENTRY, [
+  const { qualityFlags, indexCombinedRows, buildDispatch, classifyCandidate } = await loadStep(LEAD_ENTRY, [
     "qualityFlags",
     "indexCombinedRows",
     "buildDispatch",
+    "classifyCandidate",
   ]);
   const { fmtCandidateBlock, fmtDistillationBlock, fmtNeighborBlock } = await loadStep(HANDLE_ENTRY, [
     "fmtCandidateBlock",
@@ -181,12 +209,18 @@ export async function build(c) {
 
   const { vectorsByCandidate, neighborsByCandidate } = indexCombinedRows(combinedRows, sampleRows);
   const flags = qualityFlags(candidateRow);
+  // Recomputed, not replayed (CRMA-1229): classifyCandidate (run_lead_agent/
+  // entry.js:178) is a pure function of SOURCE_BREAKDOWN/CONFIDENCE/
+  // SPECIFICITY_SCORE, so rerunning it on the same candidateRow reproduces
+  // the same routing the incumbent chain computed, instead of forcing false.
+  const classification = classifyCandidate(candidateRow);
+  const et_rescue = classification.action === "route_et_rescue";
   const dispatch = buildDispatch(
     candidateRow,
     vectorsByCandidate.get(c.id) ?? null,
     neighborsByCandidate.get(c.id) ?? [],
     flags,
-    { chain_id: "replay", iteration: 1, dry_run: false, et_rescue: false },
+    { chain_id: "replay", iteration: 1, dry_run: false, et_rescue },
   );
 
   // The receiving step's transform (handle_request entry.js:107-155).
@@ -216,7 +250,7 @@ export async function build(c) {
     neighbor_blocks:
       valid_neighbors.map((n, i) => fmtNeighborBlock(n, i)).join("\n\n") ||
       "(no surfaced neighbors above sim 0.50)",
-    et_rescue_block: "",
+    et_rescue_block: fmtEtRescueBlock(candidate),
   };
 
   const loaded = loadPrompts(["promotion.subagent.system", "promotion.subagent.decision_rubric"]);
@@ -265,7 +299,7 @@ Be efficient — typical case is one or two compare_topics calls then propose_de
         "This lane's budget is measured on the TRUTHFUL cost. Production measures it on the understated one, so a real switch must correct RATES_PER_M in the same slice.",
       reconstructed: "candidate row (q_load_pending_candidates filters on PENDING; a historical candidate is not)",
       neighbors_excluded_as_anachronistic: anachronistic.size,
-      et_rescue: "forced false — ET rescue routing is a lead-side classification the harness does not replay",
+      et_rescue: `${et_rescue ? "routed to ET-rescue" : `not ET-rescue (${classification.action})`} — ${classification.reason}`,
     },
   };
 }
