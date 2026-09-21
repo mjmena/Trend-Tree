@@ -298,33 +298,53 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   a ground-truth rule — [CRMA-1231](https://mcclatchy.atlassian.net/browse/CRMA-1231).
 - **The verdict is one Jev request per candidate, plus a conditional second.** Request A carries
   `state` = the candidate alone (trend topic, candidate query, every source name with its signal
-  count, every signal) and at most 33 questions: `evidence_quality` (Score, 3 levels) once, plus per
-  neighbour a `pair_action` Score and three Nouls — `is_same_recurring_topic`,
-  `recurrence_deserves_own_row`, `is_narrower_instance`. **Each neighbour rides in its own question's
-  structured `instructions`, never in shared `state`**, which reconciles CRMA-1217's one-neighbour
-  rule with CRMA-1218's single-call measurement. Request B fires **only** on `evidence_quality`
-  level 1: one `oracle_match` Score (*different* / *adjacent but not the same* / *the same concept*)
-  per oracle result clearing the volume floor. The 5-value `compare_topics` enum is **dropped** — code
-  reconstructs the legacy labels from the Score plus the Nouls. `state` carries no `quality_flags`,
-  `CONFIDENCE`, `SPECIFICITY_SCORE` or distillation verdict; code still reads the verdict to derive
+  count, every signal) and at most 33 questions: `evidence_quality` (Score) once, plus per neighbour
+  a `pair_sameness` Score and three Nouls — `is_same_recurring_topic`, `recurrence_deserves_own_row`,
+  `is_narrower_instance`. **Each neighbour rides in its own question's structured `instructions`,
+  never in shared `state`**, carrying its trend topic, summary and 3 sample signals — **no
+  similarity, no heat, no age**. Request B fires **only** on `needs_corroboration`: one
+  `oracle_match` Score per oracle result clearing the volume floor, carrying **only** the keyword.
+  The 5-value `compare_topics` enum is **dropped** — code reconstructs the legacy labels from the
+  Score plus the Nouls. `state` carries no `quality_flags`, `CONFIDENCE`, `SPECIFICITY_SCORE`,
+  distillation verdict **or source-family count**; code still reads the verdict to derive
   `decision_category`, but the model never sees it.
-- **`evidence_quality`'s three levels are three actions, and level 1 _is_ the "is corroboration
-  necessary" judgment** — asked once, never twice. 0 = not a real topic → `REJECT`/`LOW_QUALITY`,
-  oracle never runs. 1 = real but the evidence does not stand alone → the oracle decides. 2 = real and
-  stands alone → `PROMOTE_NEW`, oracle never runs. This **removes `classifyCandidate()`'s reject arm
-  and its source-family router**: code still groups source names into families to fill `state`, but
-  the count decides nothing. **ADR-0004 stands unamended** — at level 2 the oracle never runs, so it
-  can never veto a candidate whose evidence already stands.
-- **The composition rule is ordered, and reject precedes merge.** (1) level 0 → `REJECT`/
-  `LOW_QUALITY`. (2) neighbours whose `pair_action` rounds to merge → `MERGE_INTO_EXISTING`, target =
-  highest `pair_action` **confidence**; two or more clearing the bar means those two *trends* are
-  duplicates — merge into the older and raise an operational flag, which this map does not try to fix.
-  (3) level 2 → `PROMOTE_NEW`. (4) level 1 → code filters oracle results by the volume floor **before**
-  asking; any `oracle_match` level 2 → `PROMOTE_NEW`, else `REJECT`/`INSUFFICIENT_EVIDENCE`. Reject
+- **Every Score level is named for its verdict, and named for the judgment — never for what promotion
+  does next.** `evidence_quality`: `not_a_topic` / `needs_corroboration` / `stands_alone`.
+  `pair_sameness`: `different_thing` / `unsettled` / `same_thing`. `oracle_match`:
+  `different_concept` / `adjacent_not_same` / `same_concept`. **No ticket refers to a level by its
+  index.** The rule is load-bearing because no single question determines the action — the recurrence
+  Nouls override a merge — so a level named for an action would be a claim code can falsify. A Jev
+  Score level has **no name field** (`criteria` is `Sequence[JSONContent]`; the response `legend` maps
+  index → description), so the `verdict` name rides inside the free-form level object beside `what`
+  and `not_for`.
+- **`needs_corroboration` _is_ the "is corroboration necessary" judgment** — asked once, never twice,
+  and judged from the source names **in words, with no family count in `state`**. This **removes
+  `classifyCandidate()`'s reject arm and its source-family router**: code still groups source names
+  into families to fill `state`, but the count decides nothing. **ADR-0004 stands unamended** — at
+  `stands_alone` the oracle never runs, so it can never veto a candidate whose evidence already stands.
+- **The composition rule is ordered, and reject precedes merge.** (1) `not_a_topic` →
+  `REJECT`/`LOW_QUALITY`. (2) neighbours at `same_thing` → `MERGE_INTO_EXISTING`, target = highest
+  `pair_sameness` **confidence** — **unless that neighbour's `is_same_recurring_topic` and
+  `recurrence_deserves_own_row` are both high, which blocks the merge and sends the candidate to
+  `PROMOTE_NEW`**; two or more clearing the bar means those two *trends* are duplicates — merge into
+  the older and raise an operational flag, which this map does not try to fix. (3) `stands_alone` →
+  `PROMOTE_NEW`. (4) `needs_corroboration` → code filters oracle results by the volume floor
+  **before** asking; any `same_concept` → `PROMOTE_NEW`, else `REJECT`/`INSUFFICIENT_EVIDENCE`. Reject
   precedes merge because a merge attaches the candidate's signals to a live trend. **Routing always
-  reads a Score's confidence, never a Choice's**, and `is_narrower_instance` never blocks a merge
-  alone. The oracle keyword is the candidate query when present and the trend topic otherwise, **and
+  reads a Score's confidence, never a Choice's**, and `is_narrower_instance` blocks nothing on its
+  own. The oracle keyword is the candidate query when present and the trend topic otherwise, **and
   which one was sent must be recorded**.
+- **Scores round to the nearest level, and no threshold is fitted anywhere.** The level meaning sets
+  the cut point. The only numbers this path needs — the Noul cut points and the confidence band —
+  belong to [CRMA-1223](https://mcclatchy.atlassian.net/browse/CRMA-1223). The ET volume floor stays
+  at **1000**, inherited from `agents/lib/exploding_topics.mjs:39` and unvalidated, and moves out of
+  the model into code.
+- **The rubric is six `DIM_LLM_PROMPT` rows, one per question**, keyed `promotion.jev.<question>` —
+  the last segment **is** the Jev question key — with the definition JSON in `TEMPLATE`. The migration
+  retires `promotion.subagent.decision_rubric`, `promotion.subagent.system` **and
+  `promotion.lead.system`** (governed by the drift audit, read by no code), and bumps both manifest
+  copies at `audit-agent-p_xMC9nm3/workflow.yaml:530` and `:578` in the same commit. All six rows ship
+  in one statement — nothing enforces coherence between them.
 
 ## Decisions so far
 
@@ -348,7 +368,9 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
 - [Decide: DEFER becomes bounded and visible](https://mcclatchy.atlassian.net/browse/CRMA-1219) — **Decided:** DEFER is REMOVED entirely from promotion's verdict set — the ticket asked how to bound it, production says it should not exist. The replacement rules are now a **Standing constraint**; the population and no-evidence measurements are **Established facts**. Read them there, not here.
   **Binds:** What is **only** here. Change sites for `/to-tickets`: `run_subagent/entry.js:189` (enum), `:210`/`:373-374`/`:393` (`defer_reason`), `:642`/`:699`/`:717` (the three fallbacks); `proc_promotion_apply.sql:76` (`ALLOWED_DECISIONS`), `:84` (`DECISION_ORDER`), `:163-164` (`overrode()` DEFER case), `:486`/`:520-531` (the mirrored-DEFER branch for followers — a leader can no longer defer, so it goes), `:560-573` (the DEFER branch), `:591` (`defer_count`); `eval_and_retrigger/entry.js:74`; `promotion-p_xMC99jg/workflow.yaml:41`/`:69` (the `DEFERRED_UNTIL` claim filter — safe to drop ONLY because the held population is zero, re-check immediately before shipping); `run_lead_agent/entry.js:494-496`; `seed_prompts_promotion.sql:83` (principle 6, as a migration PLUS the manifest bump at `audit-agent-p_xMC9nm3/workflow.yaml:530`/`:578`); `audit-agent-p_xMC9nm3/workflow.yaml:86-95` plus a new parked-candidate check. Supporting measurements: promotion runs ~6 h (55 runs/14 d, median gap 360 min), so a no-hold retry costs ~6 h not 48; the audit agent's `distillation_pending` check EXCLUDES held candidates by construction, so no alarm exists today. **VERIFICATION STATUS: decided, NOT proven** — no replay has shown what the agent decides on first look without DEFER, so CRMA-1229 → CRMA-1222 become a REGRESSION CHECK; if the 12 post-defer promotions collapse into rejections, revisit. `decision_category` moves from 10 values to 9. Rejected topics already resurface WITHOUT a hold — 8 of 15 deferred-then-rejected topics match a later-promoted trend at ≥0.80 cosine (arctic-embed-m on topic strings, NOT the pipeline's embedding space — directional only) via re-clustering in `distillation-revisit`, which yields a NEW fatter candidate with real new evidence. Premise-change notes are posted on CRMA-1223, CRMA-1229, CRMA-1231 and CRMA-1225.
 
-- [Decide: the question set — which atomic questions the verdict decomposes into](https://mcclatchy.atlassian.net/browse/CRMA-1220) — **Decided:** One Jev request per candidate (evidence_quality Score + per-neighbour pair_action Score and three Nouls, each neighbour in its own question's instructions), plus a conditional second request for oracle_match when evidence_quality lands on level 1. Level 1 IS the 'is corroboration necessary' judgment, which removes classifyCandidate()'s reject arm and its source-family router. The 5-value enum is dropped and the labels derived in code.
+- [Decide: the question set — which atomic questions the verdict decomposes into](https://mcclatchy.atlassian.net/browse/CRMA-1220) — **Decided:** One Jev request per candidate (evidence_quality Score + per-neighbour sameness Score and three Nouls, each neighbour in its own question's instructions), plus a conditional second request for oracle_match. `needs_corroboration` IS the 'is corroboration necessary' judgment, which removes classifyCandidate()'s reject arm and its source-family router. The 5-value enum is dropped and the labels derived in code. **Amended by CRMA-1221** on two points — the recurrence Nouls now override a merge, and `pair_action` is renamed `pair_sameness`; the Standing constraints carry the current rule.
+
+- [Decide: the rubric, expressed as typed question definitions](https://mcclatchy.atlassian.net/browse/CRMA-1221) — **Decided:** All six question definitions written literally to docs/wayfinder/assets/crma-1221-jev-questions.json. One DIM_LLM_PROMPT row per question (JSON in TEMPLATE), rounding with no fitted threshold, and named verdicts replacing level indices. AMENDS CRMA-1220: the recurrence Nouls override a merge, and pair_action becomes pair_sameness.
 
 ## Not yet specified
 
