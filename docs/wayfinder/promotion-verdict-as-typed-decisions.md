@@ -49,19 +49,26 @@ lift-and-shift extraction to Cloud Run.
 - **`verify_exploding_topics` asks the model to do arithmetic.** Corroboration requires
   "`absolute_volume` above a small floor" — a numeric comparison delegated to the LLM.
   _Source: `run_subagent/entry.js:171`, 2026-09-20._
-- **`max_iterations: 6` has zero margin, and exhaustion silently becomes DEFER.** The
-  incumbent already burns all 6 turns; when the loop ends with no terminal call,
-  `run_subagent/entry.js:713-717` defaults to DEFER behind a bare fallback. **7 of the 26
-  DEFER rows on the gemini pin** came from that path — but only **3 distinct candidates**,
-  each re-deferred 2–3 times, and **all three ended in REJECT** days later. The fallback
-  stamps `AMBIGUOUS_TOPIC_JUDGMENT`, and **every** row carrying that category is one of
-  these tombstones: the model has never once chosen it deliberately.
-  _Source: [CRMA-1216](https://mcclatchy.atlassian.net/browse/CRMA-1216), 2026-09-20 — full
-  gemini-pin history, superseding CRMA-733's "5 of 38" over a 21-day mixed-pin window._
-- **The promised defer cap does not exist.** `sql/seed_prompts_promotion.sql:83` tells the
-  model defers are capped at 3 and "the system tracks this"; nothing does. There is no
-  `DEFER_COUNT` in the repo. `cand-6nm5r52smodzwq5t` deferred **7 times**, 2026-04-26 →
-  2026-05-08. _Source: [CRMA-726](https://mcclatchy.atlassian.net/browse/CRMA-726) defect 9._
+- **The full DEFER population, whole-ledger.** 2,115 candidates judged; **40 DEFER rows across
+  27 candidates (1.3%)**; **zero** held today and **zero** ever stranded. Two disjoint groups:
+  **33 rows / 24 candidates** chose `NEEDS_MORE_SIGNAL` deliberately, and **7 rows / 3
+  candidates** are machine tombstones stamped `AMBIGUOUS_TOPIC_JUDGMENT` — the model has never
+  once chosen that category itself. All 3 tombstone candidates ended REJECT after 99–153 h.
+  Outcomes by defer count: 1→20 (8P/12R), 2→5 (3P/2R), 3→1 (R), 7→1 (**P**).
+  _Source: [CRMA-1219](https://mcclatchy.atlassian.net/browse/CRMA-1219), 2026-09-20 — whole
+  ledger, extending CRMA-1216's gemini-pin window and CRMA-733's "5 of 38"._
+- **The 48 h hold buys no evidence, and the promised cap never existed.** Across all 27
+  deferred candidates, cluster size and source count are **unchanged in 27/27** between the
+  first DEFER row and the final row — `STG_TREND_CANDIDATES` is written once and never grows,
+  and lifecycle-attribution feeds **trends**, not candidates. Only the top neighbour moved, on
+  2 of 27. **No deferred candidate has ever ended `MERGE_INTO_EXISTING`**, so the hold's reason
+  for existing has never once paid. Meanwhile `sql/seed_prompts_promotion.sql:83` promises a
+  3-defer cap that nothing enforces — `cand-6nm5r52smodzwq5t` deferred **7 times with 0 loop
+  failures and then PROMOTED**. _Source: CRMA-1219, 2026-09-20; cap defect from
+  [CRMA-726](https://mcclatchy.atlassian.net/browse/CRMA-726) defect 9._
+- **`max_iterations: 6` has zero margin.** The incumbent burns all 6 turns, and the bare
+  fallbacks at `run_subagent/entry.js:699` (crash) and `:717` (no terminal call) turn that into
+  a verdict. _Source: repo read 2026-09-20._
 - **Promotion's pin moved to `gemini-3.7-flash` on measured parity.** 7/7 identical
   `decision` and `target_trend_id` against the incumbent's re-run, schema clean, −17.2% cost
   at Jan-2027 rates. `decision_category` differed on 2 of 7 and **is noise** — on one case
@@ -210,8 +217,14 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   terminal verdict follows.
 - **Promotion only.** Reuse is a Notes-level caution, not a commitment.
 - **There is no human in the loop, and the map must not invent one.** Low-confidence candidates
-  route to DEFER, as today. DEFER instead becomes **bounded and visible** — a real counter and a
-  forced terminal verdict when it trips. This closes CRMA-726 defect 9 as a side effect.
+  get a terminal verdict; nothing waits for a person.
+- **DEFER does not exist. The verdict set is `PROMOTE_NEW | MERGE_INTO_EXISTING | REJECT`.**
+  A machine no-decision is an **error**, never a verdict: it retries with no hold, bounded at 3
+  attempts, then parks. A thin-but-plausible candidate is rejected as `INSUFFICIENT_EVIDENCE`,
+  the one rejection carrying a revisit disposition. Never tell the model a defer or retry count.
+  This closes CRMA-726 defect 9 outright — there is no defer left to cap.
+  _Decided by [CRMA-1219](https://mcclatchy.atlassian.net/browse/CRMA-1219), 2026-09-20;
+  supersedes the charter constraint that routed low-confidence candidates to DEFER._
 - **No deterministic control arm.** The direction of travel is *away* from deterministic gates;
   the rubric is being developed to lean on reasoning, not thresholds on precomputed fields.
 - **No data-handling or legal review is required.** Trend data is public and openly available;
@@ -252,8 +265,10 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   independently argues for keeping **distillation's prior verdict out** of the payload, where today's
   prompt invites the model to override it. _Source: CRMA-1217 live validation, 2026-09-20._
 - **The adopt bar:** match the incumbent's 7/7 on `decision` and `target_trend_id`, **and**
-  eliminate the turn-exhaustion DEFER. Cost is a tiebreak only — this lane is already cheap.
-  The same bar applies to every arm tested.
+  never let a machine failure reach the ledger as a verdict. Cost is a tiebreak only — this
+  lane is already cheap. The same bar applies to every arm tested. Because the incumbent's
+  DEFER rows have no counterpart in the new three-value verdict set, scoring those cases needs
+  a ground-truth rule — [CRMA-1231](https://mcclatchy.atlassian.net/browse/CRMA-1231).
 
 ## Decisions so far
 
@@ -298,7 +313,15 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
 <!-- Work ruled beyond the destination. Closed, never graduates. -->
 
 - **A human review or curator surface.** Confidence-routing's third path would want one; this map
-  cannot staff it, so DEFER carries that traffic instead. Ruled out at charter, 2026-09-20.
+  cannot staff it. Ruled out at charter, 2026-09-20. That traffic was charted to DEFER; since
+  CRMA-1219 removed DEFER it becomes a terminal `REJECT / INSUFFICIENT_EVIDENCE`, and the
+  parked state is an operational alarm, not a curation queue.
+- **Acting on the revisit disposition.** `INSUFFICIENT_EVIDENCE` marks a rejection as
+  revisitable, but re-clustering it is the distillation lane's job
+  (`distillation-revisit-p_o7CWWZl`), and this map is promotion-only. CRMA-1219 makes the
+  revisit possible and measurable; wiring it is a separate effort. The evidence that would
+  justify opening one is on that ticket — 8 of 15 deferred-then-rejected topics already
+  resurface as a later-promoted trend at ≥0.80 cosine, with no hold.
 - **A deterministic control arm** (SQL + thresholds on embedding distance, source-family count, ET
   volume). Cheap and tempting, but the rubric is deliberately moving away from deterministic gates.
   Ruled out at charter, 2026-09-20.
