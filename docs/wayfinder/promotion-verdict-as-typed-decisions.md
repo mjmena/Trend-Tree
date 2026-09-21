@@ -56,9 +56,8 @@ lift-and-shift extraction to Cloud Run.
   each re-deferred 2–3 times, and **all three ended in REJECT** days later. The fallback
   stamps `AMBIGUOUS_TOPIC_JUDGMENT`, and **every** row carrying that category is one of
   these tombstones: the model has never once chosen it deliberately.
-  _Source: [CRMA-1216](https://mcclatchy.atlassian.net/browse/CRMA-1216), 2026-09-20._
-  > **Restated 2026-09-20.** CRMA-733 measured "5 of 38" over a 21-day window that mixed
-  > pins. The line above is the full gemini-pin history.
+  _Source: [CRMA-1216](https://mcclatchy.atlassian.net/browse/CRMA-1216), 2026-09-20 — full
+  gemini-pin history, superseding CRMA-733's "5 of 38" over a 21-day mixed-pin window._
 - **The promised defer cap does not exist.** `sql/seed_prompts_promotion.sql:83` tells the
   model defers are capped at 3 and "the system tracks this"; nothing does. There is no
   `DEFER_COUNT` in the repo. `cand-6nm5r52smodzwq5t` deferred **7 times**, 2026-04-26 →
@@ -92,45 +91,33 @@ lift-and-shift extraction to Cloud Run.
   `brightdata-api` / zone `trend_tree_scoping` precedent. Live Jev calls are possible now.
   **The Secret Manager entry now exists too** — `typesafe-api-key` in `mcc-crm-automations`
   (v1, 107 chars, verified), readable by `crm-runtime@` through its existing project-level
-  `secretAccessor` binding, so no per-secret grant is needed. _Closed by CRMA-1215, 2026-09-20._
-  > **Corrected 2026-09-20.** This line first read *"TypeSafe has no footprint in this repo —
-  > no account, no key"*, from a repo search that could not see the keychain. Falsified the
-  > same day by Martin. The repo-artifact half still holds: no Secret Manager entry, no
-  > `CLAUDE.md` mention.
-- **Jev's documented hard limits.** It does **not** generate text. It does **not** do
-  arithmetic or date reasoning — both must be precomputed in code and passed in.
-  `P(yes) + P(no)` is **not** guaranteed to sum to 1 across separate Noul calls. Text-only,
-  English-primary. Injected/adversarial content in `state` is not filtered. Fan-out is many
-  questions in **one** call, so sub-questions do not multiply round-trips.
+  `secretAccessor` binding, so no per-secret grant is needed. TypeSafe still has **no mention in
+  `CLAUDE.md`**. _Closed by CRMA-1215, 2026-09-20._
+- **Jev's documented hard limits.** It does **not** generate text. It does **not** do arithmetic or
+  date reasoning — both must be precomputed in code and passed in. No structural invariant is
+  guaranteed, so no cross-question arithmetic identity may be assumed (`P(yes) + P(no)` need not sum
+  to 1 across separate Noul calls). Text-only, English-primary. Injected content in `state` is not
+  filtered. Fan-out is many questions in **one** call, so sub-questions do not multiply round-trips.
+  **Confidence is not the winning probability** — it measures how concentrated the whole
+  distribution is (`(3 × top_prob − 1) / 2` for 3 options). Choice and Score carry it; a bare
+  **Noul does not**, its 0–1 probability *is* the whole signal.
   _Source: docs.typesafe.ai, 2026-09-20._
-- **Confidence is not the winning probability.** It is a measure of how concentrated the whole
-  distribution is (e.g. `(3 × top_prob − 1) / 2` for 3 options). Choice and Score answers
-  carry confidence; a bare **Noul does not** — its 0–1 probability *is* the whole signal.
-  _Source: docs.typesafe.ai `/confidence`, 2026-09-20._
-- **The `entity_alignment` cookbook is the nearest published template — and it publishes no
-  accuracy at all.** Its shape is one 3-level Score ("different" / "closely related, may be
-  same" / "same") plus 3 supporting Nouls, run over 450 pairs, with the decision rule being
-  **round the score** (no threshold fitting; each level's semantic meaning sets the cutoff).
-  But it loads the benchmark's own answer key (`known_same_as`, line 112) and **never scores
-  against it**. The published figures — 80% unlinked / 11% curator / 9% auto-merged — are an
-  **outcome split, not a measurement**, and "450 pairs" is a volume, not a result. Four
-  hand-picked pairs are shown. It is also **pairwise**, so code still chooses which pairs to ask.
-  _Source: [CRMA-1217](https://mcclatchy.atlassian.net/browse/CRMA-1217) doc read, 2026-09-20._
-- **The cookbooks' numbers are pinned to `jev-1.12`; the jaggedness list is `jev-1.13`.** Every
-  cookbook also ships a `json_cache.json` that replays the published numbers without calling
-  the API — "reproducible" means the page re-renders, not that the result was re-measured.
-  _Source: CRMA-1217, 2026-09-20._
+- **No vendor cookbook is evidence — they are shape templates only.** `entity_alignment`, the
+  nearest published template (one 3-level Score plus 3 supporting Nouls over 450 pairs, decided by
+  **rounding the score**), loads the benchmark's own answer key and **never scores against it**; its
+  80/11/9 figures are an outcome split, not a measurement. Every cookbook ships a `json_cache.json`
+  that replays its numbers without calling the API, and those numbers pin `jev-1.12`. Take the
+  shapes, never the accuracy. _Source: [CRMA-1217](https://mcclatchy.atlassian.net/browse/CRMA-1217),
+  2026-09-20._
 - **Jev does not buy determinism. TypeSafe's own consistency cookbook says so.** Picked labels
   flip inside a single condition — "**including TypeSafe**" — with 90.8% plurality agreement
   over 15 repeats and flips on 2 of 8 questions. That is the **same failure shape** as
   CRMA-733's `decision_category` drifting on 2 of 7. Only deriving a value in code removes
   that noise; asking a model for it does not.
   _Source: CRMA-1217, `cookbooks/consistency_choice_cookbook`, 2026-09-20._
-- **Confidence does separate, on the one task the vendor measured it.** 60 SEC filings split 30
-  sure / 30 unsure scored 90% vs 40% correct — no clustering at the top. **But nothing published
-  measures confidence on a pairwise-sameness task with near-synonymous options**, which is
-  precisely promotion's hardest case and fit test 4.
-  _Source: CRMA-1217, 2026-09-20._
+- **The vendor's only published confidence measurement is 60 SEC filings** — 30 sure / 30 unsure,
+  90% vs 40% correct, no clustering at the top. It covers no pairwise-sameness task, so fit test 4
+  had to measure promotion's own shape; that live result governs. _Source: CRMA-1217, 2026-09-20._
 - **The neighbor pool is hard-capped at 8, guarded three times over**: a similarity floor of
   cosine 0.50, a `ROW_NUMBER() <= 8` in the SQL, and a defensive `.slice(0, 8)` at
   `promotion-agent-p_yKCmm9r/handle_request/entry.js:163`. It is **not** variable-unbounded, which
@@ -142,23 +129,21 @@ lift-and-shift extraction to Cloud Run.
   latency ceiling is therefore **self-imposed, not inherited** — 0.555 s measured against a 240 s
   ceiling. Two of this map's charter-time framings assumed the opposite.
   _Source: [CRMA-1218](https://mcclatchy.atlassian.net/browse/CRMA-1218), 2026-09-20._
-- **Cost is a rounding error.** ~**$0.0015** per 15-candidate run against the existing $1.50/chain
-  budget — 0.1%. Batch-wide fan-out at 15 candidates comfortably fits the 32k `state` cap (29.6k
-  tokens, 1.065 s) and only breaks at the 50-candidate cap. **The docs alone predicted this wrong**
-  — CRMA-1218's own doc-derived estimate called 15 candidates marginal, and measurement refuted it.
+- **Batch-wide fan-out fits, but the docs predicted otherwise.** 15 candidates in one `state`
+  measures 29.6k tokens / 1.065 s against the 32k cap, breaking only at 50 — CRMA-1218's own
+  doc-derived estimate called 15 marginal, and measurement refuted it. That shape costs ~$0.0015
+  per run; the recommended per-candidate shape costs less (see pricing below).
   _Source: CRMA-1218, 2026-09-20._
 - **The error surface is polymorphic, and `error_type` is not always there.** Four shapes measured:
   `401` → object with `error_type`; `400` → object with `error_type` (capacity); `400` → a **bare
   string** (semantic); `422` → a **list** of Pydantic records (schema). So **422 = schema violation,
   400 = semantic or capacity**, and code **must type-check `detail` before reading `error_type`** —
   it is absent on two of the four. 400/401/422 all sit correctly outside the retryable set.
+  **Keep the SDK's retry defaults and do not pin `httpStatuses`** — the default literal is
+  `{408, 429, *range(500, 600)}`, so 529 is already covered. The hazard is the Python docs'
+  **example override** `http_statuses={429, 500, 502, 503, 504}`, which silently drops it.
+  The 529 path is still **unverified** — ~85 requests have never drawn a 429 or a 529.
   _Source: CRMA-1218 + [CRMA-1215](https://mcclatchy.atlassian.net/browse/CRMA-1215), 2026-09-20._
-  > **Corrected 2026-09-20.** This fact previously said the default retryable range
-  > "**excludes**" 529 and that `httpStatuses` must be pinned. **529 sits inside 500–599**, so the
-  > default already retries it — the literal is `{408, 429, *range(500, 600)}`. The real hazard is
-  > the Python docs' **example override** `http_statuses={429, 500, 502, 503, 504}`, which silently
-  > drops 529. **Keep the defaults; do not copy the example.** The 529 path is still unverified —
-  > ~85 requests have never drawn a 429 or a 529.
 - **Pricing is $42/Btok input, output free — and promotion's real shape measures $0.000038 per
   candidate.** 904 input tokens for one candidate against 8 neighbour Nouls; **$0.00057 per
   15-candidate run**, 0.04% of the $1.50/chain budget. Rate limits are 250k tokens/s and 1,200
@@ -243,38 +228,20 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   redesigned path. `FCT_PROMOTION_LEDGER.RATIONALE` **keeps its column** and carries a
   deterministic summary assembled in code from the answers and their distributions — e.g.
   `MERGE_INTO_EXISTING: 3/5 neighbors same_topic, top 0.91 conf on <trend_id>`. It cannot
-  rationalise a wrong verdict, which was the original argument against the prose.
-  > **Superseded 2026-09-20.** An earlier call in this same session was *"compose the verdict in
-  > code, then have a cheap Gemini call narrate it."* Reversed the same day: the narrator is
-  > removed entirely. The **distributions** are the rubric-development instrument — a rubric level
-  > that returns flat splits across many candidates is provably badly drawn, which no prose shows.
-- **The four fit tests are resolved. None of them kills the map.** All four were settled on
-  2026-09-20 against the live `jev-1.13.0` API, not vendor docs.
-  - **(1) Question cap — PASSES with ~350× headroom.** Promotion needs 8 questions; the measured
-    ceiling is ~2,800. **The silent-truncation hazard does not exist**: 2,800 returns 200 with all
-    2,800 answers, 3,000 returns `HTTP 400 {"error_type":"max_tokens_exceeded"}`.
-    _Source: [CRMA-1218](https://mcclatchy.atlassian.net/browse/CRMA-1218)._
-  - **(2) Latency — PASSES with ~0.2% of budget used.** 1 question to 120 moves median latency
-    0.529 s → 0.536 s, a 7 ms difference: fan-out genuinely does not multiply round-trips.
-    Promotion's 8-question shape measures **0.555 s** median. _Source: CRMA-1218._
-  - **(3) ~~The 5-value enum expresses as one Choice without losing the temporal distinction.~~**
-    **Answered, and the answer flipped twice.** It *does* survive as one Choice — but only with
-    **structured `what` + `not_for` criteria** (6/6 at confidence 0.75–1.00). Bare enum names, which
-    is what today's Gemini schema effectively passes, **collapse the pair** (0.43 vs 0.26 at
-    confidence 0.27, wrong label). One-sentence descriptions are unstable (2/3, one outright wrong).
-    Two Nouls still beat the enum outright, so deriving the labels in code remains the
-    recommendation. _Source: CRMA-1217 live validation._
-  - **(4) Confidence separation — PASSES for Score, FAILS for Choice.** This is the map's most
-    important measured finding and it **contradicts the vendor docs**. Score confidence behaves as
-    documented (0.15 on a sparse case, 0.47–0.60 on split cases, 0.89–1.00 on clean, no clustering).
-    **Choice confidence does not drop on hard cases** — 0.93 on the most ambiguous pair, 0.75–0.84
-    on a near-empty state. **Therefore: route on the Score's confidence, never the Choice's.**
-    _Source: CRMA-1217 live validation._
-  > **Correction, 2026-09-20.** This block twice said less than the evidence supports. It first
-  > claimed the enum "does **not** express as one question"; then a bullet here claimed CRMA-1217
-  > "answered from the vendor docs alone — no call has ever been made against the real model."
-  > Both were true when written and both are **superseded**: that ticket went on to run 35 live
-  > requests, and CRMA-1218 ran ~80 more. Every figure in this block is measured here.
+  rationalise a wrong verdict, which was the original argument against the prose. The
+  **distributions** are also the rubric-development instrument — a rubric level that returns flat
+  splits across many candidates is provably badly drawn, which no prose would show.
+- **The four fit tests are resolved, all against the live `jev-1.13.0` API. None kills the map.**
+  **(1) Question cap PASSES** with ~350× headroom — 8 needed against a ~2,800 ceiling, and there is
+  no silent truncation (3,000 returns `HTTP 400 max_tokens_exceeded`). **(2) Latency PASSES** at
+  ~0.2% of budget — promotion's 8-question shape measures 0.555 s median, and 1→120 questions moves
+  the median only 7 ms. **(3) The 5-value enum does survive as one Choice**, but only with
+  structured `what`+`not_for` criteria; two Nouls beat it outright, so deriving the labels in code
+  remains the recommendation. **(4) Confidence separation PASSES for Score and FAILS for Choice** —
+  the map's most important finding, and it contradicts the vendor docs: **route on the Score's
+  confidence, never the Choice's.** Detail and figures live on the tickets.
+  _Source: [CRMA-1218](https://mcclatchy.atlassian.net/browse/CRMA-1218) (1, 2) and CRMA-1217
+  (3, 4), 2026-09-20._
 - **The residual risk is one specific case, not the architecture.** The near-synonym pair — which is
   promotion's real `MISSED_DUPLICATE` / `OVER_DEDUP` failure mode — **never settled across 11 calls**,
   and a supporting `is_narrower_instance` Noul false-positived on it at 0.82. That single case is what
@@ -307,7 +274,7 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   **Binds:** PIN THE EXPLICIT MODEL VERSION — `jev-latest` and `jev-preview` both alias to jev-1.13.0 today, so a vendor bump would move the rubric underneath a governed DIM_LLM_PROMPT row silently; cookbook numbers pin jev-1.12. CORRECTS CRMA-1218 ON 529: the default retryable set {408, 429, *range(500,600)} ALREADY INCLUDES 529 — do NOT pin httpStatuses; the real hazard is the Python docs' example override `http_statuses={429,500,502,503,504}` which silently drops it. Keep SDK defaults (maxRetries 2, backoff 500ms doubling to 5000ms, jitter 0.25, respectRetryAfter true). ALSO SHARPENS CRMA-1218 ON ERRORS: `detail` is polymorphic and `error_type` exists on only 2 of 4 measured shapes — 401 object w/ error_type, 400 object w/ error_type (capacity), 400 BARE STRING (semantic), 422 LIST of Pydantic records (schema). Type-check `detail` before reading `error_type`. 422 IS reachable: 422=schema violation, 400=semantic or capacity. NO RATE-LIMIT HEADERS EXIST — 250k tok/s and 1,200 rpm are invisible until the 429 fires; log `x-typesafe-request-id`, the only correlation handle. Timeout: SDK default 10.0s per call (RetryPolicy.timeout 30.0s is a separate total-budget across retries) vs promotion's measured 0.43-0.56s — keep the default. Budgets: 64k/request for state+all questions, 32k for state+longest question; Choice max 255 options, Score 2-10 levels. JAGGEDNESS BINDS THE RUBRIC: 'not a calculator' means `verify_exploding_topics`' absolute_volume-above-a-floor comparison MUST be precomputed in code; 'reads dates as text, not ordered quantities' means the temporal-recurrence distinction must not rest on the model ordering dates; 'structural invariants aren't guaranteed' generalises beyond P(yes)+P(no)!=1 — no cross-question arithmetic identity may be assumed when deriving labels in code; 'indirection' cautions against a negative `not_for` clause carrying a distinction alone; and the page itself concedes Noul and Choice scores are not comparable across primitives, corroborating CRMA-1217's route-on-Score-confidence rule. REQUEST-SHAPE GOTCHAS: a Noul's text field is `instructions` NOT `question`, and its criteria keys are `true`/`false` — NOT the `what`/`not_for` shape, which belongs to Choice OPTIONS; Score requires `criteria`, Noul's is optional.
 
 - [Widen the promotion replay set across the full decision_category space](https://mcclatchy.atlassian.net/browse/CRMA-1216) — **Decided:** Built: 187 cases / 181 candidates covering 9 of 10 categories — OVER_DEDUP has NEVER fired in 5 months. Stratified on NEIGHBOUR SIMILARITY, not decision_category (CRMA-1217 derives category in code, so it is an artifact of the incumbent's schema; similarity is what predicts difficulty). Enriched not proportional: takes ALL 23 contested non-merges, ALL 27 cases above 0.80, ALL 7 turn-exhaustion DEFERs.
-  **Binds:** THE DECISION BOUNDARY IS ~0.70 COSINE and the contested band is only 0.70-0.80: PROMOTE tops out at 0.763 (just 2 cases >=0.75), MERGE runs to 0.904, and above 0.82 the incumbent merges every time but once. 28% of candidates (314/1109) have NO neighbour pool at all, so the pairwise check is vacuous for them - a proportional sample wastes a quarter of its runs. Re-weight with the band table in the asset README. THREE OF THE RUBRIC'S TEN CATEGORIES ARE STRUCTURALLY STARVED: CONFIRM_DUPE/OVER_DEDUP/CORRECTED_DEDUP_TARGET all need distillation to emit DUPLICATE_OF, which fired 7 times in 2,093 candidates (0.33%), and the branch was BROKEN until 148d3a1/CRMA-1029 on 2026-09-08 - both surviving rows post-date the fix. No result on this set may claim OVER_DEDUP coverage. DISTILLATION'S VERDICT IS REAL_TREND 99.7% OF THE TIME - it is near-constant, which independently strengthens the standing constraint to keep it OUT of Jev state. ALL 7 AMBIGUOUS_TOPIC_JUDGMENT ROWS ARE TURN-EXHAUSTION TOMBSTONES ('agent did not call propose_decision') - the model has NEVER chosen that category deliberately; CRMA-733's '5 of 38' is now 7 of 26 gemini DEFERs from only 3 distinct candidates, and all three ended in REJECT anyway. HARNESS DEFECT #3 (blocks CRMA-1222): lanes/promotion.mjs cases() QUALIFYs to each candidate's LATEST decision, and DEFER is never terminal, so it erases every DEFER row including all 7 turn-exhaustion cases; --case does not help. Fix = key cases() on AUDIT_ID, which the manifest carries. e864045 SELF-NEIGHBOUR CUT CONFIRMED AT 687 CASES: 450/450 self-created trends dropped, 237/237 merge targets kept, zero misclassification. ET-RESCUE CANNOT REPLAY: harness forces et_rescue=false, so the 20 ET-corroborated and 127 ET-routed cases are flagged but not faithful. MODEL_USED IS NOT A TRUSTWORTHY FILTER: proc_promotion_apply.sql:142 stamps a stale 'claude-sonnet-4-6' default on every lead-side row including last week's - discriminate on ZERO TOKENS; 1,017 of 2,264 ledger rows are lead-side and have no model call to replay. Harness lives on branch wayfinder/gemini-3-7-flash-model-allocation, NOT on production or this map's branch.
+  **Binds:** The set lives at `docs/wayfinder/assets/crma-1216-replay-set.{tsv,sql,md}` — the README carries the band table to re-weight enriched results back to production rates, and the manifest carries `AUDIT_ID` per case. Four measurements from this ticket are recorded as **Established facts** above (the ~0.70 boundary and band table; OVER_DEDUP never fired and three categories starved; distillation's verdict near-constant; 1,017 ledger rows lead-side with `MODEL_USED` untrustworthy) — read them there, not here. What is **only** here: the harness at `scripts/replay/` lives on branch `wayfinder/gemini-3-7-flash-model-allocation`, **not** on `production` or this map's branch, and it cannot reach a DEFER row or replay an ET-rescue case — both tracked on [CRMA-1229](https://mcclatchy.atlassian.net/browse/CRMA-1229), which now blocks CRMA-1222. `e864045`'s self-neighbour cut is **confirmed at 687 cases** (450/450 self-created trends dropped, 237/237 merge targets kept, zero misclassification); `EXPLODING_TOPICS_API_KEY` remains an unverifiable environment precondition.
 
 ## Not yet specified
 
