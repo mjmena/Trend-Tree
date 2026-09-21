@@ -221,11 +221,17 @@ lift-and-shift extraction to Cloud Run.
   (n=131) vs 46.0% without (n=411), supplied-family rate 20.6% vs 22.6%. The keyword actually sent
   when `QUERY` was absent is unrecorded, so this is a flag, not a conclusion.
   _Source: CRMA-1220, 2026-09-20._
-- **`RATIONALE` and `CONSIDERED_NEIGHBORS` are write-only — nothing in the repo reads either.**
-  `DT_TREND_DASHBOARD` does not select them, the audit agent never references them, and
-  `docs/dashboard/data-contract.md` does not carry them. The only path out is
-  `promotion-agent-p_yKCmm9r/respond/entry.js:31`, which echoes `rationale` into a response the lead
-  folds straight back into the same row. Any format change to either column is therefore free.
+- **`RATIONALE` and `CONSIDERED_NEIGHBORS` are write-only — verified live, not just by repo read.**
+  `GET_DDL` on the live `DT_TREND_DASHBOARD` does not reference `FCT_PROMOTION_LEDGER` at all (its
+  one `RATIONALE` hit is `REASONED_FIT_RATIONALE`, a different table), and a scan of
+  `MCC_PRESENTATION.INFORMATION_SCHEMA.VIEWS` for either column returns **zero rows**. The audit
+  agent never references them; `docs/dashboard/data-contract.md` does not carry them. The only path
+  out is `promotion-agent-p_yKCmm9r/respond/entry.js:31`, which echoes `rationale` into a response
+  the lead folds straight back into the same row. Any format change is therefore free.
+  `ACCOUNT_USAGE` is not authorized for this role, so an unknown external consumer querying the base
+  table directly is formally unexcluded. The live table matches `sql/fct_promotion_audit.sql`
+  exactly (20 columns, no drift), and the longest `RATIONALE` ever written is **1,231 chars** across
+  2,265 rows — the 4,000-char truncation has never bitten.
   _Source: [CRMA-1224](https://mcclatchy.atlassian.net/browse/CRMA-1224), 2026-09-21._
 - **The claim filter cannot see a parked candidate, so CRMA-1219's 3-attempt bound does not hold.**
   `promotion-p_xMC99jg/workflow.yaml:39-41` selects on `PROMOTED_AT IS NULL AND REJECTED_AT IS NULL
