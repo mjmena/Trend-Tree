@@ -26,6 +26,7 @@ A finished, self-contained executive HTML deck (~12 slides) presenting Trend Tre
 - The deck ships as **one self-contained HTML file in the repo**, plus a private Artifact link published from the same file for sharing.
 - Built for live presentation, but every slide must explain itself — Martin expects the deck to be forwarded.
 - Target length: ~12 content slides (title, use-case framing ×2, tree overview, how-it-works by layer ×3, worked example, current state + integrations ×2, future plans ×2, close) — the starting shape, refined by the outline ticket.
+- Styling follows the showcase deck's **explicit per-slide hex/font overrides**, captured in [docs/wayfinder/assets/crma-1202-showcase-deck-style-tokens.md](https://github.com/mjmena/Trend-Tree/blob/wayfinder/executive-briefing-deck/docs/wayfinder/assets/crma-1202-showcase-deck-style-tokens.md) — not the theme's declared (unused) scheme colors. Headline: primary accent `#16A34A`, primary text `#0F172A`, Plus Jakarta Sans ExtraBold for titles, Inter (multi-weight) for body/labels, white background with a framed-canvas treatment on content slides.
 
 ## Decisions so far
 
@@ -40,6 +41,8 @@ A finished, self-contained executive HTML deck (~12 slides) presenting Trend Tre
 
 - [Decide: what the Future Plans section commits to](https://mcclatchy.atlassian.net/browse/CRMA-1200) — **Decided:** Future Plans = the Sep-16 roadmap page curated into two slides — 'Building now' (prediction-engine headline, intake expansion, lifecycle detection, one-line fleet-migration beat) and 'Exploring' (Reasoned Connections, external catalogue, proving-quality arc); no dates, no outage candor, nothing unwritten added
   **Binds:** Outline (CRMA-1204) and build (CRMA-1206) carry the two buckets 1:1 with the roadmap lozenges and never scoop the roadmap page; 'visible on ATLAS today' splits CRMA-1203's current-state claims from Future Plans
+
+- [Extract the showcase deck's style tokens](https://mcclatchy.atlassian.net/browse/CRMA-1202) — **Decided:** Captured in docs/wayfinder/assets/crma-1202-showcase-deck-style-tokens.md — the deck build follows explicit per-slide hex/font overrides (primary accent #16A34A, headline #0F172A, Plus Jakarta Sans ExtraBold titles + Inter body), not the theme's unused declared scheme colors
 
 ## Not yet specified
 
