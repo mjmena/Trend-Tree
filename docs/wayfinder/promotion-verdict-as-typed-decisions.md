@@ -462,6 +462,9 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
 
 - [Decide: what ground truth the known-bad replay cases are scored against](https://mcclatchy.atlassian.net/browse/CRMA-1231) — **Decided:** Four separate ground-truth rules, not one: (1) the 7 tombstone rows score against eventual REJECT, (2) the 33 deliberate NEEDS_MORE_SIGNAL rows are not scored pass/fail (labeled cohort only), (3) evidence_quality level 0 is explicitly uncovered by history and hand-inspected on fire, (4) same-vendor-miscounted cases score against a re-derived vendor-aware family count, not the buggy ledger value.
 
+- [Get EXPLODING_TOPICS_API_KEY reachable from a harness environment](https://mcclatchy.atlassian.net/browse/CRMA-1255) — **Decided:** Martin retrieved the key from the Pipedream dashboard and added it to Keychain as `exploding-topics-trend-tree-scoping`, mirroring the `typesafe-trend-tree-scoping` precedent.
+  **Binds:** Unblocked CRMA-1222's Request B (the ET oracle) — verified working, 116/116 live calls with zero auth failures.
+
 ## Not yet specified
 
 <!-- The fog of war: in-scope decisions coming but not yet phraseable. -->
