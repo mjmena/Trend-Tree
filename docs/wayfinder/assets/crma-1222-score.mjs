@@ -1,7 +1,9 @@
-// Scores crma-1222-results.jsonl against CRMA-1231's four ground-truth rules
-// and produces crma-1222-scorecard.json.
+// Scores crma-1222-results.jsonl (Request A) merged with
+// crma-1222-oracle-results.jsonl (Request B, the ET oracle -- CRMA-1255)
+// against CRMA-1231's four ground-truth rules, producing
+// crma-1222-scorecard.json.
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { sourceFamilyOfBuggy, familyDelta } from "./crma-1222-family.mjs";
@@ -12,6 +14,38 @@ const terminal = JSON.parse(readFileSync(join(HERE, "crma-1222-terminal-decision
 const results = readFileSync(join(HERE, "crma-1222-results.jsonl"), "utf8")
   .trim().split("\n").filter(Boolean).map(JSON.parse);
 
+const ORACLE_FILE = join(HERE, "crma-1222-oracle-results.jsonl");
+const oracleByAuditId = new Map();
+if (existsSync(ORACLE_FILE)) {
+  for (const line of readFileSync(ORACLE_FILE, "utf8").trim().split("\n")) {
+    if (!line.trim()) continue;
+    const o = JSON.parse(line);
+    oracleByAuditId.set(o.audit_id, o);
+  }
+}
+console.error(`oracle results loaded: ${oracleByAuditId.size}`);
+
+// Merge Request B's decision into any Request-A composed object that was
+// left unscored (decision_rule "oracle_decided", decision null). Applies
+// identically to both Noul arms -- the oracle path never reads a recurrence
+// noul, so composed_criteria and composed_bare agree here by construction.
+function mergeOracle(r) {
+  const o = oracleByAuditId.get(r.audit_id);
+  if (!o || o.error) return; // script-level failure (not an ET miss) -- leave unscored
+  for (const composed of [r.composed_criteria, r.composed_bare]) {
+    if (composed?.decision_rule === "oracle_decided" && composed.decision == null) {
+      composed.decision = o.decision;
+      composed.decision_category = o.decision_category;
+      composed.oracle = {
+        keyword: o.oracle_keyword, keyword_source: o.oracle_keyword_source,
+        et_matched: o.et_matched, et_total: o.et_total, et_error: o.et_error ?? null,
+        survivors: o.survivors, jev_called: o.jev_called,
+      };
+    }
+  }
+}
+for (const r of results) if (!r.error) mergeOracle(r);
+
 const terminalByCid = new Map(terminal.map((r) => [r.CANDIDATE_ID, r]));
 
 const S01 = "S01_turn_exhausted", S02 = "S02_defer_needs_signal";
@@ -21,7 +55,7 @@ const buckets = {
   rule2_needs_signal: [],     // labeled cohort, not scored pass/fail
   rule3_level0: [],           // hand-inspect only
   rule4_family_mismatch: [],  // scored against re-derived family count
-  et_unavailable: [],         // needs_corroboration, unscored
+  et_unavailable: [],         // needs_corroboration, still unscored (no oracle result merged)
   source_data_gap: [],        // empty candidate.sources/signals in STG_TREND_CANDIDATES today
   normal: [],                 // ordinary adopt-bar population
 };
@@ -79,7 +113,7 @@ for (const r of results) {
     continue;
   }
 
-  if (composed.eq_verdict === "needs_corroboration") {
+  if (composed.eq_verdict === "needs_corroboration" && composed.decision == null) {
     buckets.et_unavailable.push({ audit_id: r.audit_id, candidate_id: r.candidate_id, stratum: r.stratum, ledger_decision: c.ledger.DECISION, composed });
     continue;
   }

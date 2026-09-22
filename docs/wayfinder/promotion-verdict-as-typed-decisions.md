@@ -238,24 +238,30 @@ lift-and-shift extraction to Cloud Run.
   AND (DEFERRED_UNTIL IS NULL OR DEFERRED_UNTIL <= CURRENT_TIMESTAMP())`. A park sets none of those,
   so the candidate returns to the pool on the next run (~6 h) and retries forever — the bound lives
   in the ledger, and the claim filter never reads the ledger. _Source: CRMA-1224, 2026-09-21._
-- **CRMA-1222's live run validates the vendor-family fix (12/12) but does not reach an
-  adopt/reject verdict.** Every same-vendor-miscounted case (11 `gemini_*` vertical shards, 1
-  `grok_live`) correctly avoided `stands_alone` — the words-not-counts design closes CRMA-1220's
-  43-promoted-on-same-vendor-corroboration defect on every testable case. Criteria vs bare
-  instructions on the three per-neighbour Nouls: negligible (zero flips ≥0.3 across 555 pairs).
-  Real cost/latency at scale: $0.0547 for all 187 cases, $0.00029/candidate mean, 277ms mean.
-  But **64% of cases (119/187) hit `needs_corroboration` and the oracle can't fire** —
-  `EXPLODING_TOPICS_API_KEY` is a plain Pipedream env var (not a connected account, keychain, or
-  GCP secret — all three checked), unreachable from a harness session. `pair_sameness`
-  confidence runs **backwards** on this set (0.976 mean on contested cases vs 0.934 on easy
-  ones) — a caution for CRMA-1223. The 17-case scored population (what's left after excluding
-  ET-blocked, source-data-gap, and CRMA-1231's other three classes) matched the incumbent 8/17
-  — directional only, structurally biased toward the hardest band. The near-synonym residual
-  risk is still unsettled: its two nearest replay-set instances both hit a separate gap (21/187
-  candidates carry empty `SOURCE_BREAKDOWN`/`SUPPORTING_SIGNAL_IDS` in `STG_TREND_CANDIDATES`
-  today, though the historical decision saw real evidence); a live re-run of CRMA-1217's own
-  bare pair still lands unsettled (score 1.24, confidence 0). Full detail in
-  `docs/wayfinder/assets/crma-1222-report.md`. _Source: CRMA-1222, 2026-09-22 — not yet closed._
+- **CRMA-1222's live run reaches a well-powered adopt-bar measurement — 136 of 187 cases
+  scored — and it fails the map's stated bar: 50.7% (69/136), against a bar of match-the-
+  incumbent-7/7-equivalent.** `EXPLODING_TOPICS_API_KEY` (CRMA-1255) unblocked Request B; the
+  oracle ran live against all 116 `needs_corroboration` cases. **85% of mismatches (57/67) trace
+  to one mechanism: the ET oracle almost never fires.** 0 of 104 calls made with the `trend_topic`
+  fallback matched ET at all (verified live and by hand — a genuine `HTTP 200 "No meta trends
+  found"`, not a client bug); only `candidate_query` keywords (12 cases) ever matched, and only 4
+  cleared the volume floor. `candidate_query` is null on 78% of candidates (CRMA-1220), so the
+  oracle can mechanically rescue only the ~22% that carry one. **The 57 oracle mismatches split
+  in two:** 38 are genuinely single-vendor-family (thin evidence — REJECT plausibly correct
+  against an incumbent whose corroboration gate is known-dormant); **19 are two of
+  `{chatgpt, gemini, grok}` — every one an AI-discovery-agent pair, never a directly-observed
+  source** — Jev is reading two differently-branded LLM discovery agents as not independent of
+  each other, which CRMA-1231's vendor-aware family fix would still count as 2 families and get
+  wrong. **Whether that stricter read is correct or the rubric needs a carve-out is this map's
+  live open question — not decided by this run.** The vendor-family fix (CRMA-1231 rule 4)
+  independently validated 12/12, unaffected. Criteria vs bare Noul arms: negligible (zero flips
+  ≥0.3 across 555 pairs). `pair_sameness` confidence runs **backwards** on this set (0.976 mean
+  on contested cases vs 0.934 on easy ones) — a caution for CRMA-1223. The near-synonym residual
+  risk is still unsettled — its two nearest replay-set instances both hit a separate empty-
+  evidence gap (21/187 candidates), and CRMA-1217's own bare pair still lands unsettled (score
+  1.24, confidence 0). Cost/latency at scale: $0.0547 for all 187 cases (Request A), oracle calls
+  free. Full detail in `docs/wayfinder/assets/crma-1222-report.md`. _Source: CRMA-1222, 2026-09-22
+  — not yet closed, pending the (a3) interpretive call._
 
 ## Standing constraints
 

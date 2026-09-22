@@ -3,74 +3,105 @@
 # CRMA-1222 prototype: the pairwise duplicate check on the widened replay set
 
 Live run against `jev-1.13.0`, 2026-09-21/22, over all 187 cases in the CRMA-1216
-widened replay set. Code: `crma-1222-jev-client.mjs`, `crma-1222-family.mjs`,
-`crma-1222-build-cases.mjs`, `crma-1222-run.mjs`, `crma-1222-score.mjs`. Raw
-per-case answers: `crma-1222-results.jsonl`. Full scorecard:
+widened replay set — Request A (the pairwise check) plus Request B (the
+Exploding Topics oracle, CRMA-1255 unblocked this on 2026-09-22). Code:
+`crma-1222-jev-client.mjs`, `crma-1222-family.mjs`, `crma-1222-build-cases.mjs`,
+`crma-1222-run.mjs`, `crma-1222-oracle.mjs`, `crma-1222-score.mjs`. Raw
+per-case answers: `crma-1222-results.jsonl` (Request A),
+`crma-1222-oracle-results.jsonl` (Request B). Full scorecard:
 `crma-1222-scorecard.json`.
 
-**Bottom line: this run does not reach an adopt/reject verdict.** It is
-blocked on one external precondition — no `EXPLODING_TOPICS_API_KEY` is
-reachable from this environment (checked keychain, env vars, and every GCP
-secret in `mcc-crm-automations`; none exist for it, the same gap CRMA-1216 and
-CRMA-1229 already hit on the Gemini-era harness). 119 of 187 cases (64%)
-round `evidence_quality` to `needs_corroboration`, which under the composition
-rules requires `oracle_match` — Request B — to resolve, and Request B cannot
-fire. Everything this run *did* measure is real, live, and load-bearing; the
-oracle path and the adopt-bar comparison it feeds are not.
+**Bottom line: this run reaches a real, well-powered adopt-bar measurement —
+136 of 187 cases scored, not the earlier 17 — and the result is a genuine
+fail against the map's stated adopt bar (match the incumbent ~7/7-equivalent):
+50.7% (69/136).** But the failure is not uniform, and the dominant failure
+mode (85% of mismatches) traces to one mechanism worth reading carefully
+before it decides the verdict: **the ET oracle almost never succeeds**, and
+when it can't, `needs_corroboration` collapses to `REJECT` by design. Whether
+that collapse is *correct* (the typed path being properly conservative
+against an incumbent whose corroboration gate is known-dormant) or *too
+strict* (a rubric miscalibration) is a real interpretive fork — see (a3).
+This is not mine to call unilaterally; it needs your read.
 
 ## Bucket breakdown (187 cases)
 
 | Bucket | n | What it means |
 | --- | ---: | --- |
-| `et_unavailable` | 119 | `evidence_quality` -> `needs_corroboration`; oracle can't run here |
-| `source_data_gap` | 21 | `STG_TREND_CANDIDATES.SOURCE_BREAKDOWN` / `SUPPORTING_SIGNAL_IDS` are empty **today** for these candidates, even though the historical decision had real evidence — see "Data-gap finding" below |
-| `normal` (scored on adopt bar) | 17 | Neither of the above, not a tombstone/NEEDS_MORE_SIGNAL/level-0/family-mismatch case |
+| `normal` (scored on adopt bar) | 136 | Neither source-data-gap nor a CRMA-1231 special class |
+| `source_data_gap` | 21 | `STG_TREND_CANDIDATES.SOURCE_BREAKDOWN` / `SUPPORTING_SIGNAL_IDS` are empty **today** for these candidates, even though the historical decision had real evidence |
 | `rule4_family_mismatch` | 12 | Same-vendor-miscounted by `sourceFamilyOf()` — scored against the corrected family count, not the ledger |
 | `rule2_needs_signal` | 12 | CRMA-1231 rule 2 — labeled cohort, not scored pass/fail |
 | `rule1_tombstone` | 5 | CRMA-1231 rule 1 — the 3 turn-exhaustion candidates' DEFER rows, scored against eventual REJECT |
 | `rule3_level0` | 1 | `not_a_topic` with real (non-empty) evidence — hand-inspect only, zero production precedent |
+| `et_unavailable` | 0 | Fully resolved this pass |
 
-## (a) Adopt-bar scorecard
+## (a1) The ET oracle almost never fires — and this is the real story
 
-**On the 17-case scored population: 8/17 matched (47%)**, well under the
-adopt bar (match the incumbent 7/7-equivalent). Read this as **directional,
-not decisive** — the population is small and structurally hard: it is what's
-left after excluding all four CRMA-1231 special classes and everything the ET
-gap swallowed, so it over-represents the contested 0.70–0.80 similarity band
-by construction (`S07_contested_not_merge` + `S08_contested_merge` are most of
-it). Every one of the 9 mismatches has the same shape:
+116 of 187 cases (62%) rounded `evidence_quality` to `needs_corroboration`
+and needed Request B. Run live against the real `/database-search` API:
 
-| Case | Ledger | Composed | Rule |
-| --- | --- | --- | --- |
-| `S07_contested_not_merge` (1) | REJECT | PROMOTE_NEW | `stands_alone_promote` |
-| `S07b_confirm_reject` (1) | REJECT | PROMOTE_NEW | `stands_alone_promote` |
-| `S08_contested_merge` (6) | MERGE_INTO_EXISTING | PROMOTE_NEW | `stands_alone_promote` |
-| `S09_b060_070_MERGE_INTO_EXISTING` (1) | MERGE_INTO_EXISTING | PROMOTE_NEW | `stands_alone_promote` |
+- **115 of 116 resolved REJECT / INSUFFICIENT_EVIDENCE.** Only 1 resolved
+  PROMOTE_NEW (`cand-zsfynoogmsmiohzo`, keyword "sparkling protein",
+  `same_concept` at 0.48 confidence against "Sparkling protein water").
+- **By keyword source: 0 of 104 `trend_topic`-fallback calls matched ET at
+  all** (`total > 0`) — verified live and by hand (a raw call for "Wearable
+  Cooling Accessories" returns the genuine ET miss sentinel `{"message":"No
+  meta trends found."}"`, HTTP 200 — not a client bug). **5 of 12
+  `candidate_query` calls matched, 4 cleared the 1000-volume floor.**
+- This is a **mechanical, not a judgment, bottleneck**. `/database-search` is
+  a keyword-lookup service; it needs a short, atomic term. `candidate_query`
+  is null on 78% of candidates (CRMA-1220), so 104 of 116 oracle calls fired
+  on a multi-word descriptive sentence by construction, and ET's fuzzy search
+  cannot place those. The oracle path, as specified, can only ever rescue the
+  ~22% of candidates that carry a real `candidate_query`.
 
-Every mismatch is the same failure mode: `evidence_quality` rounds to
-`stands_alone` (the candidate's own evidence is judged sufficient), and *no*
-neighbour's `pair_sameness` rounds to `same_thing`, so composition never
-reaches the merge/reject branch. This is either the typed path being less
-willing to call two topics "the same thing" than the incumbent was — the
-`MISSED_DUPLICATE` risk the map is watching for — or the incumbent
-over-merging in exactly the contested band this stratum was built to probe.
-Distinguishing those two readings needs eyes on the actual topic-pair text,
-not aggregate stats; that hand read is unfinished.
+## (a2) Adopt-bar scorecard — 136 cases, 69/136 matched (50.7%)
 
-**Rule 1 (tombstones):** 3/5 rows unscored (`needs_corroboration`); the
-other 2 (`cand-x6gub4aomrp0ovow`'s two DEFER rows) confidently resolved
-`stands_alone` -> PROMOTE_NEW, against an eventual REJECT. This is exactly
-CRMA-1219's requested regression check, in the direction CRMA-1219 didn't
-anticipate: not a promoted case collapsing into rejection, but a turn-budget
-casualty that, given its *full* neighbour pool instead of the zero neighbours
-the exhausted incumbent saw, reads as confidently real. Worth a human look
-before this map closes.
+Well under the adopt bar. Mismatch breakdown by decision rule:
 
-**Rule 2 (`NEEDS_MORE_SIGNAL` cohort):** 2/12 scored and agreed with the
-eventual verdict (both PROMOTE_NEW); the other 10 hit the ET gap. Too thin to
-read.
+| Ledger → Composed | n | Rule |
+| --- | ---: | --- |
+| PROMOTE_NEW → REJECT | 34 | `oracle_decided` (ET found nothing) |
+| MERGE_INTO_EXISTING → REJECT | 23 | `oracle_decided` (ET found nothing) |
+| MERGE_INTO_EXISTING → PROMOTE_NEW | 7 | `stands_alone_promote` |
+| REJECT → PROMOTE_NEW | 2 | `stands_alone_promote` |
+| REJECT → MERGE_INTO_EXISTING | 1 | `neighbour_merge` |
 
-## (b) Fit test 4 — confidence separation
+**57 of 67 mismatches (85%) are the oracle route** — `evidence_quality`
+correctly (per its own rubric) judged the evidence as single-origin, the
+oracle then failed to corroborate (almost always because it had nothing
+searchable to try), and composition rule 4 sent the case to REJECT. The other
+10 are the same `stands_alone`-vs-`same_thing` disagreement pattern the
+17-case sample already showed.
+
+## (a3) The oracle mismatches split into two very different stories
+
+Not all 57 are the same finding. Splitting by the vendor-aware family count
+(`familyDelta`, CRMA-1231 rule 4's own re-derivation):
+
+| | n | What it looks like |
+| --- | ---: | --- |
+| **1 vendor family** (genuinely single-origin) | 38 | Thin evidence — often one signal from one agent. e.g. `cand-7oz872e5msrlmbou` "Mass Market HOCl Skin Sprays", `agent_chatgpt_discovery:1`, ledger MERGE_INTO_EXISTING. REJECT here looks like the typed path correctly declining evidence the incumbent's known-dormant corroboration gate let through — the same class as the 43-promoted-on-same-vendor-corroboration defect CRMA-1220 measured, just not the specific miscounting bug. |
+| **2+ vendor families** | 19 | **Every single one is exactly two of `{chatgpt, gemini, grok}`** — the three AI-discovery-agent brands. Never Bluesky, Google Trends, Amazon, or an editorial outlet. e.g. `cand-79raryadmr3l3g19` "Purchasing directly from sponsored carousels inside conversational AI chats", `agent_chatgpt_discovery:3` + `gemini_other:1`, ledger PROMOTE_NEW. |
+
+**The 19-case group is a genuinely new finding, not an oracle-starvation
+artifact.** `evidence_quality`'s instructions never mention vendor identity —
+the rubric asks whether "the accounts reached the topic independently of
+each other." On these 19 cases, Jev is reading two *differently-branded* LLM
+discovery agents as **not independent of each other**, because both are the
+same *kind* of evidence-generation mechanism (an LLM inferring a trend from
+its own training/search), not a directly-observed signal like a real
+Bluesky post or a Google Trends spike. CRMA-1231's rule 4 fix (vendor-aware
+family counting) would count `chatgpt` + `gemini` as 2 independent families —
+and still be wrong by this stricter reading. **This is a question the map
+has not addressed: should "two AI discovery agents from different vendors"
+count as independent corroboration at all?** If Jev's read is right, this is
+the typed path finding a *second*, deeper instance of the same defect class
+CRMA-1220 measured — one the "fixed" family-counter still misses. If Jev's
+read is too strict, `evidence_quality`'s instructions need a carve-out. This
+needs your judgment, not a default.
+
+## (b) Fit test 4 — confidence separation (unchanged by the oracle merge)
 
 | | n | mean `evidence_quality` confidence | mean top-`pair_sameness` confidence |
 | --- | ---: | ---: | ---: |
@@ -78,40 +109,28 @@ read.
 | known-ambiguous (`S07_contested_not_merge`, `S08_contested_merge`) | 53 | **0.571** | 0.976 |
 
 `evidence_quality`'s confidence separates in the right direction (easy cases
-read 14 points more confident than ambiguous ones) — consistent with
-CRMA-1217's original finding that Score confidence tracks difficulty.
-**`pair_sameness`'s confidence does not separate, and runs backwards**: the
-contested cases score *higher* mean top-pair confidence (0.976) than the
-unambiguous ones (0.934). That is a genuine caution for CRMA-1223: routing on
-`pair_sameness` confidence alone, without a `evidence_quality`-style check,
-may not discriminate hard pairs the way the map's Standing constraints hoped.
-The validation-batch case (`cand-cpc4l6mtms0g73gc`'s stratum sibling,
-`S07_contested_not_merge`, score 1.58 conf 0.36) shows confidence *can* be
-low on a genuinely contested pair — but the aggregate above shows that isn't
-the median behaviour.
+read 14 points more confident than ambiguous ones). **`pair_sameness`'s
+confidence does not separate, and runs backwards**: contested cases score
+*higher* mean top-pair confidence (0.976) than unambiguous ones (0.934). A
+genuine caution for CRMA-1223: routing on `pair_sameness` confidence alone
+may not discriminate hard pairs the way the map hoped.
 
-## (c) The near-synonym residual risk — NOT resolved by this run
+## (c) The near-synonym residual risk — still NOT resolved
 
-The two closest real-world instances of CRMA-1217's residual-risk class in
-this replay set (`cand-gyzc2tofmteds12q` / "Cottage cheese as a versatile
-high-protein base for snacks", `S06_ge080_all`, and `cand-kbzkbavbmtdo1pum` /
-"Cottage cheese as high-protein base for snacks and desserts",
-`S07a_et_earned_2nd`) **both landed in the source-data-gap bucket** — their
-`SOURCE_BREAKDOWN` and `SUPPORTING_SIGNAL_IDS` are empty in
-`STG_TREND_CANDIDATES` today, so `evidence_quality` correctly said
-`not_a_topic` on an empty state (score 0.42/0.46, confidence 0.37/0.31).
-That's the client working correctly on a starved input, not a real test of
-whether Jev resolves the near-synonym pair. **CRMA-1217's original
-`cottage cheese ice cream` vs `cottage cheese frozen dessert` pair, run
-bare with no supporting evidence, still lands unsettled** (verified live this
-session: score 1.24, confidence 0 — see the smoke test in the session log).
-The residual risk from CRMA-1217 stands exactly where it stood: **unsettled**.
-This ticket does not close it.
+Unaffected by the oracle run (these hit `not_a_topic`, never
+`needs_corroboration`). The two closest real-world instances of CRMA-1217's
+residual-risk class in this replay set (`cand-gyzc2tofmteds12q` /
+`cand-kbzkbavbmtdo1pum`, both "cottage cheese...") both landed in
+`source_data_gap` — empty `SOURCE_BREAKDOWN`/`SUPPORTING_SIGNAL_IDS` in
+`STG_TREND_CANDIDATES` today. **CRMA-1217's original `cottage cheese ice
+cream` vs `cottage cheese frozen dessert` pair, run bare with no supporting
+evidence, still lands unsettled** (score 1.24, confidence 0). The residual
+risk stands exactly where it stood: **unsettled**. This ticket does not
+close it.
 
-## (d) Criteria vs bare-instructions arm (the three per-neighbour Nouls)
+## (d) Criteria vs bare-instructions arm (unaffected by the oracle merge)
 
-Measured over every neighbour pair fired in both arms (555 pairs per noul,
-187 cases):
+Measured over every neighbour pair fired in both arms (555 pairs per noul):
 
 | Noul | mean \|Δ\| | max \|Δ\| | flips ≥0.3 |
 | --- | ---: | ---: | ---: |
@@ -119,95 +138,63 @@ Measured over every neighbour pair fired in both arms (555 pairs per noul,
 | `recurrence_deserves_own_row` | 0.052 | 0.19 | 0 |
 | `is_narrower_instance` | 0.046 | 0.29 | 0 |
 
-**Criteria make almost no measured difference.** Zero pairs crossed a
-0.3-magnitude band on either side, for any of the three nouls, anywhere in
-the widened set. This confirms CRMA-1217's original finding (the nouls were
-clean *without* criteria) at scale. `is_narrower_instance` — the one noul
-CRMA-1221 added criteria to specifically, to fix its 0.82 false-positive on
-the near-synonym pair — shows the largest max delta (0.29) and the
-second-largest mean delta of the three, so criteria aren't *pure* overhead
-there even though this set never flipped a rounding decision. Not resolved:
-whether criteria fix that *specific* false positive, since the near-synonym
-pair itself couldn't be tested here (see (c)).
+Criteria make almost no measured difference — zero pairs crossed a
+0.3-magnitude band. Confirms CRMA-1217's finding (the nouls were clean
+*without* criteria) at scale.
 
-## (e) Recurrence-override firing rate
+## (e) Recurrence-override firing rate — zero (unaffected)
 
-**Zero.** `recurrence_blocked_merge` never fired across all 187 cases, using
-the provisional CRMA-1217 cut points (`is_same_recurring_topic` ≥0.84,
-`recurrence_deserves_own_row` ≥0.80). Either this replay set genuinely
-contains no candidate/neighbour pair that should recur-block a merge, or the
-provisional cut is stricter than it should be. CRMA-1223 should treat this as
-"unobserved," not "confirmed absent" — it's a 12-candidate-strata sample, and
-the mechanism itself is unexercised end to end.
+`recurrence_blocked_merge` never fired across all 187 cases. Unobserved, not
+confirmed absent — CRMA-1223 should treat this as an unexercised mechanism.
 
-## (f) Cost and latency — real, not vendor-doc-derived
+## (f) Cost and latency — real numbers, oracle included
 
-187 cases, dual-arm (both Noul criteria arms in one request), 1–57 questions
-per case depending on neighbour count:
+- Request A: **$0.0547** for the whole 187-case run, $0.000292/candidate mean.
+- Request B (oracle): **116 ET calls** (free — no per-call ET pricing data
+  captured this session) **+ 4 Jev `oracle_match` calls** (negligible
+  cost, well under $0.0001 total — 1-5 questions each, tiny state).
+- **Cost and latency remain non-issues at production volume.** Confirms fit
+  tests 1 and 2 hold.
 
-- **Total: $0.0547** for the whole 187-case run.
-- **Mean $0.000292/candidate**, min $0.0000306, max $0.000770 (the 8-neighbour
-  cases).
-- **Mean latency 277ms/request**, no case over ~800ms.
+## (g) The vendor-family fix — validated 12/12 (unaffected by the oracle merge)
 
-This is the dual-arm shape (roughly 2x CRMA-1215's single-arm ~$0.000038/candidate
-estimate on the *original* 33-question design, which only makes sense given
-this run doubles the three per-neighbour Nouls). A single-arm production shape
-would land near CRMA-1215's original figure. Either way: **cost and latency
-are non-issues at this volume**, confirming fit tests 1 and 2 hold at
-production scale.
+CRMA-1231's rule 4 flagged 12 cases where `sourceFamilyOf()` miscounts a
+same-vendor pair as independent (11 `gemini_*` vertical-shard, 1
+`grok_live`). **All 12 correctly avoided `stands_alone`** — teaching
+independence in words, not counts, closes the exact defect CRMA-1220
+measured on every case this set could test it against. See (a3) for the
+*second*, broader instance of the same defect class this run also surfaced.
 
-## (g) The vendor-family fix — validated 12/12
+## (h) Rule 1 (tombstones) and Rule 2 (`NEEDS_MORE_SIGNAL`) — now fully resolved
 
-CRMA-1231's rule 4 flagged 12 cases where `sourceFamilyOf()`
-(`agents/lib/promotion_gate.mjs`) miscounts a same-vendor pair as independent —
-11 are the `gemini_*` vertical-shard bug (`agent_gemini_discovery` +/or
-`gemini_food_drink`/`gemini_other`/`gemini_wellness` all read as one "gemini"
-family under the corrected grouping, confirmed against the live distinct
-`SOURCE_BREAKDOWN` keys), 1 involves `grok_live`. **All 12 correctly avoided
-`stands_alone`** — `evidence_quality` judged the evidence as *not*
-independently standing on all 12, purely from reading source names and signal
-text, with no family count anywhere in `state`. This is the strongest
-positive result in this run: it directly validates the map's central design
-bet — teaching independence in words, not counts, closes the exact defect
-CRMA-1220 measured (43 live trends promoted on same-vendor corroboration) —
-on every case this set could test it against.
+**Rule 1: 3/5 match.** The 3 rows for `cand-kvggp06bmrgg2o4j` (previously
+unscored) now resolve REJECT via the oracle, matching the eventual REJECT —
+3/3. The other 2 (`cand-x6gub4aomrp0ovow`) still resolve `stands_alone` →
+PROMOTE_NEW against an eventual REJECT, unaffected by this pass — still worth
+a human look (CRMA-1219's regression check, in the direction it didn't
+anticipate: a turn-budget casualty that, given its *full* neighbour pool
+instead of the zero neighbours the exhausted incumbent saw, reads as
+confidently real).
 
-## (h) What this run does not resolve
+**Rule 2: 2/12 agree — unchanged, but now fully resolved rather than mostly
+unscored.** Per CRMA-1231 this cohort is explicitly *not* scored pass/fail
+(a hold buys zero new evidence per CRMA-1219, so a later verdict may just be
+model noise). Still worth naming plainly: **all 10 of the previously-unscored
+rows in this cohort resolved REJECT via the oracle, against candidates the
+incumbent eventually promoted.** Read alongside (a1) — this is the same
+mechanical oracle-starvation pattern, not new evidence about the cohort
+itself.
 
-- **The adopt-bar verdict.** 64% of cases are stuck behind the ET gap; the
-  17-case scored sample is real but small and structurally biased toward the
-  hardest band.
+## What this run does not resolve
+
+- **The interpretive question in (a3)** — the map's actual next decision.
 - **The near-synonym residual risk** — see (c). Still unsettled.
 - **Cross-question interference** (one request per candidate vs one per
-  pair) — not measured this run; every case here already ran the
-  one-request-per-candidate shape, so there's no within-run comparison.
-  Unmeasured, not zero.
-- **`recurrence_blocked_merge` in practice** — mechanism exists, cut points
-  are provisional, never fired.
+  pair) — not measured this run.
+- **`recurrence_blocked_merge` in practice** — mechanism exists, never fired.
 - **`pair_sameness` as a routing confidence signal** — (b) found it runs
-  backwards on this set; needs attention before CRMA-1223 leans on it.
-
-## What unblocks the rest
-
-One missing precondition: **`EXPLODING_TOPICS_API_KEY` reachable from a
-harness environment.** Traced this session: production reads it as a plain
-`process.env.EXPLODING_TOPICS_API_KEY` in
-`promotion-agent-p_yKCmm9r/run_subagent/entry.js:657` -- **not** a Pipedream
-connected account (no `authProvisionId` for it anywhere in
-`promotion-agent-p_yKCmm9r/workflow.yaml`), **not** the macOS keychain, and
-**not** GCP Secret Manager in `mcc-crm-automations` (checked all three; only
-`typesafe-api-key` exists there, added by CRMA-1215). It is set as a
-Pipedream project- or workflow-level environment variable, readable only from
-inside the Pipedream dashboard/API, which cannot be reached from this session.
-
-Options, cheapest first: (1) a human copies that Pipedream env var's value
-into a local keychain entry (`security add-generic-password -s
-exploding-topics-trend-tree-scoping -a "$USER" -w '<key>'`, mirroring the
-`typesafe-trend-tree-scoping` precedent) for harness use -- five-minute human
-task, unblocks everything; (2) replay against previously-recorded
-`verify_exploding_topics` results if any are logged in production
-(unconfirmed -- not checked this session); (3) mock a small hand-built set of
-ET responses for just the 12 rule-4 and S07a cases to at least exercise the
-composition path, clearly labeled synthetic. Until one of these lands,
-CRMA-1222 cannot honestly close.
+  backwards; needs attention before CRMA-1223 leans on it.
+- **Whether a shorter, code-derived keyword (rather than the raw
+  `trend_topic` sentence) would let the oracle actually fire** on the 78% of
+  candidates with no `candidate_query` — untested; would require a design
+  change, not a re-run.
