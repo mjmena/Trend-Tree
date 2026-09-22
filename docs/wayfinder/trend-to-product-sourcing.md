@@ -14,9 +14,12 @@ The map ends at the spec. It does not carry execution.
 
 **Reached 2026-08-21**: the PRD is `docs/prd/trend-to-product-sourcing.md`
 ([PR #106](https://github.com/mjmena/Trend-Tree/pull/106)), under Epic
-[CRMA-772](https://mcclatchy.atlassian.net/browse/CRMA-772). Only
-[CRMA-747](https://mcclatchy.atlassian.net/browse/CRMA-747) (token, parked on Service Desk
-IN-0105529) remains open; it blocks the live sync, not the spec or the build.
+[CRMA-772](https://mcclatchy.atlassian.net/browse/CRMA-772).
+
+**Map closed 2026-09-21**: [CRMA-747](https://mcclatchy.atlassian.net/browse/CRMA-747), the
+last open child, resolved without the Admin token it was minting for — the public storefront
+feed reopened and covers embed-doc v1's fields outright. See Established facts and the
+amended Standing constraints below. The live sync is no longer token-blocked.
 
 ## Notes
 
@@ -197,6 +200,14 @@ Measured state of the world. Falsified by re-measurement, never by a decision.
   product** — Marcelo's worked-example product ('brush-on mineral SPF powder') is not in the
   store, so his literal test case is unrunnable against this catalog (measured at CRMA-753).
   Measured 2026-08-20.
+- **The public storefront feed reopened, and a clean sweep gives 201 products.** The
+  2026-08-20 measurement above found `https://shoptrendhunter.myshopify.com/products.json`
+  401'ing (password-protected). Re-probed 2026-09-21: it now returns `200`. Paginating with
+  `?limit=250&page=n` (page 1: 201 products, `id` and `handle` both unique; pages 2–6: empty
+  arrays — no repeat-last-page artifact) gives **201 distinct products**, consistent with
+  organic growth off the 187-product CSV baseline. Sample record carries `id`, `handle`,
+  `title`, `vendor`, `product_type`, `tags` (**an array**, not REST's comma-string),
+  `body_html`, `variants`, `images` — no `status` field, no metafields. Verified 2026-09-21.
 - **Cloud Scheduler in `mcc-crm-automations` is self-service as of 2026-08-20.**
   `testIamPermissions` grants `cloudscheduler.jobs.create/list/run/update` and
   `cloudscheduler.googleapis.com` is enabled — superseding the fleet map's 2026-08-09 probe,
@@ -276,7 +287,9 @@ Settled decisions in binding present tense.
 - The catalog sync is a **Cloud Run job `trend-tree-catalog-sync`** in `mcc-crm-automations`
   (code at `services/catalog-sync/` under CRMA-429's fleet patterns), fired by a **daily Cloud
   Scheduler cron** running as `crm-runtime@`. It is not a Pipedream workflow and does not live
-  in `ingestion/` — sourcing is the opposite data direction. *Settled 2026-08-20 at CRMA-752.*
+  in `ingestion/` — sourcing is the opposite data direction. It reads the **public storefront
+  feed** (`shoptrendhunter.myshopify.com/products.json`), not the Admin API — see the token
+  amendment below. *Settled 2026-08-20 at CRMA-752.*
 - The sync is a **daily full sweep diffed on an embed-doc hash** — no delta cursors. An
   unchanged product only touches `LAST_SEEN_AT`; only a changed embed doc re-embeds.
   **Revisit trigger**: a tier's catalog past ~2,500 products reopens delta sync.
@@ -290,26 +303,35 @@ Settled decisions in binding present tense.
   on; the numeric id rides in `CATALOG_PAYLOAD` once the sync observes it. A renamed handle
   behaves as delist + add. *Amended 2026-08-21 at CRMA-752.*
 - The catalog may be **seeded from a Shopify admin CSV export** ahead of the live sync — same
-  embed doc, same handle key, `LAST_SEEN_AT` stamped with the export date — so the build
-  proceeds while the token waits on CRMA-747. Seed rows graduate through the first live sweep
-  as a normal sweep; nothing is re-keyed. The 7-day freshness gate is **unchanged**: a manual
-  re-export is the refresh lever until the sync lands (token expected week of 2026-08-24).
-  *Settled 2026-08-21 at CRMA-752.*
+  embed doc, same handle key, `LAST_SEEN_AT` stamped with the export date. Seed rows graduate
+  through the first live sweep as a normal sweep; nothing is re-keyed. The 7-day freshness
+  gate is **unchanged**. *Settled 2026-08-21 at CRMA-752; the token-wait clause it was written
+  against is moot as of 2026-09-21 — the live sync no longer needs a token at all.*
 - Catalog staleness is guarded at the **outcome layer only**: an audit-agent freshness row on
   `MAX(LAST_SEEN_AT)` (YELLOW past 3 days, RED past 7) plus the ecomm agent **declining to
   source** against a catalog older than 7 days. No Pipedream registry entry, no GCP alert
   policy — per the CRMA-443 pattern.
-- The Shopify token lands in **Secret Manager as `trend-tree-shopify-token`** — amending the
-  CRMA-747 comment decision (Pipedream env var), which was premised on a Pipedream consumer.
-  A Pipedream copy appears only if live hydration lands on the ecomm agent (open at CRMA-749).
+- **The live sync reads the public storefront feed, not the Admin API — no token.** This
+  retires the Secret Manager decision below: `GET
+  https://shoptrendhunter.myshopify.com/products.json?limit=250&page=n` needs no credential
+  and, per Established facts, already carries every field embed-doc v1 consumes.
+  `trend-tree-shopify-token` is retired — nothing provisions it and nothing reads it. A
+  future embed-doc version wanting metafields or collection membership must reprovision
+  Admin access from scratch (see Not yet specified) — it does not resume from where CRMA-747
+  left off. *Decided 2026-09-21 at CRMA-747, superseding the Secret Manager placement settled
+  2026-08-20 at CRMA-752 (was: Secret Manager as `trend-tree-shopify-token`, amending an
+  earlier Pipedream-env-var decision).*
 - Retrieval runs in **arctic-l/1024**, matching product vectors against the **persisted
   `TREND_VECTOR`** on a trend's latest real enrichment row (`WRITTEN_BY <> 'promotion'`) —
   no trend-side re-embed. The Shopify tier's embed doc is **`EMBED_DOC_VERSION='v1'`**:
   `title. Type: <type>. Vendor: <vendor>. Tags: <tags>. <body_html stripped, first 600
-  chars>`, REST product-record fields only (`Type` skipped when it holds the literal `'0'`).
-  The Shopify tier's floor is **`SEMANTIC_THRESHOLD = 0.40`** — one global floor, not
-  category-aware — and retrieval shows the selector at most **`TOP_N = 10`** candidates,
-  score-descending. *Settled 2026-08-20 at CRMA-753.*
+  chars>`, drawn from whichever catalog-record surface the sync reads — REST and the public
+  storefront feed both carry these fields (`Type` skipped when it holds the literal `'0'`;
+  `Tags` is an array on the storefront feed vs. a comma-string on REST — join before
+  formatting, don't split). The Shopify tier's floor is **`SEMANTIC_THRESHOLD = 0.40`** —
+  one global floor, not category-aware — and retrieval shows the selector at most **`TOP_N =
+  10`** candidates, score-descending. *Settled 2026-08-20 at CRMA-753; field source amended
+  2026-09-21 at CRMA-747.*
 - The selector is a **filter, never a ranker**. One forced call of the shallow emit tool
   `propose_product_selection` returns `outcome` (`matched`/`no_match`), at most the
   slots-remaining count of picks — each graded `REASONED_FIT` (strong / partial / weak)
@@ -345,6 +367,8 @@ Settled decisions in binding present tense.
 
 - [Prototype: the selector's contract — candidate pool, prompt, and permission to return nothing](https://mcclatchy.atlassian.net/browse/CRMA-754)
 
+- [Provision the Shopify Admin API token, and measure the real catalog size](https://mcclatchy.atlassian.net/browse/CRMA-747) — **Decided:** the public storefront feed (no auth, 201 products, full v1 field coverage) replaces the Admin token for the live sync; trend-tree-shopify-token is retired
+
 ## Not yet specified
 
 - **Cost telemetry that actually lands.** CRMA-751 settled *where* it goes — `STG_AGENT_RUN_COSTS`
@@ -352,10 +376,12 @@ Settled decisions in binding present tense.
   still open is whether the ecomm agent will write it reliably: only about half of
   `FCT_TREND_ENRICHMENT_LEDGER` rows carry a cost value at all (`CRMA-442`), so the fleet's
   existing habit is not a clean model to copy.
-- **A future embed-doc version that needs metafields or collection membership.** Doc v1
-  settled on REST product-record fields (CRMA-753), so GraphQL is off the table for now; it
-  returns only if a later doc version reaches for fields REST prices at one request per
-  product, or at the 2027-04-16 REST expiry already in Established facts.
+- **A future embed-doc version that needs metafields or collection membership.** Neither the
+  public storefront feed nor REST exposes them inline (REST needs one request per product, a
+  250× multiplier). Since CRMA-747 retired the Admin token, reaching for either now starts
+  from **no Shopify credential at all** — a fresh provisioning ticket, not a rate-limit
+  trade-off. Returns only if a later doc version needs them, or at the 2027-04-16 REST
+  expiry already in Established facts.
 
 ## Out of scope
 
