@@ -416,6 +416,8 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
 
 - [Decide: what the typed path persists, and what RATIONALE carries](https://mcclatchy.atlassian.net/browse/CRMA-1224) — **Decided:** Per-neighbour answers widen CONSIDERED_NEIGHBORS in place; everything else goes in a new JUDGMENT_DETAIL VARIANT, full width and always on. DECISION becomes nullable (NULL = no verdict, never a sentinel), ITERATION re-points at the subagent's attempt, OVERRODE_VERDICT is dropped, MODEL_USED loses its stale default. RATIONALE is human-only, ~200 chars, never parsed. NEW FINDING: the claim filter cannot see a parked candidate, so CRMA-1219's 3-attempt bound does not hold — fixed by PARKED_AT on STG_TREND_CANDIDATES.
 
+- [Make the replay lane reach DEFER rows and ET-rescue cases](https://mcclatchy.atlassian.net/browse/CRMA-1229) — **Decided:** Both mechanical fixes were already committed on wayfinder/gemini-3-7-flash-model-allocation (3d6c958): cases() keys --case on AUDIT_ID to reach a DEFER row instead of the QUALIFY-cut latest decision, and build() recomputes et_rescue via classifyCandidate with a hand-verified verbatim mirror of handle_request's prompt block instead of forcing it false.
+
 ## Not yet specified
 
 <!-- The fog of war: in-scope decisions coming but not yet phraseable. -->
