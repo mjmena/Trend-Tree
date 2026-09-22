@@ -387,6 +387,24 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
 - **A park is made to stick by `PARKED_AT` on `STG_TREND_CANDIDATES`, added to the claim filter.**
   `REJECTED_AT` is never reused for it — a park is not a verdict. `DEFERRED_UNTIL` retires. The audit
   agent gets a parked-candidate check, which is the operational alarm CRMA-1219 left empty.
+- **CRMA-1222's replay scores against four different ground-truth rules, not one.** (1) The 7
+  tombstone rows across 3 candidates (`AMBIGUOUS_TOPIC_JUDGMENT`) score against the candidate's own
+  eventual `REJECT` — 3/3 converge, on a barely-larger neighbor pool, so this is a clean signal.
+  (2) The 33 deliberate `NEEDS_MORE_SIGNAL` rows across 24 candidates are **not scored pass/fail at
+  all** — CRMA-1219 measured that the hold gains no new evidence (cluster size and source count
+  unchanged 27/27), so a later verdict may just be the same model answering twice (CRMA-1217: 90.8%
+  plurality flip rate), not a better-informed one. Record agreement/disagreement as a labeled cohort
+  and read mismatches by hand; the 15/24 that eventually rejected are the one unambiguous sub-signal
+  inside this cohort (no new evidence → reject immediately is correct). (3) `evidence_quality`
+  level 0 (reject on genuinely independent, multi-family evidence) has **zero production precedent**
+  — every one of 422 historical subagent rejections was single-family — so the replay explicitly does
+  **not** cover this path; a level-0 answer on a replay case is a hand-inspected finding, never a
+  scored pass or miss. (4) Where `sourceFamilyOf()`'s live miscount defect (CRMA-1241, out of scope,
+  unfixed in production) made the incumbent's own recorded answer wrong — one vendor double-counted
+  as two families — score against a **re-derived, vendor-aware family count** for the affected replay
+  cases, not against the ledger's recorded outcome; scoring against the buggy count would mark the
+  typed path's correct answers as regressions.
+  _Decided by [CRMA-1231](https://mcclatchy.atlassian.net/browse/CRMA-1231), 2026-09-21._
 
 ## Decisions so far
 
@@ -417,6 +435,8 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
 - [Decide: what the typed path persists, and what RATIONALE carries](https://mcclatchy.atlassian.net/browse/CRMA-1224) — **Decided:** Per-neighbour answers widen CONSIDERED_NEIGHBORS in place; everything else goes in a new JUDGMENT_DETAIL VARIANT, full width and always on. DECISION becomes nullable (NULL = no verdict, never a sentinel), ITERATION re-points at the subagent's attempt, OVERRODE_VERDICT is dropped, MODEL_USED loses its stale default. RATIONALE is human-only, ~200 chars, never parsed. NEW FINDING: the claim filter cannot see a parked candidate, so CRMA-1219's 3-attempt bound does not hold — fixed by PARKED_AT on STG_TREND_CANDIDATES.
 
 - [Make the replay lane reach DEFER rows and ET-rescue cases](https://mcclatchy.atlassian.net/browse/CRMA-1229) — **Decided:** Both mechanical fixes were already committed on wayfinder/gemini-3-7-flash-model-allocation (3d6c958): cases() keys --case on AUDIT_ID to reach a DEFER row instead of the QUALIFY-cut latest decision, and build() recomputes et_rescue via classifyCandidate with a hand-verified verbatim mirror of handle_request's prompt block instead of forcing it false.
+
+- [Decide: what ground truth the known-bad replay cases are scored against](https://mcclatchy.atlassian.net/browse/CRMA-1231) — **Decided:** Four separate ground-truth rules, not one: (1) the 7 tombstone rows score against eventual REJECT, (2) the 33 deliberate NEEDS_MORE_SIGNAL rows are not scored pass/fail (labeled cohort only), (3) evidence_quality level 0 is explicitly uncovered by history and hand-inspected on fire, (4) same-vendor-miscounted cases score against a re-derived vendor-aware family count, not the buggy ledger value.
 
 ## Not yet specified
 
