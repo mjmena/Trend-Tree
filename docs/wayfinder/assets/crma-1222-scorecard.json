@@ -1,0 +1,2284 @@
+{
+  "total_cases": 187,
+  "errors": 0,
+  "bucket_counts": {
+    "rule1_tombstone": 5,
+    "rule2_needs_signal": 12,
+    "rule3_level0": 1,
+    "rule4_family_mismatch": 12,
+    "et_unavailable": 119,
+    "source_data_gap": 21,
+    "normal": 17
+  },
+  "adopt_bar": {
+    "scored_population": 17,
+    "matches": 8,
+    "match_rate": 0.47058823529411764,
+    "mismatches": [
+      {
+        "audit_id": "bd3414b1-d553-4f2f-aaf5-3e11442190fd",
+        "candidate_id": "cand-cpc4l6mtms0g73gc",
+        "stratum": "S07_contested_not_merge",
+        "ledger_decision": "REJECT",
+        "ledger_target": null,
+        "composed_decision": "PROMOTE_NEW",
+        "composed_target": null,
+        "decision_match": false,
+        "target_match": true,
+        "eq_confidence": "stands_alone",
+        "composed": {
+          "decision": "PROMOTE_NEW",
+          "decision_category": "CONFIRM_NEW",
+          "decision_rule": "stands_alone_promote",
+          "target_trend_id": null,
+          "eq_verdict": "stands_alone",
+          "neighbor_results": [
+            {
+              "trend_id": "9806f853-8c06-4a8f-bb31-73de00c5cd39",
+              "trend_topic": "Gen Z Experiential Shopping",
+              "psVerdict": "different_thing",
+              "psScore": 0.3,
+              "psConfidence": 0.55,
+              "recurring": 0.11,
+              "deservesOwnRow": 0.31,
+              "narrower": 0.92
+            },
+            {
+              "trend_id": "d9e40097-87f0-4782-b3cb-4d1e6266500a",
+              "trend_topic": "Experiential Merch Pop-up Activations",
+              "psVerdict": "unsettled",
+              "psScore": 0.59,
+              "psConfidence": 0.12,
+              "recurring": 0.21,
+              "deservesOwnRow": 0.49,
+              "narrower": 0.53
+            },
+            {
+              "trend_id": "76009fb1-ea41-4f39-bee4-99fbfa08b37c",
+              "trend_topic": "Kidults in-store hunting for limited-edition blind boxes and utility drops",
+              "psVerdict": "different_thing",
+              "psScore": 0.09,
+              "psConfidence": 0.86,
+              "recurring": 0.06,
+              "deservesOwnRow": 0.74,
+              "narrower": 0.18
+            },
+            {
+              "trend_id": "5351c59a-edb5-4f91-afac-de7ffa5607a3",
+              "trend_topic": "Grocery tourism: traveling abroad to haul novel CPG products from supermarkets",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.93,
+              "narrower": 0.05
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "43fc30b9-1f11-4c52-8257-694cfbb96c6c",
+        "candidate_id": "cand-ndtsuwuomt7bfbg2",
+        "stratum": "S07b_confirm_reject",
+        "ledger_decision": "REJECT",
+        "ledger_target": null,
+        "composed_decision": "PROMOTE_NEW",
+        "composed_target": null,
+        "decision_match": false,
+        "target_match": true,
+        "eq_confidence": "stands_alone",
+        "composed": {
+          "decision": "PROMOTE_NEW",
+          "decision_category": "CONFIRM_NEW",
+          "decision_rule": "stands_alone_promote",
+          "target_trend_id": null,
+          "eq_verdict": "stands_alone",
+          "neighbor_results": [
+            {
+              "trend_id": "f55435d6-51ec-4c6e-ab6f-27c7466b2217",
+              "trend_topic": "Peel-and-stick slatted acoustic panels for home office DIY upgrades",
+              "psVerdict": "different_thing",
+              "psScore": 0.06,
+              "psConfidence": 0.92,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.75,
+              "narrower": 0.6
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "ee185310-9900-4308-ae68-a3c243d609a2",
+        "candidate_id": "cand-m26eduh9mu35es00",
+        "stratum": "S08_contested_merge",
+        "ledger_decision": "MERGE_INTO_EXISTING",
+        "ledger_target": "fe868f01-f1e9-4e28-835c-625fe524ea06",
+        "composed_decision": "PROMOTE_NEW",
+        "composed_target": null,
+        "decision_match": false,
+        "target_match": true,
+        "eq_confidence": "stands_alone",
+        "composed": {
+          "decision": "PROMOTE_NEW",
+          "decision_category": "CONFIRM_NEW",
+          "decision_rule": "stands_alone_promote",
+          "target_trend_id": null,
+          "eq_verdict": "stands_alone",
+          "neighbor_results": [
+            {
+              "trend_id": "1be14c68-33e7-4149-99a8-b0080cb59ae6",
+              "trend_topic": "Pocket solid perfumes for midday dab-and-swipe scent refreshes",
+              "psVerdict": "different_thing",
+              "psScore": 0.08,
+              "psConfidence": 0.88,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.49,
+              "narrower": 0.16
+            },
+            {
+              "trend_id": "fe868f01-f1e9-4e28-835c-625fe524ea06",
+              "trend_topic": "Fragrance Wardrobing & Layering",
+              "psVerdict": "unsettled",
+              "psScore": 1.05,
+              "psConfidence": 0,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.14,
+              "narrower": 0.73
+            },
+            {
+              "trend_id": "5220c77b-1cd6-4593-b2b0-1bf01cc90d2b",
+              "trend_topic": "Haute Scent-Scaping / Atmospheric Scent Objects",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.9,
+              "narrower": 0.11
+            },
+            {
+              "trend_id": "24131b4d-c618-4274-9ba1-b5fccd6db89e",
+              "trend_topic": "Unconventional Fragrance Vehicles (Mouth and Hair Perfume)",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.9,
+              "narrower": 0.08
+            },
+            {
+              "trend_id": "663a1765-f83c-4897-954a-3e8e3138ec21",
+              "trend_topic": "Hair perfume layering as a lightweight daily signature scent",
+              "psVerdict": "different_thing",
+              "psScore": 0.06,
+              "psConfidence": 0.92,
+              "recurring": 0.04,
+              "deservesOwnRow": 0.73,
+              "narrower": 0.15
+            },
+            {
+              "trend_id": "058fb4ed-c094-4661-841b-aa4dfcec14b5",
+              "trend_topic": "Intense Perfume Mists",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.89,
+              "narrower": 0.12
+            },
+            {
+              "trend_id": "46d351b4-5d0f-433d-b474-28a312c94bb2",
+              "trend_topic": "Buying 1-5ml perfume decants to test viral fragrances",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.87,
+              "narrower": 0.09
+            },
+            {
+              "trend_id": "53555985-a4f2-425f-ba2d-a3144c079ed7",
+              "trend_topic": "Molecule-led and mood-functional niche fragrances consumers buy by ingredient",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.89,
+              "narrower": 0.15
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "d850c809-2a55-4e4a-bad4-39e587ff8119",
+        "candidate_id": "cand-nzauyap4muaam1xi",
+        "stratum": "S08_contested_merge",
+        "ledger_decision": "MERGE_INTO_EXISTING",
+        "ledger_target": "7458e128-4d0a-40fc-8d6d-876b9f0a241f",
+        "composed_decision": "PROMOTE_NEW",
+        "composed_target": null,
+        "decision_match": false,
+        "target_match": true,
+        "eq_confidence": "stands_alone",
+        "composed": {
+          "decision": "PROMOTE_NEW",
+          "decision_category": "CONFIRM_NEW",
+          "decision_rule": "stands_alone_promote",
+          "target_trend_id": null,
+          "eq_verdict": "stands_alone",
+          "neighbor_results": [
+            {
+              "trend_id": "7458e128-4d0a-40fc-8d6d-876b9f0a241f",
+              "trend_topic": "Vagus nerve stimulation wearables for nervous system training",
+              "psVerdict": "unsettled",
+              "psScore": 1.48,
+              "psConfidence": 0.21,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.22,
+              "narrower": 0.66
+            },
+            {
+              "trend_id": "bd08b822-5987-4ffa-b7b0-8e9838a50d8a",
+              "trend_topic": "Wearing breathing necklaces for anxiety management",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.89,
+              "narrower": 0.07
+            },
+            {
+              "trend_id": "55957e73-28f8-4539-a81e-0aaca3df05ac",
+              "trend_topic": "Nervous system training via biofeedback wearables for active stress fitness",
+              "psVerdict": "different_thing",
+              "psScore": 0.02,
+              "psConfidence": 0.97,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.78,
+              "narrower": 0.67
+            },
+            {
+              "trend_id": "b40b4afe-5d69-48dd-8098-c67bdd30551d",
+              "trend_topic": "Somatic shaking and vagus nerve stimulation as viral nervous-system reset rituals",
+              "psVerdict": "different_thing",
+              "psScore": 0.02,
+              "psConfidence": 0.98,
+              "recurring": 0.05,
+              "deservesOwnRow": 0.79,
+              "narrower": 0.83
+            },
+            {
+              "trend_id": "5616aa2b-b601-4568-bc65-71c166d7c0cd",
+              "trend_topic": "At-home vibroacoustic therapy devices for nervous system resets",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.87,
+              "narrower": 0.12
+            },
+            {
+              "trend_id": "1706129b-d017-49ff-89ef-74029cd164e3",
+              "trend_topic": "Wearing anxiety and fidget rings for discreet stress relief",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.93,
+              "narrower": 0.08
+            },
+            {
+              "trend_id": "a098a91f-630a-46c3-ada0-c87da1b7d6ba",
+              "trend_topic": "Cryo-cooling beauty products for nervous system regulation",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.91,
+              "narrower": 0.05
+            },
+            {
+              "trend_id": "b57fc3c4-a21c-4133-81ce-d6aa95649ff9",
+              "trend_topic": "Nervous System Regulation via Somatic Tech & Apparel",
+              "psVerdict": "different_thing",
+              "psScore": 0.01,
+              "psConfidence": 0.99,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.86,
+              "narrower": 0.62
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "b8cbf582-923e-4abe-be63-f8ccd974914d",
+        "candidate_id": "cand-yyq1zw1mmrl4o07t",
+        "stratum": "S08_contested_merge",
+        "ledger_decision": "MERGE_INTO_EXISTING",
+        "ledger_target": "3f912308-2c7f-4d5b-909e-7cac8751a072",
+        "composed_decision": "PROMOTE_NEW",
+        "composed_target": null,
+        "decision_match": false,
+        "target_match": true,
+        "eq_confidence": "stands_alone",
+        "composed": {
+          "decision": "PROMOTE_NEW",
+          "decision_category": "CONFIRM_NEW",
+          "decision_rule": "stands_alone_promote",
+          "target_trend_id": null,
+          "eq_verdict": "stands_alone",
+          "neighbor_results": [
+            {
+              "trend_id": "3f912308-2c7f-4d5b-909e-7cac8751a072",
+              "trend_topic": "Premium tinned fish (conservas) as a daily snacking hobby",
+              "psVerdict": "unsettled",
+              "psScore": 0.84,
+              "psConfidence": 0,
+              "recurring": 0.13,
+              "deservesOwnRow": 0.27,
+              "narrower": 0.59
+            },
+            {
+              "trend_id": "ea194eb6-2178-4310-9fe8-f3a45f4a20e9",
+              "trend_topic": "Small oily fish maxxing — anchovies and sardines as daily omega-3 whole-food ritual (anti-supplement)",
+              "psVerdict": "different_thing",
+              "psScore": 0.11,
+              "psConfidence": 0.84,
+              "recurring": 0.05,
+              "deservesOwnRow": 0.64,
+              "narrower": 0.31
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "fc5b4cd3-5d79-452d-9893-95e26235c826",
+        "candidate_id": "cand-jp5km3bmmso6pbh5",
+        "stratum": "S08_contested_merge",
+        "ledger_decision": "MERGE_INTO_EXISTING",
+        "ledger_target": "e60982b3-3b0f-4895-94aa-44a138ec9b4c",
+        "composed_decision": "PROMOTE_NEW",
+        "composed_target": null,
+        "decision_match": false,
+        "target_match": true,
+        "eq_confidence": "stands_alone",
+        "composed": {
+          "decision": "PROMOTE_NEW",
+          "decision_category": "CONFIRM_NEW",
+          "decision_rule": "stands_alone_promote",
+          "target_trend_id": null,
+          "eq_verdict": "stands_alone",
+          "neighbor_results": [
+            {
+              "trend_id": "e60982b3-3b0f-4895-94aa-44a138ec9b4c",
+              "trend_topic": "AI-Powered Shopping",
+              "psVerdict": "unsettled",
+              "psScore": 0.98,
+              "psConfidence": 0,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.14,
+              "narrower": 0.65
+            },
+            {
+              "trend_id": "784a1b01-9791-4064-afb9-f80262266e79",
+              "trend_topic": "Delegating multi-step planning to AI Shopping and Travel Agents",
+              "psVerdict": "different_thing",
+              "psScore": 0.12,
+              "psConfidence": 0.82,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.39,
+              "narrower": 0.84
+            },
+            {
+              "trend_id": "f0bc96e3-e476-44aa-b5ef-cfe97812eb07",
+              "trend_topic": "Delegating holiday gift research to AI shopping assistants",
+              "psVerdict": "different_thing",
+              "psScore": 0.21,
+              "psConfidence": 0.68,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.55,
+              "narrower": 0.18
+            },
+            {
+              "trend_id": "5d8c79bc-c79f-4713-9ff2-bf6c1038b2b0",
+              "trend_topic": "Purchasing directly from sponsored carousels inside conversational AI chats",
+              "psVerdict": "different_thing",
+              "psScore": 0.04,
+              "psConfidence": 0.94,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.78,
+              "narrower": 0.22
+            },
+            {
+              "trend_id": "973f09ee-4214-4418-9a2c-fa1789d0c493",
+              "trend_topic": "Booking automated in-store robotic manicures",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.93,
+              "narrower": 0.03
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "3de98416-988d-4936-8d26-9f6915adaa99",
+        "candidate_id": "cand-7j8nlypcmqfalgld",
+        "stratum": "S08_contested_merge",
+        "ledger_decision": "MERGE_INTO_EXISTING",
+        "ledger_target": "f55435d6-51ec-4c6e-ab6f-27c7466b2217",
+        "composed_decision": "PROMOTE_NEW",
+        "composed_target": null,
+        "decision_match": false,
+        "target_match": true,
+        "eq_confidence": "stands_alone",
+        "composed": {
+          "decision": "PROMOTE_NEW",
+          "decision_category": "CONFIRM_NEW",
+          "decision_rule": "stands_alone_promote",
+          "target_trend_id": null,
+          "eq_verdict": "stands_alone",
+          "neighbor_results": [
+            {
+              "trend_id": "f55435d6-51ec-4c6e-ab6f-27c7466b2217",
+              "trend_topic": "Peel-and-stick slatted acoustic panels for home office DIY upgrades",
+              "psVerdict": "unsettled",
+              "psScore": 1.3,
+              "psConfidence": 0,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.32,
+              "narrower": 0.35
+            },
+            {
+              "trend_id": "a53f3309-cb2a-4c13-b730-89a86f13f30d",
+              "trend_topic": "Creating sensory-rich flex rooms for neuro-inclusion",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 0.99,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.85,
+              "narrower": 0.66
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "25fa25ce-450f-4f66-902a-47bbc64b602f",
+        "candidate_id": "cand-53sp5cobmsonuc3d",
+        "stratum": "S08_contested_merge",
+        "ledger_decision": "MERGE_INTO_EXISTING",
+        "ledger_target": "5364eef5-e081-4b19-b033-37ae5daa2d1d",
+        "composed_decision": "PROMOTE_NEW",
+        "composed_target": null,
+        "decision_match": false,
+        "target_match": true,
+        "eq_confidence": "stands_alone",
+        "composed": {
+          "decision": "PROMOTE_NEW",
+          "decision_category": "CONFIRM_NEW",
+          "decision_rule": "stands_alone_promote",
+          "target_trend_id": null,
+          "eq_verdict": "stands_alone",
+          "neighbor_results": [
+            {
+              "trend_id": "5364eef5-e081-4b19-b033-37ae5daa2d1d",
+              "trend_topic": "Banana lattes and banana-flavored RTD creamers",
+              "psVerdict": "unsettled",
+              "psScore": 0.53,
+              "psConfidence": 0.2,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.21,
+              "narrower": 0.1
+            },
+            {
+              "trend_id": "2489b0a7-560b-4ea4-91b3-05e8d0f70bae",
+              "trend_topic": "'Swavory' (Savory-Sweet) Flavors in RTD Beverages and Snacks",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.86,
+              "narrower": 0.18
+            },
+            {
+              "trend_id": "b6666def-8cda-45ea-8a3a-3dd303a3f86c",
+              "trend_topic": "Savory umami teas (cheese foam, miso) replacing purely sweet cafe drinks",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.88,
+              "narrower": 0.08
+            },
+            {
+              "trend_id": "b82b0f33-f798-4bef-8d5c-fa9a3208d595",
+              "trend_topic": "Swangy (Sweet-Spicy-Tangy) Flavors in RTD Beverages and Snacks",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.89,
+              "narrower": 0.14
+            },
+            {
+              "trend_id": "ee5c5f91-d783-4c73-8467-275fa814b517",
+              "trend_topic": "Dirty Soda Customization — Gen Z building viral customized cream-soda creations for social sharing",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.8,
+              "narrower": 0.54
+            },
+            {
+              "trend_id": "336837f8-5e44-452f-ae12-cc86aec14450",
+              "trend_topic": "Consuming 'Fricy' (fruit + chili) flavor combos in beverages and snacks",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.89,
+              "narrower": 0.14
+            },
+            {
+              "trend_id": "67a96f35-aa28-4a62-aeed-274d46cb3dc0",
+              "trend_topic": "Espresso Lemonade Hybrids",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.9,
+              "narrower": 0.07
+            },
+            {
+              "trend_id": "5a4a604f-8c7e-48ed-8f6b-8506d66a928a",
+              "trend_topic": "QSR fruity refresher drinks replacing sodas — McDonald's, Starbucks, Sonic summer expansion",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.82,
+              "narrower": 0.43
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "da432527-1a8e-4938-8759-d81d5973fa1d",
+        "candidate_id": "cand-xhk17wy5mtvj2ax7",
+        "stratum": "S09_b060_070_MERGE_INTO_EXISTING",
+        "ledger_decision": "MERGE_INTO_EXISTING",
+        "ledger_target": "82bbba4b-3e80-4200-93a9-9d3cb5af6b80",
+        "composed_decision": "PROMOTE_NEW",
+        "composed_target": null,
+        "decision_match": false,
+        "target_match": true,
+        "eq_confidence": "stands_alone",
+        "composed": {
+          "decision": "PROMOTE_NEW",
+          "decision_category": "CONFIRM_NEW",
+          "decision_rule": "stands_alone_promote",
+          "target_trend_id": null,
+          "eq_verdict": "stands_alone",
+          "neighbor_results": [
+            {
+              "trend_id": "82bbba4b-3e80-4200-93a9-9d3cb5af6b80",
+              "trend_topic": "Attending clothing repair pop-ups & visible mending workshops",
+              "psVerdict": "unsettled",
+              "psScore": 0.83,
+              "psConfidence": 0,
+              "recurring": 0.21,
+              "deservesOwnRow": 0.4,
+              "narrower": 0.6
+            },
+            {
+              "trend_id": "7b103c9f-aad9-4c5e-aade-3059d1fd7796",
+              "trend_topic": "Thrift Customization & Flip Capsules",
+              "psVerdict": "different_thing",
+              "psScore": 0.14,
+              "psConfidence": 0.79,
+              "recurring": 0.08,
+              "deservesOwnRow": 0.55,
+              "narrower": 0.85
+            },
+            {
+              "trend_id": "d9e40097-87f0-4782-b3cb-4d1e6266500a",
+              "trend_topic": "Experiential Merch Pop-up Activations",
+              "psVerdict": "different_thing",
+              "psScore": 0.01,
+              "psConfidence": 0.99,
+              "recurring": 0.09,
+              "deservesOwnRow": 0.87,
+              "narrower": 0.72
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "rule1_tombstone": {
+    "n": 5,
+    "matches": 0,
+    "unscored_et": 3,
+    "detail": [
+      {
+        "audit_id": "f5895c12-1087-4b6b-bd43-e6bd36211462",
+        "candidate_id": "cand-kvggp06bmrgg2o4j",
+        "eventual": "REJECT",
+        "composed_decision": null,
+        "match": false,
+        "unscored": true,
+        "composed": {
+          "decision": null,
+          "decision_category": null,
+          "decision_rule": "oracle_decided",
+          "target_trend_id": null,
+          "eq_verdict": "needs_corroboration",
+          "unscored_reason": "et_unavailable",
+          "neighbor_results": []
+        }
+      },
+      {
+        "audit_id": "4be1a37d-76b0-460b-8dbc-551820ce58d7",
+        "candidate_id": "cand-kvggp06bmrgg2o4j",
+        "eventual": "REJECT",
+        "composed_decision": null,
+        "match": false,
+        "unscored": true,
+        "composed": {
+          "decision": null,
+          "decision_category": null,
+          "decision_rule": "oracle_decided",
+          "target_trend_id": null,
+          "eq_verdict": "needs_corroboration",
+          "unscored_reason": "et_unavailable",
+          "neighbor_results": []
+        }
+      },
+      {
+        "audit_id": "20854eb8-6d72-4cb0-a350-4cfc6327bb1e",
+        "candidate_id": "cand-kvggp06bmrgg2o4j",
+        "eventual": "REJECT",
+        "composed_decision": null,
+        "match": false,
+        "unscored": true,
+        "composed": {
+          "decision": null,
+          "decision_category": null,
+          "decision_rule": "oracle_decided",
+          "target_trend_id": null,
+          "eq_verdict": "needs_corroboration",
+          "unscored_reason": "et_unavailable",
+          "neighbor_results": []
+        }
+      },
+      {
+        "audit_id": "70dc736c-67e6-48f6-9c17-6d35278d96b9",
+        "candidate_id": "cand-x6gub4aomrp0ovow",
+        "eventual": "REJECT",
+        "composed_decision": "PROMOTE_NEW",
+        "match": false,
+        "unscored": false,
+        "composed": {
+          "decision": "PROMOTE_NEW",
+          "decision_category": "CONFIRM_NEW",
+          "decision_rule": "stands_alone_promote",
+          "target_trend_id": null,
+          "eq_verdict": "stands_alone",
+          "neighbor_results": [
+            {
+              "trend_id": "907020f8-1b8e-4b59-8c96-d804bc29aea7",
+              "trend_topic": "Attending regional fragrance festivals for direct indie perfume sampling",
+              "psVerdict": "different_thing",
+              "psScore": 0.01,
+              "psConfidence": 0.99,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.85,
+              "narrower": 0.28
+            },
+            {
+              "trend_id": "fe868f01-f1e9-4e28-835c-625fe524ea06",
+              "trend_topic": "Fragrance Wardrobing & Layering",
+              "psVerdict": "different_thing",
+              "psScore": 0.02,
+              "psConfidence": 0.97,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.8,
+              "narrower": 0.44
+            },
+            {
+              "trend_id": "5220c77b-1cd6-4593-b2b0-1bf01cc90d2b",
+              "trend_topic": "Haute Scent-Scaping / Atmospheric Scent Objects",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.86,
+              "narrower": 0.33
+            },
+            {
+              "trend_id": "3b8d69f4-f063-4994-8a2c-6180aebf1c6f",
+              "trend_topic": "Pheromone-Inspired Fragrance Oils",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.91,
+              "narrower": 0.08
+            },
+            {
+              "trend_id": "1be14c68-33e7-4149-99a8-b0080cb59ae6",
+              "trend_topic": "Pocket solid perfumes for midday dab-and-swipe scent refreshes",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.9,
+              "narrower": 0.05
+            },
+            {
+              "trend_id": "53555985-a4f2-425f-ba2d-a3144c079ed7",
+              "trend_topic": "Molecule-led and mood-functional niche fragrances consumers buy by ingredient",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.89,
+              "narrower": 0.21
+            },
+            {
+              "trend_id": "663a1765-f83c-4897-954a-3e8e3138ec21",
+              "trend_topic": "Hair perfume layering as a lightweight daily signature scent",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.04,
+              "deservesOwnRow": 0.9,
+              "narrower": 0.08
+            },
+            {
+              "trend_id": "c44436b6-525a-4588-ac4b-feed35229de5",
+              "trend_topic": "Experiential Play Stays",
+              "psVerdict": "different_thing",
+              "psScore": 0.01,
+              "psConfidence": 0.99,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.82,
+              "narrower": 0.65
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "63310f1f-4644-44c6-9a6b-1a65dfe457cb",
+        "candidate_id": "cand-x6gub4aomrp0ovow",
+        "eventual": "REJECT",
+        "composed_decision": "PROMOTE_NEW",
+        "match": false,
+        "unscored": false,
+        "composed": {
+          "decision": "PROMOTE_NEW",
+          "decision_category": "CONFIRM_NEW",
+          "decision_rule": "stands_alone_promote",
+          "target_trend_id": null,
+          "eq_verdict": "stands_alone",
+          "neighbor_results": [
+            {
+              "trend_id": "907020f8-1b8e-4b59-8c96-d804bc29aea7",
+              "trend_topic": "Attending regional fragrance festivals for direct indie perfume sampling",
+              "psVerdict": "different_thing",
+              "psScore": 0.01,
+              "psConfidence": 0.99,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.86,
+              "narrower": 0.29
+            },
+            {
+              "trend_id": "fe868f01-f1e9-4e28-835c-625fe524ea06",
+              "trend_topic": "Fragrance Wardrobing & Layering",
+              "psVerdict": "different_thing",
+              "psScore": 0.01,
+              "psConfidence": 0.98,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.8,
+              "narrower": 0.46
+            },
+            {
+              "trend_id": "5220c77b-1cd6-4593-b2b0-1bf01cc90d2b",
+              "trend_topic": "Haute Scent-Scaping / Atmospheric Scent Objects",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 0.99,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.86,
+              "narrower": 0.31
+            },
+            {
+              "trend_id": "3b8d69f4-f063-4994-8a2c-6180aebf1c6f",
+              "trend_topic": "Pheromone-Inspired Fragrance Oils",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.92,
+              "narrower": 0.08
+            },
+            {
+              "trend_id": "1be14c68-33e7-4149-99a8-b0080cb59ae6",
+              "trend_topic": "Pocket solid perfumes for midday dab-and-swipe scent refreshes",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.9,
+              "narrower": 0.05
+            },
+            {
+              "trend_id": "53555985-a4f2-425f-ba2d-a3144c079ed7",
+              "trend_topic": "Molecule-led and mood-functional niche fragrances consumers buy by ingredient",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.89,
+              "narrower": 0.18
+            },
+            {
+              "trend_id": "663a1765-f83c-4897-954a-3e8e3138ec21",
+              "trend_topic": "Hair perfume layering as a lightweight daily signature scent",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.04,
+              "deservesOwnRow": 0.9,
+              "narrower": 0.09
+            },
+            {
+              "trend_id": "c44436b6-525a-4588-ac4b-feed35229de5",
+              "trend_topic": "Experiential Play Stays",
+              "psVerdict": "different_thing",
+              "psScore": 0.01,
+              "psConfidence": 0.99,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.82,
+              "narrower": 0.62
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "rule2_needs_signal_cohort": {
+    "n": 12,
+    "agrees_with_eventual": 2,
+    "unscored_et": 10,
+    "detail": [
+      {
+        "audit_id": "71c3c106-f485-408a-9e67-5356ce0653ff",
+        "candidate_id": "cand-mts5lctqmp5yse1q",
+        "eventual": "PROMOTE_NEW",
+        "composed_decision": null,
+        "agrees_with_eventual": false,
+        "unscored": true,
+        "composed": {
+          "decision": null,
+          "decision_category": null,
+          "decision_rule": "oracle_decided",
+          "target_trend_id": null,
+          "eq_verdict": "needs_corroboration",
+          "unscored_reason": "et_unavailable",
+          "neighbor_results": [
+            {
+              "trend_id": "55957e73-28f8-4539-a81e-0aaca3df05ac",
+              "trend_topic": "Nervous system training via biofeedback wearables for active stress fitness",
+              "psVerdict": "different_thing",
+              "psScore": 0.04,
+              "psConfidence": 0.94,
+              "recurring": 0.05,
+              "deservesOwnRow": 0.76,
+              "narrower": 0.53
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "a8d24407-ada9-4838-bd2b-d9137dc07d64",
+        "candidate_id": "cand-bf61vj5ymr9aun2c",
+        "eventual": "PROMOTE_NEW",
+        "composed_decision": null,
+        "agrees_with_eventual": false,
+        "unscored": true,
+        "composed": {
+          "decision": null,
+          "decision_category": null,
+          "decision_rule": "oracle_decided",
+          "target_trend_id": null,
+          "eq_verdict": "needs_corroboration",
+          "unscored_reason": "et_unavailable",
+          "neighbor_results": []
+        }
+      },
+      {
+        "audit_id": "3958fd33-89b4-4209-8a81-e4da17727a2a",
+        "candidate_id": "cand-i8oy721tmpcvfqa0",
+        "eventual": "PROMOTE_NEW",
+        "composed_decision": "PROMOTE_NEW",
+        "agrees_with_eventual": true,
+        "unscored": false,
+        "composed": {
+          "decision": "PROMOTE_NEW",
+          "decision_category": "CONFIRM_NEW",
+          "decision_rule": "stands_alone_promote",
+          "target_trend_id": null,
+          "eq_verdict": "stands_alone",
+          "neighbor_results": [
+            {
+              "trend_id": "adc91c48-18d7-4119-be01-d6f1660eaa1b",
+              "trend_topic": "Nonnamaxxing & Eccentric Aunt Decor",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.89,
+              "narrower": 0.11
+            },
+            {
+              "trend_id": "64eb71d7-31e1-470c-b00e-490f1701b86b",
+              "trend_topic": "Curated Clutter Revival",
+              "psVerdict": "different_thing",
+              "psScore": 0.09,
+              "psConfidence": 0.87,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.71,
+              "narrower": 0.77
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "14cb55d9-a240-4d56-9de8-82405cd520ab",
+        "candidate_id": "cand-glh5vv4xmoycgff1",
+        "eventual": "PROMOTE_NEW",
+        "composed_decision": "PROMOTE_NEW",
+        "agrees_with_eventual": true,
+        "unscored": false,
+        "composed": {
+          "decision": "PROMOTE_NEW",
+          "decision_category": "CONFIRM_NEW",
+          "decision_rule": "stands_alone_promote",
+          "target_trend_id": null,
+          "eq_verdict": "stands_alone",
+          "neighbor_results": [
+            {
+              "trend_id": "8277debb-40f0-4234-8f5e-efd5fc50ff41",
+              "trend_topic": "Topical biotin hair growth products — serum, oil, shampoo format surge",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.91,
+              "narrower": 0.09
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "82e3d499-e39b-4ef3-890e-1b3c9ce5e22a",
+        "candidate_id": "cand-qgxdzzjempcpq9pp",
+        "eventual": "PROMOTE_NEW",
+        "composed_decision": null,
+        "agrees_with_eventual": false,
+        "unscored": true,
+        "composed": {
+          "decision": null,
+          "decision_category": null,
+          "decision_rule": "oracle_decided",
+          "target_trend_id": null,
+          "eq_verdict": "needs_corroboration",
+          "unscored_reason": "et_unavailable",
+          "neighbor_results": [
+            {
+              "trend_id": "63bd866c-1350-4386-8ced-d6976cd2c887",
+              "trend_topic": "Private Escape Creation",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.87,
+              "narrower": 0.07
+            },
+            {
+              "trend_id": "4ca3b46f-5d32-419f-88a2-11ef933d1d26",
+              "trend_topic": "Somatic Grounding Practices",
+              "psVerdict": "different_thing",
+              "psScore": 0.01,
+              "psConfidence": 0.99,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.75,
+              "narrower": 0.35
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "8df22432-1d08-4b4f-82ac-a3ff4dab24bb",
+        "candidate_id": "cand-4trsrhejmoxtv3oa",
+        "eventual": "PROMOTE_NEW",
+        "composed_decision": null,
+        "agrees_with_eventual": false,
+        "unscored": true,
+        "composed": {
+          "decision": null,
+          "decision_category": null,
+          "decision_rule": "oracle_decided",
+          "target_trend_id": null,
+          "eq_verdict": "needs_corroboration",
+          "unscored_reason": "et_unavailable",
+          "neighbor_results": [
+            {
+              "trend_id": "ade65428-3ea9-4582-8769-1205088b386e",
+              "trend_topic": "Collagen Wellness Confections",
+              "psVerdict": "different_thing",
+              "psScore": 0.01,
+              "psConfidence": 0.98,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.84,
+              "narrower": 0.23
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "3da7dc32-8dca-4299-9752-2cf116813dde",
+        "candidate_id": "cand-n7vu2kwkmp50ieej",
+        "eventual": "PROMOTE_NEW",
+        "composed_decision": null,
+        "agrees_with_eventual": false,
+        "unscored": true,
+        "composed": {
+          "decision": null,
+          "decision_category": null,
+          "decision_rule": "oracle_decided",
+          "target_trend_id": null,
+          "eq_verdict": "needs_corroboration",
+          "unscored_reason": "et_unavailable",
+          "neighbor_results": [
+            {
+              "trend_id": "1a1d26dd-d060-477e-8f7e-a61fca8ef37d",
+              "trend_topic": "Stacking oral probiotics and topical postbiotics for skin elasticity",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 0.99,
+              "recurring": 0.06,
+              "deservesOwnRow": 0.88,
+              "narrower": 0.11
+            },
+            {
+              "trend_id": "613d6445-fb4b-4852-9797-ceab2df90d6a",
+              "trend_topic": "Multi-type collagen peptide powder stacking for women's beauty and joints",
+              "psVerdict": "different_thing",
+              "psScore": 0.2,
+              "psConfidence": 0.7,
+              "recurring": 0.26,
+              "deservesOwnRow": 0.69,
+              "narrower": 0.11
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "be3c54d4-d30b-4fcd-802a-bf8111990780",
+        "candidate_id": "cand-n7vu2kwkmp50ieej",
+        "eventual": "PROMOTE_NEW",
+        "composed_decision": null,
+        "agrees_with_eventual": false,
+        "unscored": true,
+        "composed": {
+          "decision": null,
+          "decision_category": null,
+          "decision_rule": "oracle_decided",
+          "target_trend_id": null,
+          "eq_verdict": "needs_corroboration",
+          "unscored_reason": "et_unavailable",
+          "neighbor_results": [
+            {
+              "trend_id": "1a1d26dd-d060-477e-8f7e-a61fca8ef37d",
+              "trend_topic": "Stacking oral probiotics and topical postbiotics for skin elasticity",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 0.99,
+              "recurring": 0.06,
+              "deservesOwnRow": 0.87,
+              "narrower": 0.11
+            },
+            {
+              "trend_id": "613d6445-fb4b-4852-9797-ceab2df90d6a",
+              "trend_topic": "Multi-type collagen peptide powder stacking for women's beauty and joints",
+              "psVerdict": "different_thing",
+              "psScore": 0.16,
+              "psConfidence": 0.76,
+              "recurring": 0.31,
+              "deservesOwnRow": 0.71,
+              "narrower": 0.11
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "b9237ba6-bfd7-42e2-ad36-6ce07016dc4c",
+        "candidate_id": "cand-69bom6nxmqj0wy5e",
+        "eventual": "PROMOTE_NEW",
+        "composed_decision": null,
+        "agrees_with_eventual": false,
+        "unscored": true,
+        "composed": {
+          "decision": null,
+          "decision_category": null,
+          "decision_rule": "oracle_decided",
+          "target_trend_id": null,
+          "eq_verdict": "needs_corroboration",
+          "unscored_reason": "et_unavailable",
+          "neighbor_results": [
+            {
+              "trend_id": "0179907f-1b17-4e50-b994-7d7aad9858b0",
+              "trend_topic": "Applying probiotic/postbiotic skincare to fortify the skin microbiome",
+              "psVerdict": "different_thing",
+              "psScore": 0.01,
+              "psConfidence": 0.99,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.81,
+              "narrower": 0.32
+            },
+            {
+              "trend_id": "1a1d26dd-d060-477e-8f7e-a61fca8ef37d",
+              "trend_topic": "Stacking oral probiotics and topical postbiotics for skin elasticity",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.85,
+              "narrower": 0.34
+            },
+            {
+              "trend_id": "4e16cc41-1d0c-489f-b35d-d1473045430f",
+              "trend_topic": "The Medspa Bathroom: At-home clinical-grade skin and hair protocols",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.89,
+              "narrower": 0.25
+            },
+            {
+              "trend_id": "892504d6-ed01-487b-a234-9987ceff08da",
+              "trend_topic": "Targeted Beauty Tech",
+              "psVerdict": "different_thing",
+              "psScore": 0.01,
+              "psConfidence": 0.99,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.82,
+              "narrower": 0.59
+            },
+            {
+              "trend_id": "61ac5ce9-c967-4f2d-8764-07afa2d4f8e6",
+              "trend_topic": "Intravaginal probiotic suppositories as daily intimate-care ritual",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.9,
+              "narrower": 0.05
+            },
+            {
+              "trend_id": "e767126e-a4ee-4847-99bb-6a7a15becf00",
+              "trend_topic": "Drinkable Skincare Supplements for Beauty-from-Within Hydration",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.93,
+              "narrower": 0.04
+            },
+            {
+              "trend_id": "80b2e561-f676-4bcd-a37a-1e92080bc13a",
+              "trend_topic": "Building travel-optimized mini skincare/makeup kits for on-the-go touchups",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.94,
+              "narrower": 0.04
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "6f4cfd32-9a6a-4f70-a87f-f34f19b5ab79",
+        "candidate_id": "cand-7cmhaqa0mohwyh6e",
+        "eventual": "PROMOTE_NEW",
+        "composed_decision": null,
+        "agrees_with_eventual": false,
+        "unscored": true,
+        "composed": {
+          "decision": null,
+          "decision_category": null,
+          "decision_rule": "oracle_decided",
+          "target_trend_id": null,
+          "eq_verdict": "needs_corroboration",
+          "unscored_reason": "et_unavailable",
+          "neighbor_results": []
+        }
+      },
+      {
+        "audit_id": "0276adb8-fe02-4745-820f-b1a1856e81a1",
+        "candidate_id": "cand-4trsrhejmoxtv3oa",
+        "eventual": "PROMOTE_NEW",
+        "composed_decision": null,
+        "agrees_with_eventual": false,
+        "unscored": true,
+        "composed": {
+          "decision": null,
+          "decision_category": null,
+          "decision_rule": "oracle_decided",
+          "target_trend_id": null,
+          "eq_verdict": "needs_corroboration",
+          "unscored_reason": "et_unavailable",
+          "neighbor_results": [
+            {
+              "trend_id": "ade65428-3ea9-4582-8769-1205088b386e",
+              "trend_topic": "Collagen Wellness Confections",
+              "psVerdict": "different_thing",
+              "psScore": 0.01,
+              "psConfidence": 0.98,
+              "recurring": 0.02,
+              "deservesOwnRow": 0.83,
+              "narrower": 0.22
+            }
+          ]
+        }
+      },
+      {
+        "audit_id": "d8c7cfb5-eaa8-4fce-a185-aa2e174abd83",
+        "candidate_id": "cand-zpnvlpbemq57p6n0",
+        "eventual": "PROMOTE_NEW",
+        "composed_decision": null,
+        "agrees_with_eventual": false,
+        "unscored": true,
+        "composed": {
+          "decision": null,
+          "decision_category": null,
+          "decision_rule": "oracle_decided",
+          "target_trend_id": null,
+          "eq_verdict": "needs_corroboration",
+          "unscored_reason": "et_unavailable",
+          "neighbor_results": [
+            {
+              "trend_id": "0c38ca40-ad6a-4c9b-befa-f41b841625ff",
+              "trend_topic": "K-Beauty Skincare",
+              "psVerdict": "different_thing",
+              "psScore": 0.03,
+              "psConfidence": 0.96,
+              "recurring": 0.03,
+              "deservesOwnRow": 0.69,
+              "narrower": 0.58
+            },
+            {
+              "trend_id": "f75f909c-aec5-4734-b40e-33678b096b68",
+              "trend_topic": "Natural Beauty Supplements",
+              "psVerdict": "different_thing",
+              "psScore": 0,
+              "psConfidence": 1,
+              "recurring": 0.07,
+              "deservesOwnRow": 0.89,
+              "narrower": 0.1
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "rule3_level0_hand_inspect": [
+    {
+      "audit_id": "5466bef3-0009-40ee-9487-7aedd04c5307",
+      "candidate_id": "cand-addez0rjmu8e1ezp",
+      "stratum": "S03_dedup_branch",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "composed": {
+        "decision": "REJECT",
+        "decision_category": "LOW_QUALITY",
+        "decision_rule": "not_a_topic_reject",
+        "target_trend_id": null,
+        "eq_verdict": "not_a_topic",
+        "eq_confidence": 0.85
+      }
+    }
+  ],
+  "rule4_family_mismatch": [
+    {
+      "audit_id": "7575fa6c-aada-478f-a819-b09f54048920",
+      "candidate_id": "cand-75k6p70dmrq4onna",
+      "stratum": "S09_b060_070_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "composed": {
+        "decision": null,
+        "decision_category": null,
+        "decision_rule": "oracle_decided",
+        "target_trend_id": null,
+        "eq_verdict": "needs_corroboration",
+        "unscored_reason": "et_unavailable",
+        "neighbor_results": [
+          {
+            "trend_id": "b82b0f33-f798-4bef-8d5c-fa9a3208d595",
+            "trend_topic": "Swangy (Sweet-Spicy-Tangy) Flavors in RTD Beverages and Snacks",
+            "psVerdict": "different_thing",
+            "psScore": 0.13,
+            "psConfidence": 0.8,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.61,
+            "narrower": 0.84
+          },
+          {
+            "trend_id": "fd93a299-93de-420c-870e-2aa33fcedf4c",
+            "trend_topic": "Global Spice Surge",
+            "psVerdict": "different_thing",
+            "psScore": 0.02,
+            "psConfidence": 0.97,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.65,
+            "narrower": 0.87
+          },
+          {
+            "trend_id": "336837f8-5e44-452f-ae12-cc86aec14450",
+            "trend_topic": "Consuming 'Fricy' (fruit + chili) flavor combos in beverages and snacks",
+            "psVerdict": "different_thing",
+            "psScore": 0.21,
+            "psConfidence": 0.68,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.56,
+            "narrower": 0.88
+          },
+          {
+            "trend_id": "2489b0a7-560b-4ea4-91b3-05e8d0f70bae",
+            "trend_topic": "'Swavory' (Savory-Sweet) Flavors in RTD Beverages and Snacks",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.9,
+            "narrower": 0.15
+          },
+          {
+            "trend_id": "10904f3c-e635-4ff2-90bd-900ad36675f8",
+            "trend_topic": "Eating hot-sauce infused and spicy ice cream",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 0.99,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.84,
+            "narrower": 0.35
+          }
+        ]
+      },
+      "delta": {
+        "buggy_count": 2,
+        "fixed_count": 1,
+        "buggy_families": [
+          "agent_gemini_discovery",
+          "gemini_food_drink"
+        ],
+        "fixed_families": [
+          "gemini"
+        ],
+        "disagrees": true
+      },
+      "caught_defect": true
+    },
+    {
+      "audit_id": "72e0b1ae-a39e-4bd2-93da-7a46b715e414",
+      "candidate_id": "cand-5eh1cccqmtzw7j6a",
+      "stratum": "S06_ge080_all",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "composed": {
+        "decision": "MERGE_INTO_EXISTING",
+        "decision_category": "MISSED_DUPLICATE",
+        "decision_rule": "neighbour_merge",
+        "target_trend_id": "031135f3-956d-497e-8895-f034864e9488",
+        "eq_verdict": "needs_corroboration",
+        "multiple_same_thing": null,
+        "neighbor_results": [
+          {
+            "trend_id": "031135f3-956d-497e-8895-f034864e9488",
+            "trend_topic": "Dry Shampoo for Clothes",
+            "psVerdict": "same_thing",
+            "psScore": 1.97,
+            "psConfidence": 0.95,
+            "recurring": 0.09,
+            "deservesOwnRow": 0.1,
+            "narrower": 0.18
+          }
+        ]
+      },
+      "delta": {
+        "buggy_count": 2,
+        "fixed_count": 1,
+        "buggy_families": [
+          "gemini_other",
+          "gemini_wellness"
+        ],
+        "fixed_families": [
+          "gemini"
+        ],
+        "disagrees": true
+      },
+      "caught_defect": true
+    },
+    {
+      "audit_id": "b94c570e-b8b0-4dda-9c00-e00da9c095e3",
+      "candidate_id": "cand-712sclh0mtz3nsks",
+      "stratum": "S06_ge080_all",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "composed": {
+        "decision": "MERGE_INTO_EXISTING",
+        "decision_category": "MISSED_DUPLICATE",
+        "decision_rule": "neighbour_merge",
+        "target_trend_id": "031135f3-956d-497e-8895-f034864e9488",
+        "eq_verdict": "needs_corroboration",
+        "multiple_same_thing": null,
+        "neighbor_results": [
+          {
+            "trend_id": "031135f3-956d-497e-8895-f034864e9488",
+            "trend_topic": "Dry Shampoo for Clothes",
+            "psVerdict": "same_thing",
+            "psScore": 1.97,
+            "psConfidence": 0.96,
+            "recurring": 0.07,
+            "deservesOwnRow": 0.1,
+            "narrower": 0.11
+          }
+        ]
+      },
+      "delta": {
+        "buggy_count": 2,
+        "fixed_count": 1,
+        "buggy_families": [
+          "gemini_other",
+          "gemini_wellness"
+        ],
+        "fixed_families": [
+          "gemini"
+        ],
+        "disagrees": true
+      },
+      "caught_defect": true
+    },
+    {
+      "audit_id": "4fe37fae-9c16-43c2-8132-1c5295032b0a",
+      "candidate_id": "cand-yskefuw8mu1he57w",
+      "stratum": "S06_ge080_all",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "composed": {
+        "decision": "MERGE_INTO_EXISTING",
+        "decision_category": "MISSED_DUPLICATE",
+        "decision_rule": "neighbour_merge",
+        "target_trend_id": "031135f3-956d-497e-8895-f034864e9488",
+        "eq_verdict": "needs_corroboration",
+        "multiple_same_thing": null,
+        "neighbor_results": [
+          {
+            "trend_id": "031135f3-956d-497e-8895-f034864e9488",
+            "trend_topic": "Dry Shampoo for Clothes",
+            "psVerdict": "same_thing",
+            "psScore": 1.95,
+            "psConfidence": 0.93,
+            "recurring": 0.03,
+            "deservesOwnRow": 0.11,
+            "narrower": 0.11
+          }
+        ]
+      },
+      "delta": {
+        "buggy_count": 2,
+        "fixed_count": 1,
+        "buggy_families": [
+          "gemini_other",
+          "gemini_wellness"
+        ],
+        "fixed_families": [
+          "gemini"
+        ],
+        "disagrees": true
+      },
+      "caught_defect": true
+    },
+    {
+      "audit_id": "9f3f1de3-31f0-44a6-97bc-4068a9eb6186",
+      "candidate_id": "cand-1lrl6kj9mqwu6p9j",
+      "stratum": "S06_ge080_all",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "composed": {
+        "decision": "MERGE_INTO_EXISTING",
+        "decision_category": "MISSED_DUPLICATE",
+        "decision_rule": "neighbour_merge",
+        "target_trend_id": "336837f8-5e44-452f-ae12-cc86aec14450",
+        "eq_verdict": "needs_corroboration",
+        "multiple_same_thing": null,
+        "neighbor_results": [
+          {
+            "trend_id": "336837f8-5e44-452f-ae12-cc86aec14450",
+            "trend_topic": "Consuming 'Fricy' (fruit + chili) flavor combos in beverages and snacks",
+            "psVerdict": "same_thing",
+            "psScore": 1.99,
+            "psConfidence": 0.98,
+            "recurring": 0.05,
+            "deservesOwnRow": 0.13,
+            "narrower": 0.05
+          },
+          {
+            "trend_id": "fd93a299-93de-420c-870e-2aa33fcedf4c",
+            "trend_topic": "Global Spice Surge",
+            "psVerdict": "unsettled",
+            "psScore": 1.33,
+            "psConfidence": 0,
+            "recurring": 0.03,
+            "deservesOwnRow": 0.31,
+            "narrower": 0.47
+          },
+          {
+            "trend_id": "b82b0f33-f798-4bef-8d5c-fa9a3208d595",
+            "trend_topic": "Swangy (Sweet-Spicy-Tangy) Flavors in RTD Beverages and Snacks",
+            "psVerdict": "different_thing",
+            "psScore": 0.24,
+            "psConfidence": 0.64,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.51,
+            "narrower": 0.7
+          },
+          {
+            "trend_id": "2489b0a7-560b-4ea4-91b3-05e8d0f70bae",
+            "trend_topic": "'Swavory' (Savory-Sweet) Flavors in RTD Beverages and Snacks",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.89,
+            "narrower": 0.13
+          },
+          {
+            "trend_id": "4cf02608-2236-477e-b53e-5c89cd9fa247",
+            "trend_topic": "Flavorful Food Indulgence",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.86,
+            "narrower": 0.57
+          },
+          {
+            "trend_id": "9ab9e341-dbd7-463f-b543-4dfa75adb9c3",
+            "trend_topic": "Newstalgia flavor mashups (updating classic comfort snacks with modern twists)",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 0.99,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.85,
+            "narrower": 0.5
+          },
+          {
+            "trend_id": "9f7056ac-5c0a-494a-a278-4e73b1935edb",
+            "trend_topic": "Swicy/Buldak — sweet-spicy Korean ramen flavor breaking US mainstream",
+            "psVerdict": "different_thing",
+            "psScore": 0.05,
+            "psConfidence": 0.92,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.8,
+            "narrower": 0.15
+          },
+          {
+            "trend_id": "cadf318e-d764-4950-9e81-1bdae1c25f2f",
+            "trend_topic": "Pickle Snack Revolution",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.9,
+            "narrower": 0.04
+          }
+        ]
+      },
+      "delta": {
+        "buggy_count": 2,
+        "fixed_count": 1,
+        "buggy_families": [
+          "agent_gemini_discovery",
+          "gemini_food_drink"
+        ],
+        "fixed_families": [
+          "gemini"
+        ],
+        "disagrees": true
+      },
+      "caught_defect": true
+    },
+    {
+      "audit_id": "cc28bdc4-8072-40b4-a21c-d9ce9f8008af",
+      "candidate_id": "cand-idboqmmkmu108zan",
+      "stratum": "S06_ge080_all",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "composed": {
+        "decision": "MERGE_INTO_EXISTING",
+        "decision_category": "MISSED_DUPLICATE",
+        "decision_rule": "neighbour_merge",
+        "target_trend_id": "031135f3-956d-497e-8895-f034864e9488",
+        "eq_verdict": "needs_corroboration",
+        "multiple_same_thing": null,
+        "neighbor_results": [
+          {
+            "trend_id": "031135f3-956d-497e-8895-f034864e9488",
+            "trend_topic": "Dry Shampoo for Clothes",
+            "psVerdict": "same_thing",
+            "psScore": 1.97,
+            "psConfidence": 0.95,
+            "recurring": 0.07,
+            "deservesOwnRow": 0.09,
+            "narrower": 0.11
+          }
+        ]
+      },
+      "delta": {
+        "buggy_count": 2,
+        "fixed_count": 1,
+        "buggy_families": [
+          "gemini_other",
+          "gemini_wellness"
+        ],
+        "fixed_families": [
+          "gemini"
+        ],
+        "disagrees": true
+      },
+      "caught_defect": true
+    },
+    {
+      "audit_id": "95a78417-0a61-4508-85d3-d1788fb355d8",
+      "candidate_id": "cand-8nubwfuqmr25n201",
+      "stratum": "S07_contested_not_merge",
+      "ledger_decision": "PROMOTE_NEW",
+      "composed": {
+        "decision": null,
+        "decision_category": null,
+        "decision_rule": "oracle_decided",
+        "target_trend_id": null,
+        "eq_verdict": "needs_corroboration",
+        "unscored_reason": "et_unavailable",
+        "neighbor_results": [
+          {
+            "trend_id": "892504d6-ed01-487b-a234-9987ceff08da",
+            "trend_topic": "Targeted Beauty Tech",
+            "psVerdict": "different_thing",
+            "psScore": 0.11,
+            "psConfidence": 0.84,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.7,
+            "narrower": 0.75
+          },
+          {
+            "trend_id": "4e16cc41-1d0c-489f-b35d-d1473045430f",
+            "trend_topic": "The Medspa Bathroom: At-home clinical-grade skin and hair protocols",
+            "psVerdict": "different_thing",
+            "psScore": 0.02,
+            "psConfidence": 0.97,
+            "recurring": 0.03,
+            "deservesOwnRow": 0.8,
+            "narrower": 0.65
+          },
+          {
+            "trend_id": "e767126e-a4ee-4847-99bb-6a7a15becf00",
+            "trend_topic": "Drinkable Skincare Supplements for Beauty-from-Within Hydration",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.93,
+            "narrower": 0.03
+          },
+          {
+            "trend_id": "f4e30c93-5d51-4f9a-9a5b-ccea7a43403f",
+            "trend_topic": "Rapid skin-microbiome tests for customized skincare formulations",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.88,
+            "narrower": 0.14
+          },
+          {
+            "trend_id": "f75f909c-aec5-4734-b40e-33678b096b68",
+            "trend_topic": "Natural Beauty Supplements",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.93,
+            "narrower": 0.04
+          },
+          {
+            "trend_id": "0c38ca40-ad6a-4c9b-befa-f41b841625ff",
+            "trend_topic": "K-Beauty Skincare",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.91,
+            "narrower": 0.17
+          },
+          {
+            "trend_id": "bcb8425a-35cc-45e0-bf09-c08ffe7a7c48",
+            "trend_topic": "At-Home Hair Glazing / Gloss Masks",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.93,
+            "narrower": 0.02
+          },
+          {
+            "trend_id": "4481b49e-f47a-4d64-a1cd-4d5d7837ff7d",
+            "trend_topic": "Using active-infused blushes for dual color and skin benefits",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.93,
+            "narrower": 0.03
+          }
+        ]
+      },
+      "delta": {
+        "buggy_count": 2,
+        "fixed_count": 1,
+        "buggy_families": [
+          "agent_gemini_discovery",
+          "gemini_wellness"
+        ],
+        "fixed_families": [
+          "gemini"
+        ],
+        "disagrees": true
+      },
+      "caught_defect": true
+    },
+    {
+      "audit_id": "14d54a35-64b9-41b1-aece-85f8c2effe5e",
+      "candidate_id": "cand-tlxpqgndmsr1kgik",
+      "stratum": "S08_contested_merge",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "composed": {
+        "decision": null,
+        "decision_category": null,
+        "decision_rule": "oracle_decided",
+        "target_trend_id": null,
+        "eq_verdict": "needs_corroboration",
+        "unscored_reason": "et_unavailable",
+        "neighbor_results": [
+          {
+            "trend_id": "fe868f01-f1e9-4e28-835c-625fe524ea06",
+            "trend_topic": "Fragrance Wardrobing & Layering",
+            "psVerdict": "unsettled",
+            "psScore": 1.39,
+            "psConfidence": 0.08,
+            "recurring": 0.03,
+            "deservesOwnRow": 0.17,
+            "narrower": 0.55
+          },
+          {
+            "trend_id": "5220c77b-1cd6-4593-b2b0-1bf01cc90d2b",
+            "trend_topic": "Haute Scent-Scaping / Atmospheric Scent Objects",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.88,
+            "narrower": 0.11
+          },
+          {
+            "trend_id": "1be14c68-33e7-4149-99a8-b0080cb59ae6",
+            "trend_topic": "Pocket solid perfumes for midday dab-and-swipe scent refreshes",
+            "psVerdict": "different_thing",
+            "psScore": 0.09,
+            "psConfidence": 0.86,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.57,
+            "narrower": 0.24
+          }
+        ]
+      },
+      "delta": {
+        "buggy_count": 2,
+        "fixed_count": 1,
+        "buggy_families": [
+          "agent_gemini_discovery",
+          "gemini_wellness"
+        ],
+        "fixed_families": [
+          "gemini"
+        ],
+        "disagrees": true
+      },
+      "caught_defect": true
+    },
+    {
+      "audit_id": "61573727-e185-48fb-a2f7-44d2ebec20cc",
+      "candidate_id": "cand-ig06a2hemqwfvdac",
+      "stratum": "S09_b060_070_MERGE_INTO_EXISTING",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "composed": {
+        "decision": null,
+        "decision_category": null,
+        "decision_rule": "oracle_decided",
+        "target_trend_id": null,
+        "eq_verdict": "needs_corroboration",
+        "unscored_reason": "et_unavailable",
+        "neighbor_results": [
+          {
+            "trend_id": "008ad729-c0de-4004-9d63-58c124e40a5a",
+            "trend_topic": "SenseMaxxing: Eating hyper-sensory snacks for ASMR crunch",
+            "psVerdict": "unsettled",
+            "psScore": 1.38,
+            "psConfidence": 0.07,
+            "recurring": 0.03,
+            "deservesOwnRow": 0.22,
+            "narrower": 0.4
+          },
+          {
+            "trend_id": "1da7dde3-c887-4773-9314-22250eb098eb",
+            "trend_topic": "Tactile Food Culture",
+            "psVerdict": "unsettled",
+            "psScore": 1.49,
+            "psConfidence": 0.23,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.3,
+            "narrower": 0.66
+          },
+          {
+            "trend_id": "fd93a299-93de-420c-870e-2aa33fcedf4c",
+            "trend_topic": "Global Spice Surge",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.91,
+            "narrower": 0.08
+          },
+          {
+            "trend_id": "c8ffac5d-0afc-440d-aa76-417055f3df83",
+            "trend_topic": "Sensory Naturemaxxing / Biophilic Sanctuaries",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.92,
+            "narrower": 0.06
+          },
+          {
+            "trend_id": "74071efe-1a79-48fd-b164-114818762976",
+            "trend_topic": "The Sensory Surface: High-Tactility Materials in Fashion and Home",
+            "psVerdict": "different_thing",
+            "psScore": 0.01,
+            "psConfidence": 0.98,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.88,
+            "narrower": 0.22
+          }
+        ]
+      },
+      "delta": {
+        "buggy_count": 2,
+        "fixed_count": 1,
+        "buggy_families": [
+          "agent_gemini_discovery",
+          "gemini_food_drink"
+        ],
+        "fixed_families": [
+          "gemini"
+        ],
+        "disagrees": true
+      },
+      "caught_defect": true
+    },
+    {
+      "audit_id": "cd4892b1-e6ed-4d39-9bed-b61890f0ce3f",
+      "candidate_id": "cand-wc3x9icrmsef6onu",
+      "stratum": "S09_b060_070_MERGE_INTO_EXISTING",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "composed": {
+        "decision": null,
+        "decision_category": null,
+        "decision_rule": "oracle_decided",
+        "target_trend_id": null,
+        "eq_verdict": "needs_corroboration",
+        "unscored_reason": "et_unavailable",
+        "neighbor_results": [
+          {
+            "trend_id": "4c221bae-6617-44d0-84b4-1b8f678072df",
+            "trend_topic": "GLP-1 Halo Effect — protein-forward grocery buying and restaurant menu seeking by GLP-1-adjacent consumers",
+            "psVerdict": "different_thing",
+            "psScore": 0.04,
+            "psConfidence": 0.94,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.56,
+            "narrower": 0.86
+          },
+          {
+            "trend_id": "2c35973b-3cc7-4b53-a828-a9904641b8c5",
+            "trend_topic": "GLP-1 Companion Regimens (Muscle-Preservation Fitness & Nutrient-Dense Small Menus)",
+            "psVerdict": "different_thing",
+            "psScore": 0.02,
+            "psConfidence": 0.97,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.75,
+            "narrower": 0.78
+          },
+          {
+            "trend_id": "f8c820d2-894d-482b-aaba-0eb082bb2496",
+            "trend_topic": "Using at-home biomarker kits to track GLP-1 and metabolic outcomes",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.9,
+            "narrower": 0.05
+          },
+          {
+            "trend_id": "c1233e2e-d09a-44b2-b34d-3ea19c9a557d",
+            "trend_topic": "Consuming unflavored horse gelatin pre-meal to mimic GLP-1 satiety",
+            "psVerdict": "different_thing",
+            "psScore": 0.04,
+            "psConfidence": 0.95,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.69,
+            "narrower": 0.1
+          },
+          {
+            "trend_id": "73c8167b-db45-4c24-a90d-8e52575ac9c1",
+            "trend_topic": "Personalized Metabolic Wellness",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.86,
+            "narrower": 0.33
+          },
+          {
+            "trend_id": "943a09e7-68f9-4748-ac5c-1113dd9028ce",
+            "trend_topic": "High-fiber and chia meals as natural GLP-1 mimetics and support",
+            "psVerdict": "different_thing",
+            "psScore": 0.02,
+            "psConfidence": 0.97,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.83,
+            "narrower": 0.17
+          },
+          {
+            "trend_id": "4dbb4e96-6b51-49e0-8099-4d221e1a27b7",
+            "trend_topic": "Post-GLP-1 gut reset protocols — consumers managing weight regain after stopping GLP-1",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.86,
+            "narrower": 0.21
+          }
+        ]
+      },
+      "delta": {
+        "buggy_count": 2,
+        "fixed_count": 1,
+        "buggy_families": [
+          "agent_gemini_discovery",
+          "gemini_food_drink"
+        ],
+        "fixed_families": [
+          "gemini"
+        ],
+        "disagrees": true
+      },
+      "caught_defect": true
+    },
+    {
+      "audit_id": "c2311a0a-7439-4226-b906-3672048c01cf",
+      "candidate_id": "cand-j9u1j205mp702jyn",
+      "stratum": "S09_b060_070_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "composed": {
+        "decision": null,
+        "decision_category": null,
+        "decision_rule": "oracle_decided",
+        "target_trend_id": null,
+        "eq_verdict": "needs_corroboration",
+        "unscored_reason": "et_unavailable",
+        "neighbor_results": [
+          {
+            "trend_id": "55957e73-28f8-4539-a81e-0aaca3df05ac",
+            "trend_topic": "Nervous system training via biofeedback wearables for active stress fitness",
+            "psVerdict": "different_thing",
+            "psScore": 0.34,
+            "psConfidence": 0.49,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.5,
+            "narrower": 0.82
+          },
+          {
+            "trend_id": "b40b4afe-5d69-48dd-8098-c67bdd30551d",
+            "trend_topic": "Somatic shaking and vagus nerve stimulation as viral nervous-system reset rituals",
+            "psVerdict": "different_thing",
+            "psScore": 0.02,
+            "psConfidence": 0.98,
+            "recurring": 0.03,
+            "deservesOwnRow": 0.76,
+            "narrower": 0.76
+          }
+        ]
+      },
+      "delta": {
+        "buggy_count": 2,
+        "fixed_count": 1,
+        "buggy_families": [
+          "agent_gemini_discovery",
+          "gemini_wellness"
+        ],
+        "fixed_families": [
+          "gemini"
+        ],
+        "disagrees": true
+      },
+      "caught_defect": true
+    },
+    {
+      "audit_id": "81ac5f60-5d2d-499c-b1a8-759c2f8afcdc",
+      "candidate_id": "cand-7pmcakmfmtz3nsks",
+      "stratum": "S09_b060_070_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "composed": {
+        "decision": null,
+        "decision_category": null,
+        "decision_rule": "oracle_decided",
+        "target_trend_id": null,
+        "eq_verdict": "needs_corroboration",
+        "unscored_reason": "et_unavailable",
+        "neighbor_results": [
+          {
+            "trend_id": "892504d6-ed01-487b-a234-9987ceff08da",
+            "trend_topic": "Targeted Beauty Tech",
+            "psVerdict": "different_thing",
+            "psScore": 0.04,
+            "psConfidence": 0.94,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.47,
+            "narrower": 0.93
+          },
+          {
+            "trend_id": "4e16cc41-1d0c-489f-b35d-d1473045430f",
+            "trend_topic": "The Medspa Bathroom: At-home clinical-grade skin and hair protocols",
+            "psVerdict": "different_thing",
+            "psScore": 0.02,
+            "psConfidence": 0.97,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.51,
+            "narrower": 0.93
+          },
+          {
+            "trend_id": "16f49ffc-6818-4eb7-888f-933b89e07ed6",
+            "trend_topic": "Using AI-integrated beauty devices for real-time personalized skincare at home",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.86,
+            "narrower": 0.35
+          },
+          {
+            "trend_id": "99a5b632-0502-486e-b1fe-d87ec7ca0695",
+            "trend_topic": "RF Microneedling Beauty",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.89,
+            "narrower": 0.07
+          },
+          {
+            "trend_id": "4a63d932-0c91-406a-99eb-23b4bb03c7ac",
+            "trend_topic": "At-Home Facial Cryotherapy Tools for Morning De-Puffing",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.91,
+            "narrower": 0.03
+          },
+          {
+            "trend_id": "489317f4-8b16-4ecd-b3da-c52291312c92",
+            "trend_topic": "Affordable At-Home Red Light Therapy Panels",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.86,
+            "narrower": 0.1
+          },
+          {
+            "trend_id": "038e15fe-affa-4de3-9f87-051e055f5f1b",
+            "trend_topic": "Treating skin condition as biofeedback for internal health and stress",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.02,
+            "deservesOwnRow": 0.91,
+            "narrower": 0.11
+          },
+          {
+            "trend_id": "c688d052-1b21-4f03-916b-0f5c1f79a395",
+            "trend_topic": "K-Beauty Trends",
+            "psVerdict": "different_thing",
+            "psScore": 0,
+            "psConfidence": 1,
+            "recurring": 0.03,
+            "deservesOwnRow": 0.84,
+            "narrower": 0.43
+          }
+        ]
+      },
+      "delta": {
+        "buggy_count": 2,
+        "fixed_count": 1,
+        "buggy_families": [
+          "agent_gemini_discovery",
+          "gemini_wellness"
+        ],
+        "fixed_families": [
+          "gemini"
+        ],
+        "disagrees": true
+      },
+      "caught_defect": true
+    }
+  ],
+  "et_unavailable_count": 119,
+  "source_data_gap_count": 21,
+  "fit_test_4_confidence_separation": {
+    "easy": {
+      "n": 39,
+      "mean_eq_confidence": 0.7089743589743589,
+      "mean_top_pair_confidence": 0.9337037037037035
+    },
+    "ambiguous": {
+      "n": 53,
+      "mean_eq_confidence": 0.5709433962264152,
+      "mean_top_pair_confidence": 0.9757142857142858
+    }
+  },
+  "near_synonym_case": {
+    "cottage_cheese_A (S06_ge080_all)": {
+      "composed": {
+        "decision": "REJECT",
+        "decision_category": "LOW_QUALITY",
+        "decision_rule": "not_a_topic_reject",
+        "target_trend_id": null,
+        "eq_verdict": "not_a_topic",
+        "eq_confidence": 0.37
+      },
+      "eq": {
+        "type": "score",
+        "score": 0.42,
+        "confidence": 0.37,
+        "legend": {
+          "0": {
+            "verdict": "not_a_topic",
+            "what": "The topic is not a real thing people are doing, buying, or talking about. The signals describe something else, they contradict each other, or they name a whole category rather than one practice, product, or moment.",
+            "not_for": "A topic that is real but thinly evidenced. A topic that is niche, early, or unfamiliar. An unfamiliar topic is not an unreal one."
+          },
+          "1": {
+            "verdict": "needs_corroboration",
+            "what": "The topic is a real thing, but the evidence here does not establish it on its own. Every account in `candidate.signals` traces back to one origin — one publisher, one vendor's feed, or one search term restated — so an independent party is still needed to confirm the topic exists beyond this pool.",
+            "not_for": "A candidate whose accounts are genuinely independent of each other but few in number. Judge independence, not volume."
+          },
+          "2": {
+            "verdict": "stands_alone",
+            "what": "The topic is a real thing and the evidence here establishes it. Accounts that reached the topic separately describe the same behaviour, product, or moment — different publishers, different kinds of source, no shared origin.",
+            "not_for": "A candidate that looks well-evidenced because one origin produced many signals. Repetition from one origin is one account."
+          }
+        },
+        "probabilities": {
+          "0": 0.58,
+          "1": 0.42,
+          "2": 0
+        }
+      }
+    },
+    "cottage_cheese_B (S07a_et_earned_2nd)": {
+      "composed": {
+        "decision": "REJECT",
+        "decision_category": "LOW_QUALITY",
+        "decision_rule": "not_a_topic_reject",
+        "target_trend_id": null,
+        "eq_verdict": "not_a_topic",
+        "eq_confidence": 0.31
+      },
+      "eq": {
+        "type": "score",
+        "score": 0.46,
+        "confidence": 0.31,
+        "legend": {
+          "0": {
+            "verdict": "not_a_topic",
+            "what": "The topic is not a real thing people are doing, buying, or talking about. The signals describe something else, they contradict each other, or they name a whole category rather than one practice, product, or moment.",
+            "not_for": "A topic that is real but thinly evidenced. A topic that is niche, early, or unfamiliar. An unfamiliar topic is not an unreal one."
+          },
+          "1": {
+            "verdict": "needs_corroboration",
+            "what": "The topic is a real thing, but the evidence here does not establish it on its own. Every account in `candidate.signals` traces back to one origin — one publisher, one vendor's feed, or one search term restated — so an independent party is still needed to confirm the topic exists beyond this pool.",
+            "not_for": "A candidate whose accounts are genuinely independent of each other but few in number. Judge independence, not volume."
+          },
+          "2": {
+            "verdict": "stands_alone",
+            "what": "The topic is a real thing and the evidence here establishes it. Accounts that reached the topic separately describe the same behaviour, product, or moment — different publishers, different kinds of source, no shared origin.",
+            "not_for": "A candidate that looks well-evidenced because one origin produced many signals. Repetition from one origin is one account."
+          }
+        },
+        "probabilities": {
+          "0": 0.54,
+          "1": 0.46,
+          "2": 0
+        }
+      }
+    }
+  },
+  "arm_delta_criteria_vs_bare": {
+    "is_same_recurring_topic": {
+      "n_pairs": 555,
+      "mean_abs_delta": 0.012612612612612538,
+      "max_abs_delta": 0.25,
+      "big_flips": 0
+    },
+    "recurrence_deserves_own_row": {
+      "n_pairs": 555,
+      "mean_abs_delta": 0.052162162162162136,
+      "max_abs_delta": 0.19000000000000006,
+      "big_flips": 0
+    },
+    "is_narrower_instance": {
+      "n_pairs": 555,
+      "mean_abs_delta": 0.04621621621621622,
+      "max_abs_delta": 0.29,
+      "big_flips": 0
+    }
+  },
+  "recurrence_overrides_fired": [],
+  "cost_and_latency": {
+    "total_cost_usd": 0.05467950600000001,
+    "mean_cost_usd_per_candidate": 0.0002924037754010696,
+    "mean_duration_ms": 277.06417112299465,
+    "max_cost_usd": 0.000770112,
+    "min_cost_usd": 0.000030576
+  }
+}
