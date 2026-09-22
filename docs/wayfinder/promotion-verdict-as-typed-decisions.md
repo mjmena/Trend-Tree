@@ -253,7 +253,13 @@ lift-and-shift extraction to Cloud Run.
   source** — Jev is reading two differently-branded LLM discovery agents as not independent of
   each other, which CRMA-1231's vendor-aware family fix would still count as 2 families and get
   wrong. **Whether that stricter read is correct or the rubric needs a carve-out is this map's
-  live open question — not decided by this run.** The vendor-family fix (CRMA-1231 rule 4)
+  live open question — not decided by this run.** Measured live against production (not the
+  replay set): this is **not a tail case** — 41.8% of all subagent-decided `PROMOTE_NEW`/
+  `MERGE_INTO_EXISTING` rows (319 of 763; 51.4% of `PROMOTE_NEW` alone) rest on 2+ AI-discovery
+  families with zero directly-observed source, so applying Jev's stricter read as specified would
+  move over 40% of historical promotion throughput into `needs_corroboration`, where the oracle
+  then fails almost every time. This is close to the single biggest lever in the map, in either
+  direction, and must be decided deliberately. The vendor-family fix (CRMA-1231 rule 4)
   independently validated 12/12, unaffected. Criteria vs bare Noul arms: negligible (zero flips
   ≥0.3 across 555 pairs). `pair_sameness` confidence runs **backwards** on this set (0.976 mean
   on contested cases vs 0.934 on easy ones) — a caution for CRMA-1223. The near-synonym residual

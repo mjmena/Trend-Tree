@@ -185,6 +185,36 @@ incumbent eventually promoted.** Read alongside (a1) — this is the same
 mechanical oracle-starvation pattern, not new evidence about the cohort
 itself.
 
+## (i) The blast radius of the (a3) interpretive question — measured live, 2026-09-22
+
+Queried production directly (not the replay set): every subagent-decided
+`PROMOTE_NEW`/`MERGE_INTO_EXISTING` row in `FCT_PROMOTION_LEDGER`
+(`INPUT_TOKENS > 0`, excludes the lead's deterministic zero-token rows),
+joined to `STG_TREND_CANDIDATES.SOURCE_BREAKDOWN`, classified by vendor-aware
+family (`sourceFamilyOfVendorAware`).
+
+| | n | % of 763 |
+| --- | ---: | ---: |
+| Has a directly-observed source (Bluesky, Google Trends, Amazon, editorial, etc.) | 116 | 15.2% |
+| Agent-discovery-only, single family (already the known defect class) | 286 | 37.5% |
+| **Agent-discovery-only, 2+ families (`chatgpt`+`gemini`+`grok` combos)** | **319** | **41.8%** |
+| Empty `SOURCE_BREAKDOWN` | 42 | 5.5% |
+
+**This is not a tail case.** If Jev's `evidence_quality` reading in (a3) is
+applied as specified — two AI-discovery-agent brands are not independent of
+each other — it would move **41.8% of all historical subagent promotions**
+(51.4% of `PROMOTE_NEW` specifically: 258/502) into `needs_corroboration`,
+where the oracle then fails almost every time (see (a1)). That is a
+throughput change of a completely different order than the 43-trend defect
+CRMA-1220 measured. The (a3) question is not a rubric nuance — it is close to
+**the single biggest lever in this whole map**, in either direction: either
+production has been running on evidence this thin for a large fraction of
+its promotions (a much bigger finding than CRMA-1220's), or the rubric needs
+an explicit carve-out treating same-mechanism-different-vendor AI discovery
+as one corroboration-family, before the adopt-bar number means anything.
+**This must be decided deliberately, not discovered as an emergent side
+effect of shipping the rubric as currently worded.**
+
 ## What this run does not resolve
 
 - **The interpretive question in (a3)** — the map's actual next decision.
