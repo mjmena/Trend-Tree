@@ -32,10 +32,11 @@ with permission to return nothing. Every run writes an append-only **sourcing le
 header row recording the outcome (including "processed, nothing matched" and "failed") and
 one row per candidate the selector was shown, picks and rejects alike.
 
-The catalog is synced daily from Shopify into a product dimension holding persisted vectors —
-and is seeded immediately from the 2026-08-20 admin CSV export, so the build proceeds before
-the Shopify token lands. `insights-agent` reads the results directly from Snowflake with the
-credential and grants it already has; Snowflake is the only interface between the two systems.
+The catalog is synced daily from Shopify's public storefront feed (no credential needed) into
+a product dimension holding persisted vectors, seeded immediately from the 2026-08-20 admin
+CSV export so the build did not wait on the sync job. `insights-agent` reads the results
+directly from Snowflake with the credential and grants it already has; Snowflake is the only
+interface between the two systems.
 
 Shopify is the only implemented tier. The multi-tier contract is specified so the design
 does not overfit to one 187-product catalog, but no second tier is built.
@@ -75,7 +76,7 @@ does not overfit to one 187-product catalog, but no second tier is built.
 13. As the pipeline operator, I want an HTTP trigger beside the cron, so that I can fire a
     single trend manually for testing or repair.
 14. As the pipeline operator, I want the catalog seeded from the admin CSV export today, so
-    that the build and first sourcing runs do not wait on the Shopify token.
+    that the build and first sourcing runs do not wait on the live sync job.
 15. As the pipeline operator, I want the ecomm agent to decline to source against a catalog
     older than 7 days, so that stale products are never matched silently.
 16. As the pipeline operator, I want one `STG_AGENT_RUN_COSTS` row per ecomm-agent run —
@@ -275,20 +276,23 @@ geometry could not separate was resolved correctly in both directions on every r
 - **Daily full sweep, diffed on an embed-doc hash** — no delta cursors. An unchanged
   product only touches `LAST_SEEN_AT`; only a changed embed doc re-embeds. Revisit
   trigger: a tier's catalog past ~2,500 products reopens delta sync.
-- The Shopify read is the legacy REST product listing (accessible until 2027-04-16) with
-  the extended field whitelist: title, handle, product type, vendor, tags, body HTML,
-  status, image. Two shape gotchas: `body_html` is HTML and needs stripping; `tags` is a
-  comma-separated string, not an array.
+- The Shopify read is the **public storefront feed** — `GET
+  https://shoptrendhunter.myshopify.com/products.json?limit=250&page=n`, paged until a page
+  returns empty — needing no credential. It carries title, handle, product type, vendor,
+  tags, body HTML, images; no `status` field (a product's absence from the sweep is itself
+  the delist signal). Two shape gotchas: `body_html` is HTML and needs stripping; `tags` is
+  **an array**, not a comma-separated string (the legacy Admin REST surface's shape — no
+  longer used here).
 - **Embed doc v1** (Shopify tier, `EMBED_DOC_VERSION='v1'`):
   `title. Type: <type>. Vendor: <vendor>. Tags: <tags>. <body_html stripped, first 600
-  chars>` — REST product-record fields only; `Type` is skipped when it holds the literal
-  string `'0'` (a known store artifact).
+  chars>` — drawn from the storefront feed's catalog-record fields; `Type` is skipped when
+  it holds the literal string `'0'` (a known store artifact).
 - **CSV seed path (sanctioned)**: the catalog may be seeded from a Shopify admin CSV
   export ahead of the live sync — same embed doc, same handle key, `LAST_SEEN_AT` stamped
   with the export date. Seed rows graduate through the first live sweep as a normal sweep;
   nothing is re-keyed. The 2026-08-20 export (187 products, all active) is the seed corpus;
   its wholesale cost column never lands in Snowflake because the dimension stores no
-  presentation fields. A manual re-export is the freshness lever until the token lands.
+  presentation fields. A manual re-export was the freshness lever until the sync job landed.
 - **Freshness is guarded at the outcome layer only**: an audit-agent freshness row on the
   catalog's `MAX(LAST_SEEN_AT)` (YELLOW past 3 days, RED past 7) plus the ecomm agent
   **declining to source** against a catalog older than 7 days. No per-workflow registry
@@ -326,16 +330,15 @@ The 15-minute dynamic-table lag is inherited and accepted.
 
 ### Provisioning (prerequisites, some pending)
 
-- **Shopify Admin API token** — parked on CRMA-747, expected week of 2026-08-24. Lands in
-  Secret Manager as `trend-tree-shopify-token`; a staged wizard mints it (custom app,
-  `read_products` + `read_product_listings`, own rate-limit bucket). A Cloud Run copy is
-  mounted only if live hydration ever lands on the ecomm agent (unlikely — presentation
-  fields are hydrated by the consumer, not the ecomm agent, per the write path above).
+- **No Shopify credential is needed.** CRMA-747 (resolved 2026-09-21) found the public
+  storefront feed sufficient for the live sync — it needs no token, no Secret Manager entry,
+  and no custom app. This retires the token-provisioning plan this section originally
+  described.
 - **Cloud Scheduler cron** for the sync job (CRMA-777) and the ecomm-agent poll (CRMA-778),
   plus job-run permission for the runtime service account — self-service as of the
   2026-08-20 probe.
-- The CSV seed removes the token from the build's critical path: everything except the
-  live sync job and live hydration proceeds now.
+- The CSV seed removed the sync job from the build's critical path while it was pending;
+  the live sync itself is no longer credential-blocked either.
 - **New for the ecomm agent's Cloud Run move**: an Artifact Registry image (`mcc` repo,
   `mcc-crm-automations`/`us-east4`, per CRMA-437), the Cloud Run service itself, and one
   `run.invoker` binding for the ecomm agent's own caller identity (poller + manual fires) —
@@ -402,5 +405,8 @@ checked by replaying its seven contract cases when the prompt version bumps.
   seven contract cases are the reference examples instead.
 - Coordinate with the fleet model-allocation map (CRMA-726) if the selector's model pin
   ever changes; it is currently born conformant.
-- Legacy REST product endpoints are frozen surfaces, accessible until 2027-04-16 — the
-  sync carries that expiry as a known horizon.
+- The sync depends on Shopify's public storefront feed staying unauthenticated and
+  unlocked — it was password-protected as recently as 2026-08-20, so the job must treat a
+  401 or an empty first page as a hard failure, not a silent empty sweep. Legacy REST
+  product endpoints (accessible until 2027-04-16) remain the fallback if the feed locks
+  again or a future embed-doc version needs fields the storefront feed does not carry.
