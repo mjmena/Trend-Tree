@@ -76,6 +76,11 @@
 --
 -- Output column shape preserved for Steeple consumers (minus the two dropped
 -- promotion-* columns and TOP_SIGNALS.pagerank_score).
+--
+-- 2026-09-25 (CRMA-1313 gtrends-poller removed): the latest_gtrends CTE is
+-- gone and KEY_DATA_POINTS is always an empty array. The column stays so the
+-- UI contract holds. FCT_TREND_GTRENDS_DAILY is kept as history but no longer
+-- read by this dynamic table.
 
 CREATE OR REPLACE DYNAMIC TABLE MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD
   TARGET_LAG = '15 minutes'
@@ -140,17 +145,6 @@ latest_enrichment AS (
       SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
       FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
     ) r WHERE r.rn = 1
-),
-latest_gtrends AS (
-    -- Most recent gtrends-poller pull per trend. Feeds KEY_DATA_POINTS.
-    SELECT TREND_ID,
-           INTEREST_PEAK_PCT,
-           INTEREST_AVG_PCT,
-           PULLED_AT
-    FROM (
-      SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY PULLED_AT DESC) AS rn
-      FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_GTRENDS_DAILY
-    ) WHERE rn = 1
 ),
 evidence_split AS (
     -- Pre-bucket the typed pool for the dashboard.
@@ -450,26 +444,9 @@ SELECT
     tb.TREND_SOURCE,
     COALESCE(e.ORIGINALLY_SURFACED_AT, tb.DETECTED_AT)                     AS ORIGINALLY_SURFACED_AT,
 
-    -- KEY_DATA_POINTS is the latest gtrends-poller pull's interest scalars.
-    -- ARRAY_CONSTRUCT_COMPACT drops null entries, so a trend with no gtrends
-    -- row yields an empty array (same shape as the prior "no source_metrics
-    -- rows" case).
-    ARRAY_CONSTRUCT_COMPACT(
-        CASE WHEN lg.INTEREST_PEAK_PCT IS NOT NULL THEN
-            OBJECT_CONSTRUCT(
-                'source',       'google_trends',
-                'metric_name',  'interest_peak_pct',
-                'metric_value', lg.INTEREST_PEAK_PCT
-            )
-        END,
-        CASE WHEN lg.INTEREST_AVG_PCT IS NOT NULL THEN
-            OBJECT_CONSTRUCT(
-                'source',       'google_trends',
-                'metric_name',  'interest_avg_pct',
-                'metric_value', lg.INTEREST_AVG_PCT
-            )
-        END
-    )                                                                     AS KEY_DATA_POINTS,
+    -- KEY_DATA_POINTS is always an empty array since CRMA-1313 retired the
+    -- gtrends-poller that fed it. The column stays so the UI contract holds.
+    ARRAY_CONSTRUCT()                                                     AS KEY_DATA_POINTS,
 
     e.SOCIAL_NARRATIVE,
     e.CULTURAL_DRIVERS,
@@ -532,7 +509,6 @@ SELECT
 FROM trend_base tb
 LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t  ON tb.TREND_ID = t.TREND_ID
 LEFT JOIN latest_enrichment e                         ON tb.TREND_ID = e.TREND_ID
-LEFT JOIN latest_gtrends lg                           ON tb.TREND_ID = lg.TREND_ID
 LEFT JOIN evidence_split es                           ON tb.TREND_ID = es.TREND_ID
 LEFT JOIN top_signals ts                              ON tb.TREND_ID = ts.TREND_ID
 LEFT JOIN macro_tags mt                               ON tb.TREND_ID = mt.TREND_ID
