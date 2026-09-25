@@ -85,7 +85,7 @@ Before implementation, each field needs a real **definition**. So every section 
 - **Answers:** what's the ROI of covering this?
 - **Definition unknowns:** revenue model — pageviews × RPM? subscription conversion? search-traffic capture? Time horizon of the estimate?
 - **Inputs needed:** search demand (GSC), historical content performance (traffic → revenue), RPM/yield by category.
-- **Have in-repo:** `FCT_TREND_GTRENDS_DAILY` interest peak/avg as a demand *proxy*; source metrics. **No revenue or content-performance data.**
+- **Have in-repo:** `FCT_TREND_GTRENDS_DAILY` interest peak/avg as a demand *proxy* (history only — the poller was removed 2026-09-25, CRMA-1313); source metrics. **No revenue or content-performance data.**
 - **Missing / external:** GSC ingestion (pending warehouse capacity); content-performance→revenue history; RPM-by-category table.
 - **Decisions to lock:** the revenue model itself; which data sources are in scope; scale; how to handle trends with no historical analog.
 
