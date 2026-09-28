@@ -18,7 +18,8 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
   since `ingestion/tiktok-p_yKCm9Am` was deactivated on 2026-06-09. Judge every
   candidate on how *early* its results are, not on volume.
 - Use the `CONTEXT.md` terms exactly: [source], [agent search tool], [oracle],
-  [publisher], source family, provenance invariant.
+  [publisher], source family, Evidence purity (the ticket-era name
+  "provenance invariant" is not a `CONTEXT.md` term).
 - Grilling tickets use `/grilling` and `/domain-modeling`. Give a written
   recommendation with its reasoning, not multiple-choice option cards.
 - The SerpApi key is in the macOS Keychain as service `serpapi-api`.
@@ -80,6 +81,16 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
   deduplicated by TikTok video ID across runs. The spec requires a spot-check
   of the first week of `tiktok` rows against the 30% bar (#18), with the rule
   fixed in advance: below 30%, TikTok drops (CRMA-1325).
+- A TikTok result becomes one `FCT_SIGNALS` row with `SOURCE_NAME =
+  'tiktok'`, its own source family (no change to `sourceFamilyOf()`). The
+  URL plus the title satisfies Evidence purity: no page fetch, `SIGNAL_TEXT`
+  NULL, empty-title results dropped. `SIGNAL_TIMESTAMP` is the post time
+  decoded from the video ID, with a fetch-time fallback flagged in
+  `METADATA.timestamp_source`. `SIGNAL_ID` is the link without its query
+  string; the ingester dedups on `METADATA.video_id`. `METADATA` never
+  carries `search_query`. The spec must make the `tiktok` freshness check read
+  `EMBEDDED_AT`, not `SIGNAL_TIMESTAMP` as the audit SQL does today
+  (CRMA-1330).
 
 ## Decisions so far
 
@@ -96,6 +107,8 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
 - [Task: Settle who owns the SerpApi quota](https://mcclatchy.atlassian.net/browse/CRMA-1321) — **Decided:** Trend Tree draws on the shared dev@trendhunter.com SerpApi plan at 50-100 searches/day while exploring, key in Secret Manager as serpapi-api-key; no plan of its own.
 
 - [Prototype: Does a changed query shape or a specificity filter lift TikTok to the 30% bar?](https://mcclatchy.atlassian.net/browse/CRMA-1325) — **Decided:** A gemini-3.7-flash title filter lifts TikTok to 45% on the category seeds and 35% overall (small sample); changed query shapes fail. TikTok stays, with video-ID dedup and a first-week 30% spot-check that drops it on failure.
+
+- [Decide: How is a TikTok search result written as an FCT_SIGNALS row?](https://mcclatchy.atlassian.net/browse/CRMA-1330) — **Decided:** TikTok is its own source family; URL plus title satisfies Evidence purity (no page fetch); SIGNAL_TIMESTAMP is the post time decoded from the video ID; dedup on METADATA.video_id; no search_query key.
 
 ## Not yet specified
 
