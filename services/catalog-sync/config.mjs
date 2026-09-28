@@ -5,7 +5,10 @@
 // (CRMA-747), so there is no Shopify secret. loadConfig() throws on a missing
 // variable before the job touches the feed or Snowflake.
 
-const REQUIRED = ["SNOWFLAKE_ACCOUNT", "SNOWFLAKE_USER", "SNOWFLAKE_PRIVATE_KEY", "SHOPIFY_STORE_URL"];
+// STOREFRONT_PUBLIC_URL is the domain shoppers see, used for PRODUCT_URL
+// (CRMA-1328). SHOPIFY_STORE_URL is the myshopify domain the feed is read
+// from; its product pages 301 to the public domain.
+const REQUIRED = ["SNOWFLAKE_ACCOUNT", "SNOWFLAKE_USER", "SNOWFLAKE_PRIVATE_KEY", "SHOPIFY_STORE_URL", "STOREFRONT_PUBLIC_URL"];
 
 function present(v) {
   return v !== undefined && v !== null && String(v).trim() !== "";
@@ -32,5 +35,5 @@ export function loadConfig(env = process.env) {
   if (env.SNOWFLAKE_PRIVATE_KEY_PASSPHRASE) snowflake.privateKeyPass = env.SNOWFLAKE_PRIVATE_KEY_PASSPHRASE;
   if (env.SNOWFLAKE_WAREHOUSE) snowflake.warehouse = env.SNOWFLAKE_WAREHOUSE;
 
-  return { snowflake, storeUrl: String(env.SHOPIFY_STORE_URL) };
+  return { snowflake, storeUrl: String(env.SHOPIFY_STORE_URL), publicStoreUrl: String(env.STOREFRONT_PUBLIC_URL) };
 }
