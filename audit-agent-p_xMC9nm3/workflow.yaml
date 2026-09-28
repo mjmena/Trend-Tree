@@ -444,6 +444,31 @@ steps:
         LEFT JOIN active_stats a ON a.TIER = t.TIER
         ORDER BY t.TIER
     params: []
+- namespace: q_tiktok_freshness
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        -- CRMA-1338: tiktok ingester freshness. Reads EMBEDDED_AT (when the
+        -- row landed), not SIGNAL_TIMESTAMP as q_pipeline_freshness does — a
+        -- backfill keeps the publish time and hides an outage. An aggregate
+        -- with no GROUP BY always returns one row; a NULL age (no tiktok row
+        -- ever) grades RED in tiktok_freshness.mjs, which owns the window.
+        SELECT
+          TIMESTAMPDIFF(MINUTE, MAX(EMBEDDED_AT), CURRENT_TIMESTAMP())            AS MINUTES_SINCE_LAST_EMBEDDED,
+          COUNT_IF(EMBEDDED_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP()))          AS EMBEDDED_24H
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS
+        WHERE SOURCE_NAME = 'tiktok'
+      query: |-
+        SELECT
+          TIMESTAMPDIFF(MINUTE, MAX(EMBEDDED_AT), CURRENT_TIMESTAMP())            AS MINUTES_SINCE_LAST_EMBEDDED,
+          COUNT_IF(EMBEDDED_AT > DATEADD(hour, -24, CURRENT_TIMESTAMP()))          AS EMBEDDED_24H
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS
+        WHERE SOURCE_NAME = 'tiktok'
+    params: []
 - namespace: fetch_pipedream_errors
   runtime: nodejs20.x
   uses: "./fetch_pipedream_errors/entry.js"
@@ -620,6 +645,7 @@ steps:
     cost_24h_rows: "{{steps.q_cost_24h.$return_value}}"
     et_rescue_rows: "{{steps.q_et_rescue.$return_value}}"
     catalog_freshness_rows: "{{steps.q_catalog_freshness.$return_value}}"
+    tiktok_freshness_rows: "{{steps.q_tiktok_freshness.$return_value}}"
     pipedream_errors: "{{steps.fetch_pipedream_errors.$return_value}}"
     prompts_rows: "{{steps.q_audit_prompts.$return_value}}"
     prompt_drift_rows: "{{steps.q_prompt_drift.$return_value}}"
