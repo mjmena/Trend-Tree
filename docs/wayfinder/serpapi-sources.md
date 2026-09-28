@@ -29,27 +29,49 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
 - The TikTok Creative Center scraper failed twice: TikTok retired the page
   (301 to "TikTok One Creative Suite"), and its hashtag-level output never met
   the distillation specificity rubric (#18). Source: `CLAUDE.md`, 2026-06-09.
+- SerpApi has no TikTok, Reddit, or Kickstarter engine; every path goes through
+  Google, needs a query, and offers no "top" or "trending" feed. Best shapes:
+  TikTok `engine=google_short_videos` + `site:tiktok.com <topic>` + `tbs=qdr:w`
+  (12/12 fresh, no date field, post time decodable from the video ID); Reddit
+  `engine=google_forums` or `site:reddit.com` (thin recent coverage, comment
+  count but no score); Kickstarter `site:kickstarter.com/projects` (mostly
+  funded-project updates, crawl date only). Source: CRMA-1316 live calls,
+  2026-09-27, `docs/wayfinder/assets/crma-1316-serpapi-coverage.md`.
+- The SerpApi key belongs to the shared `dev@trendhunter.com` account: $275/mo
+  for 30,000 searches (~$0.009/call), 24,078 used this cycle, renews
+  2026-10-07. Source: `account.json`, 2026-09-27.
 
 ## Standing constraints
 
 - The map produces a spec, not a running ingester (charting, 2026-09-27).
+- TikTok, Reddit, and Kickstarter are planned as **direct platform sources**
+  (scheduled ingesters writing `FCT_SIGNALS`), not agent search tools or
+  oracles. Martin's intent, 2026-09-27 (CRMA-1319).
+- A SerpApi ingester is a `services/` Cloud Run service started by a Cloud
+  Scheduler job, with the fetch logic in `services/lib/sources/serpapi.mjs`.
+  No new Pipedream workflow. The audit agent watches each new `SOURCE_NAME`
+  for freshness via `EMBEDDED_AT` (CRMA-1319). If a platform later takes the
+  tool or oracle role, the hosting question reopens for that platform only.
 
 ## Decisions so far
+
+- [Research: What can SerpApi return for TikTok, Reddit, and Kickstarter?](https://mcclatchy.atlassian.net/browse/CRMA-1316) — **Decided:** No dedicated engines; all three go through Google, need a query, and have no top/trending feed. TikTok via google_short_videos is strong, Reddit thin, Kickstarter weak; shared quota at 80% used.
 
 ## Not yet specified
 
 - **The source family of each new source name.** The promotion gate counts
   source families, so this decides whether a Reddit signal can corroborate a
-  Bluesky signal. It hangs on the role decision.
+  Bluesky signal. It hangs on which platforms survive the prototype.
 - **The provenance invariant for a SERP result.** A Google result about a post
   has a real URL, but its snippet is Google's text, not the post. Decide
   whether that is a verifiable external artifact, or whether the ingester must
   fetch the page.
 - **Kickstarter's home.** It could be a trend source, an input to the ecomm
   sourcing agent (`services/ecomm-agent`), or something for the CSA team
-  (PGS-836). It becomes sharp once the research shows what Kickstarter results
-  contain.
-- **The signal timestamp.** SERP dates are often relative ("3 days ago").
-  Decide how `SIGNAL_TIMESTAMP` is derived.
+  (PGS-836). The research found Kickstarter results weak (funded-project
+  updates, no launch date); it sharpens with the prototype's verdict.
+- **The signal timestamp.** TikTok's post time decodes from the video ID;
+  Reddit gives a relative date; Kickstarter gives only Google's crawl date.
+  Decide how `SIGNAL_TIMESTAMP` is derived per platform.
 
 ## Out of scope
