@@ -223,11 +223,17 @@ const LEAD_ONLY_SCHEMAS = {
       type: "object",
       properties: {
         topic: { type: "string" },
-        // NOTE: no atomic candidate `query` here. This cluster-agent does NOT
-        // write STG_TREND_CANDIDATES — the active authoring path is the lead
-        // distillation-p_mkCBBqb + subagent distillation-subagent-p_jmCjj3J,
-        // which carry the ADR-0004 candidate query. (Slice-1/#59 originally
-        // added the field here by mistake; removed so it can't mislead.)
+        // Atomic candidate query (ADR-0004). Canonical rule: ATOMIC_QUERY_RULE
+        // in agents/lib/descriptor.mjs. This cluster-agent's proposals ARE the
+        // rows distillation and distillation-revisit write to
+        // STG_TREND_CANDIDATES.QUERY, which promotion looks up in Exploding
+        // Topics. The structural guard is
+        // agents/lib/candidate_query_coverage.test.mjs.
+        query: {
+          type: "string",
+          description:
+            "A single atomic, consumer-vernacular search term — the ingredient, product, or practice a shopper would actually type into a search box. NOT the compound behavior, NOT a coined marketing label, NOT industry jargon (e.g. 'retailtainment', 'agentic commerce'), and NOT a fresh internet-slang neologism that catalogs lag on (e.g. '-maxxing' coinages). Prefer the established noun a category already has over a clever phrase. This is a join key to external keyword APIs (Exploding Topics, Google Trends) — it is graded on whether those catalogs recognize it, so reach for the plainest term that still names THIS trend specifically. If a subagent returned a refined candidate with a query, carry that query through.",
+        },
         supporting_signal_ids: { type: "array", items: { type: "string" } },
         confidence: { type: "number" },
         specificity_score: { type: "number" },
@@ -237,7 +243,7 @@ const LEAD_ONLY_SCHEMAS = {
         evidence_added: { type: "array", items: { type: "string" } },
         reasoning: { type: "string" },
       },
-      required: ["topic", "supporting_signal_ids", "confidence", "specificity_score", "verdict", "reasoning"],
+      required: ["topic", "query", "supporting_signal_ids", "confidence", "specificity_score", "verdict", "reasoning"],
     },
   },
 };
@@ -416,6 +422,10 @@ async function dispatchSubagent(input, ctx) {
 }
 
 function proposeTrendCandidate(input, ctx) {
+  // Gemini does not always honour a schema's required list (CRMA-1335).
+  if (!String(input?.query ?? "").trim()) {
+    return { accepted: false, error: "query is required: call propose_trend_candidate again with the atomic consumer-vernacular search term for this candidate." };
+  }
   ctx.proposed_candidates = ctx.proposed_candidates || [];
   ctx.proposed_candidates.push({
     ...input, candidate_id: cryptoRandomId(),

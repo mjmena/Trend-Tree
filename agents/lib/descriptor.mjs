@@ -16,14 +16,17 @@
 // lead + subagent now author the same atomic query as the [candidate query]
 // on every candidate (propose_trend_candidate.query), persisted to
 // STG_TREND_CANDIDATES.QUERY. That rule text is inlined (not imported) in the
-// ACTIVE authoring path — the workflows that actually write candidates:
-//   - distillation-p_mkCBBqb/run_lead_agent/entry.js  (registers + persists)
+// propose_trend_candidate schemas:
+//   - distillation-cluster-agent-p_YyC89Ke/run_lead_agent/entry.js  (LIVE:
+//     both distillation and distillation-revisit dispatch to it and persist
+//     its proposals — CRMA-1335)
 //   - distillation-subagent-p_jmCjj3J/run_subagent/entry.js  (surfaces it)
-//     (both propose_trend_candidate schemas)
+//   - distillation-p_mkCBBqb/run_lead_agent/entry.js  (not wired into that
+//     workflow.yaml; kept for reference)
 // so a corroboration oracle (Exploding Topics, slice 2) can be looked up at
 // promotion — before the trend, and thus descriptor.query, exists.
-// NB: distillation-cluster-agent-p_YyC89Ke does NOT write candidates — do not
-// add the field there (that mis-wire caused the slice-1 misdeploy).
+// agents/lib/candidate_query_coverage.test.mjs fails if any copy drops the
+// field or any STG_TREND_CANDIDATES insert drops the QUERY column.
 // =====================================================================
 
 // The atomic-query authoring rule. Declarative, no worked one-shot

@@ -58,6 +58,17 @@ export function buildEtSearchRequest({ keyword, apiKey, responseTimeframe = "las
   };
 }
 
+// Pure. Where the ET keyword came from: "candidate_query" when it is the
+// candidate's own QUERY, else "improvised" (no QUERY, or the agent chose a
+// different term). ADR-0004 measured improvised compound labels matching ET
+// ~6% vs ~67% for an atomic QUERY, so the record must tell them apart
+// (CRMA-1335).
+export function etQuerySource({ queried, candidateQuery } = {}) {
+  const norm = (s) => String(s ?? "").trim().toLowerCase();
+  const q = norm(candidateQuery);
+  return q && norm(queried) === q ? "candidate_query" : "improvised";
+}
+
 // Pure. Normalize a raw /database-search response into a stable verdict shape.
 // Input:  { status, body } — HTTP status code + parsed JSON body (or null).
 // Output: {
