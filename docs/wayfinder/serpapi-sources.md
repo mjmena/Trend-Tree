@@ -53,14 +53,14 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
 - Roles per platform (CRMA-1318, 2026-09-28). **TikTok** is a direct
   platform source (a scheduled ingester writing `FCT_SIGNALS`). **Reddit** is a
   corroboration oracle at the promotion gate: a `site:reddit.com` match on the
-  candidate's `QUERY` earns the missing second source family, no
+  decider's oracle keyword earns the missing second source family, no
   `FCT_SIGNALS` row, and it plugs into the same gate seam the CRMA-1214 map
   designs for Exploding Topics, not a new one. **Kickstarter** is dropped.
 - A SerpApi ingester is a `services/` Cloud Run service started by a Cloud
   Scheduler job, with the fetch logic in `services/lib/sources/serpapi.mjs`.
   No new Pipedream workflow. The audit agent watches each new `SOURCE_NAME`
   for freshness via `EMBEDDED_AT` (CRMA-1319). This holds for TikTok only;
-  Reddit's oracle role reopens hosting for Reddit (CRMA-1318).
+  Reddit runs as an oracle adapter inside `services/promotion` (CRMA-1326).
 - The ingester looks outward. Each run searches a fixed list of **seed
   queries** (a constant in the service), never queries derived from signals,
   candidates or trends. TikTok and Reddit share one list keyed by discovery's
@@ -69,7 +69,7 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
   run (CRMA-1320). Pipeline-derived lookups are the agent-search-tool role.
 - Trend Tree draws on the shared `dev@trendhunter.com` SerpApi plan, not a
   plan of its own. The TikTok ingester and the Reddit oracle together stay at
-  or below 100 searches per day (the owner agreed to 50-100/day while
+  or below 100 searches per day (TikTok 50, Reddit 40, 10 headroom; CRMA-1326) (the owner agreed to 50-100/day while
   exploring). The key lives in Secret Manager as `serpapi-api-key` in
   `mcc-crm-automations`; the build creates it. Keeping the sources past
   exploration, or needing more, reopens the quota with the owner (CRMA-1321).
@@ -91,6 +91,30 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
   carries `search_query`. The spec must make the `tiktok` freshness check read
   `EMBEDDED_AT`, not `SIGNAL_TIMESTAMP` as the audit SQL does today
   (CRMA-1330).
+- The Reddit oracle is a second adapter in the injected oracle list that
+  CRMA-1242 (map CRMA-1214) gives promotion's decider. It ships with the
+  **typed Jev decider only**; the incumbent Gemini decider keeps
+  `[exploding_topics]`, and the typed list is `[exploding_topics, reddit]`.
+  The decider calls the oracles in that order and **stops at the first
+  `same_concept`**, so Reddit runs only on an ET miss. Reddit takes the same
+  keyword the decider sends every oracle (the rule CRMA-1332 tests); it has no
+  keyword of its own. Its results go to the unchanged `oracle_match` question
+  (no seventh `promotion.jev.*` row). The adapter makes one `engine=google`
+  call, `site:reddit.com <keyword>`, `tbs=qdr:m`, `num=10`; keeps only
+  `reddit.com/r/<sub>/comments/<id>` threads; drops threads with no comment
+  count or fewer than 10 comments (unvalidated, like the ET floor of 1000);
+  and sends every surviving thread to `oracle_match`. It enforces its own cap
+  of 40 calls per day. At the cap it does not run: the candidate is decided on
+  ET alone, with Reddit recorded as skipped for budget. A SerpApi error or
+  timeout returns `Decision` `failed` at stage `oracle`, which CRMA-1219's
+  bounded retry handles. Results live in `JUDGMENT_DETAIL`, each tagged with
+  oracle name, URL, comment count and skip reason; no sibling ledger (this
+  amends ADR-0004). The spec requires a first-week hand check of
+  Reddit-rescued candidates, fixed in advance: below 70% real corroborations,
+  Reddit comes off the list. The spec also requires a live measurement of the
+  `needs_corroboration` rate once Snowflake is reachable. The Reddit adapter
+  can ship only after the typed decider exists in `services/promotion`
+  (CRMA-1326).
 
 ## Decisions so far
 
@@ -109,6 +133,8 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
 - [Prototype: Does a changed query shape or a specificity filter lift TikTok to the 30% bar?](https://mcclatchy.atlassian.net/browse/CRMA-1325) — **Decided:** A gemini-3.7-flash title filter lifts TikTok to 45% on the category seeds and 35% overall (small sample); changed query shapes fail. TikTok stays, with video-ID dedup and a first-week 30% spot-check that drops it on failure.
 
 - [Decide: How is a TikTok search result written as an FCT_SIGNALS row?](https://mcclatchy.atlassian.net/browse/CRMA-1330) — **Decided:** TikTok is its own source family; URL plus title satisfies Evidence purity (no page fetch); SIGNAL_TIMESTAMP is the post time decoded from the video ID; dedup on METADATA.video_id; no search_query key.
+
+- [Decide: How does the Reddit corroboration oracle reach the promotion gate?](https://mcclatchy.atlassian.net/browse/CRMA-1326) — **Decided:** Reddit is a second oracle adapter in services/promotion, typed decider only, called after ET with stop at first same_concept; same keyword, unchanged oracle_match, past-month thread search with a 10-comment floor, own cap of 40/day, errors return failed, results in JUDGMENT_DETAIL (ADR-0004 amended).
 
 ## Not yet specified
 
