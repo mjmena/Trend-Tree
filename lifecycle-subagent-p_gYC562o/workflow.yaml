@@ -332,26 +332,6 @@ steps:
         ORDER BY SIMILARITY DESC
         LIMIT 20
     params: []
-- namespace: q_gtrends_history
-  runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
-  props:
-    snowflake:
-      authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        SELECT PULLED_AT, INTEREST_PEAK_PCT, INTEREST_AVG_PCT, RELATED_QUERIES
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_GTRENDS_DAILY
-        WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
-          AND PULLED_AT > DATEADD(day, -30, CURRENT_TIMESTAMP())
-        ORDER BY PULLED_AT DESC
-      query: |-
-        SELECT PULLED_AT, INTEREST_PEAK_PCT, INTEREST_AVG_PCT, RELATED_QUERIES
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_GTRENDS_DAILY
-        WHERE TREND_ID = '{{steps.handle_request.$return_value.trend_id}}'
-          AND PULLED_AT > DATEADD(day, -30, CURRENT_TIMESTAMP())
-        ORDER BY PULLED_AT DESC
-    params: []
 - namespace: q_neighbors
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -498,7 +478,6 @@ steps:
     lifecycle_history_rows: "{{steps.q_lifecycle_history.$return_value}}"
     recent_signal_rows: "{{steps.q_recent_signals.$return_value}}"
     candidate_signal_rows: "{{steps.q_candidate_signals.$return_value}}"
-    gtrends_rows: "{{steps.q_gtrends_history.$return_value}}"
     neighbor_rows: "{{steps.q_neighbors.$return_value}}"
     prompts_rows: "{{steps.q_prompts.$return_value}}"
 - namespace: commit_decision

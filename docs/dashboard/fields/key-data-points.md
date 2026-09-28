@@ -3,16 +3,11 @@
 
 # KEY_DATA_POINTS
 
-**At a glance** — Google Trends interest scalars for the trend, from the most recent daily poll.
+**At a glance** — Retired. The field is always an empty array (`[]`) since 2026-09-25.
 
-**Scale** — Array of up to 2 entries:
+**Why** — The field showed Google Trends interest scalars from the `gtrends-poller` workflow. That workflow was broken, and CRMA-1313 removed it. The column stays in `DT_TREND_DASHBOARD` so that consumers do not break.
 
-| Entry | What it is |
-|---|---|
-| `interest_peak_pct` | Effectively **binary**: `100` when the Google Trends series is non-empty, `0` when empty/blocked. Single-keyword normalization pins the peak to 100, so this is not a continuous 0–100 peak. |
-| `interest_avg_pct` | Average interest over the window, 0–100 — the **continuous** measure of the two. |
-
-**What feeds it** — The `gtrends-poller` workflow runs daily and pulls Google Trends interest curves for each live trend. The two scalars from the most recent pull surface here. An empty array means the poller hasn't seen the trend yet (or Google Trends returned no data for the query).
+**What it used to carry** — Up to 2 entries, `interest_peak_pct` (effectively binary: `100` or `0`) and `interest_avg_pct` (0–100), from the most recent daily Google Trends pull. That history stays in `FCT_TREND_GTRENDS_DAILY`.
 
 **Where it appears in ATLAS** — Data-points section on the trend card.
 

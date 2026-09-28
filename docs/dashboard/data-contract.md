@@ -88,14 +88,7 @@ Written daily by the prediction agent. **Additive and isolated** — never read 
 
 | Column | Type | What it is | Example value |
 | --- | --- | --- | --- |
-| `KEY_DATA_POINTS` | ARRAY | Latest Google Trends pull's interest scalars. One object per metric: `{ source, metric_name, metric_value }`. Empty array if no gtrends row. | see shape below |
-
-```json
-[
-  { "source": "google_trends", "metric_name": "interest_peak_pct", "metric_value": 100 },
-  { "source": "google_trends", "metric_name": "interest_avg_pct",  "metric_value": 1.6 }
-]
-```
+| `KEY_DATA_POINTS` | ARRAY | **Always an empty array since 2026-09-25.** The gtrends-poller that fed it was removed (CRMA-1313). The column stays so consumers do not break. It used to carry the latest Google Trends interest scalars as `{ source, metric_name, metric_value }` objects. | `[]` |
 
 ### Cultural narrative
 

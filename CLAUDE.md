@@ -40,7 +40,6 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 | `promotion-p_xMC99jg` + `promotion-agent-p_yKCmm9r` | Gemini 3.1 Pro promotion agent. Evaluates candidates → calls `PROC_PROMOTION_APPLY` to write `FCT_TRENDS` rows → `fire_enrichment_chain` step fans out to dispatcher |
 | `dispatcher-p_8rCBgnl` | Stateless chain runner — takes `{trend_id}` POST → fires `sources` → `enrichment` → `write` synchronously |
 | `sources-p_7NCy36w` | Per-trend source-metrics fetcher — populates `FCT_TREND_SOURCE_METRICS` |
-| `gtrends-poller-p_13CN9KG` | Per-active-trend Google Trends interest fetcher. 24h cron + HTTP → writes `FCT_TREND_GTRENDS_DAILY` (feeds `INTEREST_PEAK_PCT` / `INTEREST_AVG_PCT`). |
 | `enrichment-p_xMC995w` | Single Gemini 3.1 Pro agent loop — produces the canonical enrichment record. Its `run_name_reviewer` step is one of four remaining Sonnet 4.6 (Anthropic) callers; see **Anthropic callers** below |
 | `write-p_o7CWa2K` | Persists enrichment to `FCT_TREND_ENRICHMENT_LEDGER` (append-only ledger; the legacy `DIM_TREND_ENRICHMENT` was retired in the 2026-04-28 agent-owned-ledgers refactor) |
 | `lifecycle-agent-p_JZCz73w` + `lifecycle-subagent-p_gYC562o` | Gemini 3.1 Pro lifecycle agent. Sweeps every hour, re-evaluates trend status (NEW/GROWING/STABLE/DECLINING/DORMANT/RESURGENT/RETIRED) → `FCT_TREND_LIFECYCLE_LEDGER` |
@@ -52,6 +51,8 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 
 **Deactivated** (kept in repo for rollback / reference):
 - `ingestion/tiktok-p_yKCm9Am` — Creative Center hashtag scraper, scrapped 2026-06-09. TikTok retired the scraped page (301 → "TikTok One Creative Suite"; the `creative_radar_api` XHR is gone), and the hashtag-level output never met the distillation specificity rubric anyway (#18). The discovery workflow's Grok lane covers the TikTok cultural niche.
+
+> The `gtrends-poller-p_13CN9KG` workflow (daily Google Trends interest fetcher → `FCT_TREND_GTRENDS_DAILY`) was broken and has been **removed** from the repo (CRMA-1313, 2026-09-25). `FCT_TREND_GTRENDS_DAILY` stays in Snowflake as history; `DT_TREND_DASHBOARD.KEY_DATA_POINTS` is now always an empty array. The live `search-google-trends` agent tool is a separate component and stays.
 
 > The legacy `llm-enrichment-p_YyC86Zo` (3-LLM cascade, replaced by `enrichment-p_xMC995w` on 2026-04-27) has been **removed** from the repo — no longer kept for rollback.
 

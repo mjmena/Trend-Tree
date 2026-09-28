@@ -55,7 +55,6 @@ const WORKFLOW_REGISTRY = [
   { id: "p_QPCkLP1", name: "prediction-agent" },
   { id: "p_vQCkwgV", name: "daily-digest" },
   // --- ingestion (was entirely unmonitored before 2026-06-08) ---
-  { id: "p_13CN9KG", name: "gtrends-poller" },
   { id: "p_rvC71gN", name: "ingest-amazon-movers" },
   { id: "p_V9CgV17", name: "ingest-bluesky" },
   { id: "p_3nC3xkk", name: "ingest-google-trends" },

@@ -70,7 +70,6 @@ All workflows share network `net_5Lnie3` (required for Snowflake egress allowlis
 | `p_KwCoaap` | `lifecycle-attribution-agent-p_KwCoaap` | HTTP | Attribution lifecycle agent | 4096 MB · 600s |
 | `p_PACe77B` | `lifecycle-attribution-subagent-p_PACe77B` | HTTP | Attribution lifecycle subagent | 4096 MB · 600s |
 | `p_QPCkLP1` | `prediction-agent-p_QPCkLP1` | cron daily 14:00 UTC + HTTP | Deterministic emergence scorer over all live trends → FCT_TREND_PREDICTION_LEDGER | 4096 MB · 600s |
-| `p_13CN9KG` | `gtrends-poller-p_13CN9KG` | cron daily | Google Trends interest curves → FCT_TREND_GTRENDS_DAILY | 2048 MB · 600s |
 | `p_vQCkwgV` | `daily-digest-p_vQCkwgV` | cron daily | Assembles + sends trend digest via Braze | 2048 MB · 300s |
 | `p_xMC9nm3` | `audit-agent-p_xMC9nm3` | cron daily 13:00 UTC + HTTP | Gemini 3.1 Pro health auditor → FCT_AUDIT_LEDGER + Slack DM (gated non-GREEN) | 2048 MB · 300s |
 
@@ -174,7 +173,6 @@ Sources are deployed components (`dc_xxx` / `sc_xxx`) that trigger workflows ind
 |---|---|---|---|---|
 | `discovery-cron` | `dc_xxx` × 3 (per-LLM) | Configurable per model | `{ model: "gemini"\|"grok"\|"chatgpt" }` | `discovery-p_5VCPP3N` |
 | `lifecycle-cron` | `dc_xxx` | 1h | `{ kind: "lifecycle_tick" }` | `lifecycle-agent-p_JZCz73w` |
-| `gtrends-cron` | `dc_xxx` | daily | `{ kind: "gtrends_tick" }` | `gtrends-poller-p_13CN9KG` |
 | `agent-http` | `sc_xxx` | HTTP | `{ body, headers, query, method }` | distillation-subagent, lifecycle-subagent |
 
 Deploy pattern for a new cron source:
