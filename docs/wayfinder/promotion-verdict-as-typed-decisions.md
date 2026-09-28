@@ -266,8 +266,8 @@ lift-and-shift extraction to Cloud Run.
   risk is still unsettled — its two nearest replay-set instances both hit a separate empty-
   evidence gap (21/187 candidates), and CRMA-1217's own bare pair still lands unsettled (score
   1.24, confidence 0). Cost/latency at scale: $0.0547 for all 187 cases (Request A), oracle calls
-  free. Full detail in `docs/wayfinder/assets/crma-1222-report.md`. _Source: CRMA-1222, 2026-09-22
-  — not yet closed, pending the (a3) interpretive call._
+  free. Full detail in `docs/wayfinder/assets/crma-1222-report.md`. _Source: CRMA-1222, 2026-09-22;
+  the (a3) call is decided 2026-09-28 — see Standing constraints._
 
 ## Standing constraints
 
@@ -435,6 +435,21 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   cases, not against the ledger's recorded outcome; scoring against the buggy count would mark the
   typed path's correct answers as regressions.
   _Decided by [CRMA-1231](https://mcclatchy.atlassian.net/browse/CRMA-1231), 2026-09-21._
+- **Agreement between AI discovery agents is not independent corroboration.** `chatgpt`, `gemini`
+  and `grok` discovery agents all infer a trend from the same kind of web content, so two of them
+  agreeing never makes a candidate `stands_alone` — whatever the vendor count. Only a
+  directly-observed source (Bluesky, Google Trends, Amazon, editorial and the like) makes the
+  evidence independent. `evidence_quality` gets **no carve-out** for multi-vendor AI agreement; its
+  current wording already produces this reading. This is stricter than CRMA-1231 rule 4's
+  vendor-aware family count, which still counts two vendors as two families — so the family count
+  must never be used to override `evidence_quality`. **Consequence:** about 41.8% of historical
+  subagent-decided promotions (319 of 763) move onto the `needs_corroboration` route, which makes
+  the ET oracle load-bearing. The oracle cannot carry that load on the `trend_topic` fallback
+  (0 of 104 matches), so the oracle keyword rule above is **under test** on
+  [CRMA-1332](https://mcclatchy.atlassian.net/browse/CRMA-1332). If CRMA-1332 shows the oracle
+  still cannot corroborate this group, the throughput cost of this constraint is weighed before
+  `/to-tickets` — the constraint itself is not reversed by that result alone.
+  _Decided by [CRMA-1222](https://mcclatchy.atlassian.net/browse/CRMA-1222), 2026-09-28._
 
 ## Decisions so far
 
@@ -470,6 +485,8 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
 
 - [Get EXPLODING_TOPICS_API_KEY reachable from a harness environment](https://mcclatchy.atlassian.net/browse/CRMA-1255) — **Decided:** Martin retrieved the key from the Pipedream dashboard and added it to Keychain as `exploding-topics-trend-tree-scoping`, mirroring the `typesafe-trend-tree-scoping` precedent.
   **Binds:** Unblocked CRMA-1222's Request B (the ET oracle) — verified working, 116/116 live calls with zero auth failures.
+
+- [Prototype: the pairwise duplicate check on the widened replay set](https://mcclatchy.atlassian.net/browse/CRMA-1222) — **Decided:** Fails the adopt bar at 50.7% (69/136); 85% of mismatches are the ET oracle, which never matched a trend_topic keyword. (a3) decided: AI discovery agents agreeing is NOT independent corroboration, no carve-out; the oracle keyword is re-tested on CRMA-1332.
 
 ## Not yet specified
 
