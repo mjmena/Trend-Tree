@@ -227,8 +227,8 @@ const LEAD_ONLY_SCHEMAS = {
         // in agents/lib/descriptor.mjs. This cluster-agent's proposals ARE the
         // rows distillation and distillation-revisit write to
         // STG_TREND_CANDIDATES.QUERY, which promotion looks up in Exploding
-        // Topics. Keep in sync with distillation-subagent-p_jmCjj3J; the
-        // structural guard is agents/lib/candidate_query_coverage.test.mjs.
+        // Topics. The structural guard is
+        // agents/lib/candidate_query_coverage.test.mjs.
         query: {
           type: "string",
           description:
@@ -422,6 +422,10 @@ async function dispatchSubagent(input, ctx) {
 }
 
 function proposeTrendCandidate(input, ctx) {
+  // Gemini does not always honour a schema's required list (CRMA-1335).
+  if (!String(input?.query ?? "").trim()) {
+    return { accepted: false, error: "query is required: call propose_trend_candidate again with the atomic consumer-vernacular search term for this candidate." };
+  }
   ctx.proposed_candidates = ctx.proposed_candidates || [];
   ctx.proposed_candidates.push({
     ...input, candidate_id: cryptoRandomId(),
