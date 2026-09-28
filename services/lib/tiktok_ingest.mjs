@@ -22,15 +22,16 @@ export const FILTER_BATCH_SIZE = 40;
 export const QUERY_WINDOW_MS = 24 * 60 * 60 * 1000; // tbs=qdr:d
 const FUTURE_SKEW_MS = 5 * 60 * 1000;
 
-// Keyed by discovery's 6 verticals (CRMA-1320). One atomic term per seed:
-// google_short_videos returns 0 for most multi-word queries (CRMA-1325).
+// Keyed by discovery's 6 verticals (CRMA-1320). One single-word term per
+// seed: google_short_videos returns 0 for most multi-word queries, including
+// the two-word `kitchen gadget` (CRMA-1325).
 export const SEED_QUERIES = Object.freeze({
-  wellness: Object.freeze(["supplement", "sleep", "gut health", "workout"]),
+  wellness: Object.freeze(["supplement", "sleep", "probiotic", "workout"]),
   food_beverage: Object.freeze(["snack", "drink", "recipe", "dessert"]),
   beauty_personal_care: Object.freeze(["skincare", "makeup", "haircare", "fragrance"]),
   fashion_apparel: Object.freeze(["sneakers", "outfit", "jewelry", "handbag"]),
-  home_lifestyle: Object.freeze(["kitchen", "home decor", "cleaning", "gadget"]),
-  commerce_retail: Object.freeze(["amazon finds", "dupe", "costco", "trader joe's"]),
+  home_lifestyle: Object.freeze(["kitchen", "decor", "cleaning", "gadget"]),
+  commerce_retail: Object.freeze(["dupe", "costco", "aldi", "target"]),
 });
 
 const EXISTING_VIDEO_IDS_SQL = `SELECT DISTINCT METADATA:video_id::STRING AS VIDEO_ID
@@ -178,9 +179,12 @@ export async function runTikTokIngest({
     };
   });
 
+  // The procedure reports bad input as a returned { error }, not by throwing.
   const mergeRows = await query(MERGE_SQL, [JSON.stringify(rows)]);
-  const merge = mergeRows?.[0]?.MERGE_EXTERNAL_SIGNALS ?? null;
-  summary.merge = typeof merge === "string" ? JSON.parse(merge) : merge;
+  const raw = mergeRows?.[0]?.MERGE_EXTERNAL_SIGNALS ?? null;
+  const merge = typeof raw === "string" ? JSON.parse(raw) : raw;
+  if (merge?.error) throw new Error(`MERGE_EXTERNAL_SIGNALS rejected ${rows.length} rows: ${merge.error}`);
+  summary.merge = merge;
   summary.written = rows.length;
   return summary;
 }

@@ -19,9 +19,10 @@ export const TIKTOK_FILTER_MODEL = "gemini-3.7-flash";
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 const DEFAULT_TIMEOUT_MS = 120_000;
 
-export function createTitleFilter({ apiKey, systemPrompt, fetchImpl = fetch, model = TIKTOK_FILTER_MODEL, timeoutMs = DEFAULT_TIMEOUT_MS }) {
+export function createTitleFilter({ apiKey, systemPrompt, fetchImpl = fetch, timeoutMs = DEFAULT_TIMEOUT_MS }) {
   if (!apiKey) throw new Error("createTitleFilter: apiKey is required");
   if (!systemPrompt) throw new Error("createTitleFilter: systemPrompt is required");
+  const model = TIKTOK_FILTER_MODEL;
   const url = `${GEMINI_BASE}/${model}:generateContent`;
 
   return async function filter(titles) {

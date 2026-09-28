@@ -74,7 +74,7 @@ test("the seed list is fixed: discovery's 6 verticals, 3-5 atomic terms each", (
   ]);
   for (const [vertical, seeds] of Object.entries(SEED_QUERIES)) {
     assert.ok(seeds.length >= 3 && seeds.length <= 5, vertical);
-    for (const s of seeds) assert.match(s, /^[a-z' ]+$/, `${vertical}: ${s}`);
+    for (const s of seeds) assert.match(s, /^[a-z]+$/, `${vertical}: "${s}" is not one atomic term`);
   }
   assert.ok(Object.isFrozen(SEED_QUERIES));
 });
@@ -299,6 +299,14 @@ test("a run where the filter keeps nothing sends no Snowflake statement", async 
   const summary = await run({ search, filter, query });
   assert.equal(statements.length, 0);
   assert.equal(summary.written, 0);
+});
+
+test("a MERGE that reports an error fails the run, so the job's retry fires", async () => {
+  const { search } = fakeSearch({ skincare: [video(idAt("2026-09-28T02:00:00Z"), "Rice water toner KEEP")] });
+  const { filter } = fakeFilter();
+  const query = async (sql) =>
+    /^SELECT/.test(sql.trim()) ? [] : [{ MERGE_EXTERNAL_SIGNALS: JSON.stringify({ error: "invalid JSON: x", signals: 0 }) }];
+  await assert.rejects(run({ search, filter, query }), /MERGE_EXTERNAL_SIGNALS.*invalid JSON/);
 });
 
 test("no MERGE runs when every kept video is already ingested", async () => {

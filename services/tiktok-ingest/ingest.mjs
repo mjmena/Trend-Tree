@@ -46,7 +46,7 @@ async function main() {
     const filter = createTitleFilter({ apiKey: config.geminiApiKey, systemPrompt: prompt.TEMPLATE });
 
     const summary = await runTikTokIngest({
-      search: (params) => serpapi.search(params),
+      search: serpapi.search,
       filter,
       query: (sql, binds) => execute(conn, sql, binds),
       filterModel: TIKTOK_FILTER_MODEL,
