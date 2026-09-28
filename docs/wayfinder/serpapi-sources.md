@@ -49,24 +49,28 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
 ## Standing constraints
 
 - The map produces a spec, not a running ingester (charting, 2026-09-27).
-- TikTok, Reddit, and Kickstarter are planned as **direct platform sources**
-  (scheduled ingesters writing `FCT_SIGNALS`), not agent search tools or
-  oracles. Martin's intent, 2026-09-27 (CRMA-1319).
+- Roles per platform (CRMA-1318, 2026-09-28). **TikTok** is a direct
+  platform source (a scheduled ingester writing `FCT_SIGNALS`), on condition
+  that a changed query shape or a specificity filter lifts it to the 30% bar;
+  if it cannot, TikTok drops and the spec says why. **Reddit** is a
+  corroboration oracle at the promotion gate: a `site:reddit.com` match on the
+  candidate's `QUERY` earns the missing second source family, no
+  `FCT_SIGNALS` row, and it plugs into the same gate seam the CRMA-1214 map
+  designs for Exploding Topics, not a new one. **Kickstarter** is dropped.
 - A SerpApi ingester is a `services/` Cloud Run service started by a Cloud
   Scheduler job, with the fetch logic in `services/lib/sources/serpapi.mjs`.
   No new Pipedream workflow. The audit agent watches each new `SOURCE_NAME`
-  for freshness via `EMBEDDED_AT` (CRMA-1319). If a platform later takes the
-  tool or oracle role, the hosting question reopens for that platform only.
+  for freshness via `EMBEDDED_AT` (CRMA-1319). This holds for TikTok only;
+  Reddit's oracle role reopens hosting for Reddit (CRMA-1318).
 - The ingester looks outward. Each run searches a fixed list of **seed
   queries** (a constant in the service), never queries derived from signals,
   candidates or trends. TikTok and Reddit share one list keyed by discovery's
-  6 verticals, 3-5 atomic consumer terms each; Kickstarter gets no list until
-  its role is decided. Daily run, past-day window, hard cap of 50 calls per
+  6 verticals, 3-5 atomic consumer terms each. Reddit, now an oracle, needs
+  no seed list (CRMA-1318). Daily run, past-day window, hard cap of 50 calls per
   run (CRMA-1320). Pipeline-derived lookups are the agent-search-tool role.
-- No platform passes the specificity floor as-is (CRMA-1317). A platform kept
-  as a direct platform source must add an explicit specificity filter or a
-  different query shape, and the spec must say which. Reddit results add depth
-  on topics we already carry, which is the agent-search-tool role.
+- No platform passes the specificity floor as-is (CRMA-1317). TikTok must add
+  an explicit specificity filter or a different query shape, and the spec
+  must say which.
 
 ## Decisions so far
 
@@ -78,22 +82,24 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
 
 - [Prototype: Does a SerpApi sample pass the distillation specificity rubric?](https://mcclatchy.atlassian.net/browse/CRMA-1317) — **Decided:** No platform passes as-is: TikTok 10%, Reddit tab 0%, Kickstarter 4% against the 30% specificity-floor bar; TikTok is fresh but category seeds return routines and listicles.
 
+- [Decide: Which platforms enter as direct platform sources?](https://mcclatchy.atlassian.net/browse/CRMA-1318) — **Decided:** TikTok stays a direct platform source if a fix prototype lifts it to 30%; Reddit becomes a corroboration oracle on the CRMA-1214 gate seam; Kickstarter is dropped and out of scope.
+
 ## Not yet specified
 
-- **The source family of each new source name.** The promotion gate counts
-  source families, so this decides whether a Reddit signal can corroborate a
-  Bluesky signal. It hangs on which platforms survive the prototype.
-- **The provenance invariant for a SERP result.** A Google result about a post
-  has a real URL, but its snippet is Google's text, not the post. Decide
-  whether that is a verifiable external artifact, or whether the ingester must
-  fetch the page.
-- **Kickstarter's home.** It could be a trend source, an input to the ecomm
-  sourcing agent (`services/ecomm-agent`), or something for the CSA team
-  (PGS-836). The prototype found it fails as a trend source (4%, index
-  dominated by games and books); whether any other home is in scope hangs on
-  CRMA-1318.
-- **The signal timestamp.** TikTok's post time decodes from the video ID;
-  Reddit gives a relative date; Kickstarter gives only Google's crawl date.
-  Decide how `SIGNAL_TIMESTAMP` is derived per platform.
+- **The source family of `tiktok`.** The promotion gate counts source
+  families, so this decides whether a TikTok signal can corroborate a Bluesky
+  signal. It hangs on TikTok surviving its fix prototype.
+- **The provenance invariant for a TikTok SERP result.** A Google result about
+  a post has a real URL, but its snippet is Google's text, not the post.
+  Decide whether that is a verifiable external artifact, or whether the
+  ingester must fetch the page.
+- **TikTok's signal timestamp.** The post time decodes from the video ID;
+  decide whether `SIGNAL_TIMESTAMP` uses it or the fetch time.
 
 ## Out of scope
+
+- **Kickstarter, in any role.** It fails as a trend source (4%, index
+  dominated by games and books, CRMA-1317). Its other homes, an input to
+  `services/ecomm-agent` or CSA sourcing (PGS-836), are product-sourcing
+  inputs, not trend signal, and belong to a different effort. Ruled in
+  [Decide: Which platforms enter as direct platform sources?](https://mcclatchy.atlassian.net/browse/CRMA-1318).
