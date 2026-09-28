@@ -273,6 +273,30 @@ geometry could not separate was resolved correctly in both directions on every r
   header** — a single header per run would erase "our store was searched and stocked
   nothing", which is the buy-list query.
 
+#### Dashboard exposure across tiers (decided, not built — CRMA-780)
+
+Today the dashboard reads the latest header per trend, which is unambiguous only while one
+tier exists. With two tiers, a tier-2 `no_match` would mask tier 1's picks. The dashboard
+keeps its three columns and one row per trend; only the read changes:
+
+- **Combine unit:** the latest header per **`(TREND_ID, TIER)`**, then combine those
+  headers. No shared run id is added across tiers — that would be DDL, and tiers add rows.
+- **`SOURCED_PRODUCTS`:** one merged array — tier preference rank first, then
+  `SEMANTIC_SCORE` within a tier (the order the selector section already states). Scores
+  are never compared across tiers. The entry shape is unchanged; `tier` already rides on
+  each entry. The array is **capped at `MAX_SOURCED_PRODUCTS` (5)** in that order, because
+  each tier's latest header is independent and could otherwise sum past 5.
+- **`SOURCING_STATUS`:** precedence `matched` > `running` > `failed` > `no_match` >
+  `not_sourced`. A running or failed tier never hides another tier's picks, and
+  `no_match` means every tier finished with nothing.
+- **`SOURCED_AT`:** `MAX(COMPLETED_AT)` over the tier headers; `NULL` when no tier has
+  completed.
+- **Tier rank lives in data**, in the tier config the second tier introduces — not as a
+  `CASE` in `sql/dt_trend_dashboard.sql`, which would redeploy the dynamic table per tier.
+  A tier with no rank sorts last, so its picks are never dropped silently.
+- **Writer note:** when a higher tier is re-sourced, the lower tiers are re-consulted with
+  the new slot count, so the cap trims only transient overlap.
+
 ### Catalog sync and the CSV seed
 
 - The sync is a **Cloud Run job** (`trend-tree-catalog-sync`, code under the fleet's
@@ -322,7 +346,9 @@ The dashboard dynamic table gains exactly three columns, from the latest header 
   the ledger.
 - `SOURCED_AT` — the header timestamp, so staleness is visible.
 
-The 15-minute dynamic-table lag is inherited and accepted.
+The 15-minute dynamic-table lag is inherited and accepted. "Latest header per trend" holds
+only while Shopify is the sole tier; the multi-tier read is decided under "Dashboard
+exposure across tiers" above.
 
 ### Cost telemetry
 
@@ -385,6 +411,8 @@ checked by replaying its seven contract cases when the prompt version bumps.
 
 - **Building any second tier** (Amazon or otherwise), including reviving the dormant
   Amazon ingestion scraper. The contract is specified; only Shopify is implemented.
+  **The first step of any second tier is the dashboard change** under "Dashboard exposure
+  across tiers" (CRMA-780) — it must land before a non-shopify header is written.
 - **The KDML / external discovery API** — Marcelo's separate track.
 - **The published collection-page surface** — the Decision Page is the only consumer
   designed for.
