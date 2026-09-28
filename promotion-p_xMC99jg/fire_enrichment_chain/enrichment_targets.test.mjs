@@ -1,5 +1,5 @@
 // Tests for the CRMA-1032 enrichment-retry selection helper.
-// Run: node --test promotion-p_xMC99jg/fire_enrichment_chain/
+// Run: node --test promotion-p_xMC99jg/fire_enrichment_chain/enrichment_targets.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -70,6 +70,24 @@ test("a promotion run every 3 hours hits the window exactly once per day", () =>
   }
 });
 
+test("a 3-hour run at any fractional phase hits the window once per day", () => {
+  for (const start of [0.1, 1.55, 2.95]) {
+    const hits = [];
+    for (let run = 0; run < 25; run++) {
+      const h = start + run * 3;
+      if (isRetryDue(h)) hits.push(h);
+    }
+    assert.equal(hits.length, 3, `start=${start} hits=${hits}`);
+  }
+});
+
+test("accepts fractional hours from the minutes / 60 query column", () => {
+  assert.equal(isRetryDue(5.99), false);
+  assert.equal(isRetryDue(6.0), true);
+  assert.equal(isRetryDue(8.99), true);
+  assert.equal(isRetryDue(9.0), false);
+});
+
 test("coerces the Snowflake numeric string and rejects junk", () => {
   assert.equal(isRetryDue("30"), true);
   assert.equal(isRetryDue(null), false);
@@ -98,6 +116,13 @@ test("does not retry on a dry run", () => {
 test("caps retries per run so a pipeline-wide outage does not fan out at once", () => {
   const rows = Array.from({ length: MAX_RETRIES_PER_RUN + 3 }, (_, i) => stuck(`t${i}`, 6));
   assert.equal(selectRetryTrendIds(rows, { iteration: 1 }).length, MAX_RETRIES_PER_RUN);
+});
+
+test("the cap keeps the youngest due trends, so old failures cannot starve a new one", () => {
+  const rows = [stuck("new", 6.5), ...Array.from({ length: 8 }, (_, i) => stuck(`old${i}`, 30 + 24 * i))];
+  const ids = selectRetryTrendIds(rows, { iteration: 1 });
+  assert.equal(ids[0], "new");
+  assert.equal(ids.length, MAX_RETRIES_PER_RUN);
 });
 
 test("tolerates a missing or non-array query result", () => {

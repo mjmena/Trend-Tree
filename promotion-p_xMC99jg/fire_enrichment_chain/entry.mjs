@@ -10,8 +10,8 @@
 //
 // Retry (CRMA-1032): the same fan-out also re-dispatches stuck trends from
 // q_unenriched_trends — promoted earlier, chain failed, still no `initial`
-// ledger row. ./enrichment_targets.mjs decides which ones are due this run
-// (once a day per trend, iteration 1 only). It is a sibling in this SAME
+// or `refinement` ledger row. ./enrichment_targets.mjs decides which ones
+// are due this run (once a day per trend, iteration 1 only). It is a sibling in this SAME
 // step dir, which is the only import shape Pipedream bundles.
 //
 // Replaces the legacy STG_ENRICHMENT_QUEUE + cron-poll mechanism.
@@ -54,7 +54,6 @@ export default defineComponent({
       dryRun: this.dry_run,
     });
     const targets = buildDispatchTargets(promotedIds, retryIds);
-    const retryCount = targets.filter((t) => t.reason === "retry").length;
 
     if (targets.length === 0) {
       console.log("fire_enrichment_chain: no newly-promoted or retry-due trends to enrich");
@@ -64,6 +63,7 @@ export default defineComponent({
 
     const trendIds = targets.map((t) => t.trend_id);
     const retryTrendIds = targets.filter((t) => t.reason === "retry").map((t) => t.trend_id);
+    const retryCount = retryTrendIds.length;
 
     if (!this.dispatcher_url || /PLACEHOLDER/i.test(this.dispatcher_url)) {
       console.log(`fire_enrichment_chain: dispatcher_url not configured (got '${this.dispatcher_url}') — skipping fanout`);

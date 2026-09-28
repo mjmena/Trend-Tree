@@ -14,6 +14,15 @@
 // is retry-due only while (hours since promotion - 6) mod 24 is in a
 // 3-hour window. The promotion timer fires every 3 hours, so exactly one
 // run per day lands in that window: first retry at hour 6, then daily.
+// HOURS_SINCE_PROMOTED is fractional (minutes / 60), so the window does not
+// shift by an hour when a run crosses a clock-hour boundary. The query runs
+// after the lead agent, whose runtime varies by minutes; that jitter (or a
+// manual HTTP run) can occasionally double a day's retry or skip one day.
+// Both are bounded: one extra enrichment run, or a 24h delay.
+//
+// q_unenriched_trends orders youngest-first, and the per-run cap keeps that
+// order: the trends with the fewest past retries go first, so a pile of
+// trends that always fail cannot starve a newly failed one.
 
 export const RETRY_FIRST_HOUR = 6;
 export const RETRY_PERIOD_HOURS = 24;
@@ -53,6 +62,7 @@ export function isRetryDue(hoursSincePromoted) {
   return (h - RETRY_FIRST_HOUR) % RETRY_PERIOD_HOURS < RETRY_WINDOW_HOURS;
 }
 
+// unenrichedRows must arrive youngest-first (q_unenriched_trends' ORDER BY).
 export function selectRetryTrendIds(unenrichedRows, { iteration = 1, dryRun = false } = {}) {
   // A self-retriggered iteration runs minutes after iteration 1, while the
   // chain iteration 1 fired is still running — retrying there double-fires.
