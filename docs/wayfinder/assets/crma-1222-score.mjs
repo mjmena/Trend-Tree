@@ -14,7 +14,9 @@ const terminal = JSON.parse(readFileSync(join(HERE, "crma-1222-terminal-decision
 const results = readFileSync(join(HERE, "crma-1222-results.jsonl"), "utf8")
   .trim().split("\n").filter(Boolean).map(JSON.parse);
 
-const ORACLE_FILE = join(HERE, "crma-1222-oracle-results.jsonl");
+// CRMA-1332 re-scores alternative oracle keyword arms through this same code.
+const ORACLE_FILE = process.env.ORACLE_FILE || join(HERE, "crma-1222-oracle-results.jsonl");
+const SCORECARD_FILE = process.env.SCORECARD_FILE || join(HERE, "crma-1222-scorecard.json");
 const oracleByAuditId = new Map();
 if (existsSync(ORACLE_FILE)) {
   for (const line of readFileSync(ORACLE_FILE, "utf8").trim().split("\n")) {
@@ -240,7 +242,7 @@ const scorecard = {
   },
 };
 
-writeFileSync(join(HERE, "crma-1222-scorecard.json"), JSON.stringify(scorecard, null, 2));
+writeFileSync(SCORECARD_FILE, JSON.stringify(scorecard, null, 2));
 console.log(JSON.stringify({
   total: scorecard.total_cases,
   buckets: scorecard.bucket_counts,
