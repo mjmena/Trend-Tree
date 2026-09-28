@@ -450,6 +450,21 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   still cannot corroborate this group, the throughput cost of this constraint is weighed before
   `/to-tickets` — the constraint itself is not reversed by that result alone.
   _Decided by [CRMA-1222](https://mcclatchy.atlassian.net/browse/CRMA-1222), 2026-09-28._
+- **The extraction leaves a replaceable decider, and the typed path drops in behind it.**
+  Promotion becomes one `services/promotion` service. All per-candidate judgment sits behind a
+  **decider** module that the lead calls in-process: `createDecider({prompts, oracles,
+  modelClient, config})` once per run, `decide(candidate, neighbourPool)` once per candidate. The
+  Gemini tool loop is the only implementation at extraction, and its tools, fallbacks and
+  `et_rescue` router are private to it. `PROC_PROMOTION_APPLY` stays the only writer; the bundle
+  JSON is the contract. Helpers and the decider contract are exported from
+  `services/lib/promotion/`, and the replay harness imports them instead of `loadStep()`.
+  Corroboration oracles are an injected list — the seam CRMA-1326's Reddit oracle uses. `Decision`
+  carries `failed` from day one; the incumbent keeps returning `DEFER` for its own caught failures
+  until the typed path ships. The implementation is chosen per revision in `deploy.env`, never per
+  request. `dry_run` is **removed**. The pre-gate's reject arm stays in the lead before clustering.
+  The lift-and-shift logs each decision's `trace` and adds no DDL. The full pass/fail checklist is
+  `docs/wayfinder/assets/crma-1242-extraction-seam.md`.
+  _Decided by [CRMA-1242](https://mcclatchy.atlassian.net/browse/CRMA-1242), 2026-09-28._
 
 ## Decisions so far
 
@@ -487,6 +502,8 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   **Binds:** Unblocked CRMA-1222's Request B (the ET oracle) — verified working, 116/116 live calls with zero auth failures.
 
 - [Prototype: the pairwise duplicate check on the widened replay set](https://mcclatchy.atlassian.net/browse/CRMA-1222) — **Decided:** Fails the adopt bar at 50.7% (69/136); 85% of mismatches are the ET oracle, which never matched a trend_topic keyword. (a3) decided: AI discovery agents agreeing is NOT independent corroboration, no carve-out; the oracle keyword is re-tested on CRMA-1332.
+
+- [Decide: what seam promotion's Cloud Run extraction must leave for the typed path](https://mcclatchy.atlassian.net/browse/CRMA-1242) — **Decided:** One services/promotion service with a replaceable in-process decider (Gemini loop now, typed Jev later); PROC_PROMOTION_APPLY stays the only writer; helpers exported from services/lib/promotion/ for the replay harness; oracles are an injected list; Decision carries failed from day one; decider chosen per revision in deploy.env; dry_run removed. Checklist: docs/wayfinder/assets/crma-1242-extraction-seam.md
 
 ## Not yet specified
 
