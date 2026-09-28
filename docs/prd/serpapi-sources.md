@@ -2,6 +2,13 @@
 
 # PRD: SerpApi sources — a TikTok source and a Reddit corroboration oracle
 
+> **Outcome (2026-09-28).** The TikTok source shipped: CRMA-1337 delivered the ingester, and
+> CRMA-1338 delivered the daily schedule and the audit freshness row. The Reddit corroboration
+> oracle will not ship. [CRMA-1344](https://mcclatchy.atlassian.net/browse/CRMA-1344) rejected
+> Jev, so the typed promotion decider that Reddit extends will not be built. CRMA-1339 and
+> CRMA-1341 closed as wontfix. The Reddit sections below record the design as decided. They do
+> not describe planned work.
+
 Produced 2026-09-28 from wayfinder map [CRMA-1315](https://mcclatchy.atlassian.net/browse/CRMA-1315)
 (`docs/wayfinder/serpapi-sources.md` on branch `wayfinder/serpapi-sources`). Every decision
 below was settled on that map's tickets; this document assembles them into one buildable spec.
@@ -225,6 +232,9 @@ advance. If the check fails, that platform comes out.
   outage after a backfill.
 
 ### Reddit corroboration oracle
+
+> **Superseded (2026-09-28).** This oracle will not be built, because CRMA-1344 rejected Jev for
+> promotion. See the Outcome note at the top of this spec.
 
 - **Dependency.** The adapter lives in `services/promotion`, which the CRMA-1214 map designs and
   which does not exist yet. It ships only after the typed Jev decider exists there, with the

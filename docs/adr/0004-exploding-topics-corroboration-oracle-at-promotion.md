@@ -124,3 +124,9 @@ ledger's `JUDGMENT_DETAIL` VARIANT, with `ORACLE_KEYWORD` and
 name. That store did not exist when this ADR was written. The rest of this ADR
 stands: an oracle is additive-only, writes no `FCT_SIGNALS` row, and is not a
 Source.
+
+**Superseded the same day.** CRMA-1344 rejected Jev for promotion (map
+CRMA-1214), so the typed path and its `JUDGMENT_DETAIL` store will not be
+built, and the Reddit oracle closed as wontfix (CRMA-1339). Exploding Topics
+remains the only oracle. The sibling-ledger question stays open for a future
+second oracle.
