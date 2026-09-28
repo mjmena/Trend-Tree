@@ -278,6 +278,22 @@ lift-and-shift extraction to Cloud Run.
   times. The incumbent is not ground truth, and the replay set over-samples hard bands, so this is
   not a production rate. _Source: [CRMA-1343](https://mcclatchy.atlassian.net/browse/CRMA-1343),
   2026-09-28; detail in `docs/wayfinder/assets/crma-1343-report.md`._
+- **By hand, the Gemini agent is right on 14 of the 22 disagreements that are not by design.**
+  The typed path is right on 4, and 4 are defensible both ways. The 14 defects are 6 duplicate
+  trends, 7 rejects that should merge, and 1 wrong merge target. No defect promotes junk. **13 of
+  the 14 have one cause:** `pair_sameness` answers `different_thing` when the candidate is a
+  narrower version or a restatement of an existing trend (similarity 0.55–0.76, P(`same_thing`)
+  0.02–0.48). `is_narrower_instance` is ≥0.5 on 10 of the 13 misses, but it also read 0.89 on a
+  clearly different pair, so it is not a tested fix. _Source: CRMA-1344, 2026-09-28; detail in
+  `docs/wayfinder/assets/crma-1344-handjudge.md`._
+- **84% of past promotions go to the oracle route under the typed rubric, and the typed path would
+  reject 49–77% of them.** Of 796 candidates the Gemini agent promoted or merged (2026-04-26 to
+  2026-09-27), (a3) is 40.8%, one family with discovery agents only is 38.3%, and one family with a
+  direct platform source is 5.3%. Only 9.8% have two families including a direct source. The loss
+  is **14–19 new trends per week** of about 24. The lower figure is the replay run end to end
+  (±10 points); the upper figure sends every oracle-route candidate to the oracle. Jev also gives
+  `stands_alone` to 12 of 36 past (a3) promotions, so (a3) is not applied evenly. _Source:
+  CRMA-1344, 2026-09-28; SQL and detail in `docs/wayfinder/assets/crma-1344-volume.md`._
 
 ## Standing constraints
 
@@ -498,6 +514,17 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   The lift-and-shift logs each decision's `trace` and adds no DDL. The full pass/fail checklist is
   `docs/wayfinder/assets/crma-1242-extraction-seam.md`.
   _Decided by [CRMA-1242](https://mcclatchy.atlassian.net/browse/CRMA-1242), 2026-09-28._
+- **The verdict is reject, and the Gemini promotion agent stays.** The adopt bar is redrawn: no
+  machine failure reaches the ledger as a verdict, and the by-design disagreements — (a3) and
+  one-family oracle rejects — are not counted. Adopt only if the typed path is right at least as
+  often as the incumbent on the rest, by hand, with at most one duplicate trend. The typed path
+  fails it. The one-family evidence cost is **not** accepted. **Any future attempt is a fresh
+  effort**, gated on two conditions. First, a product decision with the ATLAS users on the evidence
+  rule for one-family discovery-agent candidates. Second, a duplicate check that passes on the 22
+  hand-judged cases. If a future effort adopts, the Gemini decider stays deployable as the
+  rollback, and `deploy.env` pins the Jev version, with a replay re-run on the 187-case set before
+  any version bump. The CRMA-1242 seam still gets built.
+  _Decided by [CRMA-1344](https://mcclatchy.atlassian.net/browse/CRMA-1344), 2026-09-28._
 
 ## Decisions so far
 
@@ -544,6 +571,8 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
 
 - [Re-score the adopt bar under the settled rules](https://mcclatchy.atlassian.net/browse/CRMA-1343) — **Decided:** 84/136 (61.8%) under the settled rules, up from 72; still fails the bar. (a3) is 18 of 52 mismatches; without it 84/118 (71.2%). See Established facts.
 
+- [Decide: adopt or reject Jev for promotion's verdict](https://mcclatchy.atlassian.net/browse/CRMA-1344) — **Decided:** REJECT Jev as the map stands; the map closes on no. Under the redrawn bar the incumbent wins 14 to 4 on the non-by-design disagreements (6 duplicate trends), and the unaccepted one-family evidence rule would reject 49-77% of past promotions. See Standing constraints.
+
 ## Not yet specified
 
 <!-- The fog of war: in-scope decisions coming but not yet phraseable. -->
@@ -584,3 +613,11 @@ question set was known.
 - **Fixing `sourceFamilyOf()`'s vendor blindness.** Filed as its own CRMA issue — it is a live
   production defect affecting 43 promoted trends, and this map ships months later, after the Cloud
   Run extraction. The evidence is in **Established facts** above.
+- **Promotions with empty evidence.** 43 candidates with an empty `SUPPORTING_SIGNAL_IDS` were
+  promoted or merged since 2026-08-28, and all 20 new trends among them have no `FCT_TREND_SIGNALS`
+  row. A production defect found by CRMA-1344, not part of the verdict. Filed as
+  [CRMA-1347](https://mcclatchy.atlassian.net/browse/CRMA-1347).
+- **Fixing the Gemini agent's own defects.** The map rejects Jev, so the Gemini agent stays. Four
+  defects the map measured in it — DEFER with no enforced cap, fallbacks that write a machine
+  failure as a verdict, the ET floor left to the model, and rejected self-declared duplicates — are
+  handed off as [CRMA-1356](https://mcclatchy.atlassian.net/browse/CRMA-1356).
