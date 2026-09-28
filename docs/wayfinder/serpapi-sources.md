@@ -57,6 +57,8 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
 
 - [Research: What can SerpApi return for TikTok, Reddit, and Kickstarter?](https://mcclatchy.atlassian.net/browse/CRMA-1316) — **Decided:** No dedicated engines; all three go through Google, need a query, and have no top/trending feed. TikTok via google_short_videos is strong, Reddit thin, Kickstarter weak; shared quota at 80% used.
 
+- [Decide: Where does a new SerpApi ingester run, Pipedream or the services/ Cloud Run tier?](https://mcclatchy.atlassian.net/browse/CRMA-1319) — **Decided:** Cloud Run service started by Cloud Scheduler, fetch logic in services/lib/sources/serpapi.mjs, no new Pipedream workflow; the platforms are planned as direct platform sources.
+
 ## Not yet specified
 
 - **The source family of each new source name.** The promotion gate counts
