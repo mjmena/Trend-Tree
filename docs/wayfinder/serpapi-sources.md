@@ -50,9 +50,7 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
 
 - The map produces a spec, not a running ingester (charting, 2026-09-27).
 - Roles per platform (CRMA-1318, 2026-09-28). **TikTok** is a direct
-  platform source (a scheduled ingester writing `FCT_SIGNALS`), on condition
-  that a changed query shape or a specificity filter lifts it to the 30% bar;
-  if it cannot, TikTok drops and the spec says why. **Reddit** is a
+  platform source (a scheduled ingester writing `FCT_SIGNALS`). **Reddit** is a
   corroboration oracle at the promotion gate: a `site:reddit.com` match on the
   candidate's `QUERY` earns the missing second source family, no
   `FCT_SIGNALS` row, and it plugs into the same gate seam the CRMA-1214 map
@@ -74,9 +72,14 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
   exploring). The key lives in Secret Manager as `serpapi-api-key` in
   `mcc-crm-automations`; the build creates it. Keeping the sources past
   exploration, or needing more, reopens the quota with the owner (CRMA-1321).
-- No platform passes the specificity floor as-is (CRMA-1317). TikTok must add
-  an explicit specificity filter or a different query shape, and the spec
-  must say which.
+- The TikTok ingester keeps the CRMA-1320 query shape (`site:tiktok.com
+  <seed>`, one atomic term per seed) and adds an LLM specificity filter on the
+  result title before the `FCT_SIGNALS` write: Gemini 2.5 Flash with the
+  distillation rubric's noun-phrase-plus-verb test. No changed query shape:
+  `google_short_videos` returns 0 for most multi-word queries. Results are
+  deduplicated by TikTok video ID across runs. The spec requires a spot-check
+  of the first week of `tiktok` rows against the 30% bar (#18), with the rule
+  fixed in advance: below 30%, TikTok drops (CRMA-1325).
 
 ## Decisions so far
 
@@ -92,17 +95,11 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
 
 - [Task: Settle who owns the SerpApi quota](https://mcclatchy.atlassian.net/browse/CRMA-1321) — **Decided:** Trend Tree draws on the shared dev@trendhunter.com SerpApi plan at 50-100 searches/day while exploring, key in Secret Manager as serpapi-api-key; no plan of its own.
 
+- [Prototype: Does a changed query shape or a specificity filter lift TikTok to the 30% bar?](https://mcclatchy.atlassian.net/browse/CRMA-1325) — **Decided:** A Gemini Flash title filter lifts TikTok to 42% on the category seeds (small sample); changed query shapes fail. TikTok stays, with video-ID dedup and a first-week 30% spot-check that drops it on failure.
+
 ## Not yet specified
 
-- **The source family of `tiktok`.** The promotion gate counts source
-  families, so this decides whether a TikTok signal can corroborate a Bluesky
-  signal. It hangs on TikTok surviving its fix prototype.
-- **The provenance invariant for a TikTok SERP result.** A Google result about
-  a post has a real URL, but its snippet is Google's text, not the post.
-  Decide whether that is a verifiable external artifact, or whether the
-  ingester must fetch the page.
-- **TikTok's signal timestamp.** The post time decodes from the video ID;
-  decide whether `SIGNAL_TIMESTAMP` uses it or the fetch time.
+Nothing at present.
 
 ## Out of scope
 
