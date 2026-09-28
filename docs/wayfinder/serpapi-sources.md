@@ -68,6 +68,12 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
   6 verticals, 3-5 atomic consumer terms each. Reddit, now an oracle, needs
   no seed list (CRMA-1318). Daily run, past-day window, hard cap of 50 calls per
   run (CRMA-1320). Pipeline-derived lookups are the agent-search-tool role.
+- Trend Tree draws on the shared `dev@trendhunter.com` SerpApi plan, not a
+  plan of its own. The TikTok ingester and the Reddit oracle together stay at
+  or below 100 searches per day (the owner agreed to 50-100/day while
+  exploring). The key lives in Secret Manager as `serpapi-api-key` in
+  `mcc-crm-automations`; the build creates it. Keeping the sources past
+  exploration, or needing more, reopens the quota with the owner (CRMA-1321).
 - No platform passes the specificity floor as-is (CRMA-1317). TikTok must add
   an explicit specificity filter or a different query shape, and the spec
   must say which.
@@ -83,6 +89,8 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
 - [Prototype: Does a SerpApi sample pass the distillation specificity rubric?](https://mcclatchy.atlassian.net/browse/CRMA-1317) — **Decided:** No platform passes as-is: TikTok 10%, Reddit tab 0%, Kickstarter 4% against the 30% specificity-floor bar; TikTok is fresh but category seeds return routines and listicles.
 
 - [Decide: Which platforms enter as direct platform sources?](https://mcclatchy.atlassian.net/browse/CRMA-1318) — **Decided:** TikTok stays a direct platform source if a fix prototype lifts it to 30%; Reddit becomes a corroboration oracle on the CRMA-1214 gate seam; Kickstarter is dropped and out of scope.
+
+- [Task: Settle who owns the SerpApi quota](https://mcclatchy.atlassian.net/browse/CRMA-1321) — **Decided:** Trend Tree draws on the shared dev@trendhunter.com SerpApi plan at 50-100 searches/day while exploring, key in Secret Manager as serpapi-api-key; no plan of its own.
 
 ## Not yet specified
 
