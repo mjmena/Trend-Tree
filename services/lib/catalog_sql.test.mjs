@@ -17,6 +17,10 @@ const plan = (over = {}) => ({
   embedDocHash: "abc",
   embedDocVersion: "v1",
   needsEmbed: false,
+  productUrl: "https://shop.example.com/products/mug",
+  price: 12.5,
+  imageUrl: "https://cdn.example.com/mug.jpg",
+  available: true,
   ...over,
 });
 
@@ -45,6 +49,32 @@ test("buildUpsertBatchSql re-embeds only rows flagged NEEDS_EMBED, keeping the o
       `PRODUCT_VECTOR = CASE WHEN src.NEEDS_EMBED THEN SNOWFLAKE.CORTEX.EMBED_TEXT_1024('${EMBED_MODEL}', src.EMBED_DOC) ELSE tgt.PRODUCT_VECTOR END`,
     ),
   );
+});
+
+test("buildUpsertBatchSql writes the presentation fields on every sweep, matched or not", () => {
+  const sql = buildUpsertBatchSql(
+    [plan(), plan({ catalogProductId: "cup", price: null, imageUrl: null, available: false })],
+    "2026-09-28",
+  );
+  assert.ok(sql.includes(`'https://shop.example.com/products/mug',12.5,'https://cdn.example.com/mug.jpg',TRUE)`));
+  assert.ok(sql.includes(`'https://shop.example.com/products/mug',NULL,NULL,FALSE)`));
+  const [, updateClause, insertClause] = sql.split(/WHEN MATCHED THEN UPDATE SET|WHEN NOT MATCHED THEN INSERT/);
+  for (const col of ["PRODUCT_URL", "PRICE", "IMAGE_URL", "AVAILABLE"]) {
+    assert.match(updateClause, new RegExp(`\\b${col} = src\\.${col}\\b`));
+    assert.match(insertClause, new RegExp(`\\bsrc\\.${col}\\b`));
+  }
+});
+
+test("buildUpsertBatchSql writes NULL for a producer that carries no presentation fields", () => {
+  const sql = buildUpsertBatchSql(
+    [plan({ price: undefined, available: undefined, productUrl: undefined, imageUrl: undefined })],
+    "2026-09-28",
+  );
+  assert.ok(sql.includes(",NULL,NULL,NULL,NULL)"));
+});
+
+test("buildUpsertBatchSql rejects a non-finite price rather than inlining it", () => {
+  assert.throws(() => buildUpsertBatchSql([plan({ price: Number.NaN })], "2026-09-28"), /price/);
 });
 
 test("buildDelistBatchSql flips CATALOG_STATUS and never deletes", () => {

@@ -5,7 +5,7 @@
 // row lands — the same reason the planner itself is shared.
 //
 // Values are inlined as literals rather than bound: a batch MERGE over
-// `VALUES` with 40 rows x 11 columns would need 440 positional binds, and the
+// `VALUES` with 40 rows x 15 columns would need 600 positional binds, and the
 // seed's snow CLI path has no bind support at all.
 
 import { EMBED_MODEL } from "./catalog_transform.mjs";
@@ -28,6 +28,18 @@ export function sqlLiteral(value) {
 
 function sqlBool(value) {
   return value ? "TRUE" : "FALSE";
+}
+
+function sqlNullableBool(value) {
+  return value === null || value === undefined ? "NULL" : sqlBool(value);
+}
+
+function sqlNumber(value, name) {
+  if (value === null || value === undefined) return "NULL";
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${name} must be a finite number or null, got ${JSON.stringify(value)}`);
+  }
+  return String(value);
 }
 
 // NOTE on batch atomicity: a single row exceeding a VARCHAR cap (TITLE
@@ -53,16 +65,22 @@ export function buildUpsertBatchSql(batch, asOf) {
           sqlLiteral(u.embedDocVersion),
           sqlBool(u.needsEmbed),
           `TO_TIMESTAMP_NTZ(${sqlLiteral(asOf)})`,
+          sqlLiteral(u.productUrl),
+          sqlNumber(u.price, "price"),
+          sqlLiteral(u.imageUrl),
+          sqlNullableBool(u.available),
         ].join(",")})`,
     )
     .join(",\n    ");
 
+  // The presentation fields are overwritten on every sweep, not only when
+  // the embed doc changes. A producer without them (the CSV seed) writes NULL.
   return `
 MERGE INTO ${DIM_TABLE} AS tgt
 USING (
   SELECT * FROM VALUES
     ${values}
-  AS v(TIER, CATALOG_PRODUCT_ID, TITLE, VENDOR, PRODUCT_TYPE, TAGS, EMBED_DOC, EMBED_DOC_HASH, EMBED_DOC_VERSION, NEEDS_EMBED, LAST_SEEN_AT)
+  AS v(TIER, CATALOG_PRODUCT_ID, TITLE, VENDOR, PRODUCT_TYPE, TAGS, EMBED_DOC, EMBED_DOC_HASH, EMBED_DOC_VERSION, NEEDS_EMBED, LAST_SEEN_AT, PRODUCT_URL, PRICE, IMAGE_URL, AVAILABLE)
 ) AS src
 ON tgt.TIER = src.TIER AND tgt.CATALOG_PRODUCT_ID = src.CATALOG_PRODUCT_ID
 WHEN MATCHED THEN UPDATE SET
@@ -76,13 +94,19 @@ WHEN MATCHED THEN UPDATE SET
   PRODUCT_VECTOR = CASE WHEN src.NEEDS_EMBED THEN SNOWFLAKE.CORTEX.EMBED_TEXT_1024('${EMBED_MODEL}', src.EMBED_DOC) ELSE tgt.PRODUCT_VECTOR END,
   CATALOG_STATUS = 'active',
   LAST_SEEN_AT = src.LAST_SEEN_AT,
+  PRODUCT_URL = src.PRODUCT_URL,
+  PRICE = src.PRICE,
+  IMAGE_URL = src.IMAGE_URL,
+  AVAILABLE = src.AVAILABLE,
   UPDATED_AT = CURRENT_TIMESTAMP()
 WHEN NOT MATCHED THEN INSERT (
   TIER, CATALOG_PRODUCT_ID, TITLE, VENDOR, PRODUCT_TYPE, TAGS, EMBED_DOC, EMBED_DOC_HASH, EMBED_DOC_VERSION,
-  PRODUCT_VECTOR, CATALOG_STATUS, FIRST_SEEN_AT, LAST_SEEN_AT, UPDATED_AT
+  PRODUCT_VECTOR, CATALOG_STATUS, FIRST_SEEN_AT, LAST_SEEN_AT, UPDATED_AT,
+  PRODUCT_URL, PRICE, IMAGE_URL, AVAILABLE
 ) VALUES (
   src.TIER, src.CATALOG_PRODUCT_ID, src.TITLE, src.VENDOR, src.PRODUCT_TYPE, src.TAGS, src.EMBED_DOC, src.EMBED_DOC_HASH, src.EMBED_DOC_VERSION,
-  SNOWFLAKE.CORTEX.EMBED_TEXT_1024('${EMBED_MODEL}', src.EMBED_DOC), 'active', CURRENT_TIMESTAMP(), src.LAST_SEEN_AT, CURRENT_TIMESTAMP()
+  SNOWFLAKE.CORTEX.EMBED_TEXT_1024('${EMBED_MODEL}', src.EMBED_DOC), 'active', CURRENT_TIMESTAMP(), src.LAST_SEEN_AT, CURRENT_TIMESTAMP(),
+  src.PRODUCT_URL, src.PRICE, src.IMAGE_URL, src.AVAILABLE
 );`.trim();
 }
 

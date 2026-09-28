@@ -186,7 +186,13 @@ function isPurchasableShopifyStatus(statusRaw) {
 //     delist signal; planCatalogUpsert already turns absence into a delist.
 // The key is the handle, same as the CSV producer. A duplicated handle keeps
 // its first occurrence; the planner assumes one row per key.
-export function normalizeStorefrontProducts(products) {
+//
+// The feed also carries the presentation fields (URL, price, image,
+// availability) that sourcing candidates show (CRMA-1328, rules decided on
+// CRMA-1327). They ride alongside the product but never enter
+// buildEmbedDoc, so a price change never re-embeds.
+export function normalizeStorefrontProducts(products, { storeUrl = null } = {}) {
+  const base = storeUrl ? String(storeUrl).replace(/\/+$/, "") : null;
   const byHandle = new Map();
   for (const p of products ?? []) {
     const handle = String(p?.handle ?? "").trim();
@@ -200,9 +206,36 @@ export function normalizeStorefrontProducts(products) {
       type: p.product_type ?? "",
       tags: tagList.join(", "),
       bodyHtml: p.body_html ?? "",
+      productUrl: base ? `${base}/products/${handle}` : null,
+      ...variantPricing(p.variants),
+      imageUrl: featuredImageUrl(p.images),
     });
   }
   return [...byHandle.values()];
+}
+
+// PRICE: the lowest price among available variants, else the lowest price of
+// all variants — a consumer reads it as "from $X". AVAILABLE: any variant is
+// available.
+function variantPricing(variants) {
+  const priced = (Array.isArray(variants) ? variants : [])
+    .map((v) => ({ price: parsePrice(v?.price), available: v?.available === true }))
+    .filter((v) => v.price !== null);
+  const available = Array.isArray(variants) && variants.some((v) => v?.available === true);
+  const pool = priced.some((v) => v.available) ? priced.filter((v) => v.available) : priced;
+  const price = pool.length > 0 ? Math.min(...pool.map((v) => v.price)) : null;
+  return { price, available };
+}
+
+function parsePrice(raw) {
+  if (raw === null || raw === undefined || String(raw).trim() === "") return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+function featuredImageUrl(images) {
+  const src = Array.isArray(images) ? images[0]?.src : null;
+  return src ? String(src) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -272,6 +305,10 @@ export function planCatalogUpsert(normalizedProducts, existingRows, options = {}
       catalogStatus: "active",
       lastSeenAt: asOf,
       needsEmbed,
+      productUrl: product.productUrl ?? null,
+      price: product.price ?? null,
+      imageUrl: product.imageUrl ?? null,
+      available: product.available ?? null,
     };
     upserts.push(plan);
     if (needsEmbed) toEmbed.push(plan);

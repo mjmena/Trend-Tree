@@ -115,6 +115,14 @@ test("reads the dimension for its tier only, and writes upserts before delists i
   assert.deepEqual(kinds, ["upsert", "upsert", "delist"]);
 });
 
+test("writes each product's storefront URL from the store URL it sweeps", async () => {
+  const { query, statements } = fakeQuery([]);
+  const fetchProducts = async () => ({ products: [feedProduct("a")], pages: 2 });
+  await runCatalogSync({ fetchProducts, query, storeUrl: "https://shop.example.com" });
+  const upsert = statements.find((s) => /^MERGE/.test(s.sql)).sql;
+  assert.ok(upsert.includes("'https://shop.example.com/products/a'"));
+});
+
 test("no delist statement runs when nothing is missing", async () => {
   const a = feedProduct("a");
   const { query, statements } = fakeQuery([seededRow(a)]);

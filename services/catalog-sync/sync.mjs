@@ -25,6 +25,7 @@ async function main() {
     const summary = await runCatalogSync({
       fetchProducts: () => fetchStorefrontProducts({ storeUrl: config.storeUrl }),
       query: (sql, binds) => execute(conn, sql, binds),
+      storeUrl: config.storeUrl,
     });
     console.log(JSON.stringify({ message: "catalog sync complete", ...summary }));
   } finally {
