@@ -462,8 +462,11 @@ export default defineComponent({
       `  -> et_consulted_but_rejected: ${n(etr.ET_CONSULTED_REJECTED_24H)}\n` +
       `et_ledger_rows_written: ${n(etr.ET_LEDGER_ROWS_24H)} (should EQUAL et_rescued_and_promoted)\n` +
       `Interpretation: query coverage should approach 100% — near 0% means distillation ` +
-      `is not authoring the atomic query, so ET rescue silently no-ops while still paying ` +
-      `for the subagent run (WARN). et_ledger_rows != et_rescued signals a ledger-seed bug ` +
+      `is not authoring the atomic query. ET rescue still runs, but promotion looks ET up ` +
+      `with an improvised keyword (usually the compound topic), which ADR-0004 measured ` +
+      `matching ~6% of the time vs ~67% for an atomic query, so most rescues fail (WARN). ` +
+      `ET_CORROBORATION.query_source records 'candidate_query' or 'improvised' per decision. ` +
+      `et_ledger_rows != et_rescued signals a ledger-seed bug ` +
       `(WARN). A spike in et_consulted with ~zero rescues over many days can mean bad ` +
       `queries or ET API failures — check the promotion subagent logs for http_403 / ` +
       `timeout / "key not configured". Some rejects are healthy (ET genuinely misses); ` +

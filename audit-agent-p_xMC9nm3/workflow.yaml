@@ -460,7 +460,8 @@ steps:
         -- ET corroboration-oracle rescue funnel (ADR-0004), last 24h. One row.
         --   CANDS_24H / CANDS_WITH_QUERY_24H — slice-1 candidate QUERY authoring
         --     coverage (should approach 100%; 0% = distillation not authoring the
-        --     atomic query, so ET rescue silently no-ops but still costs an LLM run).
+        --     atomic query, so promotion looks ET up with an improvised keyword
+        --     that rarely matches — ADR-0004 ~6% vs ~67% — and most rescues fail).
         --   ET_CONSULTED_24H — single-family candidates routed into the subagent
         --     that hit Exploding Topics (the NEW LLM spend from the gate change).
         --   ET_RESCUED_24H — of those, promoted because ET supplied source #2.

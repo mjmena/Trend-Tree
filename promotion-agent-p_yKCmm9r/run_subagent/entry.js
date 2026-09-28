@@ -95,6 +95,14 @@ function buildEtSearchRequest({ keyword, apiKey, responseTimeframe = "last_12_mo
   };
 }
 
+// Pure. "candidate_query" when the ET keyword is the candidate's own QUERY,
+// else "improvised" (CRMA-1335).
+function etQuerySource({ queried, candidateQuery } = {}) {
+  const norm = (s) => String(s ?? "").trim().toLowerCase();
+  const q = norm(candidateQuery);
+  return q && norm(queried) === q ? "candidate_query" : "improvised";
+}
+
 // Pure. Normalize a raw /database-search response. `matched` is the
 // transport-level hit (total > 0), NOT a corroboration verdict — the agent
 // still judges concept-sameness + the volume floor.
@@ -349,6 +357,8 @@ function buildEtSnapshot(input, ctx, decision) {
     classifications: chosen.classifications ?? null,
     growth: chosen.growth ?? null,
     queried: chosen.queried ?? null,
+    candidate_query: ctx.candidate_query ?? null,
+    query_source: etQuerySource({ queried: chosen.queried, candidateQuery: ctx.candidate_query }),
   } : null;
   return { et_was_second_source: etWasSecond, et_corroboration };
 }
@@ -665,6 +675,7 @@ export default defineComponent({
       decision: null,
       et_api_key: etApiKey,
       et_verifications: [],
+      candidate_query: candidate.candidate_query || null,
     };
 
     const etStep = candidate.et_rescue

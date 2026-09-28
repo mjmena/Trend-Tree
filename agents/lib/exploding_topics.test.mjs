@@ -6,6 +6,7 @@ import {
   normalizeEtResponse,
   buildEtSearchRequest,
   ET_BROWSER_UA,
+  etQuerySource,
 } from "./exploding_topics.mjs";
 
 // Captured-shape fixture: a real /database-search hit (trimmed).
@@ -79,4 +80,19 @@ test("normalizeEtResponse output never embeds an api_key (it only sees a parsed 
   // Defensive: even a body that echoes a key must not surface it in the verdict.
   const r = normalizeEtResponse({ status: 200, body: { total: 0, message: "No meta trends found.", api_key: "LEAK" } });
   assert.doesNotMatch(JSON.stringify(r), /LEAK/);
+});
+
+// CRMA-1335: a missing candidate QUERY must show up on the ET record, not
+// hide behind an agent-chosen keyword.
+test("etQuerySource: the looked-up keyword is the candidate query", () => {
+  assert.equal(etQuerySource({ queried: "Snail mucin", candidateQuery: "snail mucin " }), "candidate_query");
+});
+
+test("etQuerySource: no candidate query means the keyword was improvised", () => {
+  assert.equal(etQuerySource({ queried: "Wellness Parties", candidateQuery: null }), "improvised");
+  assert.equal(etQuerySource({ queried: "Wellness Parties", candidateQuery: "  " }), "improvised");
+});
+
+test("etQuerySource: a keyword other than the candidate query is improvised", () => {
+  assert.equal(etQuerySource({ queried: "Savory yogurt", candidateQuery: "labneh" }), "improvised");
 });
