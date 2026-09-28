@@ -15,6 +15,10 @@
 // the newest row at the 13:00 UTC audit is then at least 26h old, so a 25h
 // window grades RED. A manual audit just before 09:00 still sees yesterday's
 // normal run inside the window.
+//
+// A run that succeeds but writes zero rows (every video already ingested, or
+// the filter keeps none) also grades RED. The ticket asks for exactly that
+// rule, and a zero-row day from 24 seeds is not expected.
 
 export const WINDOW_HOURS = 25;
 
@@ -28,11 +32,11 @@ export function gradeTiktokFreshness(rows) {
   const r = (Array.isArray(rows) ? rows : [])[0] || {};
   const raw = r.MINUTES_SINCE_LAST_EMBEDDED;
   const minutes = raw === null || raw === undefined ? NaN : Number(raw);
-  const known = Number.isFinite(minutes) && minutes >= 0;
-  const status = known && minutes <= WINDOW_HOURS * 60 ? "GREEN" : "RED";
+  const validAge = Number.isFinite(minutes) && minutes >= 0;
+  const status = validAge && minutes <= WINDOW_HOURS * 60 ? "GREEN" : "RED";
   return {
     status,
-    hours_since_last_embedded: known ? Math.round((minutes / 60) * 100) / 100 : null,
+    hours_since_last_embedded: validAge ? Math.round((minutes / 60) * 100) / 100 : null,
     embedded_24h: Number(r.EMBEDDED_24H || 0),
     window_hours: WINDOW_HOURS,
   };

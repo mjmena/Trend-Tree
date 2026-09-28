@@ -4,8 +4,7 @@
 // no Snowflake from inside the loop. All inputs prefetched in workflow.yaml
 // (pipeline_freshness, dashboard_freshness, stuck_trends, cost_24h_rows,
 // audit_prompts, pipedream_errors, catalog_freshness, tiktok_freshness,
-// prompt_drift). The
-// query tools just slice and filter that prefetched data;
+// prompt_drift). The query tools just slice and filter that prefetched data;
 // propose_audit_report is the terminal capture.
 //
 // =====================================================================
@@ -13,12 +12,13 @@
 // self-contained file — cross-file imports fail at deploy. Cross-workflow
 // shared libs don't bundle either. Mirrors lifecycle-subagent's pattern.
 //
-// Exception: ./catalog_freshness.mjs (and ./tiktok_freshness.mjs) is a sibling in this SAME step dir
-// (the one cross-file import Pipedream's bundler allows) and holds the
-// CRMA-775 catalog-freshness grading as a plain, defineComponent-free
-// module — deterministic, not LLM-judged, and independently unit-testable.
+// Exception: ./catalog_freshness.mjs and ./tiktok_freshness.mjs are siblings
+// in this SAME step dir (the one kind of cross-file import Pipedream's bundler
+// allows). They hold the CRMA-775 catalog-freshness and CRMA-1338
+// tiktok-freshness grading as plain, defineComponent-free modules —
+// deterministic, not LLM-judged, and independently unit-testable.
 // This file is named entry.mjs (not entry.js, unlike this workflow's other
-// steps) BECAUSE it does this sibling import — a hand-authored .js step
+// steps) BECAUSE it does these sibling imports — a hand-authored .js step
 // cannot use sibling .mjs imports (pipedream-synced-project skill).
 // =====================================================================
 
