@@ -136,7 +136,7 @@ Every score in this table is on a **0–100 scale unless otherwise noted**. The 
 | `EVIDENCE` | Typed pool of supporting evidence (news / commerce / social / reference / search_volume / video / other) | array | Enrichment agent | [→](fields/evidence.md) |
 | `GENERAL_EVIDENCE`, `SOCIAL_EVIDENCE`, `OTHER_EVIDENCE` | Pre-bucketed slices of `EVIDENCE` for UI sections | array | Dashboard (live) | [→](fields/evidence.md) |
 | `TOP_SIGNALS` _(⚠ deprecated → use `EVIDENCE`, first 5 news/commerce/social)_ | First 5 evidence entries (news/commerce/social only), in agent emit order | array | Dashboard (live) | [→](fields/evidence.md#top_signals) |
-| `KEY_DATA_POINTS` | Google Trends interest scalars (peak %, avg %) for the trend | array | Google Trends poller (daily) | [→](fields/key-data-points.md) |
+| `KEY_DATA_POINTS` | Retired — always an empty array since 2026-09-27 | array | — (Google Trends poller removed) | [→](fields/key-data-points.md) |
 
 ### Relationships
 

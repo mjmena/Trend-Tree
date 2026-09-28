@@ -3,7 +3,7 @@
 
 # KEY_DATA_POINTS
 
-**At a glance** — Retired. The field is always an empty array (`[]`) since 2026-09-25.
+**At a glance** — Retired. The field is always an empty array (`[]`) since 2026-09-27.
 
 **Why** — The field showed Google Trends interest scalars from the `gtrends-poller` workflow. That workflow was broken, and CRMA-1313 removed it. The column stays in `DT_TREND_DASHBOARD` so that consumers do not break.
 
