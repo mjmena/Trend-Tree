@@ -8,6 +8,12 @@
 // blocking would push promotion's wall time past its lambda timeout).
 // Errors land in the dispatcher's own $errors stream.
 //
+// Retry (CRMA-1032): the same fan-out also re-dispatches stuck trends from
+// q_unenriched_trends — promoted earlier, chain failed, still no `initial`
+// or `refinement` ledger row. ./enrichment_targets.mjs decides which ones
+// are due this run (once a day per trend, iteration 1 only). It is a sibling in this SAME
+// step dir, which is the only import shape Pipedream bundles.
+//
 // Replaces the legacy STG_ENRICHMENT_QUEUE + cron-poll mechanism.
 //
 // Input: apply_result (the row from CALL PROC_PROMOTION_APPLY) — its
@@ -15,12 +21,26 @@
 // with status='ok' have a `target_trend_id` set to the newly-created
 // FCT_TRENDS row.
 
+import {
+  extractPromotedTrendIds,
+  selectRetryTrendIds,
+  buildDispatchTargets,
+} from "./enrichment_targets.mjs";
+
 const FANOUT_CONCURRENCY = 5;
 const PER_CALL_TIMEOUT_MS = 30_000; // we're not waiting for completion, just for the POST to dispatch
 
 export default defineComponent({
   props: {
     apply_result: { type: "any" },
+    unenriched_rows: {
+      type: "any",
+      label: "Unenriched trends",
+      description: "Rows from q_unenriched_trends: TREND_ID, HOURS_SINCE_PROMOTED",
+      optional: true,
+    },
+    iteration: { type: "string", optional: true },
+    dry_run: { type: "string", optional: true },
     dispatcher_url: {
       type: "string",
       label: "Dispatcher endpoint URL",
@@ -29,27 +49,39 @@ export default defineComponent({
   },
   async run({ $ }) {
     const promotedIds = extractPromotedTrendIds(this.apply_result);
-    if (promotedIds.length === 0) {
-      console.log("fire_enrichment_chain: no newly-promoted trends to enrich");
+    const retryIds = selectRetryTrendIds(this.unenriched_rows, {
+      iteration: this.iteration,
+      dryRun: this.dry_run,
+    });
+    const targets = buildDispatchTargets(promotedIds, retryIds);
+
+    if (targets.length === 0) {
+      console.log("fire_enrichment_chain: no newly-promoted or retry-due trends to enrich");
       $.export("$summary", "0 dispatched");
-      return { dispatched_count: 0, trend_ids: [] };
+      return { dispatched_count: 0, trend_ids: [], retry_trend_ids: [] };
     }
+
+    const trendIds = targets.map((t) => t.trend_id);
+    const retryTrendIds = targets.filter((t) => t.reason === "retry").map((t) => t.trend_id);
+    const retryCount = retryTrendIds.length;
 
     if (!this.dispatcher_url || /PLACEHOLDER/i.test(this.dispatcher_url)) {
       console.log(`fire_enrichment_chain: dispatcher_url not configured (got '${this.dispatcher_url}') — skipping fanout`);
-      $.export("$summary", `${promotedIds.length} promoted but dispatcher not configured`);
-      return { dispatched_count: 0, trend_ids: promotedIds, error: "dispatcher_url not configured" };
+      $.export("$summary", `${targets.length} to enrich but dispatcher not configured`);
+      return { dispatched_count: 0, trend_ids: trendIds, retry_trend_ids: retryTrendIds, error: "dispatcher_url not configured" };
     }
 
-    console.log(`fire_enrichment_chain: dispatching ${promotedIds.length} trend(s) → ${this.dispatcher_url}`);
+    console.log(
+      `fire_enrichment_chain: dispatching ${targets.length} trend(s) (${retryCount} retries) → ${this.dispatcher_url}`,
+    );
     const dispatched = [];
     const errors = [];
 
     let cursor = 0;
     async function worker() {
-      while (cursor < promotedIds.length) {
+      while (cursor < targets.length) {
         const idx = cursor++;
-        const trend_id = promotedIds[idx];
+        const { trend_id, reason } = targets[idx];
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), PER_CALL_TIMEOUT_MS);
         try {
@@ -63,61 +95,36 @@ export default defineComponent({
             body: JSON.stringify({ trend_id }),
             signal: ctrl.signal,
           });
-          dispatched.push({ trend_id, status: resp.status, ok: resp.ok });
+          dispatched.push({ trend_id, reason, status: resp.status, ok: resp.ok });
           if (!resp.ok) {
             const text = await resp.text();
-            console.log(`fire_enrichment_chain: ${trend_id} → HTTP ${resp.status}: ${text.slice(0, 200)}`);
+            console.log(`fire_enrichment_chain: ${trend_id} [${reason}] → HTTP ${resp.status}: ${text.slice(0, 200)}`);
           } else {
-            console.log(`fire_enrichment_chain: ${trend_id} → dispatched (${resp.status})`);
+            console.log(`fire_enrichment_chain: ${trend_id} [${reason}] → dispatched (${resp.status})`);
           }
         } catch (e) {
           const msg = e.name === "AbortError" ? `timeout after ${PER_CALL_TIMEOUT_MS}ms` : e.message;
-          errors.push({ trend_id, error: msg });
-          console.log(`fire_enrichment_chain: ${trend_id} → error: ${msg}`);
+          errors.push({ trend_id, reason, error: msg });
+          console.log(`fire_enrichment_chain: ${trend_id} [${reason}] → error: ${msg}`);
         } finally {
           clearTimeout(timer);
         }
       }
     }
 
-    const workerCount = Math.min(FANOUT_CONCURRENCY, promotedIds.length);
+    const workerCount = Math.min(FANOUT_CONCURRENCY, targets.length);
     await Promise.all(Array.from({ length: workerCount }, () => worker.call(this)));
 
     const okCount = dispatched.filter((d) => d.ok).length;
-    $.export("$summary", `${okCount}/${promotedIds.length} dispatched (${errors.length} errors)`);
+    $.export("$summary", `${okCount}/${targets.length} dispatched, ${retryCount} retries (${errors.length} errors)`);
 
     return {
       dispatched_count: okCount,
-      total_attempted: promotedIds.length,
-      trend_ids: promotedIds,
+      total_attempted: targets.length,
+      trend_ids: trendIds,
+      retry_trend_ids: retryTrendIds,
       results: dispatched,
       errors,
     };
   },
 });
-
-function extractPromotedTrendIds(apply_result) {
-  // PROC_PROMOTION_APPLY returns a single VARIANT row; the SQL action
-  // wraps it in either an array or a single object with the proc name as
-  // the column key. Defensive parsing matches eval_and_retrigger's pattern.
-  let parsed = null;
-  try {
-    let row = null;
-    if (Array.isArray(apply_result) && apply_result.length > 0) row = apply_result[0];
-    else if (apply_result && typeof apply_result === "object") row = apply_result;
-    if (!row) return [];
-    const value =
-      row.PROC_PROMOTION_APPLY ??
-      row.proc_promotion_apply ??
-      Object.values(row)[0];
-    parsed = typeof value === "string" ? JSON.parse(value) : value;
-  } catch (e) {
-    console.log(`fire_enrichment_chain: could not parse apply_result: ${e.message}`);
-    return [];
-  }
-
-  const results = Array.isArray(parsed?.results) ? parsed.results : [];
-  return results
-    .filter((r) => r && r.status === "ok" && r.decision === "PROMOTE_NEW" && r.target_trend_id)
-    .map((r) => r.target_trend_id);
-}
