@@ -531,7 +531,8 @@ steps:
             ('promotion.subagent.decision_rubric', 3),
             ('promotion.subagent.system', 3),
             ('signal.attribution.rubric', 3),
-            ('signal.attribution.system', 1)
+            ('signal.attribution.system', 1),
+            ('sourcing.selector', 1)
           AS m(PROMPT_KEY, COMMITTED_VERSION)
         ),
         live AS (
@@ -579,7 +580,8 @@ steps:
             ('promotion.subagent.decision_rubric', 3),
             ('promotion.subagent.system', 3),
             ('signal.attribution.rubric', 3),
-            ('signal.attribution.system', 1)
+            ('signal.attribution.system', 1),
+            ('sourcing.selector', 1)
           AS m(PROMPT_KEY, COMMITTED_VERSION)
         ),
         live AS (
