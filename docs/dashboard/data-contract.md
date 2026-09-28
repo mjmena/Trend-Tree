@@ -5,7 +5,7 @@
 
 **Purpose:** The full column schema, type, meaning, and an example value for the two dynamic tables the downstream platforms read.
 
-**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`), `sql/task_recompute_content_matches.sql` (+ `sql/fct_trend_content_matches_ledger.sql`), `sql/fct_trend_sourcing_ledger.sql` (+ `sql/fct_trend_sourcing_candidates.sql`). This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-08-21.
+**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`), `sql/task_recompute_content_matches.sql` (+ `sql/fct_trend_content_matches_ledger.sql`), `sql/fct_trend_sourcing_ledger.sql` (+ `sql/fct_trend_sourcing_candidates.sql`). This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-09-27.
 
 **Example values are real, pulled 2026-06-08** — mostly from the live trend **Hyper-Tactile Interiors** (`c51f1620-a832-4f13-a443-a7df03bf6a99`). A few fields that are null for that trend (geographic hotspots, macrotrend tags, the social-evidence object) use a populated row from another live trend to show the shape. Column names and types are authoritative.
 
@@ -88,7 +88,7 @@ Written daily by the prediction agent. **Additive and isolated** — never read 
 
 | Column | Type | What it is | Example value |
 | --- | --- | --- | --- |
-| `KEY_DATA_POINTS` | ARRAY | **Always an empty array since 2026-09-25.** The gtrends-poller that fed it was removed (CRMA-1313). The column stays so consumers do not break. It used to carry the latest Google Trends interest scalars as `{ source, metric_name, metric_value }` objects. | `[]` |
+| `KEY_DATA_POINTS` | ARRAY | **Always an empty array since 2026-09-27.** The gtrends-poller that fed it was removed (CRMA-1313). The column stays so consumers do not break. It used to carry the latest Google Trends interest scalars as `{ source, metric_name, metric_value }` objects. | `[]` |
 
 ### Cultural narrative
 
