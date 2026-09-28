@@ -1,0 +1,1129 @@
+{
+  "rules": "CRMA-1223 (heavier extreme, P(same_thing) target, older-trend flag, 0.5 Noul cuts) + CRMA-1332 signal_frequency oracle",
+  "recomposition": {
+    "pairs": {
+      "pairs": 555,
+      "rounded_unsettled": 45,
+      "split_to_same_thing": 29,
+      "split_to_different_thing": 15,
+      "extreme_ties": 1,
+      "incumbent_merge_pairs": 70,
+      "merges_found_rounded": 33,
+      "merges_found_heavier": 54
+    },
+    "multi_same_thing_cases": [
+      {
+        "audit_id": "a9153d05-82a7-47aa-8ed5-f9ea114370f8",
+        "trend_ids": [
+          "c65ac1e4-c137-4888-bebd-204a6dd35bb0",
+          "76009fb1-ea41-4f39-bee4-99fbfa08b37c"
+        ],
+        "older_known": true
+      },
+      {
+        "audit_id": "bcb2de94-9b14-4c52-a778-253ba5f8aa60",
+        "trend_ids": [
+          "e0380370-8a95-42e0-9e7b-c3cf380f15ac",
+          "045d4e05-6dec-40ec-bf40-d97f52a52284"
+        ],
+        "older_known": true
+      },
+      {
+        "audit_id": "9f3f1de3-31f0-44a6-97bc-4068a9eb6186",
+        "trend_ids": [
+          "336837f8-5e44-452f-ae12-cc86aec14450",
+          "fd93a299-93de-420c-870e-2aa33fcedf4c"
+        ],
+        "older_known": true
+      },
+      {
+        "audit_id": "61573727-e185-48fb-a2f7-44d2ebec20cc",
+        "trend_ids": [
+          "1da7dde3-c887-4773-9314-22250eb098eb",
+          "008ad729-c0de-4004-9d63-58c124e40a5a"
+        ],
+        "older_known": true
+      }
+    ],
+    "older_trend_unknown": []
+  },
+  "bucket_counts": {
+    "rule1_tombstone": 5,
+    "rule2_needs_signal": 12,
+    "rule3_level0": 1,
+    "rule4_family_mismatch": 12,
+    "et_unavailable": 0,
+    "source_data_gap": 21,
+    "normal": 136
+  },
+  "adopt_bar": {
+    "matches": 84,
+    "scored": 136,
+    "rate": 0.6176470588235294,
+    "without_a3": {
+      "matches": 84,
+      "scored": 118,
+      "rate": 0.711864406779661
+    }
+  },
+  "mismatches_by_mechanism": {
+    "PROMOTE_NEW -> REJECT | oracle_decided_reject_multi_ai_agent": {
+      "n": 17,
+      "cases": [
+        {
+          "audit_id": "1bbaab28-fe88-4d98-8688-e6388c1d522f",
+          "candidate_id": "cand-79raryadmr3l3g19",
+          "stratum": "S07_contested_not_merge",
+          "trend_topic": "Purchasing directly from sponsored carousels inside conversational AI chats"
+        },
+        {
+          "audit_id": "a4020399-c175-4af2-96d6-6b678a03771c",
+          "candidate_id": "cand-aehdlgytmpbacleh",
+          "stratum": "S07_contested_not_merge",
+          "trend_topic": "'Swavory' (savory-sweet) flavors in RTD beverages & snacks"
+        },
+        {
+          "audit_id": "9e236050-dd94-4fbe-a54f-25f58e06f3f6",
+          "candidate_id": "cand-zbpbvan9mrxr21sy",
+          "stratum": "S07_contested_not_merge",
+          "trend_topic": "At-home vaginal and skin microbiome testing for personalized care"
+        },
+        {
+          "audit_id": "959bafd8-6d19-40d0-924d-1ced18e02cde",
+          "candidate_id": "cand-dxqv5nrhmq9kua4z",
+          "stratum": "S07_contested_not_merge",
+          "trend_topic": "Layering PDRN (salmon DNA) and exosome serums for cellular regeneration"
+        },
+        {
+          "audit_id": "cbdb1380-a93d-4024-b00e-eae58572419a",
+          "candidate_id": "cand-mktzjmybmqru5jx4",
+          "stratum": "S07_contested_not_merge",
+          "trend_topic": "Adopting probiotic intimate sprays and washes for microbiome health"
+        },
+        {
+          "audit_id": "7668012e-ab9f-4e41-9da2-7b1748a1bcdc",
+          "candidate_id": "cand-8zeuk1dzmpxlayp5",
+          "stratum": "S09_b060_070_PROMOTE_NEW",
+          "trend_topic": "Melatonin-Free Magnesium & Adaptogen Sleep Beverages"
+        },
+        {
+          "audit_id": "f32f024c-0cc2-4249-ada4-64ded64822d4",
+          "candidate_id": "cand-5hzqle39mtakl5a5",
+          "stratum": "S09_b060_070_PROMOTE_NEW",
+          "trend_topic": "Crafting and wearing upcycled patchwork garments from vintage scraps"
+        },
+        {
+          "audit_id": "f202a6f2-ba66-42f0-be6c-d3b9f90cce27",
+          "candidate_id": "cand-szg2i8tomraw0fj4",
+          "stratum": "S09_b060_070_PROMOTE_NEW",
+          "trend_topic": "Replacing supplement powders with collagen-fortified RTD coffees"
+        },
+        {
+          "audit_id": "b79d3352-bfc6-4d2e-a790-47b072579f35",
+          "candidate_id": "cand-yu6asju1mqfxh0ak",
+          "stratum": "S09_b060_070_PROMOTE_NEW",
+          "trend_topic": "Adopting fiber-enriched instant beverages for gut health"
+        },
+        {
+          "audit_id": "d035702f-c2cd-4ef0-9afc-0b3f80f5cf61",
+          "candidate_id": "cand-fgb3rsxxmp5hpbxg",
+          "stratum": "S10_lt060_PROMOTE_NEW",
+          "trend_topic": "Swangy (sweet-spicy-tangy) flavors in RTD beverages and snacks"
+        },
+        {
+          "audit_id": "f9eec29e-043f-4003-809a-38726edb2426",
+          "candidate_id": "cand-czgsywt6ms3b4o69",
+          "stratum": "S10_lt060_PROMOTE_NEW",
+          "trend_topic": "Using savory and umami ingredients (miso, seaweed) in home mixology"
+        },
+        {
+          "audit_id": "89274fae-32c7-467c-81be-b6e04a4437c6",
+          "candidate_id": "cand-yfzm4xesmr568v3c",
+          "stratum": "S10_lt060_PROMOTE_NEW",
+          "trend_topic": "Grocery tourism: traveling abroad to haul novel CPG products from supermarkets"
+        },
+        {
+          "audit_id": "737f75f7-fedd-4275-9487-8bedd78bfb78",
+          "candidate_id": "cand-3lsjb4dfmq65ybxy",
+          "stratum": "S10_lt060_PROMOTE_NEW",
+          "trend_topic": "Layering gourmand cosmetics (food-inspired makeup/skincare with edible scents)"
+        },
+        {
+          "audit_id": "b591951c-c49d-410f-a2ed-2fff84037ceb",
+          "candidate_id": "cand-5rpgm0z7mokqklqv",
+          "stratum": "S11_none_PROMOTE_NEW",
+          "trend_topic": "Telehealth Peptide Stacking"
+        },
+        {
+          "audit_id": "0249bc90-4ee3-4f61-88b3-273388c8e3ca",
+          "candidate_id": "cand-8tiebei2mp840jsl",
+          "stratum": "S11_none_PROMOTE_NEW",
+          "trend_topic": "Wearable Adhesive Cramp Relief Patches"
+        },
+        {
+          "audit_id": "50e60d71-b8be-40fa-be3c-90bb1209d84b",
+          "candidate_id": "cand-rbxj0cxomp840jsl",
+          "stratum": "S11_none_PROMOTE_NEW",
+          "trend_topic": "Intranasal NAD+ Sprays for Cognitive Energy"
+        },
+        {
+          "audit_id": "2c00eacb-6b3e-4f13-acc9-cab5dc9caf65",
+          "candidate_id": "cand-bvp7t306mpzksmz7",
+          "stratum": "S11_none_PROMOTE_NEW",
+          "trend_topic": "Taking Chitosan Supplements for Microplastic Detox"
+        }
+      ]
+    },
+    "PROMOTE_NEW -> REJECT | oracle_decided_reject_one_family": {
+      "n": 12,
+      "cases": [
+        {
+          "audit_id": "4ab3017a-f95d-4f8d-8e96-c1433f5c62b5",
+          "candidate_id": "cand-2y57gkdlmstfb8mg",
+          "stratum": "S07_contested_not_merge",
+          "trend_topic": "Substituting energy drinks with functional mushroom RTDs"
+        },
+        {
+          "audit_id": "97f5fb12-72fc-4a7e-9f12-055470b58d1c",
+          "candidate_id": "cand-gjuq4pkkmrf0laam",
+          "stratum": "S07_contested_not_merge",
+          "trend_topic": "Postbiotic supplements for gut-brain axis and mood support"
+        },
+        {
+          "audit_id": "90e48b8d-7634-40cd-aa94-db1011f8734f",
+          "candidate_id": "cand-7oi0cyonmsyfcga6",
+          "stratum": "S07_contested_not_merge",
+          "trend_topic": "Injecting BPC-157 peptides for injury recovery and muscle building"
+        },
+        {
+          "audit_id": "43698a84-5f90-40f0-b071-c250b6c8521e",
+          "candidate_id": "cand-rtigkpnwmri9s1ek",
+          "stratum": "S07a_et_earned_2nd",
+          "trend_topic": "Renter-friendly battery/rechargeable wall sconces"
+        },
+        {
+          "audit_id": "61eec3e9-e76b-4c1c-a4e3-cc754128fc23",
+          "candidate_id": "cand-odl6hv99mt7bfbg2",
+          "stratum": "S07a_et_earned_2nd",
+          "trend_topic": "Swapping traditional sugar and candy for date syrup and date-sweetened gummies"
+        },
+        {
+          "audit_id": "fc1b6afd-9cd3-4924-8b2e-564d2c89e533",
+          "candidate_id": "cand-4mdf0cj4mt5bzell",
+          "stratum": "S07a_et_earned_2nd",
+          "trend_topic": "Unconventional Fragrance Vehicles (Mouth and Hair Perfume)"
+        },
+        {
+          "audit_id": "e76d93ff-b623-49d5-90d1-b0b344d273c2",
+          "candidate_id": "cand-jyjsgmbxmru6fuz6",
+          "stratum": "S07a_et_earned_2nd",
+          "trend_topic": "Permanent jewelry welding at retail pop-ups"
+        },
+        {
+          "audit_id": "b51a95b6-36f0-43b4-9976-7d1796ec0e54",
+          "candidate_id": "cand-tbeqxzbamtztdler",
+          "stratum": "S07a_et_earned_2nd",
+          "trend_topic": "Vibration plates for at-home bone density training (midlife women)"
+        },
+        {
+          "audit_id": "001f82c1-bbc9-4ed5-b74b-3121e5d5d5c9",
+          "candidate_id": "cand-3xkqv38umu5lzowk",
+          "stratum": "S07a_et_earned_2nd",
+          "trend_topic": "Upgrading point-of-use water filters for PFAS/microplastic removal"
+        },
+        {
+          "audit_id": "2e55aab8-ba90-42d5-81f9-02e8162a1e90",
+          "candidate_id": "cand-n8gvjrptmu46k6ra",
+          "stratum": "S07a_et_earned_2nd",
+          "trend_topic": "Beef tallow replacing seed oils for everyday cooking"
+        },
+        {
+          "audit_id": "4248aa81-cb82-41ff-b6fd-4ea9805ee285",
+          "candidate_id": "cand-gmtkokp2ms1k7xsb",
+          "stratum": "S07a_et_earned_2nd",
+          "trend_topic": "Swedish pick-and-mix bulk candy displays in US grocery stores"
+        },
+        {
+          "audit_id": "cb206abf-3ded-4ce4-9a7a-a3acd46fd88d",
+          "candidate_id": "cand-0wfno448mt4gjdg8",
+          "stratum": "S07a_et_earned_2nd",
+          "trend_topic": "Using targeted probiotics for oral and nasal microbiome care"
+        }
+      ]
+    },
+    "MERGE_INTO_EXISTING -> REJECT | oracle_decided_reject_one_family": {
+      "n": 9,
+      "cases": [
+        {
+          "audit_id": "90fefb42-3b1f-4ce6-bf61-13f5f6886926",
+          "candidate_id": "cand-fyff3rlwmrjp9aix",
+          "stratum": "S06_ge080_all",
+          "trend_topic": "Non-Diabetic CGM Tracking"
+        },
+        {
+          "audit_id": "d5e7c0d8-f3c1-403e-a60d-abf909a1c90b",
+          "candidate_id": "cand-y0kwvoj5mtxo7l09",
+          "stratum": "S08_contested_merge",
+          "trend_topic": "Applying removable stained-glass and privacy window films for renter decor"
+        },
+        {
+          "audit_id": "c8b11e04-befa-4fae-b4ac-00a531a428da",
+          "candidate_id": "cand-zxos3r6mmroxtyd7",
+          "stratum": "S08_contested_merge",
+          "trend_topic": "Using at-home telehealth ketamine troche subscriptions for mental health"
+        },
+        {
+          "audit_id": "762b3b49-ebc4-4457-8d83-80e2a301b0fa",
+          "candidate_id": "cand-ymy76uncms4qj4yo",
+          "stratum": "S08_contested_merge",
+          "trend_topic": "Buying exclusive drops and local food via TikTok Shop livestreams"
+        },
+        {
+          "audit_id": "222db534-1228-4ec2-9eab-9f1563c0a27f",
+          "candidate_id": "cand-lc3v9krrmu1he57w",
+          "stratum": "S08_contested_merge",
+          "trend_topic": "At-home vaginal microbiome sequencing kits"
+        },
+        {
+          "audit_id": "3d692d7d-7900-413b-af2b-fea60cba438a",
+          "candidate_id": "cand-4kuoror9mt8ffrg2",
+          "stratum": "S09_b060_070_MERGE_INTO_EXISTING",
+          "trend_topic": "Pistachio flavor layering in confections and beverages"
+        },
+        {
+          "audit_id": "b6906ae1-2a76-4301-8dbe-de43932c965c",
+          "candidate_id": "cand-q1gi9punmrcsm7nd",
+          "stratum": "S10_lt060_MERGE_INTO_EXISTING",
+          "trend_topic": "Drinking extra virgin olive oil as a wellness shot"
+        },
+        {
+          "audit_id": "143e1afb-8b6a-4cbf-8b9c-63dba0cc7e88",
+          "candidate_id": "cand-hsvr0erqmrgg2o4j",
+          "stratum": "S10_lt060_MERGE_INTO_EXISTING",
+          "trend_topic": "Traveling abroad for aesthetic and skincare treatments"
+        },
+        {
+          "audit_id": "bce61f56-e3f7-458c-b961-ec226b245673",
+          "candidate_id": "cand-fo4gh924msxy7ki1",
+          "stratum": "S10_lt060_MERGE_INTO_EXISTING",
+          "trend_topic": "Buying dual-chamber skincare and makeup hybrids to streamline 'cocktailing'"
+        }
+      ]
+    },
+    "MERGE_INTO_EXISTING -> PROMOTE_NEW | stands_alone_promote": {
+      "n": 4,
+      "cases": [
+        {
+          "audit_id": "b8cbf582-923e-4abe-be63-f8ccd974914d",
+          "candidate_id": "cand-yyq1zw1mmrl4o07t",
+          "stratum": "S08_contested_merge",
+          "trend_topic": "Tinned fish as a portable high-protein snack"
+        },
+        {
+          "audit_id": "fc5b4cd3-5d79-452d-9893-95e26235c826",
+          "candidate_id": "cand-jp5km3bmmso6pbh5",
+          "stratum": "S08_contested_merge",
+          "trend_topic": "Delegating product discovery and checkout to AI shopping agents"
+        },
+        {
+          "audit_id": "25fa25ce-450f-4f66-902a-47bbc64b602f",
+          "candidate_id": "cand-53sp5cobmsonuc3d",
+          "stratum": "S08_contested_merge",
+          "trend_topic": "Banana flavor integration in coffee and beverages"
+        },
+        {
+          "audit_id": "da432527-1a8e-4938-8759-d81d5973fa1d",
+          "candidate_id": "cand-xhk17wy5mtvj2ax7",
+          "stratum": "S09_b060_070_MERGE_INTO_EXISTING",
+          "trend_topic": "Attending pre-loved fashion pop-ups with on-site patch bars and repair stations"
+        }
+      ]
+    },
+    "REJECT -> MERGE_INTO_EXISTING | neighbour_merge": {
+      "n": 2,
+      "cases": [
+        {
+          "audit_id": "94fb0300-2510-4cb5-9fa0-e52d3ddeaa1e",
+          "candidate_id": "cand-oo0l7bq5mu5lzowk",
+          "stratum": "S07_contested_not_merge",
+          "trend_topic": "Portable personal cooling fans as fashion accessories"
+        },
+        {
+          "audit_id": "cdbf52d9-09fa-4db9-a383-d6fd79bfc13c",
+          "candidate_id": "cand-0i6mw2u6mseqo8z1",
+          "stratum": "S07_contested_not_merge",
+          "trend_topic": "GLP-1 users prioritizing high-protein and nutrient-dense foods for smaller portions"
+        }
+      ]
+    },
+    "REJECT -> PROMOTE_NEW | stands_alone_promote": {
+      "n": 2,
+      "cases": [
+        {
+          "audit_id": "bd3414b1-d553-4f2f-aaf5-3e11442190fd",
+          "candidate_id": "cand-cpc4l6mtms0g73gc",
+          "stratum": "S07_contested_not_merge",
+          "trend_topic": "Attending in-store retailtainment events and fandom pop-ups"
+        },
+        {
+          "audit_id": "43fc30b9-1f11-4c52-8257-694cfbb96c6c",
+          "candidate_id": "cand-ndtsuwuomt7bfbg2",
+          "stratum": "S07b_confirm_reject",
+          "trend_topic": "Acoustic art and moss panels for home sound dampening"
+        }
+      ]
+    },
+    "REJECT -> PROMOTE_NEW | oracle_decided_promote_one_family": {
+      "n": 2,
+      "cases": [
+        {
+          "audit_id": "b4c13c59-8406-4f41-8e0a-db2ad4ba5018",
+          "candidate_id": "cand-o332rjugmspdk41v",
+          "stratum": "S07_contested_not_merge",
+          "trend_topic": "Topical NAD+ serums for cellular longevity and anti-aging"
+        },
+        {
+          "audit_id": "b15158d5-0b92-47fc-9b98-bb842365d70f",
+          "candidate_id": "cand-ibjcdz4smrdqvw5k",
+          "stratum": "S11_none_REJECT",
+          "trend_topic": "The Wet Lash Look"
+        }
+      ]
+    },
+    "PROMOTE_NEW -> MERGE_INTO_EXISTING | neighbour_merge": {
+      "n": 2,
+      "cases": [
+        {
+          "audit_id": "28d9645b-012e-4965-b1bd-437633a969b9",
+          "candidate_id": "cand-lk1sk81kmqnv84md",
+          "stratum": "S09_b060_070_PROMOTE_NEW",
+          "trend_topic": "Kidults hunting in-store for limited-edition blind boxes and utility drops"
+        },
+        {
+          "audit_id": "67110af4-06da-4969-b208-ce39739cc4be",
+          "candidate_id": "cand-rbrzxwk7ms71f40w",
+          "stratum": "S10_lt060_PROMOTE_NEW",
+          "trend_topic": "High-fiber meals & chia to support gut health and GLP-1"
+        }
+      ]
+    },
+    "MERGE_INTO_EXISTING -> MERGE_INTO_EXISTING | merge_target_differs": {
+      "n": 1,
+      "cases": [
+        {
+          "audit_id": "6e82051a-0635-4399-8014-36b4e4c9b1d7",
+          "candidate_id": "cand-uf6xt7f2mrpnjj3i",
+          "stratum": "S08_contested_merge",
+          "trend_topic": "Fast-dissolving oral supplement strips replacing gummies for energy and sleep"
+        }
+      ]
+    },
+    "MERGE_INTO_EXISTING -> REJECT | oracle_decided_reject_multi_ai_agent": {
+      "n": 1,
+      "cases": [
+        {
+          "audit_id": "4845322c-f84d-4b4b-b49a-01c2a0981734",
+          "candidate_id": "cand-jn02q9qamqzarfrw",
+          "stratum": "S08_contested_merge",
+          "trend_topic": "Purchasing functional foods/beverages to preserve muscle during GLP-1 therapy"
+        }
+      ]
+    }
+  },
+  "a3": {
+    "mismatches_accounted": 18,
+    "oracle_route_population_all_buckets": 27,
+    "in_adopt_bar_population": 18
+  },
+  "rule1_tombstone": "3/5",
+  "rule2_needs_signal_agrees": "2/12",
+  "rule3_level0": [
+    {
+      "audit_id": "5466bef3-0009-40ee-9487-7aedd04c5307",
+      "ledger_decision": "MERGE_INTO_EXISTING"
+    }
+  ],
+  "rule4_family_mismatch": {
+    "n": 12,
+    "caught_defect": 12
+  },
+  "recurrence_overrides_fired": 0,
+  "mismatches": [
+    {
+      "audit_id": "94fb0300-2510-4cb5-9fa0-e52d3ddeaa1e",
+      "candidate_id": "cand-oo0l7bq5mu5lzowk",
+      "stratum": "S07_contested_not_merge",
+      "ledger_decision": "REJECT",
+      "ledger_target": null,
+      "composed_decision": "MERGE_INTO_EXISTING",
+      "composed_target": "60a4bb2a-0783-44d6-97b5-76ebdbe6c34c",
+      "decision_rule": "neighbour_merge",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "neighbour_merge"
+    },
+    {
+      "audit_id": "90fefb42-3b1f-4ce6-bf61-13f5f6886926",
+      "candidate_id": "cand-fyff3rlwmrjp9aix",
+      "stratum": "S06_ge080_all",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "ledger_target": "73c8167b-db45-4c24-a90d-8e52575ac9c1",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "bd3414b1-d553-4f2f-aaf5-3e11442190fd",
+      "candidate_id": "cand-cpc4l6mtms0g73gc",
+      "stratum": "S07_contested_not_merge",
+      "ledger_decision": "REJECT",
+      "ledger_target": null,
+      "composed_decision": "PROMOTE_NEW",
+      "composed_target": null,
+      "decision_rule": "stands_alone_promote",
+      "eq_verdict": "stands_alone",
+      "family_group": "one_family",
+      "mechanism": "stands_alone_promote"
+    },
+    {
+      "audit_id": "1bbaab28-fe88-4d98-8688-e6388c1d522f",
+      "candidate_id": "cand-79raryadmr3l3g19",
+      "stratum": "S07_contested_not_merge",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "5d8c79bc-c79f-4713-9ff2-bf6c1038b2b0",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "b4c13c59-8406-4f41-8e0a-db2ad4ba5018",
+      "candidate_id": "cand-o332rjugmspdk41v",
+      "stratum": "S07_contested_not_merge",
+      "ledger_decision": "REJECT",
+      "ledger_target": null,
+      "composed_decision": "PROMOTE_NEW",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_promote_one_family"
+    },
+    {
+      "audit_id": "a4020399-c175-4af2-96d6-6b678a03771c",
+      "candidate_id": "cand-aehdlgytmpbacleh",
+      "stratum": "S07_contested_not_merge",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "2489b0a7-560b-4ea4-91b3-05e8d0f70bae",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "4ab3017a-f95d-4f8d-8e96-c1433f5c62b5",
+      "candidate_id": "cand-2y57gkdlmstfb8mg",
+      "stratum": "S07_contested_not_merge",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "554d9407-f53d-4a1f-9d1e-c50c641638e7",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "9e236050-dd94-4fbe-a54f-25f58e06f3f6",
+      "candidate_id": "cand-zbpbvan9mrxr21sy",
+      "stratum": "S07_contested_not_merge",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "4c15bfe6-466f-4808-8e0c-5dce7be08560",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "959bafd8-6d19-40d0-924d-1ced18e02cde",
+      "candidate_id": "cand-dxqv5nrhmq9kua4z",
+      "stratum": "S07_contested_not_merge",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "feb39eba-ca41-42d3-973a-d3ac979dfbc5",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "97f5fb12-72fc-4a7e-9f12-055470b58d1c",
+      "candidate_id": "cand-gjuq4pkkmrf0laam",
+      "stratum": "S07_contested_not_merge",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "b124e818-558f-41d5-8415-b759412e29f1",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "90e48b8d-7634-40cd-aa94-db1011f8734f",
+      "candidate_id": "cand-7oi0cyonmsyfcga6",
+      "stratum": "S07_contested_not_merge",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "a3e1ad73-3f6f-4ed4-a884-dc36fbb7083a",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "cdbf52d9-09fa-4db9-a383-d6fd79bfc13c",
+      "candidate_id": "cand-0i6mw2u6mseqo8z1",
+      "stratum": "S07_contested_not_merge",
+      "ledger_decision": "REJECT",
+      "ledger_target": null,
+      "composed_decision": "MERGE_INTO_EXISTING",
+      "composed_target": "4c221bae-6617-44d0-84b4-1b8f678072df",
+      "decision_rule": "neighbour_merge",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "neighbour_merge"
+    },
+    {
+      "audit_id": "43698a84-5f90-40f0-b071-c250b6c8521e",
+      "candidate_id": "cand-rtigkpnwmri9s1ek",
+      "stratum": "S07a_et_earned_2nd",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "445e66a9-8f45-41b1-a73e-61e89117ed38",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "cbdb1380-a93d-4024-b00e-eae58572419a",
+      "candidate_id": "cand-mktzjmybmqru5jx4",
+      "stratum": "S07_contested_not_merge",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "a5092338-ad60-4c69-90d5-07849d8d303a",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "61eec3e9-e76b-4c1c-a4e3-cc754128fc23",
+      "candidate_id": "cand-odl6hv99mt7bfbg2",
+      "stratum": "S07a_et_earned_2nd",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "db5005e8-a9b2-4478-a2ba-6575ba510095",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "fc1b6afd-9cd3-4924-8b2e-564d2c89e533",
+      "candidate_id": "cand-4mdf0cj4mt5bzell",
+      "stratum": "S07a_et_earned_2nd",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "24131b4d-c618-4274-9ba1-b5fccd6db89e",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "e76d93ff-b623-49d5-90d1-b0b344d273c2",
+      "candidate_id": "cand-jyjsgmbxmru6fuz6",
+      "stratum": "S07a_et_earned_2nd",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "bec25a1b-dbe6-40e0-bc9a-6540830872b3",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "b51a95b6-36f0-43b4-9976-7d1796ec0e54",
+      "candidate_id": "cand-tbeqxzbamtztdler",
+      "stratum": "S07a_et_earned_2nd",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "2e3c36d1-45b2-4f50-8eb5-1a13df74157d",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "001f82c1-bbc9-4ed5-b74b-3121e5d5d5c9",
+      "candidate_id": "cand-3xkqv38umu5lzowk",
+      "stratum": "S07a_et_earned_2nd",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "dfa9d47f-1ab0-4b97-b3c9-6421704d0cb2",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "2e55aab8-ba90-42d5-81f9-02e8162a1e90",
+      "candidate_id": "cand-n8gvjrptmu46k6ra",
+      "stratum": "S07a_et_earned_2nd",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "c6ef6b2f-1ee2-44d0-a7df-a87eabf1b035",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "4248aa81-cb82-41ff-b6fd-4ea9805ee285",
+      "candidate_id": "cand-gmtkokp2ms1k7xsb",
+      "stratum": "S07a_et_earned_2nd",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "e0373ec9-689f-4059-a217-79ba8f17de4e",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "cb206abf-3ded-4ce4-9a7a-a3acd46fd88d",
+      "candidate_id": "cand-0wfno448mt4gjdg8",
+      "stratum": "S07a_et_earned_2nd",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "80aaf334-070d-4cd2-937c-1efd89736279",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "43fc30b9-1f11-4c52-8257-694cfbb96c6c",
+      "candidate_id": "cand-ndtsuwuomt7bfbg2",
+      "stratum": "S07b_confirm_reject",
+      "ledger_decision": "REJECT",
+      "ledger_target": null,
+      "composed_decision": "PROMOTE_NEW",
+      "composed_target": null,
+      "decision_rule": "stands_alone_promote",
+      "eq_verdict": "stands_alone",
+      "family_group": "one_family",
+      "mechanism": "stands_alone_promote"
+    },
+    {
+      "audit_id": "d5e7c0d8-f3c1-403e-a60d-abf909a1c90b",
+      "candidate_id": "cand-y0kwvoj5mtxo7l09",
+      "stratum": "S08_contested_merge",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "ledger_target": "48d74d47-1737-4cd2-91e8-27a04f4b3e71",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "6e82051a-0635-4399-8014-36b4e4c9b1d7",
+      "candidate_id": "cand-uf6xt7f2mrpnjj3i",
+      "stratum": "S08_contested_merge",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "ledger_target": "4ecafebb-1c3b-4603-bcfd-316b8ef421fd",
+      "composed_decision": "MERGE_INTO_EXISTING",
+      "composed_target": "f235f30c-6183-498e-a4e9-ef5effb0fffd",
+      "decision_rule": "neighbour_merge",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "merge_target_differs"
+    },
+    {
+      "audit_id": "c8b11e04-befa-4fae-b4ac-00a531a428da",
+      "candidate_id": "cand-zxos3r6mmroxtyd7",
+      "stratum": "S08_contested_merge",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "ledger_target": "3e1d453c-f25f-435e-a5fc-ad2722eb5aeb",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "762b3b49-ebc4-4457-8d83-80e2a301b0fa",
+      "candidate_id": "cand-ymy76uncms4qj4yo",
+      "stratum": "S08_contested_merge",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "ledger_target": "24811e7a-ee0f-45f8-8171-b5e09b9532f1",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "4845322c-f84d-4b4b-b49a-01c2a0981734",
+      "candidate_id": "cand-jn02q9qamqzarfrw",
+      "stratum": "S08_contested_merge",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "ledger_target": "4c221bae-6617-44d0-84b4-1b8f678072df",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "b8cbf582-923e-4abe-be63-f8ccd974914d",
+      "candidate_id": "cand-yyq1zw1mmrl4o07t",
+      "stratum": "S08_contested_merge",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "ledger_target": "3f912308-2c7f-4d5b-909e-7cac8751a072",
+      "composed_decision": "PROMOTE_NEW",
+      "composed_target": null,
+      "decision_rule": "stands_alone_promote",
+      "eq_verdict": "stands_alone",
+      "family_group": "multi_ai_agent",
+      "mechanism": "stands_alone_promote"
+    },
+    {
+      "audit_id": "fc5b4cd3-5d79-452d-9893-95e26235c826",
+      "candidate_id": "cand-jp5km3bmmso6pbh5",
+      "stratum": "S08_contested_merge",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "ledger_target": "e60982b3-3b0f-4895-94aa-44a138ec9b4c",
+      "composed_decision": "PROMOTE_NEW",
+      "composed_target": null,
+      "decision_rule": "stands_alone_promote",
+      "eq_verdict": "stands_alone",
+      "family_group": "multi_ai_agent",
+      "mechanism": "stands_alone_promote"
+    },
+    {
+      "audit_id": "222db534-1228-4ec2-9eab-9f1563c0a27f",
+      "candidate_id": "cand-lc3v9krrmu1he57w",
+      "stratum": "S08_contested_merge",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "ledger_target": "4c15bfe6-466f-4808-8e0c-5dce7be08560",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "25fa25ce-450f-4f66-902a-47bbc64b602f",
+      "candidate_id": "cand-53sp5cobmsonuc3d",
+      "stratum": "S08_contested_merge",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "ledger_target": "5364eef5-e081-4b19-b033-37ae5daa2d1d",
+      "composed_decision": "PROMOTE_NEW",
+      "composed_target": null,
+      "decision_rule": "stands_alone_promote",
+      "eq_verdict": "stands_alone",
+      "family_group": "one_family",
+      "mechanism": "stands_alone_promote"
+    },
+    {
+      "audit_id": "da432527-1a8e-4938-8759-d81d5973fa1d",
+      "candidate_id": "cand-xhk17wy5mtvj2ax7",
+      "stratum": "S09_b060_070_MERGE_INTO_EXISTING",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "ledger_target": "82bbba4b-3e80-4200-93a9-9d3cb5af6b80",
+      "composed_decision": "PROMOTE_NEW",
+      "composed_target": null,
+      "decision_rule": "stands_alone_promote",
+      "eq_verdict": "stands_alone",
+      "family_group": "one_family",
+      "mechanism": "stands_alone_promote"
+    },
+    {
+      "audit_id": "3d692d7d-7900-413b-af2b-fea60cba438a",
+      "candidate_id": "cand-4kuoror9mt8ffrg2",
+      "stratum": "S09_b060_070_MERGE_INTO_EXISTING",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "ledger_target": "b09b377e-e2c5-4c74-9643-2e3745a276a7",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "28d9645b-012e-4965-b1bd-437633a969b9",
+      "candidate_id": "cand-lk1sk81kmqnv84md",
+      "stratum": "S09_b060_070_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "76009fb1-ea41-4f39-bee4-99fbfa08b37c",
+      "composed_decision": "MERGE_INTO_EXISTING",
+      "composed_target": "c1472065-f3c5-4238-8c1e-aff28e85a4c1",
+      "decision_rule": "neighbour_merge",
+      "eq_verdict": "stands_alone",
+      "family_group": "multi_ai_agent",
+      "mechanism": "neighbour_merge"
+    },
+    {
+      "audit_id": "7668012e-ab9f-4e41-9da2-7b1748a1bcdc",
+      "candidate_id": "cand-8zeuk1dzmpxlayp5",
+      "stratum": "S09_b060_070_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "7db4209f-a710-4d0f-9a2e-f5d137e4d850",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "f32f024c-0cc2-4249-ada4-64ded64822d4",
+      "candidate_id": "cand-5hzqle39mtakl5a5",
+      "stratum": "S09_b060_070_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "45814d50-a9d5-4d28-b8fd-22656d0d3061",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "f202a6f2-ba66-42f0-be6c-d3b9f90cce27",
+      "candidate_id": "cand-szg2i8tomraw0fj4",
+      "stratum": "S09_b060_070_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "a847d14f-71da-407c-bdea-0fdb3f7c4769",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "b79d3352-bfc6-4d2e-a790-47b072579f35",
+      "candidate_id": "cand-yu6asju1mqfxh0ak",
+      "stratum": "S09_b060_070_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "b5b2e5bd-9cc2-46b7-a421-5ffec0aa4031",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "b6906ae1-2a76-4301-8dbe-de43932c965c",
+      "candidate_id": "cand-q1gi9punmrcsm7nd",
+      "stratum": "S10_lt060_MERGE_INTO_EXISTING",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "ledger_target": "7e63f39b-f73f-4331-a59c-82465e0a5404",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "143e1afb-8b6a-4cbf-8b9c-63dba0cc7e88",
+      "candidate_id": "cand-hsvr0erqmrgg2o4j",
+      "stratum": "S10_lt060_MERGE_INTO_EXISTING",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "ledger_target": "f4290695-a53c-4654-b351-6de85dc0c877",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "67110af4-06da-4969-b208-ce39739cc4be",
+      "candidate_id": "cand-rbrzxwk7ms71f40w",
+      "stratum": "S10_lt060_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "943a09e7-68f9-4748-ac5c-1113dd9028ce",
+      "composed_decision": "MERGE_INTO_EXISTING",
+      "composed_target": "a2676910-edb2-41f5-8bfa-6b4fce5d1b7d",
+      "decision_rule": "neighbour_merge",
+      "eq_verdict": "stands_alone",
+      "family_group": "multi_ai_agent",
+      "mechanism": "neighbour_merge"
+    },
+    {
+      "audit_id": "bce61f56-e3f7-458c-b961-ec226b245673",
+      "candidate_id": "cand-fo4gh924msxy7ki1",
+      "stratum": "S10_lt060_MERGE_INTO_EXISTING",
+      "ledger_decision": "MERGE_INTO_EXISTING",
+      "ledger_target": "656478c2-114c-4d7b-9830-53957f550830",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_reject_one_family"
+    },
+    {
+      "audit_id": "d035702f-c2cd-4ef0-9afc-0b3f80f5cf61",
+      "candidate_id": "cand-fgb3rsxxmp5hpbxg",
+      "stratum": "S10_lt060_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "b82b0f33-f798-4bef-8d5c-fa9a3208d595",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "f9eec29e-043f-4003-809a-38726edb2426",
+      "candidate_id": "cand-czgsywt6ms3b4o69",
+      "stratum": "S10_lt060_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "bb80d1ea-3fa7-49ce-91ef-8da262f23570",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "89274fae-32c7-467c-81be-b6e04a4437c6",
+      "candidate_id": "cand-yfzm4xesmr568v3c",
+      "stratum": "S10_lt060_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "5351c59a-edb5-4f91-afac-de7ffa5607a3",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "737f75f7-fedd-4275-9487-8bedd78bfb78",
+      "candidate_id": "cand-3lsjb4dfmq65ybxy",
+      "stratum": "S10_lt060_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "21f707f5-8fdc-4019-b812-ab3827bff634",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "b591951c-c49d-410f-a2ed-2fff84037ceb",
+      "candidate_id": "cand-5rpgm0z7mokqklqv",
+      "stratum": "S11_none_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "09364687-2900-4818-9267-796951be89a7",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "0249bc90-4ee3-4f61-88b3-273388c8e3ca",
+      "candidate_id": "cand-8tiebei2mp840jsl",
+      "stratum": "S11_none_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "844b52ec-012a-4d5b-b628-401491d6b43d",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "50e60d71-b8be-40fa-be3c-90bb1209d84b",
+      "candidate_id": "cand-rbxj0cxomp840jsl",
+      "stratum": "S11_none_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "1e40f9ec-6722-4c6a-b018-0eab048f8827",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "2c00eacb-6b3e-4f13-acc9-cab5dc9caf65",
+      "candidate_id": "cand-bvp7t306mpzksmz7",
+      "stratum": "S11_none_PROMOTE_NEW",
+      "ledger_decision": "PROMOTE_NEW",
+      "ledger_target": "d3bcd2cb-62bc-470b-80b5-a562b5c17a44",
+      "composed_decision": "REJECT",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "multi_ai_agent",
+      "mechanism": "oracle_decided_reject_multi_ai_agent"
+    },
+    {
+      "audit_id": "b15158d5-0b92-47fc-9b98-bb842365d70f",
+      "candidate_id": "cand-ibjcdz4smrdqvw5k",
+      "stratum": "S11_none_REJECT",
+      "ledger_decision": "REJECT",
+      "ledger_target": null,
+      "composed_decision": "PROMOTE_NEW",
+      "composed_target": null,
+      "decision_rule": "oracle_decided",
+      "eq_verdict": "needs_corroboration",
+      "family_group": "one_family",
+      "mechanism": "oracle_decided_promote_one_family"
+    }
+  ]
+}

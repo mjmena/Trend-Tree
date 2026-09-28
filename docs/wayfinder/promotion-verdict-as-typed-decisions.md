@@ -406,8 +406,8 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   **(3)** Both recurrence Nouls cut at **0.5** (the midpoint, never fitted); the override needs both.
   `is_narrower_instance` is **recorded only**. **(4)** The ET volume floor lives in `deploy.env` via
   `createDecider({config})`; the 0.5 cut and the flag count (2) are code constants in
-  `services/lib/promotion/`. Nothing numeric goes in `DIM_LLM_PROMPT`. The adopt-bar score was **not**
-  re-measured under rule (1). _Decided by [CRMA-1223](https://mcclatchy.atlassian.net/browse/CRMA-1223),
+  `services/lib/promotion/`. Nothing numeric goes in `DIM_LLM_PROMPT`. Under these rules the adopt
+  bar measures 84/136 ([CRMA-1343](https://mcclatchy.atlassian.net/browse/CRMA-1343)). _Decided by [CRMA-1223](https://mcclatchy.atlassian.net/browse/CRMA-1223),
   2026-09-28._
 - **The rubric is six `DIM_LLM_PROMPT` rows, one per question**, keyed `promotion.jev.<question>` —
   the last segment **is** the Jev question key — with the definition JSON in `TEMPLATE`. The migration

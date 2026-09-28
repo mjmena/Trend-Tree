@@ -11,7 +11,9 @@ import { sourceFamilyOfBuggy, familyDelta } from "./crma-1222-family.mjs";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const cases = JSON.parse(readFileSync(join(HERE, "crma-1222-cases.json"), "utf8"));
 const terminal = JSON.parse(readFileSync(join(HERE, "crma-1222-terminal-decisions.json"), "utf8"));
-const results = readFileSync(join(HERE, "crma-1222-results.jsonl"), "utf8")
+// CRMA-1343 re-scores a re-composed copy of Request A through this same code.
+const RESULTS_FILE = process.env.RESULTS_FILE || join(HERE, "crma-1222-results.jsonl");
+const results = readFileSync(RESULTS_FILE, "utf8")
   .trim().split("\n").filter(Boolean).map(JSON.parse);
 
 // CRMA-1332 re-scores alternative oracle keyword arms through this same code.
