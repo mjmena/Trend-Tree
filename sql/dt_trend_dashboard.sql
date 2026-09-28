@@ -70,9 +70,10 @@
 -- latest_sourcing partitions by TREND_ID alone, NOT (TREND_ID, TIER): the
 -- dashboard is one row per trend and this is three columns, so it shows the
 -- latest run whatever tier it ran against. 'shopify' is the only tier live
--- today; when a second tier lands, per-tier exposure needs a shape decision
--- (nested per-tier objects vs. a merged pick list), not just a wider
--- PARTITION BY.
+-- today. The multi-tier read is decided but not built (CRMA-780): latest
+-- header per (TREND_ID, TIER), merged into one capped pick list — see
+-- "Dashboard exposure across tiers" in docs/prd/trend-to-product-sourcing.md.
+-- It must land before the first non-shopify header is written.
 --
 -- Output column shape preserved for Steeple consumers (minus the two dropped
 -- promotion-* columns and TOP_SIGNALS.pagerank_score).
