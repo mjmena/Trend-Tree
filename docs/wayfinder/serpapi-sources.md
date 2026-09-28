@@ -52,12 +52,20 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
   No new Pipedream workflow. The audit agent watches each new `SOURCE_NAME`
   for freshness via `EMBEDDED_AT` (CRMA-1319). If a platform later takes the
   tool or oracle role, the hosting question reopens for that platform only.
+- The ingester looks outward. Each run searches a fixed list of **seed
+  queries** (a constant in the service), never queries derived from signals,
+  candidates or trends. TikTok and Reddit share one list keyed by discovery's
+  6 verticals, 3-5 atomic consumer terms each; Kickstarter gets no list until
+  its role is decided. Daily run, past-day window, hard cap of 50 calls per
+  run (CRMA-1320). Pipeline-derived lookups are the agent-search-tool role.
 
 ## Decisions so far
 
 - [Research: What can SerpApi return for TikTok, Reddit, and Kickstarter?](https://mcclatchy.atlassian.net/browse/CRMA-1316) — **Decided:** No dedicated engines; all three go through Google, need a query, and have no top/trending feed. TikTok via google_short_videos is strong, Reddit thin, Kickstarter weak; shared quota at 80% used.
 
 - [Decide: Where does a new SerpApi ingester run, Pipedream or the services/ Cloud Run tier?](https://mcclatchy.atlassian.net/browse/CRMA-1319) — **Decided:** Cloud Run service started by Cloud Scheduler, fetch logic in services/lib/sources/serpapi.mjs, no new Pipedream workflow; the platforms are planned as direct platform sources.
+
+- [Decide: Where does a scheduled SerpApi ingester get its queries?](https://mcclatchy.atlassian.net/browse/CRMA-1320) — **Decided:** Outward-looking: a fixed seed-query list keyed by discovery's 6 verticals, shared by TikTok and Reddit, daily past-day pulls capped at 50 calls per run.
 
 ## Not yet specified
 
