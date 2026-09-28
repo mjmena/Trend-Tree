@@ -268,6 +268,16 @@ lift-and-shift extraction to Cloud Run.
   1.24, confidence 0). Cost/latency at scale: $0.0547 for all 187 cases (Request A), oracle calls
   free. Full detail in `docs/wayfinder/assets/crma-1222-report.md`. _Source: CRMA-1222, 2026-09-22;
   the (a3) call is decided 2026-09-28 — see Standing constraints._
+- **Under the settled rules the adopt bar measures 84/136 (61.8%), and it still fails.** CRMA-1332's
+  keyword took 69 to 72, and CRMA-1223's rules took 72 to 84 (+15 incumbent merges found, −3 new
+  merges, 2 of which read as correct by hand). Of the 52 mismatches, **18 are (a3)** — every
+  multi-AI-agent-only candidate rejects by design, and without them the rate is 84/118 (71.2%).
+  The rest: **21 one-family oracle rejects** (9 are incumbent merges the pairwise check missed),
+  11 pairwise or `stands_alone` disagreements in the contested band, and 2 ET promotions of
+  incumbent rejections. CRMA-1231 rules 1–4 are unchanged, and the recurrence override fired 0
+  times. The incumbent is not ground truth, and the replay set over-samples hard bands, so this is
+  not a production rate. _Source: [CRMA-1343](https://mcclatchy.atlassian.net/browse/CRMA-1343),
+  2026-09-28; detail in `docs/wayfinder/assets/crma-1343-report.md`._
 
 ## Standing constraints
 
@@ -531,6 +541,8 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
 - [Prototype: give the ET oracle a searchable keyword and re-run the needs_corroboration cases](https://mcclatchy.atlassian.net/browse/CRMA-1332) — **Decided:** oracle_match stays strict: an ET parent concept is not corroboration, so (a3) stands with its throughput cost (multi-AI-agent group 0 of 19 in every keyword arm, hand-written ceiling included). The null-query oracle keyword becomes signal_frequency: 11 promotions vs 1, hand check 11 of 12 exact.
 
 - [Decide: the confidence-routing thresholds and what each band does](https://mcclatchy.atlassian.net/browse/CRMA-1223) — **Decided:** Confidence measures a split, not correctness, so it gates nothing. A split pair_sameness takes the heavier extreme (merges found 33→54 of 70), merge target ranked by P(same_thing), recurrence Nouls cut at 0.5, ET floor in deploy.env.
+
+- [Re-score the adopt bar under the settled rules](https://mcclatchy.atlassian.net/browse/CRMA-1343) — **Decided:** 84/136 (61.8%) under the settled rules, up from 72; still fails the bar. (a3) is 18 of 52 mismatches; without it 84/118 (71.2%). See Established facts.
 
 ## Not yet specified
 
