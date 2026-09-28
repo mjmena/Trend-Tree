@@ -7,4 +7,4 @@
 # Explicit file list — `node --test <dir>` is flaky across Node versions.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-exec node --test services/lib/*.test.mjs services/deploy_layout.test.mjs
+exec node --test services/lib/*.test.mjs services/lib/sources/*.test.mjs services/deploy_layout.test.mjs

@@ -42,7 +42,7 @@ function load(name) {
   };
 }
 
-const UNITS = [load("ecomm-agent"), load("catalog-sync")];
+const UNITS = [load("ecomm-agent"), load("catalog-sync"), load("tiktok-ingest")];
 
 test("crane --workdir is parameterized on the unit name", () => {
   assert.match(deploySh, /--workdir "\/app\/services\/\$NAME"/);
@@ -134,4 +134,17 @@ test("catalog-sync: deploys as a job and mounts only the Snowflake key", () => {
   const secrets = u.deployEnv.match(/^SECRETS="([^"]*)"/m)?.[1] ?? "";
   assert.equal(secrets, "SNOWFLAKE_PRIVATE_KEY=snowflake-private-key:latest");
   assert.match(deploySh, /gcloud run jobs deploy "\$SERVICE"/);
+});
+
+test("tiktok-ingest: deploys as a job with one retry, and names its secrets without values", () => {
+  const u = load("tiktok-ingest");
+  assert.equal(u.kind, "job");
+  assert.equal(u.envValue("MAX_RETRIES"), "1");
+  const secrets = u.deployEnv.match(/^SECRETS="([^"]*)"/m)?.[1] ?? "";
+  assert.deepEqual(secrets.split(",").sort(), [
+    "GEMINI_API_KEY=generic-gemini-api-key:latest",
+    "SERPAPI_API_KEY=serpapi-api-key:latest",
+    "SNOWFLAKE_PRIVATE_KEY=snowflake-private-key:latest",
+  ]);
+  assert.doesNotMatch(u.deployEnv, /api_key=|SERPAPI_API_KEY:/, "deploy.env must never hold a key value");
 });

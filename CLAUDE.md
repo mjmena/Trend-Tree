@@ -21,6 +21,7 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 - `services/<name>/` — one service (its HTTP server) or one job (its entrypoint), plus its `Dockerfile` and `deploy.env` (config + Secret Manager names, never secret values). **Build context is the repo root**, so a Dockerfile can see `services/lib/`.
 - **Do not add a `package.json` at the repo root** — Pipedream's GitHub sync watches the root. Node dependencies live in the service's own directory.
 - `services/ecomm-agent` — the ecomm (trend-to-product sourcing) agent, `POST /source {trend_id}` + `GET /healthz`. See [`docs/prd/trend-to-product-sourcing.md`](docs/prd/trend-to-product-sourcing.md).
+- `services/tiktok-ingest` — Cloud Run **job** `trend-tree-tiktok-ingest` (CRMA-1337). SerpApi `google_short_videos` over a fixed seed list → `gemini-3.7-flash` title filter (`DIM_LLM_PROMPT` `ingestion.tiktok.filter`) → `SOURCE_NAME = 'tiktok'` rows via `MERGE_EXTERNAL_SIGNALS`. Max 50 SerpApi calls per run on the shared `dev@trendhunter.com` plan. Run by hand with `gcloud run jobs execute trend-tree-tiktok-ingest --region us-east4 --project mcc-crm-automations --wait`.
 - `services/catalog-sync` — Cloud Run **job** `trend-tree-catalog-sync` (CRMA-777): sweeps the public Shopify storefront `products.json` feed into `DIM_CATALOG_PRODUCT` daily at 09:00 UTC (Scheduler job `trend-tree-catalog-sync-daily`, managed by its `schedule.sh`). `deploy.env` sets `KIND=job`, which sends `services/deploy.sh` down its job path: deploy, then one real execution as the smoke test.
 
 ## Workflow defaults
@@ -51,7 +52,7 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 | `ingestion/*` | Per-source ingestion workflows (Bluesky, Amazon, Pinterest, Google Trends) + `ingestion/tools/` (agent search tools) + `ingestion/LLM/` (Gemini discovery verticals: food-drink / other / travel / wellness) |
 
 **Deactivated** (kept in repo for rollback / reference):
-- `ingestion/tiktok-p_yKCm9Am` — Creative Center hashtag scraper, scrapped 2026-06-09. TikTok retired the scraped page (301 → "TikTok One Creative Suite"; the `creative_radar_api` XHR is gone), and the hashtag-level output never met the distillation specificity rubric anyway (#18). The discovery workflow's Grok lane covers the TikTok cultural niche.
+- `ingestion/tiktok-p_yKCm9Am` — Creative Center hashtag scraper, scrapped 2026-06-09. TikTok retired the scraped page (301 → "TikTok One Creative Suite"; the `creative_radar_api` XHR is gone), and the hashtag-level output never met the distillation specificity rubric anyway (#18). The discovery workflow's Grok lane covers the TikTok cultural niche. TikTok now enters through `services/tiktok-ingest` (SerpApi, CRMA-1337) instead; this workflow stays off.
 
 > The `gtrends-poller-p_13CN9KG` workflow (daily Google Trends interest fetcher → `FCT_TREND_GTRENDS_DAILY`) was broken and has been **removed** from the repo (CRMA-1313, 2026-09-25). `FCT_TREND_GTRENDS_DAILY` stays in Snowflake as history; `DT_TREND_DASHBOARD.KEY_DATA_POINTS` is now always an empty array. The live `search-google-trends` agent tool is a separate component and stays.
 
