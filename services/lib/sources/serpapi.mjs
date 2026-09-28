@@ -14,7 +14,9 @@
 // returned 0). The client strips that field and returns the body.
 
 export const SERPAPI_URL = "https://serpapi.com/search.json";
-export const DEFAULT_TIMEOUT_MS = 30_000;
+// Uncached searches are slow: google_short_videos reported total_time_taken
+// of 34s and 66s on 2026-09-28, and a 30s timeout failed the first live run.
+export const DEFAULT_TIMEOUT_MS = 120_000;
 
 const NO_RESULTS = /hasn't returned any results/i;
 

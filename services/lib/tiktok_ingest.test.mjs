@@ -110,6 +110,25 @@ test("one run makes at most 50 SerpApi calls, however long the seed list is", as
   assert.equal(summary.seedsSkippedForBudget, 30);
 });
 
+test("searches run at most 4 at a time, and results keep seed order", async () => {
+  const seeds = { wellness: Array.from({ length: 10 }, (_, i) => `seed${i}`) };
+  let inFlight = 0;
+  let peak = 0;
+  const search = async (params) => {
+    inFlight++;
+    peak = Math.max(peak, inFlight);
+    const i = Number(params.q.match(/seed(\d+)/)[1]);
+    await new Promise((r) => setTimeout(r, (10 - i) * 2));
+    inFlight--;
+    return { short_video_results: [video(idAt("2026-09-28T02:00:00Z", i + 1), `title ${i}`)] };
+  };
+  const { filter, batches } = fakeFilter();
+  const { query } = fakeQuery();
+  await run({ search, filter, query, seeds });
+  assert.equal(peak, 4);
+  assert.deepEqual(batches[0], Array.from({ length: 10 }, (_, i) => `title ${i}`));
+});
+
 test("results with an empty title never reach the filter", async () => {
   const { search } = fakeSearch({
     skincare: [video(idAt("2026-09-28T02:00:00Z", 1), "  "), video(idAt("2026-09-28T02:00:00Z", 2), "Rice water toner KEEP"), video(idAt("2026-09-28T02:00:00Z", 3), undefined)],

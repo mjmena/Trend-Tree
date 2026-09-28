@@ -19,6 +19,9 @@
 
 export const MAX_SERPAPI_CALLS = 50;
 export const FILTER_BATCH_SIZE = 40;
+// An uncached google_short_videos search took 34-66s on 2026-09-28, so 24
+// sequential searches would take ~20 minutes. Waves of 4 keep a run to minutes.
+export const SEARCH_CONCURRENCY = 4;
 export const QUERY_WINDOW_MS = 24 * 60 * 60 * 1000; // tbs=qdr:d
 const FUTURE_SKEW_MS = 5 * 60 * 1000;
 
@@ -88,6 +91,7 @@ export async function runTikTokIngest({
   seeds = SEED_QUERIES,
   maxCalls = MAX_SERPAPI_CALLS,
   filterBatchSize = FILTER_BATCH_SIZE,
+  searchConcurrency = SEARCH_CONCURRENCY,
 }) {
   const plan = Object.entries(seeds).flatMap(([vertical, terms]) => terms.map((seed) => ({ vertical, seed })));
   const budgeted = plan.slice(0, maxCalls);
@@ -100,9 +104,14 @@ export async function runTikTokIngest({
   let notVideoLinks = 0;
   let duplicatesInRun = 0;
 
-  for (const { vertical, seed } of budgeted) {
-    const body = await search(buildSearchParams(seed));
-    for (const r of body?.short_video_results ?? []) {
+  const bodies = [];
+  for (let i = 0; i < budgeted.length; i += searchConcurrency) {
+    const wave = budgeted.slice(i, i + searchConcurrency);
+    bodies.push(...(await Promise.all(wave.map(({ seed }) => search(buildSearchParams(seed))))));
+  }
+
+  for (const [i, { vertical, seed }] of budgeted.entries()) {
+    for (const r of bodies[i]?.short_video_results ?? []) {
       results++;
       const title = String(r.title ?? "").trim();
       if (!title) {
