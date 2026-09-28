@@ -1,0 +1,17 @@
+{
+  "name": "trend-tree-tiktok-ingest",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "TikTok ingester: SerpApi short-video search -> title filter -> STG_EXTERNAL_SIGNALS (CRMA-1337) — Cloud Run job.",
+  "main": "ingest.mjs",
+  "scripts": {
+    "start": "node ingest.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "snowflake-sdk": "^2.2.0"
+  }
+}
