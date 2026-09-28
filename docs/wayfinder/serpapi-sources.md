@@ -40,6 +40,11 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
 - The SerpApi key belongs to the shared `dev@trendhunter.com` account: $275/mo
   for 30,000 searches (~$0.009/call), 24,078 used this cycle, renews
   2026-10-07. Source: `account.json`, 2026-09-27.
+- Against the 30% specificity-floor bar (#18), a seed-query sample passed at
+  TikTok 10% (6/60, 57/60 posted in the past day), Reddit tab 0% (only 17/58
+  results were Reddit), Kickstarter 4% (4 of 6 consumer seeds returned 0).
+  Source: CRMA-1317, 2026-09-28,
+  `docs/wayfinder/assets/crma-1317-serpapi-sample-grades.md`.
 
 ## Standing constraints
 
@@ -58,6 +63,10 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
   6 verticals, 3-5 atomic consumer terms each; Kickstarter gets no list until
   its role is decided. Daily run, past-day window, hard cap of 50 calls per
   run (CRMA-1320). Pipeline-derived lookups are the agent-search-tool role.
+- No platform passes the specificity floor as-is (CRMA-1317). A platform kept
+  as a direct platform source must add an explicit specificity filter or a
+  different query shape, and the spec must say which. Reddit results add depth
+  on topics we already carry, which is the agent-search-tool role.
 
 ## Decisions so far
 
@@ -66,6 +75,8 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
 - [Decide: Where does a new SerpApi ingester run, Pipedream or the services/ Cloud Run tier?](https://mcclatchy.atlassian.net/browse/CRMA-1319) — **Decided:** Cloud Run service started by Cloud Scheduler, fetch logic in services/lib/sources/serpapi.mjs, no new Pipedream workflow; the platforms are planned as direct platform sources.
 
 - [Decide: Where does a scheduled SerpApi ingester get its queries?](https://mcclatchy.atlassian.net/browse/CRMA-1320) — **Decided:** Outward-looking: a fixed seed-query list keyed by discovery's 6 verticals, shared by TikTok and Reddit, daily past-day pulls capped at 50 calls per run.
+
+- [Prototype: Does a SerpApi sample pass the distillation specificity rubric?](https://mcclatchy.atlassian.net/browse/CRMA-1317) — **Decided:** No platform passes as-is: TikTok 10%, Reddit tab 0%, Kickstarter 4% against the 30% specificity-floor bar; TikTok is fresh but category seeds return routines and listicles.
 
 ## Not yet specified
 
@@ -78,8 +89,9 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
   fetch the page.
 - **Kickstarter's home.** It could be a trend source, an input to the ecomm
   sourcing agent (`services/ecomm-agent`), or something for the CSA team
-  (PGS-836). The research found Kickstarter results weak (funded-project
-  updates, no launch date); it sharpens with the prototype's verdict.
+  (PGS-836). The prototype found it fails as a trend source (4%, index
+  dominated by games and books); whether any other home is in scope hangs on
+  CRMA-1318.
 - **The signal timestamp.** TikTok's post time decodes from the video ID;
   Reddit gives a relative date; Kickstarter gives only Google's crawl date.
   Decide how `SIGNAL_TIMESTAMP` is derived per platform.
