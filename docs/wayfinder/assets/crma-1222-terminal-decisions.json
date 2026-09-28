@@ -1,0 +1,93 @@
+[
+    {
+        "CANDIDATE_ID": "cand-4trsrhejmoxtv3oa",
+        "DECISION": "PROMOTE_NEW",
+        "DECISION_CATEGORY": "CONFIRM_NEW",
+        "TARGET_TREND_ID": "d4d33b9c-c8df-4f08-b14b-b8d6400b3c35",
+        "DECIDED_AT": "2026-05-13T13:15:59.327000"
+    },
+    {
+        "CANDIDATE_ID": "cand-69bom6nxmqj0wy5e",
+        "DECISION": "PROMOTE_NEW",
+        "DECISION_CATEGORY": "CONFIRM_NEW",
+        "TARGET_TREND_ID": "f4e30c93-5d51-4f9a-9a5b-ccea7a43403f",
+        "DECIDED_AT": "2026-06-20T04:15:00.403000"
+    },
+    {
+        "CANDIDATE_ID": "cand-7cmhaqa0mohwyh6e",
+        "DECISION": "PROMOTE_NEW",
+        "DECISION_CATEGORY": "CONFIRM_NEW",
+        "TARGET_TREND_ID": "a621f515-ad9b-4db6-ac9b-d68ea7d643b7",
+        "DECIDED_AT": "2026-05-01T19:14:53.961000"
+    },
+    {
+        "CANDIDATE_ID": "cand-bf61vj5ymr9aun2c",
+        "DECISION": "PROMOTE_NEW",
+        "DECISION_CATEGORY": "CONFIRM_NEW",
+        "TARGET_TREND_ID": "61bc6490-d54c-4ebd-9b1d-dc7026bbf5ac",
+        "DECIDED_AT": "2026-07-08T10:17:02.165000"
+    },
+    {
+        "CANDIDATE_ID": "cand-glh5vv4xmoycgff1",
+        "DECISION": "PROMOTE_NEW",
+        "DECISION_CATEGORY": "CONFIRM_NEW",
+        "TARGET_TREND_ID": "23681d0a-c4c7-44a1-b7f6-691f86b0b6af",
+        "DECIDED_AT": "2026-05-11T13:16:00.090000"
+    },
+    {
+        "CANDIDATE_ID": "cand-i8oy721tmpcvfqa0",
+        "DECISION": "PROMOTE_NEW",
+        "DECISION_CATEGORY": "CONFIRM_NEW",
+        "TARGET_TREND_ID": "7cc16b33-ad21-44ce-bd44-03f096cbc081",
+        "DECIDED_AT": "2026-05-21T13:16:16.595000"
+    },
+    {
+        "CANDIDATE_ID": "cand-kvggp06bmrgg2o4j",
+        "DECISION": "REJECT",
+        "DECISION_CATEGORY": "LOW_QUALITY",
+        "TARGET_TREND_ID": null,
+        "DECIDED_AT": "2026-07-17T19:15:07.003000"
+    },
+    {
+        "CANDIDATE_ID": "cand-mts5lctqmp5yse1q",
+        "DECISION": "PROMOTE_NEW",
+        "DECISION_CATEGORY": "CONFIRM_NEW",
+        "TARGET_TREND_ID": "748e1813-5cbf-4647-8dd1-e06ecbb429c9",
+        "DECIDED_AT": "2026-05-16T22:15:09.822000"
+    },
+    {
+        "CANDIDATE_ID": "cand-n7vu2kwkmp50ieej",
+        "DECISION": "PROMOTE_NEW",
+        "DECISION_CATEGORY": "CONFIRM_NEW",
+        "TARGET_TREND_ID": "462664f0-8240-4285-971d-f95c32c62487",
+        "DECIDED_AT": "2026-05-18T07:15:07.026000"
+    },
+    {
+        "CANDIDATE_ID": "cand-qgxdzzjempcpq9pp",
+        "DECISION": "PROMOTE_NEW",
+        "DECISION_CATEGORY": "CONFIRM_NEW",
+        "TARGET_TREND_ID": "6c9f173c-0fb0-4783-a652-5c9f890f39c9",
+        "DECIDED_AT": "2026-05-21T13:15:04.230000"
+    },
+    {
+        "CANDIDATE_ID": "cand-x6gub4aomrp0ovow",
+        "DECISION": "REJECT",
+        "DECISION_CATEGORY": "CONFIRM_REJECT",
+        "TARGET_TREND_ID": null,
+        "DECIDED_AT": "2026-07-21T13:15:13.715000"
+    },
+    {
+        "CANDIDATE_ID": "cand-ycc57ov5mtlagofq",
+        "DECISION": "REJECT",
+        "DECISION_CATEGORY": "CONFIRM_REJECT",
+        "TARGET_TREND_ID": null,
+        "DECIDED_AT": "2026-09-07T13:15:33.490000"
+    },
+    {
+        "CANDIDATE_ID": "cand-zpnvlpbemq57p6n0",
+        "DECISION": "PROMOTE_NEW",
+        "DECISION_CATEGORY": "CONFIRM_NEW",
+        "TARGET_TREND_ID": "4b147962-1023-4a65-8a85-0f9abaf34d1c",
+        "DECIDED_AT": "2026-06-12T10:16:56.957000"
+    }
+]

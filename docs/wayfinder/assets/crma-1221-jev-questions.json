@@ -1,0 +1,248 @@
+{
+  "_meta": {
+    "ticket": "CRMA-1221",
+    "map": "CRMA-1214",
+    "authored": "2026-09-21",
+    "status": "v1 draft — NEVER REPLAYED. No live DIM_LLM_PROMPT edit has been made from this map.",
+    "validated_by": "CRMA-1222 replays these definitions against the 187-case set at docs/wayfinder/assets/crma-1216-replay-set.tsv",
+    "model": "jev-1.13.0",
+    "model_pin_note": "Name the explicit version. jev-latest and jev-preview both resolve to jev-1.13.0 today, but a vendor bump would move the rubric underneath a governed DIM_LLM_PROMPT row with nothing to flag it.",
+    "endpoint": "POST https://api.typesafe.ai/v1/systemone",
+    "level_naming": "A Jev Score level has NO name field — a level is its position in the criteria array, and the response legend maps that index to the description. The `verdict` key below is ours. It rides inside the free-form level description so the request is self-documenting, and every level uses the same keys so the model compares like with like.",
+    "verdict_naming_rule": "Name a level for the JUDGMENT, never for what promotion does next. Promotion's action is not determined by any single question — the recurrence nouls can override a same_thing — so a level named for an action would be a claim the composition code can falsify."
+  },
+
+  "state_contract": {
+    "_note": "One request per candidate. The candidate alone is the state. Every neighbour rides inside its own question's structured instructions, never in shared state.",
+    "candidate": {
+      "trend_topic": "STG_TREND_CANDIDATES.TOPIC",
+      "candidate_query": "STG_TREND_CANDIDATES.QUERY — may be null; null on 78% of candidates (CRMA-1220)",
+      "sources": "[{ source_name, signal_count }] — every source name with its signal count",
+      "signals": "[{ publisher, signal_text }] — every supporting signal"
+    },
+    "excluded_and_why": {
+      "distillation_verdict": "Verdict-bearing. REAL_TREND on 99.7% of candidates, so it carries almost no information, and CRMA-1217 measured a state field whose value named an outcome biasing the answer 0.61 -> 0.74. Code still reads it to derive decision_category; the model never sees it.",
+      "quality_flags": "Verdict-bearing.",
+      "CONFIDENCE": "Verdict-bearing.",
+      "SPECIFICITY_SCORE": "Verdict-bearing.",
+      "source_family_count": "Deliberately absent. The rubric teaches independence in words instead — see evidence_quality.instructions. sourceFamilyOf() counts a discovery agent and an agent search tool from the same vendor as independent, which promoted 43 live trends on same-vendor corroboration (CRMA-1220). Handing the model that count would inherit the defect.",
+      "MAX_NEIGHBOR_SIM": "The pool is already similarity-selected. Showing the score tells the model what the geometry believes and invites it to ratify.",
+      "heat_index": "Decorative for topic sameness. CRMA-1217 measured one unrelated sentence moving the answer 0.61 -> 0.50 and confidence 0.51 -> 0.38.",
+      "age_days": "Decorative, as above. Known gap: recurrence_deserves_own_row may want the neighbour's age. Left out of v1 deliberately; CRMA-1222 shows whether the noul misses without it. Jev does no date reasoning, so it could only ever arrive as a phrase precomputed in code."
+    }
+  },
+
+  "question_keys": {
+    "_note": "Request A carries 1 + 4n questions for n neighbours, n in 0..8 — at most 33. Request B fires only when evidence_quality rounds to needs_corroboration.",
+    "request_a": [
+      "evidence_quality",
+      "pair_sameness__n<i>",
+      "is_same_recurring_topic__n<i>",
+      "recurrence_deserves_own_row__n<i>",
+      "is_narrower_instance__n<i>"
+    ],
+    "request_b": ["oracle_match__r<j>"],
+    "index_note": "<i> is the neighbour's index in the pool, <j> the oracle result's index among those clearing the volume floor. Code generates the keys and maps them back to trend_ids; the model never sees a trend_id."
+  },
+
+  "questions": {
+
+    "evidence_quality": {
+      "prompt_key": "promotion.jev.evidence_quality",
+      "type": "score",
+      "instructions": "Judge how well the evidence in `candidate` establishes that `candidate.trend_topic` is a real thing people are doing, buying, or talking about. Read `candidate.sources` for who reported it and `candidate.signals` for what they said. Judge whether the accounts reached the topic independently of each other, not how many accounts there are. Two source names that name the same vendor, the same model, or the same platform are one origin, however differently they are labelled.",
+      "criteria": [
+        {
+          "verdict": "not_a_topic",
+          "what": "The topic is not a real thing people are doing, buying, or talking about. The signals describe something else, they contradict each other, or they name a whole category rather than one practice, product, or moment.",
+          "not_for": "A topic that is real but thinly evidenced. A topic that is niche, early, or unfamiliar. An unfamiliar topic is not an unreal one."
+        },
+        {
+          "verdict": "needs_corroboration",
+          "what": "The topic is a real thing, but the evidence here does not establish it on its own. Every account in `candidate.signals` traces back to one origin — one publisher, one vendor's feed, or one search term restated — so an independent party is still needed to confirm the topic exists beyond this pool.",
+          "not_for": "A candidate whose accounts are genuinely independent of each other but few in number. Judge independence, not volume."
+        },
+        {
+          "verdict": "stands_alone",
+          "what": "The topic is a real thing and the evidence here establishes it. Accounts that reached the topic separately describe the same behaviour, product, or moment — different publishers, different kinds of source, no shared origin.",
+          "not_for": "A candidate that looks well-evidenced because one origin produced many signals. Repetition from one origin is one account."
+        }
+      ]
+    },
+
+    "pair_sameness": {
+      "prompt_key": "promotion.jev.pair_sameness",
+      "type": "score",
+      "per_neighbour": true,
+      "instructions": {
+        "neighbor": {
+          "trend_topic": "FCT_TRENDS.TREND_TOPIC",
+          "summary": "the trend's enrichment summary, or null",
+          "sample_signals": "3 linked signals"
+        },
+        "question": "Is `candidate.trend_topic` the same thing as `neighbor.trend_topic`? Judge the thing itself, not how similarly the two are worded."
+      },
+      "criteria": [
+        {
+          "verdict": "different_thing",
+          "what": "The two describe different things. They may share vocabulary, a category, or a season without naming the same behaviour, product, or moment. Different scope is different: one part of a larger thing is not that larger thing, and a larger thing is not one of its parts.",
+          "not_for": "Two different names for one thing. If both name the same behaviour, product, or moment in different words, they are the same thing."
+        },
+        {
+          "verdict": "unsettled",
+          "what": "The pair reads either way and the evidence here does not settle it.",
+          "not_for": "A pair you can place but find unusual, niche, or unfamiliar. Use this only when the evidence genuinely does not settle the question."
+        },
+        {
+          "verdict": "same_thing",
+          "what": "The two name the same thing. The same behaviour, the same product, or the same moment — including when the two are worded differently, and including when one names a practice and the other names the product at its centre. A later occurrence of a thing that happens again names the same thing as an earlier occurrence of it; whether it should be recorded separately is not part of this judgment.",
+          "not_for": "Two things that sit under one umbrella while describing different parts of it."
+        }
+      ]
+    },
+
+    "is_same_recurring_topic": {
+      "prompt_key": "promotion.jev.is_same_recurring_topic",
+      "type": "noul",
+      "per_neighbour": true,
+      "instructions": {
+        "neighbor": "same object as pair_sameness",
+        "question": "`candidate.trend_topic` and `neighbor.trend_topic` both name a thing that happens again — a yearly event, a recurring season, or a repeating moment — and they name the same such thing."
+      },
+      "criteria": {
+        "true": {
+          "what": "Both topics name the same recurring thing. Each may name an occurrence of it, or one may name the recurring thing itself while the other names an occurrence.",
+          "examples": ["an annual festival named in two different years", "a seasonal shopping period named alongside the season itself"]
+        },
+        "false": {
+          "what": "Either topic names something that does not happen again, or the two name different recurring things.",
+          "examples": ["a one-off product launch", "two different annual events that fall in the same month"]
+        }
+      }
+    },
+
+    "recurrence_deserves_own_row": {
+      "prompt_key": "promotion.jev.recurrence_deserves_own_row",
+      "type": "noul",
+      "per_neighbour": true,
+      "instructions": {
+        "neighbor": "same object as pair_sameness",
+        "question": "The occurrence named by `candidate.trend_topic` should be recorded on its own, separately from `neighbor`."
+      },
+      "criteria": {
+        "true": {
+          "what": "This occurrence has a character of its own — different participants, a different form, or a different reason for attention — so recording it inside `neighbor` would lose what makes it notable."
+        },
+        "false": {
+          "what": "`neighbor` tracks the recurring thing itself across its occurrences, or this occurrence differs from the earlier one only by its date."
+        }
+      }
+    },
+
+    "is_narrower_instance": {
+      "prompt_key": "promotion.jev.is_narrower_instance",
+      "type": "noul",
+      "per_neighbour": true,
+      "instructions": {
+        "neighbor": "same object as pair_sameness",
+        "question": "`candidate.trend_topic` names something narrower than `neighbor.trend_topic` — one specific case, product, or practice inside what `neighbor` covers."
+      },
+      "criteria": {
+        "true": {
+          "what": "`neighbor` names a broader thing and `candidate` names one case inside it. The direction matters: answer true only when the candidate is the narrower of the two."
+        },
+        "false": {
+          "what": "Two different names for one thing are not narrower and broader. If both topics name the same behaviour, product, or moment, answer false however differently the two are worded. Also answer false when the candidate is the broader of the two, or when the two are unrelated."
+        }
+      },
+      "guard": "CRMA-1217 measured this noul false-positiving at 0.82 on a near-synonym pair, and at 0.58 on a recurrence pair. It blocks nothing on its own. Its false criterion leads with the near-synonym case for that reason."
+    },
+
+    "oracle_match": {
+      "prompt_key": "promotion.jev.oracle_match",
+      "type": "score",
+      "per_oracle_result": true,
+      "fires_when": "evidence_quality rounds to needs_corroboration",
+      "instructions": {
+        "oracle_result": { "keyword": "the Exploding Topics keyword" },
+        "question": "Does `oracle_result.keyword` name the same concept as `candidate.trend_topic`?"
+      },
+      "criteria": [
+        {
+          "verdict": "different_concept",
+          "what": "The keyword names a different concept. It may share a word with the candidate without naming the same thing.",
+          "not_for": "A keyword that names the same concept in different words."
+        },
+        {
+          "verdict": "adjacent_not_same",
+          "what": "The keyword names something closely related but not the same concept — a neighbouring product, the broader category the candidate sits inside, or one component of the candidate.",
+          "not_for": "A keyword that names the same concept under a different name."
+        },
+        {
+          "verdict": "same_concept",
+          "what": "The keyword names the same concept as the candidate, including under a different name or at a different level of formality.",
+          "not_for": "A keyword that names the category the candidate belongs to rather than the candidate itself."
+        }
+      ],
+      "excluded_and_why": {
+        "absolute_volume": "Code filters oracle results at ET_MIN_ABSOLUTE_VOLUME = 1000 BEFORE asking. A result below the floor never becomes a question. Jev does no arithmetic.",
+        "classifications": "Decorative for 'is this the same concept'.",
+        "growth": "Decorative, and rubric v3 already called it informational only."
+      },
+      "additive_only": "ADR-0004's additive-only rule is now structural, not prompt text. oracle_match runs only at needs_corroboration; a candidate whose evidence stands alone never reaches the oracle, so the oracle cannot veto it. Writing the rule into the criteria would describe what the system does with the answer, which is a contradictory instruction."
+    }
+  },
+
+  "rounding_rule": {
+    "rule": "Round a Score to the nearest level. The level meaning sets the cut point. There is no threshold constant anywhere in this file.",
+    "why": "The replay set's expected answers come from the incumbent, and CRMA-1231 has not yet settled what those cases are scored against, so a number fitted now would be fitted to an unvalidated target. CRMA-1217 measured the margin holding: recurrence pairs landed at 1.65-1.73 against a 1.5 cut, on the correct side every time.",
+    "exception": "None. The one number this path needs — the confidence band that separates routes — belongs to CRMA-1223.",
+    "noul_bands": "The nouls return 0-1 and need cut points. Those are CRMA-1223's, not this ticket's. CRMA-1217's measured separations are the starting evidence: is_same_recurring_topic >=0.84 on all 8 recurrence pairs and <=0.14 on all 6 others; recurrence_deserves_own_row 0.14-0.24 against 0.80-0.88, with nothing in the gap."
+  },
+
+  "composition": {
+    "_note": "Ordered. Reject precedes merge because a merge attaches the candidate's signals to a live trend.",
+    "1": "evidence_quality == not_a_topic -> REJECT / LOW_QUALITY. The oracle never runs.",
+    "2": "Any neighbour at pair_sameness == same_thing -> MERGE_INTO_EXISTING, target = the highest pair_sameness CONFIDENCE among them. OVERRIDDEN when that neighbour's is_same_recurring_topic is high AND recurrence_deserves_own_row is high: that neighbour does not merge, and the candidate goes to PROMOTE_NEW. is_narrower_instance blocks nothing on its own. Two or more neighbours clearing the merge bar means those two TRENDS are duplicates — merge into the older and raise an operational flag, which this map does not try to fix.",
+    "3": "evidence_quality == stands_alone -> PROMOTE_NEW.",
+    "4": "evidence_quality == needs_corroboration -> code filters oracle results by the volume floor, then asks oracle_match. Any result at same_concept -> PROMOTE_NEW. Otherwise REJECT / INSUFFICIENT_EVIDENCE.",
+    "routing_signal": "Routing always reads a Score's CONFIDENCE, never a Choice's. There is no Choice in this design. CRMA-1217 measured Choice confidence staying high on the hardest pairs (0.93 on the most ambiguous, 0.75-0.84 on a near-empty state) while Score confidence tracked difficulty across 0.15-1.00.",
+    "oracle_keyword": "The candidate query when present, the trend topic otherwise. Which one was sent MUST be recorded."
+  },
+
+  "prompt_rows": {
+    "created": [
+      "promotion.jev.evidence_quality",
+      "promotion.jev.pair_sameness",
+      "promotion.jev.is_same_recurring_topic",
+      "promotion.jev.recurrence_deserves_own_row",
+      "promotion.jev.is_narrower_instance",
+      "promotion.jev.oracle_match"
+    ],
+    "granularity": "One row per question. The last segment of the PROMPT_KEY IS the Jev question key, so composition code reads a row and uses its key directly. The definition JSON goes in TEMPLATE, not MODEL_PARAMS — TEMPLATE is what the drift audit hashes, and a JSON body with mustache holes is still a template.",
+    "granularity_cost": "Nothing enforces that the six rows are coherent with each other, so a half-shipped migration can leave an incoherent set live. The migration ships all six in one statement and the manifest bump is the guard.",
+    "role_slot": "`jev` sits where `subagent` and `lead` sit today. Three other agents share promotion's shape — the distillation cluster-agent, lifecycle-agent, lifecycle-attribution-agent — so `<agent>.jev.<question>` leaves room without generalising anything now.",
+    "retired": {
+      "promotion.subagent.decision_rubric": "v3 -> IS_ACTIVE = FALSE. Replaced by the six rows.",
+      "promotion.subagent.system": "v3 -> IS_ACTIVE = FALSE. Nothing replaces it: Jev takes state and questions, with no system role.",
+      "promotion.lead.system": "v1 -> IS_ACTIVE = FALSE. Governed by the daily drift audit and read by NO code — promotion-agent-p_yKCmm9r/workflow.yaml:26 loads only the two subagent keys, and CRMA-1216 showed the lead's ledger rows carry zero tokens. Retiring it is a cleanup this migration is the natural place for."
+    },
+    "audit_manifest": "audit-agent-p_xMC9nm3/workflow.yaml:530 and :578 — BOTH the sql.value and sql.query copies. Drop the three retired entries, add the six new ones at version 1, in the same commit as the migration."
+  },
+
+  "what_rubric_v3_becomes": {
+    "verdict_branches_on_distillation_verdict": "DROPPED. The model never sees distillation's verdict. Code reads it only to derive decision_category.",
+    "quality_gate_and_ADR_0004_classifier": "DROPPED from the prompt. evidence_quality == needs_corroboration IS the 'is corroboration necessary' judgment, which removes classifyCandidate()'s reject arm and its source-family router. Code still groups source names into families to fill state, but the count decides nothing.",
+    "ET_RESCUE_branch": "BECOMES STRUCTURE. See oracle_match.additive_only.",
+    "same_topic_means_same_underlying_concept": "MIGRATES into pair_sameness's level text and the three nouls' criteria. This is the only semantic content of v3 that survives.",
+    "vector_cosine_is_a_suggestion": "DROPPED as unnecessary. The similarity score no longer reaches the model at all.",
+    "when_in_doubt_DEFER": "GONE. CRMA-1219 removed DEFER from the verdict set."
+  },
+
+  "unvalidated": [
+    "Every word in this file. Nothing here has been replayed against production topic text.",
+    "ET_MIN_ABSOLUTE_VOLUME = 1000 is inherited from agents/lib/exploding_topics.mjs:39. CRMA-1220 measured 120 cases where the oracle supplied the missing family but not their volumes, so the floor could not be re-derived.",
+    "Teaching independence in words rather than counting families is UNTESTED, and it sets a trap for CRMA-1222: the replay set's expected answers come from the incumbent, which used the broken sourceFamilyOf() counter. A model that correctly refuses a same-vendor candidate will LOOK like a regression. Recorded on CRMA-1231.",
+    "Criteria on the three nouls are new. CRMA-1217 measured the nouls clean WITHOUT criteria. CRMA-1222 runs both arms: criteria as the default, bare instructions as the control."
+  ]
+}

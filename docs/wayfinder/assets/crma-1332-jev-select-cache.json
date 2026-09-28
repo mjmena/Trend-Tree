@@ -1,0 +1,11288 @@
+{
+ "cand-kvggp06bmrgg2o4j": {
+  "keywords": [
+   "cosmeticorexia"
+  ],
+  "ranked": [
+   {
+    "phrase": "cosmeticorexia",
+    "p": 0.22
+   },
+   {
+    "phrase": "step adult skincare",
+    "p": 0.18
+   },
+   {
+    "phrase": "multi step adult",
+    "p": 0.14
+   },
+   {
+    "phrase": "tweens adopting multi",
+    "p": 0.13
+   },
+   {
+    "phrase": "skincare with harsh",
+    "p": 0.1
+   },
+   {
+    "phrase": "step adult",
+    "p": 0.09
+   },
+   {
+    "phrase": "multi step",
+    "p": 0.08
+   },
+   {
+    "phrase": "adult skincare",
+    "p": 0.08
+   },
+   {
+    "phrase": "harsh actives",
+    "p": 0.07
+   },
+   {
+    "phrase": "tweens",
+    "p": 0.05
+   },
+   {
+    "phrase": "skincare",
+    "p": 0.05
+   },
+   {
+    "phrase": "actives",
+    "p": 0.05
+   },
+   {
+    "phrase": "step",
+    "p": 0.04
+   },
+   {
+    "phrase": "adult",
+    "p": 0.04
+   },
+   {
+    "phrase": "multi",
+    "p": 0.03
+   },
+   {
+    "phrase": "harsh",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6e6473c72a499ab828a238f5a80",
+  "usage": {
+   "input_tokens": 2653,
+   "output_tokens": 330
+  },
+  "cost_usd": 0.000111426,
+  "duration_ms": 287
+ },
+ "cand-9k7bmfkpmrxldbbt": {
+  "keywords": [
+   "play doh blooms"
+  ],
+  "ranked": [
+   {
+    "phrase": "play doh blooms",
+    "p": 0.6
+   },
+   {
+    "phrase": "doh blooms",
+    "p": 0.49
+   },
+   {
+    "phrase": "adult play doh",
+    "p": 0.23
+   },
+   {
+    "phrase": "doh craft kits",
+    "p": 0.23
+   },
+   {
+    "phrase": "crafting play doh",
+    "p": 0.17
+   },
+   {
+    "phrase": "permanent floral",
+    "p": 0.16
+   },
+   {
+    "phrase": "doh craft",
+    "p": 0.16
+   },
+   {
+    "phrase": "doh into permanent",
+    "p": 0.16
+   },
+   {
+    "phrase": "displayable floral decor",
+    "p": 0.16
+   },
+   {
+    "phrase": "play doh craft",
+    "p": 0.16
+   },
+   {
+    "phrase": "permanent floral home",
+    "p": 0.15
+   },
+   {
+    "phrase": "floral home decor",
+    "p": 0.13
+   },
+   {
+    "phrase": "play doh",
+    "p": 0.12
+   },
+   {
+    "phrase": "displayable floral",
+    "p": 0.12
+   },
+   {
+    "phrase": "adult play",
+    "p": 0.1
+   },
+   {
+    "phrase": "blooms into displayable",
+    "p": 0.1
+   },
+   {
+    "phrase": "crafting play",
+    "p": 0.09
+   },
+   {
+    "phrase": "floral decor",
+    "p": 0.09
+   },
+   {
+    "phrase": "blooms",
+    "p": 0.09
+   },
+   {
+    "phrase": "craft kits",
+    "p": 0.08
+   },
+   {
+    "phrase": "kits for home",
+    "p": 0.08
+   },
+   {
+    "phrase": "floral home",
+    "p": 0.07
+   },
+   {
+    "phrase": "play",
+    "p": 0.06
+   },
+   {
+    "phrase": "decor",
+    "p": 0.05
+   },
+   {
+    "phrase": "home decor",
+    "p": 0.05
+   },
+   {
+    "phrase": "crafting",
+    "p": 0.05
+   },
+   {
+    "phrase": "floral",
+    "p": 0.05
+   },
+   {
+    "phrase": "permanent",
+    "p": 0.04
+   },
+   {
+    "phrase": "displayable",
+    "p": 0.04
+   },
+   {
+    "phrase": "home",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6e6566578dd8a4f4afb16a1e375",
+  "usage": {
+   "input_tokens": 4717,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000198114,
+  "duration_ms": 200
+ },
+ "cand-75k6p70dmrq4onna": {
+  "keywords": [
+   "mangonada"
+  ],
+  "ranked": [
+   {
+    "phrase": "mangonada",
+    "p": 0.44
+   },
+   {
+    "phrase": "mangonada flavors",
+    "p": 0.43
+   },
+   {
+    "phrase": "mangonada sweet tart",
+    "p": 0.24
+   },
+   {
+    "phrase": "applying mangonada flavors",
+    "p": 0.24
+   },
+   {
+    "phrase": "mangonada sweet",
+    "p": 0.21
+   },
+   {
+    "phrase": "applying mangonada",
+    "p": 0.15
+   },
+   {
+    "phrase": "sweet tart spicy",
+    "p": 0.1
+   },
+   {
+    "phrase": "tart spicy flavor",
+    "p": 0.1
+   },
+   {
+    "phrase": "tart spicy",
+    "p": 0.07
+   },
+   {
+    "phrase": "sweet tart",
+    "p": 0.06
+   },
+   {
+    "phrase": "swangy flavors",
+    "p": 0.06
+   },
+   {
+    "phrase": "flavor profile expanding",
+    "p": 0.06
+   },
+   {
+    "phrase": "expanding into baked",
+    "p": 0.06
+   },
+   {
+    "phrase": "baked goods",
+    "p": 0.05
+   },
+   {
+    "phrase": "spicy flavor profile",
+    "p": 0.05
+   },
+   {
+    "phrase": "spicy flavor",
+    "p": 0.04
+   },
+   {
+    "phrase": "flavor profile",
+    "p": 0.04
+   },
+   {
+    "phrase": "profile expanding",
+    "p": 0.04
+   },
+   {
+    "phrase": "diverse food applications",
+    "p": 0.04
+   },
+   {
+    "phrase": "flavor",
+    "p": 0.04
+   },
+   {
+    "phrase": "profile",
+    "p": 0.04
+   },
+   {
+    "phrase": "flavors",
+    "p": 0.03
+   },
+   {
+    "phrase": "food applications",
+    "p": 0.03
+   },
+   {
+    "phrase": "flavors to diverse",
+    "p": 0.03
+   },
+   {
+    "phrase": "tart",
+    "p": 0.03
+   },
+   {
+    "phrase": "spicy",
+    "p": 0.03
+   },
+   {
+    "phrase": "expanding",
+    "p": 0.03
+   },
+   {
+    "phrase": "baked",
+    "p": 0.03
+   },
+   {
+    "phrase": "diverse food",
+    "p": 0.02
+   },
+   {
+    "phrase": "sweet",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6e663d5742ca0df6af25b362872",
+  "usage": {
+   "input_tokens": 4738,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000198996,
+  "duration_ms": 187
+ },
+ "cand-mts5lctqmp5yse1q": {
+  "keywords": [
+   "adaptogen mushroom rtds"
+  ],
+  "ranked": [
+   {
+    "phrase": "adaptogen mushroom rtds",
+    "p": 0.45
+   },
+   {
+    "phrase": "stress fitness",
+    "p": 0.44
+   },
+   {
+    "phrase": "proactive stress fitness",
+    "p": 0.38
+   },
+   {
+    "phrase": "stress fitness neurowellness",
+    "p": 0.38
+   },
+   {
+    "phrase": "adaptogen rtds",
+    "p": 0.3
+   },
+   {
+    "phrase": "mushroom rtds",
+    "p": 0.25
+   },
+   {
+    "phrase": "fitness neurowellness",
+    "p": 0.21
+   },
+   {
+    "phrase": "neurowellness",
+    "p": 0.16
+   },
+   {
+    "phrase": "adaptogen mushroom",
+    "p": 0.15
+   },
+   {
+    "phrase": "stimulant adaptogen mushroom",
+    "p": 0.15
+   },
+   {
+    "phrase": "proactive stress",
+    "p": 0.14
+   },
+   {
+    "phrase": "calm focus rituals",
+    "p": 0.13
+   },
+   {
+    "phrase": "calm focus",
+    "p": 0.11
+   },
+   {
+    "phrase": "fitness",
+    "p": 0.1
+   },
+   {
+    "phrase": "adaptogen",
+    "p": 0.1
+   },
+   {
+    "phrase": "rtds",
+    "p": 0.1
+   },
+   {
+    "phrase": "stimulant adaptogen rtds",
+    "p": 0.1
+   },
+   {
+    "phrase": "focus rituals",
+    "p": 0.08
+   },
+   {
+    "phrase": "mushroom",
+    "p": 0.08
+   },
+   {
+    "phrase": "stress",
+    "p": 0.07
+   },
+   {
+    "phrase": "stimulant adaptogen",
+    "p": 0.06
+   },
+   {
+    "phrase": "proactive",
+    "p": 0.05
+   },
+   {
+    "phrase": "calm",
+    "p": 0.05
+   },
+   {
+    "phrase": "focus",
+    "p": 0.05
+   },
+   {
+    "phrase": "rituals",
+    "p": 0.05
+   },
+   {
+    "phrase": "stimulant",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6e670a87e46927d998b65a62f19",
+  "usage": {
+   "input_tokens": 4193,
+   "output_tokens": 540
+  },
+  "cost_usd": 0.000176106,
+  "duration_ms": 167
+ },
+ "cand-bf61vj5ymr9aun2c": {
+  "keywords": [
+   "wellness first dating",
+   "wellness first dates"
+  ],
+  "ranked": [
+   {
+    "phrase": "wellness first dating",
+    "p": 0.85
+   },
+   {
+    "phrase": "wellness first dates",
+    "p": 0.77
+   },
+   {
+    "phrase": "booking wellness first",
+    "p": 0.42
+   },
+   {
+    "phrase": "drinks for breathwork",
+    "p": 0.35
+   },
+   {
+    "phrase": "sober wellness socializing",
+    "p": 0.3
+   },
+   {
+    "phrase": "dating swapping drinks",
+    "p": 0.26
+   },
+   {
+    "phrase": "wellness first",
+    "p": 0.24
+   },
+   {
+    "phrase": "sober wellness",
+    "p": 0.21
+   },
+   {
+    "phrase": "breathwork sound baths",
+    "p": 0.21
+   },
+   {
+    "phrase": "wellness socializing",
+    "p": 0.19
+   },
+   {
+    "phrase": "booking wellness",
+    "p": 0.17
+   },
+   {
+    "phrase": "dating swapping",
+    "p": 0.13
+   },
+   {
+    "phrase": "first dating swapping",
+    "p": 0.13
+   },
+   {
+    "phrase": "breathwork sound",
+    "p": 0.12
+   },
+   {
+    "phrase": "swapping drinks",
+    "p": 0.1
+   },
+   {
+    "phrase": "sound baths",
+    "p": 0.1
+   },
+   {
+    "phrase": "first dating",
+    "p": 0.09
+   },
+   {
+    "phrase": "breathwork",
+    "p": 0.09
+   },
+   {
+    "phrase": "sober",
+    "p": 0.09
+   },
+   {
+    "phrase": "wellness",
+    "p": 0.07
+   },
+   {
+    "phrase": "dating",
+    "p": 0.06
+   },
+   {
+    "phrase": "dates",
+    "p": 0.06
+   },
+   {
+    "phrase": "swapping",
+    "p": 0.05
+   },
+   {
+    "phrase": "baths",
+    "p": 0.05
+   },
+   {
+    "phrase": "booking",
+    "p": 0.05
+   },
+   {
+    "phrase": "socializing",
+    "p": 0.05
+   },
+   {
+    "phrase": "first",
+    "p": 0.04
+   },
+   {
+    "phrase": "first dates",
+    "p": 0.04
+   },
+   {
+    "phrase": "sound",
+    "p": 0.04
+   },
+   {
+    "phrase": "drinks",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6e67bda7d58a19c908c1a25b57f",
+  "usage": {
+   "input_tokens": 4716,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000198072,
+  "duration_ms": 184
+ },
+ "cand-qgxdzzjempcpq9pp": {
+  "keywords": [
+   "nature immersion retreats"
+  ],
+  "ranked": [
+   {
+    "phrase": "nature immersion retreats",
+    "p": 0.26
+   },
+   {
+    "phrase": "booking nature immersion",
+    "p": 0.25
+   },
+   {
+    "phrase": "booking off grid",
+    "p": 0.22
+   },
+   {
+    "phrase": "off grid nature",
+    "p": 0.19
+   },
+   {
+    "phrase": "immersion retreats",
+    "p": 0.16
+   },
+   {
+    "phrase": "grid nature immersion",
+    "p": 0.14
+   },
+   {
+    "phrase": "nature immersion",
+    "p": 0.13
+   },
+   {
+    "phrase": "forced digital disconnection",
+    "p": 0.13
+   },
+   {
+    "phrase": "digital disconnection",
+    "p": 0.12
+   },
+   {
+    "phrase": "booking nature",
+    "p": 0.12
+   },
+   {
+    "phrase": "retreats for forced",
+    "p": 0.11
+   },
+   {
+    "phrase": "retreats",
+    "p": 0.1
+   },
+   {
+    "phrase": "off grid",
+    "p": 0.1
+   },
+   {
+    "phrase": "disconnection",
+    "p": 0.09
+   },
+   {
+    "phrase": "immersion",
+    "p": 0.07
+   },
+   {
+    "phrase": "grid nature",
+    "p": 0.07
+   },
+   {
+    "phrase": "booking off",
+    "p": 0.06
+   },
+   {
+    "phrase": "forced digital",
+    "p": 0.06
+   },
+   {
+    "phrase": "booking",
+    "p": 0.05
+   },
+   {
+    "phrase": "nature",
+    "p": 0.05
+   },
+   {
+    "phrase": "grid",
+    "p": 0.05
+   },
+   {
+    "phrase": "homesteading for joy",
+    "p": 0.04
+   },
+   {
+    "phrase": "chicken homesteading",
+    "p": 0.03
+   },
+   {
+    "phrase": "backyard chicken homesteading",
+    "p": 0.03
+   },
+   {
+    "phrase": "forced",
+    "p": 0.03
+   },
+   {
+    "phrase": "digital",
+    "p": 0.03
+   },
+   {
+    "phrase": "homesteading",
+    "p": 0.03
+   },
+   {
+    "phrase": "backyard chicken",
+    "p": 0.02
+   },
+   {
+    "phrase": "backyard",
+    "p": 0.02
+   },
+   {
+    "phrase": "chicken",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6e6939e7db1b953f0a024bee1f4",
+  "usage": {
+   "input_tokens": 4732,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000198744,
+  "duration_ms": 239
+ },
+ "cand-4trsrhejmoxtv3oa": {
+  "keywords": [
+   "functional jelly stick"
+  ],
+  "ranked": [
+   {
+    "phrase": "functional jelly stick",
+    "p": 0.38
+   },
+   {
+    "phrase": "functional jelly",
+    "p": 0.28
+   },
+   {
+    "phrase": "jelly stick supplements",
+    "p": 0.27
+   },
+   {
+    "phrase": "jelly stick fruit",
+    "p": 0.25
+   },
+   {
+    "phrase": "fruit leather replacements",
+    "p": 0.24
+   },
+   {
+    "phrase": "single serve jelly",
+    "p": 0.24
+   },
+   {
+    "phrase": "jelly stick",
+    "p": 0.21
+   },
+   {
+    "phrase": "stick fruit leather",
+    "p": 0.2
+   },
+   {
+    "phrase": "fruit leather",
+    "p": 0.15
+   },
+   {
+    "phrase": "fruit leather confectionery",
+    "p": 0.15
+   },
+   {
+    "phrase": "serve jelly stick",
+    "p": 0.14
+   },
+   {
+    "phrase": "leather confectionery",
+    "p": 0.13
+   },
+   {
+    "phrase": "stick supplements",
+    "p": 0.13
+   },
+   {
+    "phrase": "leather replacements",
+    "p": 0.12
+   },
+   {
+    "phrase": "clean label fruit",
+    "p": 0.12
+   },
+   {
+    "phrase": "label fruit leather",
+    "p": 0.12
+   },
+   {
+    "phrase": "stick fruit",
+    "p": 0.11
+   },
+   {
+    "phrase": "jelly",
+    "p": 0.1
+   },
+   {
+    "phrase": "leather",
+    "p": 0.1
+   },
+   {
+    "phrase": "stick",
+    "p": 0.08
+   },
+   {
+    "phrase": "label fruit",
+    "p": 0.08
+   },
+   {
+    "phrase": "serve jelly",
+    "p": 0.07
+   },
+   {
+    "phrase": "functional",
+    "p": 0.07
+   },
+   {
+    "phrase": "single serve",
+    "p": 0.06
+   },
+   {
+    "phrase": "replacements",
+    "p": 0.06
+   },
+   {
+    "phrase": "confectionery",
+    "p": 0.06
+   },
+   {
+    "phrase": "clean label",
+    "p": 0.05
+   },
+   {
+    "phrase": "fruit",
+    "p": 0.04
+   },
+   {
+    "phrase": "clean",
+    "p": 0.04
+   },
+   {
+    "phrase": "label",
+    "p": 0.04
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6e69f1f7fbb9415640d0e3d9bdf",
+  "usage": {
+   "input_tokens": 4719,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.00019819800000000002,
+  "duration_ms": 184
+ },
+ "cand-n7vu2kwkmp50ieej": {
+  "keywords": [
+   "water stacking"
+  ],
+  "ranked": [
+   {
+    "phrase": "water stacking",
+    "p": 0.9
+   },
+   {
+    "phrase": "water stacking blending",
+    "p": 0.7
+   },
+   {
+    "phrase": "stacking",
+    "p": 0.32
+   },
+   {
+    "phrase": "stacking blending",
+    "p": 0.3
+   },
+   {
+    "phrase": "stacking blending multiple",
+    "p": 0.21
+   },
+   {
+    "phrase": "stacking daily rituals",
+    "p": 0.16
+   },
+   {
+    "phrase": "wellness powders",
+    "p": 0.11
+   },
+   {
+    "phrase": "blending multiple functional",
+    "p": 0.11
+   },
+   {
+    "phrase": "performance wellness powders",
+    "p": 0.11
+   },
+   {
+    "phrase": "functional health powders",
+    "p": 0.1
+   },
+   {
+    "phrase": "health powders",
+    "p": 0.09
+   },
+   {
+    "phrase": "performance wellness",
+    "p": 0.08
+   },
+   {
+    "phrase": "powders",
+    "p": 0.07
+   },
+   {
+    "phrase": "multiple functional health",
+    "p": 0.07
+   },
+   {
+    "phrase": "stock performance wellness",
+    "p": 0.07
+   },
+   {
+    "phrase": "blending",
+    "p": 0.07
+   },
+   {
+    "phrase": "water",
+    "p": 0.06
+   },
+   {
+    "phrase": "blending multiple",
+    "p": 0.06
+   },
+   {
+    "phrase": "multiple functional",
+    "p": 0.06
+   },
+   {
+    "phrase": "powders in store",
+    "p": 0.06
+   },
+   {
+    "phrase": "functional health",
+    "p": 0.05
+   },
+   {
+    "phrase": "store trial packs",
+    "p": 0.05
+   },
+   {
+    "phrase": "trial packs",
+    "p": 0.04
+   },
+   {
+    "phrase": "beauty retailers stock",
+    "p": 0.04
+   },
+   {
+    "phrase": "retailers stock performance",
+    "p": 0.04
+   },
+   {
+    "phrase": "beauty retailers",
+    "p": 0.03
+   },
+   {
+    "phrase": "retailers stock",
+    "p": 0.03
+   },
+   {
+    "phrase": "stock performance",
+    "p": 0.03
+   },
+   {
+    "phrase": "store trial",
+    "p": 0.03
+   },
+   {
+    "phrase": "multiple",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6e6aaee7622874280223976a262",
+  "usage": {
+   "input_tokens": 4746,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000199332,
+  "duration_ms": 182
+ },
+ "cand-69bom6nxmqj0wy5e": {
+  "keywords": [
+   "rapid skin microbiome"
+  ],
+  "ranked": [
+   {
+    "phrase": "rapid skin microbiome",
+    "p": 0.4
+   },
+   {
+    "phrase": "skin microbiome tests",
+    "p": 0.39
+   },
+   {
+    "phrase": "microbiome tests",
+    "p": 0.22
+   },
+   {
+    "phrase": "ordering rapid skin",
+    "p": 0.21
+   },
+   {
+    "phrase": "tests for customized",
+    "p": 0.17
+   },
+   {
+    "phrase": "customized skincare formulations",
+    "p": 0.17
+   },
+   {
+    "phrase": "customized skincare",
+    "p": 0.13
+   },
+   {
+    "phrase": "personalized skincare",
+    "p": 0.12
+   },
+   {
+    "phrase": "rapid skin",
+    "p": 0.11
+   },
+   {
+    "phrase": "skin microbiome",
+    "p": 0.11
+   },
+   {
+    "phrase": "ordering rapid",
+    "p": 0.1
+   },
+   {
+    "phrase": "microbiome friendly personal",
+    "p": 0.1
+   },
+   {
+    "phrase": "microbiome",
+    "p": 0.09
+   },
+   {
+    "phrase": "microbiome friendly",
+    "p": 0.09
+   },
+   {
+    "phrase": "tests",
+    "p": 0.08
+   },
+   {
+    "phrase": "skincare formulations",
+    "p": 0.07
+   },
+   {
+    "phrase": "rapid",
+    "p": 0.06
+   },
+   {
+    "phrase": "friendly personal care",
+    "p": 0.06
+   },
+   {
+    "phrase": "customized",
+    "p": 0.06
+   },
+   {
+    "phrase": "skincare",
+    "p": 0.05
+   },
+   {
+    "phrase": "friendly personal",
+    "p": 0.05
+   },
+   {
+    "phrase": "formulations",
+    "p": 0.05
+   },
+   {
+    "phrase": "ordering",
+    "p": 0.05
+   },
+   {
+    "phrase": "personalized",
+    "p": 0.05
+   },
+   {
+    "phrase": "skin",
+    "p": 0.04
+   },
+   {
+    "phrase": "personal care",
+    "p": 0.04
+   },
+   {
+    "phrase": "friendly",
+    "p": 0.04
+   },
+   {
+    "phrase": "personal",
+    "p": 0.03
+   },
+   {
+    "phrase": "care",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6efd8dc79029cc9e70729537aa4",
+  "usage": {
+   "input_tokens": 4584,
+   "output_tokens": 603
+  },
+  "cost_usd": 0.000192528,
+  "duration_ms": 213
+ },
+ "cand-7cmhaqa0mohwyh6e": {
+  "keywords": [
+   "relaxed wide leg"
+  ],
+  "ranked": [
+   {
+    "phrase": "relaxed wide leg",
+    "p": 0.5
+   },
+   {
+    "phrase": "wide leg denim",
+    "p": 0.43
+   },
+   {
+    "phrase": "relaxed wide",
+    "p": 0.26
+   },
+   {
+    "phrase": "silhouette replacing skinny",
+    "p": 0.22
+   },
+   {
+    "phrase": "wide leg",
+    "p": 0.19
+   },
+   {
+    "phrase": "replacing skinny jeans",
+    "p": 0.17
+   },
+   {
+    "phrase": "replacing skinny",
+    "p": 0.14
+   },
+   {
+    "phrase": "looser fit",
+    "p": 0.14
+   },
+   {
+    "phrase": "jeans replacing",
+    "p": 0.13
+   },
+   {
+    "phrase": "denim silhouette replacing",
+    "p": 0.13
+   },
+   {
+    "phrase": "leg denim silhouette",
+    "p": 0.12
+   },
+   {
+    "phrase": "denim silhouette",
+    "p": 0.11
+   },
+   {
+    "phrase": "leg denim",
+    "p": 0.09
+   },
+   {
+    "phrase": "fit jeans",
+    "p": 0.08
+   },
+   {
+    "phrase": "jeans",
+    "p": 0.07
+   },
+   {
+    "phrase": "skinny jeans",
+    "p": 0.07
+   },
+   {
+    "phrase": "skinny styles",
+    "p": 0.07
+   },
+   {
+    "phrase": "skinny",
+    "p": 0.05
+   },
+   {
+    "phrase": "silhouette replacing",
+    "p": 0.05
+   },
+   {
+    "phrase": "street style",
+    "p": 0.04
+   },
+   {
+    "phrase": "replacing",
+    "p": 0.03
+   },
+   {
+    "phrase": "flats define street",
+    "p": 0.03
+   },
+   {
+    "phrase": "define street style",
+    "p": 0.03
+   },
+   {
+    "phrase": "street style footwear",
+    "p": 0.03
+   },
+   {
+    "phrase": "ballet flats",
+    "p": 0.02
+   },
+   {
+    "phrase": "flats define",
+    "p": 0.02
+   },
+   {
+    "phrase": "define street",
+    "p": 0.02
+   },
+   {
+    "phrase": "style footwear",
+    "p": 0.02
+   },
+   {
+    "phrase": "sneakers and ballet",
+    "p": 0.02
+   },
+   {
+    "phrase": "ballet flats define",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6efe40478b1890baa12709e4ec1",
+  "usage": {
+   "input_tokens": 4736,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000198912,
+  "duration_ms": 167
+ },
+ "cand-zpnvlpbemq57p6n0": {
+  "keywords": [
+   "repair serum rituals"
+  ],
+  "ranked": [
+   {
+    "phrase": "repair serum rituals",
+    "p": 0.26
+   },
+   {
+    "phrase": "biological repair serum",
+    "p": 0.24
+   },
+   {
+    "phrase": "repair serum",
+    "p": 0.13
+   },
+   {
+    "phrase": "serum rituals",
+    "p": 0.13
+   },
+   {
+    "phrase": "incorporating exosome serums",
+    "p": 0.13
+   },
+   {
+    "phrase": "exosome serums",
+    "p": 0.12
+   },
+   {
+    "phrase": "applying tooth serums",
+    "p": 0.12
+   },
+   {
+    "phrase": "biological repair",
+    "p": 0.11
+   },
+   {
+    "phrase": "tooth serums",
+    "p": 0.11
+   },
+   {
+    "phrase": "oral beauty ritual",
+    "p": 0.11
+   },
+   {
+    "phrase": "serums for regenerative",
+    "p": 0.11
+   },
+   {
+    "phrase": "regenerative skin repair",
+    "p": 0.1
+   },
+   {
+    "phrase": "incorporating exosome",
+    "p": 0.09
+   },
+   {
+    "phrase": "serums",
+    "p": 0.08
+   },
+   {
+    "phrase": "exosome",
+    "p": 0.08
+   },
+   {
+    "phrase": "skin repair",
+    "p": 0.07
+   },
+   {
+    "phrase": "serum",
+    "p": 0.07
+   },
+   {
+    "phrase": "oral beauty",
+    "p": 0.06
+   },
+   {
+    "phrase": "regenerative skin",
+    "p": 0.06
+   },
+   {
+    "phrase": "repair",
+    "p": 0.05
+   },
+   {
+    "phrase": "applying tooth",
+    "p": 0.05
+   },
+   {
+    "phrase": "beauty ritual",
+    "p": 0.05
+   },
+   {
+    "phrase": "ritual",
+    "p": 0.05
+   },
+   {
+    "phrase": "biological",
+    "p": 0.04
+   },
+   {
+    "phrase": "rituals",
+    "p": 0.04
+   },
+   {
+    "phrase": "tooth",
+    "p": 0.04
+   },
+   {
+    "phrase": "oral",
+    "p": 0.04
+   },
+   {
+    "phrase": "applying",
+    "p": 0.03
+   },
+   {
+    "phrase": "beauty",
+    "p": 0.03
+   },
+   {
+    "phrase": "incorporating",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6eff0607306ba67e29b45effb5f",
+  "usage": {
+   "input_tokens": 4757,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.00019979400000000002,
+  "duration_ms": 208
+ },
+ "cand-opeh20lemsqt1jxs": {
+  "keywords": [
+   "tanmaxxing"
+  ],
+  "ranked": [
+   {
+    "phrase": "tanmaxxing",
+    "p": 0.92
+   },
+   {
+    "phrase": "tanmaxxing timed uv",
+    "p": 0.6
+   },
+   {
+    "phrase": "tanmaxxing timed",
+    "p": 0.5
+   },
+   {
+    "phrase": "tanmaxxing sun exposure",
+    "p": 0.42
+   },
+   {
+    "phrase": "tanmaxxing sun",
+    "p": 0.33
+   },
+   {
+    "phrase": "timed uv routines",
+    "p": 0.21
+   },
+   {
+    "phrase": "timed uv",
+    "p": 0.16
+   },
+   {
+    "phrase": "uv routines",
+    "p": 0.11
+   },
+   {
+    "phrase": "sun exposure routines",
+    "p": 0.09
+   },
+   {
+    "phrase": "sun exposure",
+    "p": 0.05
+   },
+   {
+    "phrase": "exposure routines",
+    "p": 0.05
+   },
+   {
+    "phrase": "timed",
+    "p": 0.05
+   },
+   {
+    "phrase": "routines",
+    "p": 0.04
+   },
+   {
+    "phrase": "exposure",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6effb3d77b8b4b89d282a868f8d",
+  "usage": {
+   "input_tokens": 2376,
+   "output_tokens": 288
+  },
+  "cost_usd": 0.00009979200000000001,
+  "duration_ms": 164
+ },
+ "cand-bzqzvp9umu1bpn03": {
+  "keywords": [
+   "adaptive tint balms",
+   "ph reactive lip"
+  ],
+  "ranked": [
+   {
+    "phrase": "adaptive tint balms",
+    "p": 0.63
+   },
+   {
+    "phrase": "ph reactive lip",
+    "p": 0.6
+   },
+   {
+    "phrase": "reactive lip balms",
+    "p": 0.56
+   },
+   {
+    "phrase": "reactive lip color",
+    "p": 0.5
+   },
+   {
+    "phrase": "purchase adaptive tint",
+    "p": 0.43
+   },
+   {
+    "phrase": "adaptive tint",
+    "p": 0.34
+   },
+   {
+    "phrase": "reactive lip",
+    "p": 0.26
+   },
+   {
+    "phrase": "ph reactive",
+    "p": 0.25
+   },
+   {
+    "phrase": "tint balms",
+    "p": 0.19
+   },
+   {
+    "phrase": "color purchase adaptive",
+    "p": 0.19
+   },
+   {
+    "phrase": "personalized color tint",
+    "p": 0.16
+   },
+   {
+    "phrase": "purchase adaptive",
+    "p": 0.14
+   },
+   {
+    "phrase": "balms for personalized",
+    "p": 0.14
+   },
+   {
+    "phrase": "adaptive",
+    "p": 0.09
+   },
+   {
+    "phrase": "lip balms",
+    "p": 0.09
+   },
+   {
+    "phrase": "personalized color",
+    "p": 0.09
+   },
+   {
+    "phrase": "reactive",
+    "p": 0.08
+   },
+   {
+    "phrase": "balms",
+    "p": 0.08
+   },
+   {
+    "phrase": "tint",
+    "p": 0.08
+   },
+   {
+    "phrase": "lip color",
+    "p": 0.08
+   },
+   {
+    "phrase": "lip color purchase",
+    "p": 0.08
+   },
+   {
+    "phrase": "color tint",
+    "p": 0.08
+   },
+   {
+    "phrase": "color purchase",
+    "p": 0.06
+   },
+   {
+    "phrase": "color",
+    "p": 0.04
+   },
+   {
+    "phrase": "personalized",
+    "p": 0.04
+   },
+   {
+    "phrase": "purchase",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6effbe5757fb824b3832ed8ea28",
+  "usage": {
+   "input_tokens": 4153,
+   "output_tokens": 540
+  },
+  "cost_usd": 0.00017442599999999999,
+  "duration_ms": 208
+ },
+ "cand-a41h30h7msmzx6ma": {
+  "keywords": [
+   "oral skinification routines"
+  ],
+  "ranked": [
+   {
+    "phrase": "oral skinification routines",
+    "p": 0.66
+   },
+   {
+    "phrase": "oral skinification",
+    "p": 0.54
+   },
+   {
+    "phrase": "step oral skinification",
+    "p": 0.25
+   },
+   {
+    "phrase": "multi step oral",
+    "p": 0.2
+   },
+   {
+    "phrase": "skinification routines",
+    "p": 0.2
+   },
+   {
+    "phrase": "skinification",
+    "p": 0.18
+   },
+   {
+    "phrase": "hygiene into beauty",
+    "p": 0.11
+   },
+   {
+    "phrase": "step oral hygiene",
+    "p": 0.1
+   },
+   {
+    "phrase": "step oral",
+    "p": 0.08
+   },
+   {
+    "phrase": "integrating multi step",
+    "p": 0.08
+   },
+   {
+    "phrase": "multi step",
+    "p": 0.07
+   },
+   {
+    "phrase": "oral hygiene",
+    "p": 0.07
+   },
+   {
+    "phrase": "integrating multi",
+    "p": 0.06
+   },
+   {
+    "phrase": "oral",
+    "p": 0.05
+   },
+   {
+    "phrase": "routines",
+    "p": 0.05
+   },
+   {
+    "phrase": "multi",
+    "p": 0.04
+   },
+   {
+    "phrase": "beauty routines",
+    "p": 0.04
+   },
+   {
+    "phrase": "hygiene",
+    "p": 0.04
+   },
+   {
+    "phrase": "step",
+    "p": 0.03
+   },
+   {
+    "phrase": "integrating",
+    "p": 0.03
+   },
+   {
+    "phrase": "beauty",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f0130b7d3d958f5cad9fc70b29",
+  "usage": {
+   "input_tokens": 3383,
+   "output_tokens": 435
+  },
+  "cost_usd": 0.000142086,
+  "duration_ms": 263
+ },
+ "cand-gjnab3jmmsbvskb0": {
+  "keywords": [
+   "vibroacoustic sound bed",
+   "sound bed sessions"
+  ],
+  "ranked": [
+   {
+    "phrase": "vibroacoustic sound bed",
+    "p": 0.77
+   },
+   {
+    "phrase": "sound bed sessions",
+    "p": 0.7
+   },
+   {
+    "phrase": "sound bed recovery",
+    "p": 0.69
+   },
+   {
+    "phrase": "sound bed",
+    "p": 0.54
+   },
+   {
+    "phrase": "booking vibroacoustic sound",
+    "p": 0.46
+   },
+   {
+    "phrase": "booking vibroacoustic",
+    "p": 0.42
+   },
+   {
+    "phrase": "vibroacoustic",
+    "p": 0.23
+   },
+   {
+    "phrase": "bed recovery sessions",
+    "p": 0.23
+   },
+   {
+    "phrase": "vibroacoustic sound",
+    "p": 0.21
+   },
+   {
+    "phrase": "bed sessions",
+    "p": 0.18
+   },
+   {
+    "phrase": "bed recovery",
+    "p": 0.15
+   },
+   {
+    "phrase": "recovery sessions",
+    "p": 0.11
+   },
+   {
+    "phrase": "nervous system regulation",
+    "p": 0.08
+   },
+   {
+    "phrase": "sessions for nervous",
+    "p": 0.07
+   },
+   {
+    "phrase": "sound",
+    "p": 0.06
+   },
+   {
+    "phrase": "recovery",
+    "p": 0.06
+   },
+   {
+    "phrase": "booking",
+    "p": 0.05
+   },
+   {
+    "phrase": "sessions",
+    "p": 0.05
+   },
+   {
+    "phrase": "system regulation",
+    "p": 0.05
+   },
+   {
+    "phrase": "nervous system",
+    "p": 0.04
+   },
+   {
+    "phrase": "regulation",
+    "p": 0.04
+   },
+   {
+    "phrase": "nervous",
+    "p": 0.03
+   },
+   {
+    "phrase": "system",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f01ef67472b5eb2f9645e6a923",
+  "usage": {
+   "input_tokens": 3732,
+   "output_tokens": 477
+  },
+  "cost_usd": 0.000156744,
+  "duration_ms": 200
+ },
+ "cand-xc13yt0wmt8quxk5": {
+  "keywords": [
+   "glutathione film"
+  ],
+  "ranked": [
+   {
+    "phrase": "glutathione film",
+    "p": 0.86
+   },
+   {
+    "phrase": "dissolving beauty strips",
+    "p": 0.24
+   },
+   {
+    "phrase": "beauty strips",
+    "p": 0.17
+   },
+   {
+    "phrase": "oral dissolving beauty",
+    "p": 0.16
+   },
+   {
+    "phrase": "dissolving beauty",
+    "p": 0.14
+   },
+   {
+    "phrase": "strips for skin",
+    "p": 0.14
+   },
+   {
+    "phrase": "glutathione",
+    "p": 0.14
+   },
+   {
+    "phrase": "film",
+    "p": 0.12
+   },
+   {
+    "phrase": "strips",
+    "p": 0.1
+   },
+   {
+    "phrase": "oral dissolving",
+    "p": 0.08
+   },
+   {
+    "phrase": "skin brightening",
+    "p": 0.06
+   },
+   {
+    "phrase": "dissolving",
+    "p": 0.05
+   },
+   {
+    "phrase": "oral",
+    "p": 0.04
+   },
+   {
+    "phrase": "brightening",
+    "p": 0.04
+   },
+   {
+    "phrase": "beauty",
+    "p": 0.03
+   },
+   {
+    "phrase": "skin",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f03512752fbd14e4651153b4bc",
+  "usage": {
+   "input_tokens": 2668,
+   "output_tokens": 330
+  },
+  "cost_usd": 0.000112056,
+  "duration_ms": 291
+ },
+ "cand-7oz872e5msrlmbou": {
+  "keywords": [
+   "hocl skin sprays",
+   "mass market hocl"
+  ],
+  "ranked": [
+   {
+    "phrase": "hocl skin sprays",
+    "p": 0.62
+   },
+   {
+    "phrase": "mass market hocl",
+    "p": 0.55
+   },
+   {
+    "phrase": "hocl daily skin",
+    "p": 0.53
+   },
+   {
+    "phrase": "market hocl skin",
+    "p": 0.37
+   },
+   {
+    "phrase": "hocl skin",
+    "p": 0.34
+   },
+   {
+    "phrase": "hocl",
+    "p": 0.26
+   },
+   {
+    "phrase": "market hocl",
+    "p": 0.26
+   },
+   {
+    "phrase": "sprays at mass",
+    "p": 0.13
+   },
+   {
+    "phrase": "skin sprays",
+    "p": 0.12
+   },
+   {
+    "phrase": "sprays",
+    "p": 0.08
+   },
+   {
+    "phrase": "mass market",
+    "p": 0.05
+   },
+   {
+    "phrase": "mass",
+    "p": 0.04
+   },
+   {
+    "phrase": "mass retailers",
+    "p": 0.04
+   },
+   {
+    "phrase": "market",
+    "p": 0.04
+   },
+   {
+    "phrase": "skin",
+    "p": 0.03
+   },
+   {
+    "phrase": "retailers",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f0360270cdbc412ab1acd05619",
+  "usage": {
+   "input_tokens": 2654,
+   "output_tokens": 330
+  },
+  "cost_usd": 0.000111468,
+  "duration_ms": 195
+ },
+ "cand-tpnos0v3mstwgokl": {
+  "keywords": [
+   "services for glp"
+  ],
+  "ranked": [
+   {
+    "phrase": "services for glp",
+    "p": 0.16
+   },
+   {
+    "phrase": "1 driven aesthetic",
+    "p": 0.14
+   },
+   {
+    "phrase": "glp 1 weight",
+    "p": 0.12
+   },
+   {
+    "phrase": "glp 1",
+    "p": 0.1
+   },
+   {
+    "phrase": "loss side effects",
+    "p": 0.09
+   },
+   {
+    "phrase": "aesthetic service demand",
+    "p": 0.09
+   },
+   {
+    "phrase": "aesthetic services",
+    "p": 0.07
+   },
+   {
+    "phrase": "aesthetic service",
+    "p": 0.07
+   },
+   {
+    "phrase": "weight loss side",
+    "p": 0.07
+   },
+   {
+    "phrase": "aesthetic",
+    "p": 0.05
+   },
+   {
+    "phrase": "weight loss",
+    "p": 0.05
+   },
+   {
+    "phrase": "service demand",
+    "p": 0.05
+   },
+   {
+    "phrase": "1 weight loss",
+    "p": 0.05
+   },
+   {
+    "phrase": "1 weight",
+    "p": 0.04
+   },
+   {
+    "phrase": "loss side",
+    "p": 0.04
+   },
+   {
+    "phrase": "side effects",
+    "p": 0.04
+   },
+   {
+    "phrase": "services",
+    "p": 0.04
+   },
+   {
+    "phrase": "loss",
+    "p": 0.04
+   },
+   {
+    "phrase": "service",
+    "p": 0.04
+   },
+   {
+    "phrase": "weight",
+    "p": 0.03
+   },
+   {
+    "phrase": "side",
+    "p": 0.03
+   },
+   {
+    "phrase": "effects",
+    "p": 0.03
+   },
+   {
+    "phrase": "demand",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f04c92732cb4af128cdf8b3037",
+  "usage": {
+   "input_tokens": 3661,
+   "output_tokens": 477
+  },
+  "cost_usd": 0.000153762,
+  "duration_ms": 259
+ },
+ "cand-1vh8qmkjms7lejw7": {
+  "keywords": [
+   "reapply over makeup"
+  ],
+  "ranked": [
+   {
+    "phrase": "reapply over makeup",
+    "p": 0.33
+   },
+   {
+    "phrase": "dusting spf",
+    "p": 0.28
+   },
+   {
+    "phrase": "dusting spf powder",
+    "p": 0.28
+   },
+   {
+    "phrase": "makeup spf powders",
+    "p": 0.26
+   },
+   {
+    "phrase": "powder for midday",
+    "p": 0.26
+   },
+   {
+    "phrase": "makeup spf",
+    "p": 0.22
+   },
+   {
+    "phrase": "spf setting mists",
+    "p": 0.22
+   },
+   {
+    "phrase": "spf powders",
+    "p": 0.21
+   },
+   {
+    "phrase": "reapplying midday sun",
+    "p": 0.21
+   },
+   {
+    "phrase": "spf powder",
+    "p": 0.2
+   },
+   {
+    "phrase": "powders and mists",
+    "p": 0.18
+   },
+   {
+    "phrase": "mists to reapply",
+    "p": 0.18
+   },
+   {
+    "phrase": "spf setting",
+    "p": 0.16
+   },
+   {
+    "phrase": "midday sun protection",
+    "p": 0.15
+   },
+   {
+    "phrase": "midday reapplication",
+    "p": 0.13
+   },
+   {
+    "phrase": "reapplying midday",
+    "p": 0.12
+   },
+   {
+    "phrase": "setting mists",
+    "p": 0.1
+   },
+   {
+    "phrase": "dusting",
+    "p": 0.1
+   },
+   {
+    "phrase": "powders",
+    "p": 0.09
+   },
+   {
+    "phrase": "powder",
+    "p": 0.09
+   },
+   {
+    "phrase": "reapplication",
+    "p": 0.09
+   },
+   {
+    "phrase": "mists",
+    "p": 0.08
+   },
+   {
+    "phrase": "reapplying",
+    "p": 0.08
+   },
+   {
+    "phrase": "midday sun",
+    "p": 0.07
+   },
+   {
+    "phrase": "sun protection",
+    "p": 0.07
+   },
+   {
+    "phrase": "reapply",
+    "p": 0.07
+   },
+   {
+    "phrase": "setting",
+    "p": 0.06
+   },
+   {
+    "phrase": "midday",
+    "p": 0.05
+   },
+   {
+    "phrase": "makeup",
+    "p": 0.05
+   },
+   {
+    "phrase": "protection",
+    "p": 0.05
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f05925776ab4307f90a94990c4",
+  "usage": {
+   "input_tokens": 4744,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000199248,
+  "duration_ms": 207
+ },
+ "cand-fyff3rlwmrjp9aix": {
+  "keywords": [
+   "cgm tracking"
+  ],
+  "ranked": [
+   {
+    "phrase": "cgm tracking",
+    "p": 0.28
+   },
+   {
+    "phrase": "cgm wearables",
+    "p": 0.22
+   },
+   {
+    "phrase": "metabolic tracking",
+    "p": 0.11
+   },
+   {
+    "phrase": "diabetic cgm tracking",
+    "p": 0.09
+   },
+   {
+    "phrase": "diabetic cgm",
+    "p": 0.08
+   },
+   {
+    "phrase": "tracking",
+    "p": 0.06
+   },
+   {
+    "phrase": "diabetic metabolic tracking",
+    "p": 0.06
+   },
+   {
+    "phrase": "diabetic metabolic",
+    "p": 0.05
+   },
+   {
+    "phrase": "wearables",
+    "p": 0.05
+   },
+   {
+    "phrase": "metabolic",
+    "p": 0.05
+   },
+   {
+    "phrase": "diabetic",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f064ad7bbfa305e993ffeecb3d",
+  "usage": {
+   "input_tokens": 1949,
+   "output_tokens": 225
+  },
+  "cost_usd": 0.000081858,
+  "duration_ms": 174
+ },
+ "cand-yhute3tdmrunlqe0": {
+  "keywords": [
+   "chocolate pistachio knafeh"
+  ],
+  "ranked": [
+   {
+    "phrase": "chocolate pistachio knafeh",
+    "p": 0.63
+   },
+   {
+    "phrase": "dubai chocolate",
+    "p": 0.48
+   },
+   {
+    "phrase": "dubai chocolate pistachio",
+    "p": 0.46
+   },
+   {
+    "phrase": "pistachio knafeh expanding",
+    "p": 0.29
+   },
+   {
+    "phrase": "pistachio knafeh",
+    "p": 0.25
+   },
+   {
+    "phrase": "chocolate pistachio",
+    "p": 0.21
+   },
+   {
+    "phrase": "dubai chocolate integration",
+    "p": 0.19
+   },
+   {
+    "phrase": "knafeh expanding",
+    "p": 0.17
+   },
+   {
+    "phrase": "dubai",
+    "p": 0.14
+   },
+   {
+    "phrase": "knafeh",
+    "p": 0.12
+   },
+   {
+    "phrase": "chocolate",
+    "p": 0.11
+   },
+   {
+    "phrase": "expanding into cheesecakes",
+    "p": 0.09
+   },
+   {
+    "phrase": "chocolate integration",
+    "p": 0.08
+   },
+   {
+    "phrase": "cheesecakes and ice",
+    "p": 0.07
+   },
+   {
+    "phrase": "pistachio",
+    "p": 0.07
+   },
+   {
+    "phrase": "cheesecakes",
+    "p": 0.06
+   },
+   {
+    "phrase": "ice cream",
+    "p": 0.05
+   },
+   {
+    "phrase": "cream",
+    "p": 0.04
+   },
+   {
+    "phrase": "integration",
+    "p": 0.04
+   },
+   {
+    "phrase": "expanding",
+    "p": 0.03
+   },
+   {
+    "phrase": "innovation",
+    "p": 0.03
+   },
+   {
+    "phrase": "bone broth",
+    "p": 0.02
+   },
+   {
+    "phrase": "broth innovation",
+    "p": 0.02
+   },
+   {
+    "phrase": "bone broth innovation",
+    "p": 0.02
+   },
+   {
+    "phrase": "bone",
+    "p": 0.02
+   },
+   {
+    "phrase": "broth",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f0708a7de1bf8ccbf7974d55cb",
+  "usage": {
+   "input_tokens": 4142,
+   "output_tokens": 540
+  },
+  "cost_usd": 0.000173964,
+  "duration_ms": 207
+ },
+ "cand-7twu3v8mms3b2zsk": {
+  "keywords": [
+   "creatine gummies"
+  ],
+  "ranked": [
+   {
+    "phrase": "creatine gummies",
+    "p": 0.62
+   },
+   {
+    "phrase": "purchasing creatine gummies",
+    "p": 0.38
+   },
+   {
+    "phrase": "replacing creatine powders",
+    "p": 0.23
+   },
+   {
+    "phrase": "replacing creatine",
+    "p": 0.15
+   },
+   {
+    "phrase": "snackable gummy",
+    "p": 0.15
+   },
+   {
+    "phrase": "snackable gummy formats",
+    "p": 0.14
+   },
+   {
+    "phrase": "powders with snackable",
+    "p": 0.13
+   },
+   {
+    "phrase": "gummy",
+    "p": 0.11
+   },
+   {
+    "phrase": "gummies",
+    "p": 0.11
+   },
+   {
+    "phrase": "creatine",
+    "p": 0.1
+   },
+   {
+    "phrase": "gummy formats",
+    "p": 0.1
+   },
+   {
+    "phrase": "purchasing creatine",
+    "p": 0.1
+   },
+   {
+    "phrase": "creatine powders",
+    "p": 0.07
+   },
+   {
+    "phrase": "snackable",
+    "p": 0.06
+   },
+   {
+    "phrase": "powders",
+    "p": 0.05
+   },
+   {
+    "phrase": "replacing",
+    "p": 0.04
+   },
+   {
+    "phrase": "formats",
+    "p": 0.04
+   },
+   {
+    "phrase": "wellness",
+    "p": 0.03
+   },
+   {
+    "phrase": "purchasing",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f07cb37ce191e62f22b38f064a",
+  "usage": {
+   "input_tokens": 3122,
+   "output_tokens": 393
+  },
+  "cost_usd": 0.000131124,
+  "duration_ms": 196
+ },
+ "cand-79raryadmr3l3g19": {
+  "keywords": [
+   "assistant ads"
+  ],
+  "ranked": [
+   {
+    "phrase": "assistant ads",
+    "p": 0.24
+   },
+   {
+    "phrase": "ads chatgpt",
+    "p": 0.22
+   },
+   {
+    "phrase": "conversational ad",
+    "p": 0.18
+   },
+   {
+    "phrase": "sponsored carousels inside",
+    "p": 0.17
+   },
+   {
+    "phrase": "sponsored carousels",
+    "p": 0.16
+   },
+   {
+    "phrase": "chatgpt alexa",
+    "p": 0.13
+   },
+   {
+    "phrase": "recommended sponsored",
+    "p": 0.12
+   },
+   {
+    "phrase": "click ai",
+    "p": 0.11
+   },
+   {
+    "phrase": "ai recommended",
+    "p": 0.11
+   },
+   {
+    "phrase": "carousels inside",
+    "p": 0.1
+   },
+   {
+    "phrase": "directly from sponsored",
+    "p": 0.1
+   },
+   {
+    "phrase": "sponsored items",
+    "p": 0.09
+   },
+   {
+    "phrase": "grocery chat",
+    "p": 0.09
+   },
+   {
+    "phrase": "ad prompts",
+    "p": 0.09
+   },
+   {
+    "phrase": "ai chats",
+    "p": 0.08
+   },
+   {
+    "phrase": "tapping conversational",
+    "p": 0.08
+   },
+   {
+    "phrase": "purchasing directly",
+    "p": 0.07
+   },
+   {
+    "phrase": "conversational ai",
+    "p": 0.07
+   },
+   {
+    "phrase": "alexa",
+    "p": 0.06
+   },
+   {
+    "phrase": "inside conversational",
+    "p": 0.06
+   },
+   {
+    "phrase": "ai assistant",
+    "p": 0.06
+   },
+   {
+    "phrase": "alexa during",
+    "p": 0.06
+   },
+   {
+    "phrase": "product research",
+    "p": 0.06
+   },
+   {
+    "phrase": "sponsored",
+    "p": 0.05
+   },
+   {
+    "phrase": "conversational",
+    "p": 0.05
+   },
+   {
+    "phrase": "prime day",
+    "p": 0.04
+   },
+   {
+    "phrase": "items during",
+    "p": 0.03
+   },
+   {
+    "phrase": "during grocery",
+    "p": 0.03
+   },
+   {
+    "phrase": "during prime",
+    "p": 0.03
+   },
+   {
+    "phrase": "during",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f088f175d4a4a321687402392f",
+  "usage": {
+   "input_tokens": 4817,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000202314,
+  "duration_ms": 201
+ },
+ "cand-o332rjugmspdk41v": {
+  "keywords": [
+   "topical nad serums"
+  ],
+  "ranked": [
+   {
+    "phrase": "topical nad serums",
+    "p": 0.75
+   },
+   {
+    "phrase": "nad serums",
+    "p": 0.64
+   },
+   {
+    "phrase": "topical nad",
+    "p": 0.41
+   },
+   {
+    "phrase": "nad boosters",
+    "p": 0.23
+   },
+   {
+    "phrase": "incorporating nad boosters",
+    "p": 0.21
+   },
+   {
+    "phrase": "cellular longevity skincare",
+    "p": 0.18
+   },
+   {
+    "phrase": "longevity skincare",
+    "p": 0.15
+   },
+   {
+    "phrase": "serums for cellular",
+    "p": 0.14
+   },
+   {
+    "phrase": "incorporating nad",
+    "p": 0.13
+   },
+   {
+    "phrase": "serums",
+    "p": 0.09
+   },
+   {
+    "phrase": "boosters",
+    "p": 0.09
+   },
+   {
+    "phrase": "cellular longevity",
+    "p": 0.08
+   },
+   {
+    "phrase": "topical",
+    "p": 0.08
+   },
+   {
+    "phrase": "longevity and anti",
+    "p": 0.07
+   },
+   {
+    "phrase": "anti aging",
+    "p": 0.06
+   },
+   {
+    "phrase": "longevity",
+    "p": 0.05
+   },
+   {
+    "phrase": "skincare",
+    "p": 0.04
+   },
+   {
+    "phrase": "skincare routines",
+    "p": 0.04
+   },
+   {
+    "phrase": "aging",
+    "p": 0.04
+   },
+   {
+    "phrase": "cellular",
+    "p": 0.03
+   },
+   {
+    "phrase": "anti",
+    "p": 0.03
+   },
+   {
+    "phrase": "incorporating",
+    "p": 0.03
+   },
+   {
+    "phrase": "routines",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f0942f7ab8b655498d66d04ec6",
+  "usage": {
+   "input_tokens": 3713,
+   "output_tokens": 477
+  },
+  "cost_usd": 0.000155946,
+  "duration_ms": 200
+ },
+ "cand-aehdlgytmpbacleh": {
+  "keywords": [
+   "swavory"
+  ],
+  "ranked": [
+   {
+    "phrase": "swavory",
+    "p": 0.76
+   },
+   {
+    "phrase": "swavory flavor",
+    "p": 0.68
+   },
+   {
+    "phrase": "swavory savory sweet",
+    "p": 0.61
+   },
+   {
+    "phrase": "swavory savory",
+    "p": 0.58
+   },
+   {
+    "phrase": "savory sweet",
+    "p": 0.41
+   },
+   {
+    "phrase": "savory sweet flavors",
+    "p": 0.4
+   },
+   {
+    "phrase": "swavory flavor upgrade",
+    "p": 0.3
+   },
+   {
+    "phrase": "savory",
+    "p": 0.15
+   },
+   {
+    "phrase": "sipping savory",
+    "p": 0.14
+   },
+   {
+    "phrase": "go savory",
+    "p": 0.14
+   },
+   {
+    "phrase": "sipping savory broths",
+    "p": 0.13
+   },
+   {
+    "phrase": "go savory snacks",
+    "p": 0.13
+   },
+   {
+    "phrase": "savory broths",
+    "p": 0.11
+   },
+   {
+    "phrase": "savory snacks",
+    "p": 0.1
+   },
+   {
+    "phrase": "flavors in rtd",
+    "p": 0.09
+   },
+   {
+    "phrase": "sesame flavor wave",
+    "p": 0.09
+   },
+   {
+    "phrase": "rtd beverages snacks",
+    "p": 0.07
+   },
+   {
+    "phrase": "black sesame flavor",
+    "p": 0.07
+   },
+   {
+    "phrase": "black sesame",
+    "p": 0.06
+   },
+   {
+    "phrase": "sesame flavor",
+    "p": 0.06
+   },
+   {
+    "phrase": "flavor wave",
+    "p": 0.06
+   },
+   {
+    "phrase": "flavor upgrade",
+    "p": 0.06
+   },
+   {
+    "phrase": "rtd beverages",
+    "p": 0.05
+   },
+   {
+    "phrase": "beverages snacks",
+    "p": 0.05
+   },
+   {
+    "phrase": "snacks",
+    "p": 0.04
+   },
+   {
+    "phrase": "flavor",
+    "p": 0.04
+   },
+   {
+    "phrase": "sweet",
+    "p": 0.04
+   },
+   {
+    "phrase": "flavors",
+    "p": 0.04
+   },
+   {
+    "phrase": "sweet flavors",
+    "p": 0.03
+   },
+   {
+    "phrase": "beverages",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f09f0a75968a62bfb0fea547fd",
+  "usage": {
+   "input_tokens": 4774,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000200508,
+  "duration_ms": 256
+ },
+ "cand-xu2ccb00mtlagofq": {
+  "keywords": [
+   "biological age testing"
+  ],
+  "ranked": [
+   {
+    "phrase": "biological age testing",
+    "p": 0.48
+   },
+   {
+    "phrase": "clinical biological age",
+    "p": 0.44
+   },
+   {
+    "phrase": "age testing",
+    "p": 0.22
+   },
+   {
+    "phrase": "testing for longevity",
+    "p": 0.22
+   },
+   {
+    "phrase": "biological age",
+    "p": 0.19
+   },
+   {
+    "phrase": "clinical biological",
+    "p": 0.12
+   },
+   {
+    "phrase": "longevity optimization",
+    "p": 0.12
+   },
+   {
+    "phrase": "biological",
+    "p": 0.06
+   },
+   {
+    "phrase": "testing",
+    "p": 0.06
+   },
+   {
+    "phrase": "longevity",
+    "p": 0.06
+   },
+   {
+    "phrase": "clinical",
+    "p": 0.04
+   },
+   {
+    "phrase": "optimization",
+    "p": 0.04
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f0a0c173f4a632d60c4d627a94",
+  "usage": {
+   "input_tokens": 2026,
+   "output_tokens": 246
+  },
+  "cost_usd": 0.000085092,
+  "duration_ms": 206
+ },
+ "cand-2y57gkdlmstfb8mg": {
+  "keywords": [
+   "functional mushroom rtds"
+  ],
+  "ranked": [
+   {
+    "phrase": "functional mushroom rtds",
+    "p": 0.44
+   },
+   {
+    "phrase": "mushroom rtds",
+    "p": 0.33
+   },
+   {
+    "phrase": "mushroom beverage adoption",
+    "p": 0.25
+   },
+   {
+    "phrase": "functional mushroom beverage",
+    "p": 0.24
+   },
+   {
+    "phrase": "mushroom beverage",
+    "p": 0.18
+   },
+   {
+    "phrase": "adoption rtd",
+    "p": 0.13
+   },
+   {
+    "phrase": "substituting energy drinks",
+    "p": 0.13
+   },
+   {
+    "phrase": "functional mushroom",
+    "p": 0.12
+   },
+   {
+    "phrase": "beverage adoption rtd",
+    "p": 0.12
+   },
+   {
+    "phrase": "drinks with functional",
+    "p": 0.11
+   },
+   {
+    "phrase": "rtds",
+    "p": 0.11
+   },
+   {
+    "phrase": "mushroom",
+    "p": 0.08
+   },
+   {
+    "phrase": "substituting energy",
+    "p": 0.08
+   },
+   {
+    "phrase": "beverage adoption",
+    "p": 0.06
+   },
+   {
+    "phrase": "functional",
+    "p": 0.05
+   },
+   {
+    "phrase": "energy drinks",
+    "p": 0.05
+   },
+   {
+    "phrase": "substituting",
+    "p": 0.04
+   },
+   {
+    "phrase": "energy",
+    "p": 0.04
+   },
+   {
+    "phrase": "adoption",
+    "p": 0.04
+   },
+   {
+    "phrase": "drinks",
+    "p": 0.03
+   },
+   {
+    "phrase": "beverage",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f0ad4772a4a6caac67f252b9a0",
+  "usage": {
+   "input_tokens": 3395,
+   "output_tokens": 435
+  },
+  "cost_usd": 0.00014259,
+  "duration_ms": 186
+ },
+ "cand-zbpbvan9mrxr21sy": {
+  "keywords": [
+   "home vaginal microbiome"
+  ],
+  "ranked": [
+   {
+    "phrase": "home vaginal microbiome",
+    "p": 0.33
+   },
+   {
+    "phrase": "vaginal microbiome sequencing",
+    "p": 0.24
+   },
+   {
+    "phrase": "microbiome testing",
+    "p": 0.19
+   },
+   {
+    "phrase": "skin microbiome testing",
+    "p": 0.18
+   },
+   {
+    "phrase": "home vaginal",
+    "p": 0.15
+   },
+   {
+    "phrase": "vaginal microbiome",
+    "p": 0.15
+   },
+   {
+    "phrase": "microbiome sequencing",
+    "p": 0.14
+   },
+   {
+    "phrase": "microbiome mapping",
+    "p": 0.14
+   },
+   {
+    "phrase": "skin microbiome mapping",
+    "p": 0.14
+   },
+   {
+    "phrase": "vaginal and skin",
+    "p": 0.11
+   },
+   {
+    "phrase": "ordering at home",
+    "p": 0.1
+   },
+   {
+    "phrase": "skin microbiome",
+    "p": 0.09
+   },
+   {
+    "phrase": "mapping for personalized",
+    "p": 0.09
+   },
+   {
+    "phrase": "personalized skincare",
+    "p": 0.08
+   },
+   {
+    "phrase": "testing for personalized",
+    "p": 0.08
+   },
+   {
+    "phrase": "testing",
+    "p": 0.08
+   },
+   {
+    "phrase": "sequencing",
+    "p": 0.08
+   },
+   {
+    "phrase": "microbiome",
+    "p": 0.07
+   },
+   {
+    "phrase": "vaginal",
+    "p": 0.07
+   },
+   {
+    "phrase": "mapping",
+    "p": 0.07
+   },
+   {
+    "phrase": "ordering",
+    "p": 0.06
+   },
+   {
+    "phrase": "home",
+    "p": 0.05
+   },
+   {
+    "phrase": "personalized care",
+    "p": 0.05
+   },
+   {
+    "phrase": "skincare",
+    "p": 0.05
+   },
+   {
+    "phrase": "skin",
+    "p": 0.04
+   },
+   {
+    "phrase": "personalized",
+    "p": 0.04
+   },
+   {
+    "phrase": "care",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f0b8747e039c65d5fbed32f16f",
+  "usage": {
+   "input_tokens": 4314,
+   "output_tokens": 561
+  },
+  "cost_usd": 0.000181188,
+  "duration_ms": 203
+ },
+ "cand-dxqv5nrhmq9kua4z": {
+  "keywords": [
+   "layering pdrn salmon"
+  ],
+  "ranked": [
+   {
+    "phrase": "layering pdrn salmon",
+    "p": 0.48
+   },
+   {
+    "phrase": "layering pdrn serums",
+    "p": 0.45
+   },
+   {
+    "phrase": "layering pdrn",
+    "p": 0.41
+   },
+   {
+    "phrase": "pdrn salmon dna",
+    "p": 0.25
+   },
+   {
+    "phrase": "pdrn salmon",
+    "p": 0.23
+   },
+   {
+    "phrase": "dna and exosome",
+    "p": 0.2
+   },
+   {
+    "phrase": "pdrn serums",
+    "p": 0.19
+   },
+   {
+    "phrase": "pdrn",
+    "p": 0.17
+   },
+   {
+    "phrase": "salmon dna",
+    "p": 0.15
+   },
+   {
+    "phrase": "exosome serums",
+    "p": 0.11
+   },
+   {
+    "phrase": "regenerative biotech skincare",
+    "p": 0.11
+   },
+   {
+    "phrase": "serums for cellular",
+    "p": 0.1
+   },
+   {
+    "phrase": "masks for cellular",
+    "p": 0.09
+   },
+   {
+    "phrase": "salmon",
+    "p": 0.09
+   },
+   {
+    "phrase": "exosome",
+    "p": 0.09
+   },
+   {
+    "phrase": "regenerative biotech",
+    "p": 0.08
+   },
+   {
+    "phrase": "cellular regeneration",
+    "p": 0.07
+   },
+   {
+    "phrase": "biotech skincare",
+    "p": 0.07
+   },
+   {
+    "phrase": "serums and masks",
+    "p": 0.07
+   },
+   {
+    "phrase": "layering",
+    "p": 0.06
+   },
+   {
+    "phrase": "serums",
+    "p": 0.05
+   },
+   {
+    "phrase": "regeneration",
+    "p": 0.05
+   },
+   {
+    "phrase": "regenerative",
+    "p": 0.05
+   },
+   {
+    "phrase": "biotech",
+    "p": 0.05
+   },
+   {
+    "phrase": "masks",
+    "p": 0.05
+   },
+   {
+    "phrase": "cellular",
+    "p": 0.03
+   },
+   {
+    "phrase": "skincare",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f0c4e57c40aa107c24d5a76ded",
+  "usage": {
+   "input_tokens": 4331,
+   "output_tokens": 561
+  },
+  "cost_usd": 0.00018190199999999998,
+  "duration_ms": 197
+ },
+ "cand-gjuq4pkkmrf0laam": {
+  "keywords": [
+   "postbiotic supplements"
+  ],
+  "ranked": [
+   {
+    "phrase": "postbiotic supplements",
+    "p": 0.35
+   },
+   {
+    "phrase": "oral postbiotic supplements",
+    "p": 0.31
+   },
+   {
+    "phrase": "oral postbiotic",
+    "p": 0.27
+   },
+   {
+    "phrase": "consuming oral postbiotic",
+    "p": 0.24
+   },
+   {
+    "phrase": "postbiotic",
+    "p": 0.22
+   },
+   {
+    "phrase": "gut brain",
+    "p": 0.09
+   },
+   {
+    "phrase": "gut brain axis",
+    "p": 0.09
+   },
+   {
+    "phrase": "axis and mood",
+    "p": 0.09
+   },
+   {
+    "phrase": "consuming gut brain",
+    "p": 0.09
+   },
+   {
+    "phrase": "axis specific supplements",
+    "p": 0.09
+   },
+   {
+    "phrase": "supplements for mood",
+    "p": 0.09
+   },
+   {
+    "phrase": "supplements for gut",
+    "p": 0.08
+   },
+   {
+    "phrase": "brain axis specific",
+    "p": 0.08
+   },
+   {
+    "phrase": "mood support",
+    "p": 0.07
+   },
+   {
+    "phrase": "brain axis",
+    "p": 0.06
+   },
+   {
+    "phrase": "mood and cognitive",
+    "p": 0.06
+   },
+   {
+    "phrase": "supplements",
+    "p": 0.05
+   },
+   {
+    "phrase": "axis",
+    "p": 0.05
+   },
+   {
+    "phrase": "consuming gut",
+    "p": 0.05
+   },
+   {
+    "phrase": "axis specific",
+    "p": 0.05
+   },
+   {
+    "phrase": "specific supplements",
+    "p": 0.05
+   },
+   {
+    "phrase": "cognitive support",
+    "p": 0.05
+   },
+   {
+    "phrase": "mood",
+    "p": 0.04
+   },
+   {
+    "phrase": "consuming oral",
+    "p": 0.04
+   },
+   {
+    "phrase": "oral",
+    "p": 0.04
+   },
+   {
+    "phrase": "brain",
+    "p": 0.03
+   },
+   {
+    "phrase": "support",
+    "p": 0.03
+   },
+   {
+    "phrase": "consuming",
+    "p": 0.03
+   },
+   {
+    "phrase": "cognitive",
+    "p": 0.03
+   },
+   {
+    "phrase": "specific",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f0d08d79be90028b583667f2d2",
+  "usage": {
+   "input_tokens": 4713,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.00019794599999999998,
+  "duration_ms": 192
+ },
+ "cand-8nubwfuqmr25n201": {
+  "keywords": [
+   "ai integrated beauty"
+  ],
+  "ranked": [
+   {
+    "phrase": "ai integrated beauty",
+    "p": 0.26
+   },
+   {
+    "phrase": "integrated beauty devices",
+    "p": 0.17
+   },
+   {
+    "phrase": "home beauty devices",
+    "p": 0.15
+   },
+   {
+    "phrase": "ai powered personal",
+    "p": 0.14
+   },
+   {
+    "phrase": "ai upgraded",
+    "p": 0.12
+   },
+   {
+    "phrase": "beauty devices",
+    "p": 0.11
+   },
+   {
+    "phrase": "personalized skincare",
+    "p": 0.11
+   },
+   {
+    "phrase": "ai powered",
+    "p": 0.11
+   },
+   {
+    "phrase": "real time personalized",
+    "p": 0.11
+   },
+   {
+    "phrase": "ai integrated",
+    "p": 0.1
+   },
+   {
+    "phrase": "time personalized skincare",
+    "p": 0.1
+   },
+   {
+    "phrase": "integrated beauty",
+    "p": 0.09
+   },
+   {
+    "phrase": "skincare at home",
+    "p": 0.09
+   },
+   {
+    "phrase": "powered personal care",
+    "p": 0.09
+   },
+   {
+    "phrase": "home beauty",
+    "p": 0.08
+   },
+   {
+    "phrase": "powered personal",
+    "p": 0.08
+   },
+   {
+    "phrase": "personal care devices",
+    "p": 0.08
+   },
+   {
+    "phrase": "care devices",
+    "p": 0.07
+   },
+   {
+    "phrase": "upgraded at home",
+    "p": 0.07
+   },
+   {
+    "phrase": "devices for real",
+    "p": 0.06
+   },
+   {
+    "phrase": "devices",
+    "p": 0.05
+   },
+   {
+    "phrase": "time personalized",
+    "p": 0.05
+   },
+   {
+    "phrase": "personal care",
+    "p": 0.05
+   },
+   {
+    "phrase": "personalized",
+    "p": 0.05
+   },
+   {
+    "phrase": "beauty",
+    "p": 0.04
+   },
+   {
+    "phrase": "real time",
+    "p": 0.04
+   },
+   {
+    "phrase": "integrated",
+    "p": 0.04
+   },
+   {
+    "phrase": "home",
+    "p": 0.03
+   },
+   {
+    "phrase": "real",
+    "p": 0.02
+   },
+   {
+    "phrase": "time",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f0dd6a7b8fa4ca1203b52e2ee3",
+  "usage": {
+   "input_tokens": 4718,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000198156,
+  "duration_ms": 205
+ },
+ "cand-rmfpeepxmrhvivgp": {
+  "keywords": [
+   "costco korean skincare"
+  ],
+  "ranked": [
+   {
+    "phrase": "costco korean skincare",
+    "p": 0.79
+   },
+   {
+    "phrase": "costco korean",
+    "p": 0.38
+   },
+   {
+    "phrase": "bulk korean skincare",
+    "p": 0.38
+   },
+   {
+    "phrase": "purchasing bulk korean",
+    "p": 0.22
+   },
+   {
+    "phrase": "skincare at warehouse",
+    "p": 0.17
+   },
+   {
+    "phrase": "bulk korean",
+    "p": 0.16
+   },
+   {
+    "phrase": "costco",
+    "p": 0.09
+   },
+   {
+    "phrase": "korean skincare",
+    "p": 0.08
+   },
+   {
+    "phrase": "purchasing bulk",
+    "p": 0.06
+   },
+   {
+    "phrase": "retailers like costco",
+    "p": 0.06
+   },
+   {
+    "phrase": "korean",
+    "p": 0.05
+   },
+   {
+    "phrase": "skincare",
+    "p": 0.05
+   },
+   {
+    "phrase": "bulk",
+    "p": 0.05
+   },
+   {
+    "phrase": "warehouse retailers",
+    "p": 0.04
+   },
+   {
+    "phrase": "purchasing",
+    "p": 0.04
+   },
+   {
+    "phrase": "warehouse",
+    "p": 0.04
+   },
+   {
+    "phrase": "retailers",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f0e9927361befa0df526149770",
+  "usage": {
+   "input_tokens": 2804,
+   "output_tokens": 351
+  },
+  "cost_usd": 0.000117768,
+  "duration_ms": 206
+ },
+ "cand-7oi0cyonmsyfcga6": {
+  "keywords": [
+   "injecting bpc 157",
+   "bpc 157 peptides"
+  ],
+  "ranked": [
+   {
+    "phrase": "injecting bpc 157",
+    "p": 0.84
+   },
+   {
+    "phrase": "bpc 157",
+    "p": 0.64
+   },
+   {
+    "phrase": "bpc 157 peptides",
+    "p": 0.63
+   },
+   {
+    "phrase": "injecting bpc",
+    "p": 0.56
+   },
+   {
+    "phrase": "157 peptides",
+    "p": 0.29
+   },
+   {
+    "phrase": "peptides for injury",
+    "p": 0.17
+   },
+   {
+    "phrase": "injectable peptide",
+    "p": 0.1
+   },
+   {
+    "phrase": "injectable peptide therapies",
+    "p": 0.09
+   },
+   {
+    "phrase": "peptide therapies",
+    "p": 0.08
+   },
+   {
+    "phrase": "peptides",
+    "p": 0.07
+   },
+   {
+    "phrase": "peptide",
+    "p": 0.07
+   },
+   {
+    "phrase": "injury recovery",
+    "p": 0.06
+   },
+   {
+    "phrase": "muscle building",
+    "p": 0.06
+   },
+   {
+    "phrase": "recovery and muscle",
+    "p": 0.05
+   },
+   {
+    "phrase": "therapies for recovery",
+    "p": 0.05
+   },
+   {
+    "phrase": "injecting",
+    "p": 0.05
+   },
+   {
+    "phrase": "injectable",
+    "p": 0.05
+   },
+   {
+    "phrase": "recovery",
+    "p": 0.04
+   },
+   {
+    "phrase": "therapies",
+    "p": 0.04
+   },
+   {
+    "phrase": "injury",
+    "p": 0.03
+   },
+   {
+    "phrase": "muscle",
+    "p": 0.03
+   },
+   {
+    "phrase": "building",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f0f49e7dc4b2930e0a36c5689d",
+  "usage": {
+   "input_tokens": 3552,
+   "output_tokens": 456
+  },
+  "cost_usd": 0.00014918400000000001,
+  "duration_ms": 212
+ },
+ "cand-0i6mw2u6mseqo8z1": {
+  "keywords": [
+   "glp 1 nutrition"
+  ],
+  "ranked": [
+   {
+    "phrase": "glp 1 nutrition",
+    "p": 0.21
+   },
+   {
+    "phrase": "nutrition pivot",
+    "p": 0.19
+   },
+   {
+    "phrase": "1 nutrition pivot",
+    "p": 0.17
+   },
+   {
+    "phrase": "glp 1",
+    "p": 0.14
+   },
+   {
+    "phrase": "prioritizing high protein",
+    "p": 0.12
+   },
+   {
+    "phrase": "fiber forward",
+    "p": 0.11
+   },
+   {
+    "phrase": "fiber forward nutrition",
+    "p": 0.11
+   },
+   {
+    "phrase": "high protein",
+    "p": 0.08
+   },
+   {
+    "phrase": "1 users prioritizing",
+    "p": 0.08
+   },
+   {
+    "phrase": "protein and nutrient",
+    "p": 0.08
+   },
+   {
+    "phrase": "nutrient dense foods",
+    "p": 0.08
+   },
+   {
+    "phrase": "smaller portions",
+    "p": 0.07
+   },
+   {
+    "phrase": "foods for smaller",
+    "p": 0.07
+   },
+   {
+    "phrase": "pivot",
+    "p": 0.07
+   },
+   {
+    "phrase": "nutrient dense",
+    "p": 0.06
+   },
+   {
+    "phrase": "dense foods",
+    "p": 0.06
+   },
+   {
+    "phrase": "forward nutrition",
+    "p": 0.06
+   },
+   {
+    "phrase": "fiber",
+    "p": 0.06
+   },
+   {
+    "phrase": "protein",
+    "p": 0.05
+   },
+   {
+    "phrase": "dense",
+    "p": 0.05
+   },
+   {
+    "phrase": "nutrition",
+    "p": 0.04
+   },
+   {
+    "phrase": "prioritizing high",
+    "p": 0.04
+   },
+   {
+    "phrase": "1 nutrition",
+    "p": 0.04
+   },
+   {
+    "phrase": "nutrient",
+    "p": 0.04
+   },
+   {
+    "phrase": "portions",
+    "p": 0.04
+   },
+   {
+    "phrase": "forward",
+    "p": 0.04
+   },
+   {
+    "phrase": "prioritizing",
+    "p": 0.03
+   },
+   {
+    "phrase": "high",
+    "p": 0.03
+   },
+   {
+    "phrase": "foods",
+    "p": 0.03
+   },
+   {
+    "phrase": "smaller",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f10cae74bb8cb17ccaf08e03df",
+  "usage": {
+   "input_tokens": 4683,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000196686,
+  "duration_ms": 241
+ },
+ "cand-64kr01n1mtu6igqz": {
+  "keywords": [
+   "injecting copper peptides"
+  ],
+  "ranked": [
+   {
+    "phrase": "injecting copper peptides",
+    "p": 0.51
+   },
+   {
+    "phrase": "self injecting copper",
+    "p": 0.46
+   },
+   {
+    "phrase": "peptide self injection",
+    "p": 0.36
+   },
+   {
+    "phrase": "subcutaneous peptide self",
+    "p": 0.24
+   },
+   {
+    "phrase": "injecting copper",
+    "p": 0.23
+   },
+   {
+    "phrase": "subcutaneous peptide",
+    "p": 0.15
+   },
+   {
+    "phrase": "peptide self",
+    "p": 0.15
+   },
+   {
+    "phrase": "copper peptides",
+    "p": 0.14
+   },
+   {
+    "phrase": "peptides at home",
+    "p": 0.14
+   },
+   {
+    "phrase": "self injecting",
+    "p": 0.11
+   },
+   {
+    "phrase": "self injection",
+    "p": 0.1
+   },
+   {
+    "phrase": "peptides",
+    "p": 0.08
+   },
+   {
+    "phrase": "copper",
+    "p": 0.07
+   },
+   {
+    "phrase": "peptide",
+    "p": 0.07
+   },
+   {
+    "phrase": "injection",
+    "p": 0.07
+   },
+   {
+    "phrase": "injecting",
+    "p": 0.06
+   },
+   {
+    "phrase": "subcutaneous",
+    "p": 0.06
+   },
+   {
+    "phrase": "anti aging",
+    "p": 0.05
+   },
+   {
+    "phrase": "home for anti",
+    "p": 0.05
+   },
+   {
+    "phrase": "self",
+    "p": 0.04
+   },
+   {
+    "phrase": "home",
+    "p": 0.03
+   },
+   {
+    "phrase": "anti",
+    "p": 0.03
+   },
+   {
+    "phrase": "aging",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f1184b736f862f701dd0561b1f",
+  "usage": {
+   "input_tokens": 3675,
+   "output_tokens": 477
+  },
+  "cost_usd": 0.00015435,
+  "duration_ms": 236
+ },
+ "cand-rtigkpnwmri9s1ek": {
+  "keywords": [
+   "battery sconces renter",
+   "stick battery sconces"
+  ],
+  "ranked": [
+   {
+    "phrase": "battery sconces renter",
+    "p": 0.83
+   },
+   {
+    "phrase": "stick battery sconces",
+    "p": 0.75
+   },
+   {
+    "phrase": "sconces renter friendly",
+    "p": 0.64
+   },
+   {
+    "phrase": "battery sconces",
+    "p": 0.56
+   },
+   {
+    "phrase": "sconces renter",
+    "p": 0.43
+   },
+   {
+    "phrase": "rechargeable wall sconces",
+    "p": 0.38
+   },
+   {
+    "phrase": "battery rechargeable wall",
+    "p": 0.36
+   },
+   {
+    "phrase": "stick battery",
+    "p": 0.35
+   },
+   {
+    "phrase": "renter friendly battery",
+    "p": 0.33
+   },
+   {
+    "phrase": "friendly battery rechargeable",
+    "p": 0.2
+   },
+   {
+    "phrase": "rechargeable wall",
+    "p": 0.19
+   },
+   {
+    "phrase": "renter friendly ambient",
+    "p": 0.15
+   },
+   {
+    "phrase": "peel and stick",
+    "p": 0.14
+   },
+   {
+    "phrase": "battery rechargeable",
+    "p": 0.13
+   },
+   {
+    "phrase": "sconces",
+    "p": 0.12
+   },
+   {
+    "phrase": "wall sconces",
+    "p": 0.12
+   },
+   {
+    "phrase": "friendly battery",
+    "p": 0.1
+   },
+   {
+    "phrase": "ambient lighting installs",
+    "p": 0.1
+   },
+   {
+    "phrase": "friendly ambient lighting",
+    "p": 0.09
+   },
+   {
+    "phrase": "renter friendly",
+    "p": 0.08
+   },
+   {
+    "phrase": "battery",
+    "p": 0.08
+   },
+   {
+    "phrase": "lighting installs",
+    "p": 0.08
+   },
+   {
+    "phrase": "rechargeable",
+    "p": 0.07
+   },
+   {
+    "phrase": "stick",
+    "p": 0.07
+   },
+   {
+    "phrase": "friendly ambient",
+    "p": 0.06
+   },
+   {
+    "phrase": "peel",
+    "p": 0.06
+   },
+   {
+    "phrase": "renter",
+    "p": 0.05
+   },
+   {
+    "phrase": "ambient lighting",
+    "p": 0.05
+   },
+   {
+    "phrase": "wall",
+    "p": 0.04
+   },
+   {
+    "phrase": "friendly",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f12364791c8619741af050b946",
+  "usage": {
+   "input_tokens": 4703,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.00019752599999999998,
+  "duration_ms": 188
+ },
+ "cand-mktzjmybmqru5jx4": {
+  "keywords": [
+   "probiotic intimate sprays"
+  ],
+  "ranked": [
+   {
+    "phrase": "probiotic intimate sprays",
+    "p": 0.65
+   },
+   {
+    "phrase": "probiotic powered intimate",
+    "p": 0.4
+   },
+   {
+    "phrase": "probiotic intimate",
+    "p": 0.36
+   },
+   {
+    "phrase": "intimate sprays deodorants",
+    "p": 0.36
+   },
+   {
+    "phrase": "washes for microbiome",
+    "p": 0.32
+   },
+   {
+    "phrase": "powered intimate sprays",
+    "p": 0.29
+   },
+   {
+    "phrase": "intimate sprays",
+    "p": 0.24
+   },
+   {
+    "phrase": "sprays and washes",
+    "p": 0.19
+   },
+   {
+    "phrase": "switching to probiotic",
+    "p": 0.18
+   },
+   {
+    "phrase": "probiotic powered",
+    "p": 0.17
+   },
+   {
+    "phrase": "sprays deodorants",
+    "p": 0.16
+   },
+   {
+    "phrase": "probiotic",
+    "p": 0.12
+   },
+   {
+    "phrase": "intimate wellness product",
+    "p": 0.12
+   },
+   {
+    "phrase": "sprays",
+    "p": 0.11
+   },
+   {
+    "phrase": "intimate wellness",
+    "p": 0.11
+   },
+   {
+    "phrase": "holistic intimate wellness",
+    "p": 0.11
+   },
+   {
+    "phrase": "powered intimate",
+    "p": 0.1
+   },
+   {
+    "phrase": "washes",
+    "p": 0.1
+   },
+   {
+    "phrase": "holistic intimate",
+    "p": 0.09
+   },
+   {
+    "phrase": "microbiome health",
+    "p": 0.08
+   },
+   {
+    "phrase": "deodorants",
+    "p": 0.08
+   },
+   {
+    "phrase": "microbiome",
+    "p": 0.07
+   },
+   {
+    "phrase": "wellness product adoption",
+    "p": 0.06
+   },
+   {
+    "phrase": "intimate",
+    "p": 0.05
+   },
+   {
+    "phrase": "wellness product",
+    "p": 0.05
+   },
+   {
+    "phrase": "product adoption",
+    "p": 0.05
+   },
+   {
+    "phrase": "switching",
+    "p": 0.04
+   },
+   {
+    "phrase": "holistic",
+    "p": 0.04
+   },
+   {
+    "phrase": "health",
+    "p": 0.03
+   },
+   {
+    "phrase": "powered",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f13afd70a0bfe0d296c5e4e1b1",
+  "usage": {
+   "input_tokens": 4759,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.00019987799999999999,
+  "duration_ms": 216
+ },
+ "cand-aylpg2oamsfm1gyi": {
+  "keywords": [
+   "light therapy glasses"
+  ],
+  "ranked": [
+   {
+    "phrase": "light therapy glasses",
+    "p": 0.66
+   },
+   {
+    "phrase": "glasses for sleep",
+    "p": 0.49
+   },
+   {
+    "phrase": "therapy glasses",
+    "p": 0.29
+   },
+   {
+    "phrase": "circadian regulating light",
+    "p": 0.26
+   },
+   {
+    "phrase": "wearing light therapy",
+    "p": 0.23
+   },
+   {
+    "phrase": "wearing circadian regulating",
+    "p": 0.22
+   },
+   {
+    "phrase": "regulating light therapy",
+    "p": 0.19
+   },
+   {
+    "phrase": "wearing circadian",
+    "p": 0.16
+   },
+   {
+    "phrase": "light therapy",
+    "p": 0.13
+   },
+   {
+    "phrase": "circadian regulating",
+    "p": 0.12
+   },
+   {
+    "phrase": "regulating light",
+    "p": 0.12
+   },
+   {
+    "phrase": "sleep and circadian",
+    "p": 0.11
+   },
+   {
+    "phrase": "wearing light",
+    "p": 0.09
+   },
+   {
+    "phrase": "glasses",
+    "p": 0.08
+   },
+   {
+    "phrase": "circadian regulation",
+    "p": 0.08
+   },
+   {
+    "phrase": "therapy",
+    "p": 0.07
+   },
+   {
+    "phrase": "circadian",
+    "p": 0.07
+   },
+   {
+    "phrase": "light",
+    "p": 0.05
+   },
+   {
+    "phrase": "wearing",
+    "p": 0.04
+   },
+   {
+    "phrase": "sleep",
+    "p": 0.04
+   },
+   {
+    "phrase": "regulation",
+    "p": 0.04
+   },
+   {
+    "phrase": "regulating",
+    "p": 0.04
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f146577a3d99773d838b42dd61",
+  "usage": {
+   "input_tokens": 3531,
+   "output_tokens": 456
+  },
+  "cost_usd": 0.000148302,
+  "duration_ms": 186
+ },
+ "cand-odl6hv99mt7bfbg2": {
+  "keywords": [
+   "date sweetened gummies"
+  ],
+  "ranked": [
+   {
+    "phrase": "date sweetened gummies",
+    "p": 0.32
+   },
+   {
+    "phrase": "sugar for date",
+    "p": 0.3
+   },
+   {
+    "phrase": "candy swap",
+    "p": 0.21
+   },
+   {
+    "phrase": "candy for date",
+    "p": 0.2
+   },
+   {
+    "phrase": "syrup and date",
+    "p": 0.18
+   },
+   {
+    "phrase": "date based sour",
+    "p": 0.18
+   },
+   {
+    "phrase": "date syrup",
+    "p": 0.17
+   },
+   {
+    "phrase": "date sweetened",
+    "p": 0.17
+   },
+   {
+    "phrase": "swapping cane sugar",
+    "p": 0.14
+   },
+   {
+    "phrase": "sweetened gummies",
+    "p": 0.13
+   },
+   {
+    "phrase": "you candy swap",
+    "p": 0.13
+   },
+   {
+    "phrase": "sour gummies",
+    "p": 0.11
+   },
+   {
+    "phrase": "swapping traditional sugar",
+    "p": 0.11
+   },
+   {
+    "phrase": "gummies",
+    "p": 0.09
+   },
+   {
+    "phrase": "swapping cane",
+    "p": 0.09
+   },
+   {
+    "phrase": "date",
+    "p": 0.08
+   },
+   {
+    "phrase": "syrup",
+    "p": 0.07
+   },
+   {
+    "phrase": "syrup in home",
+    "p": 0.07
+   },
+   {
+    "phrase": "swapping",
+    "p": 0.06
+   },
+   {
+    "phrase": "sugar and candy",
+    "p": 0.06
+   },
+   {
+    "phrase": "candy",
+    "p": 0.05
+   },
+   {
+    "phrase": "swapping traditional",
+    "p": 0.05
+   },
+   {
+    "phrase": "drinks baking",
+    "p": 0.05
+   },
+   {
+    "phrase": "better for you",
+    "p": 0.05
+   },
+   {
+    "phrase": "home drinks baking",
+    "p": 0.05
+   },
+   {
+    "phrase": "sugar",
+    "p": 0.04
+   },
+   {
+    "phrase": "traditional sugar",
+    "p": 0.04
+   },
+   {
+    "phrase": "cane sugar",
+    "p": 0.04
+   },
+   {
+    "phrase": "home drinks",
+    "p": 0.04
+   },
+   {
+    "phrase": "you candy",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f1529a793097aeea5b4614ea5e",
+  "usage": {
+   "input_tokens": 4743,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000199206,
+  "duration_ms": 206
+ },
+ "cand-dfjgk7o4mrqg415h": {
+  "keywords": [
+   "electric countertop composters",
+   "countertop electric composters"
+  ],
+  "ranked": [
+   {
+    "phrase": "electric countertop composters",
+    "p": 0.8
+   },
+   {
+    "phrase": "countertop electric composters",
+    "p": 0.79
+   },
+   {
+    "phrase": "compact countertop composters",
+    "p": 0.62
+   },
+   {
+    "phrase": "countertop composters",
+    "p": 0.57
+   },
+   {
+    "phrase": "electric composters",
+    "p": 0.46
+   },
+   {
+    "phrase": "composters for urban",
+    "p": 0.24
+   },
+   {
+    "phrase": "install countertop electric",
+    "p": 0.23
+   },
+   {
+    "phrase": "countertop electric",
+    "p": 0.21
+   },
+   {
+    "phrase": "electric countertop",
+    "p": 0.2
+   },
+   {
+    "phrase": "composters",
+    "p": 0.16
+   },
+   {
+    "phrase": "install compact countertop",
+    "p": 0.16
+   },
+   {
+    "phrase": "compact countertop",
+    "p": 0.14
+   },
+   {
+    "phrase": "composters in small",
+    "p": 0.14
+   },
+   {
+    "phrase": "install countertop",
+    "p": 0.1
+   },
+   {
+    "phrase": "countertop",
+    "p": 0.08
+   },
+   {
+    "phrase": "install compact",
+    "p": 0.08
+   },
+   {
+    "phrase": "urban food waste",
+    "p": 0.08
+   },
+   {
+    "phrase": "electric",
+    "p": 0.07
+   },
+   {
+    "phrase": "urban food",
+    "p": 0.05
+   },
+   {
+    "phrase": "food waste",
+    "p": 0.05
+   },
+   {
+    "phrase": "compact",
+    "p": 0.05
+   },
+   {
+    "phrase": "waste",
+    "p": 0.04
+   },
+   {
+    "phrase": "install",
+    "p": 0.03
+   },
+   {
+    "phrase": "small kitchens",
+    "p": 0.03
+   },
+   {
+    "phrase": "urban",
+    "p": 0.03
+   },
+   {
+    "phrase": "food",
+    "p": 0.03
+   },
+   {
+    "phrase": "small",
+    "p": 0.03
+   },
+   {
+    "phrase": "kitchens",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f15db2705690a577a4a5eaeb11",
+  "usage": {
+   "input_tokens": 4423,
+   "output_tokens": 582
+  },
+  "cost_usd": 0.000185766,
+  "duration_ms": 166
+ },
+ "cand-d98f75pzmt200vmm": {
+  "keywords": [
+   "manga inspired lash",
+   "spiky lash"
+  ],
+  "ranked": [
+   {
+    "phrase": "manga inspired lash",
+    "p": 0.7
+   },
+   {
+    "phrase": "spiky lash",
+    "p": 0.51
+   },
+   {
+    "phrase": "manga inspired spiky",
+    "p": 0.51
+   },
+   {
+    "phrase": "spiky lash styles",
+    "p": 0.51
+   },
+   {
+    "phrase": "inspired spiky lash",
+    "p": 0.44
+   },
+   {
+    "phrase": "fluffy and manga",
+    "p": 0.38
+   },
+   {
+    "phrase": "applying manga inspired",
+    "p": 0.26
+   },
+   {
+    "phrase": "manga inspired",
+    "p": 0.19
+   },
+   {
+    "phrase": "inspired lash",
+    "p": 0.19
+   },
+   {
+    "phrase": "applying manga",
+    "p": 0.17
+   },
+   {
+    "phrase": "inspired spiky",
+    "p": 0.17
+   },
+   {
+    "phrase": "inspired lash styles",
+    "p": 0.16
+   },
+   {
+    "phrase": "spiky",
+    "p": 0.12
+   },
+   {
+    "phrase": "manga",
+    "p": 0.11
+   },
+   {
+    "phrase": "lash styles",
+    "p": 0.1
+   },
+   {
+    "phrase": "embracing fluffy",
+    "p": 0.09
+   },
+   {
+    "phrase": "lash",
+    "p": 0.08
+   },
+   {
+    "phrase": "styles",
+    "p": 0.04
+   },
+   {
+    "phrase": "applying",
+    "p": 0.04
+   },
+   {
+    "phrase": "inspired",
+    "p": 0.03
+   },
+   {
+    "phrase": "embracing",
+    "p": 0.03
+   },
+   {
+    "phrase": "skin specific",
+    "p": 0.02
+   },
+   {
+    "phrase": "specific beauty",
+    "p": 0.02
+   },
+   {
+    "phrase": "beauty tissues",
+    "p": 0.02
+   },
+   {
+    "phrase": "skin specific beauty",
+    "p": 0.02
+   },
+   {
+    "phrase": "specific beauty tissues",
+    "p": 0.02
+   },
+   {
+    "phrase": "skin",
+    "p": 0.02
+   },
+   {
+    "phrase": "specific",
+    "p": 0.02
+   },
+   {
+    "phrase": "beauty",
+    "p": 0.02
+   },
+   {
+    "phrase": "tissues",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f1739a7937906533ba46e67a89",
+  "usage": {
+   "input_tokens": 4714,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.00019798800000000002,
+  "duration_ms": 256
+ },
+ "cand-wyp7tqpomrm5sz9i": {
+  "keywords": [
+   "pocket aromatherapy inhalers"
+  ],
+  "ranked": [
+   {
+    "phrase": "pocket aromatherapy inhalers",
+    "p": 0.79
+   },
+   {
+    "phrase": "aromatherapy inhalers",
+    "p": 0.47
+   },
+   {
+    "phrase": "pocket aromatherapy",
+    "p": 0.37
+   },
+   {
+    "phrase": "portable nasal inhalers",
+    "p": 0.32
+   },
+   {
+    "phrase": "carrying pocket aromatherapy",
+    "p": 0.28
+   },
+   {
+    "phrase": "nasal inhalers",
+    "p": 0.2
+   },
+   {
+    "phrase": "inhalers",
+    "p": 0.17
+   },
+   {
+    "phrase": "inhalers for micro",
+    "p": 0.17
+   },
+   {
+    "phrase": "portable nasal",
+    "p": 0.14
+   },
+   {
+    "phrase": "go stress relief",
+    "p": 0.1
+   },
+   {
+    "phrase": "calm micro rituals",
+    "p": 0.1
+   },
+   {
+    "phrase": "aromatherapy",
+    "p": 0.09
+   },
+   {
+    "phrase": "micro stress relief",
+    "p": 0.08
+   },
+   {
+    "phrase": "pocket",
+    "p": 0.07
+   },
+   {
+    "phrase": "focus calm",
+    "p": 0.07
+   },
+   {
+    "phrase": "carrying pocket",
+    "p": 0.07
+   },
+   {
+    "phrase": "demand focus calm",
+    "p": 0.07
+   },
+   {
+    "phrase": "focus calm micro",
+    "p": 0.07
+   },
+   {
+    "phrase": "nasal",
+    "p": 0.07
+   },
+   {
+    "phrase": "stress relief",
+    "p": 0.06
+   },
+   {
+    "phrase": "go stress",
+    "p": 0.06
+   },
+   {
+    "phrase": "calm micro",
+    "p": 0.06
+   },
+   {
+    "phrase": "micro rituals",
+    "p": 0.06
+   },
+   {
+    "phrase": "demand focus",
+    "p": 0.05
+   },
+   {
+    "phrase": "micro stress",
+    "p": 0.05
+   },
+   {
+    "phrase": "stress",
+    "p": 0.04
+   },
+   {
+    "phrase": "relief",
+    "p": 0.04
+   },
+   {
+    "phrase": "micro",
+    "p": 0.04
+   },
+   {
+    "phrase": "portable",
+    "p": 0.04
+   },
+   {
+    "phrase": "demand",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f18b2c73c69c0a8e78b4f11aa9",
+  "usage": {
+   "input_tokens": 4751,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000199542,
+  "duration_ms": 196
+ },
+ "cand-4mdf0cj4mt5bzell": {
+  "keywords": [
+   "unconventional fragrance vehicles"
+  ],
+  "ranked": [
+   {
+    "phrase": "unconventional fragrance vehicles",
+    "p": 0.41
+   },
+   {
+    "phrase": "mouth perfume",
+    "p": 0.25
+   },
+   {
+    "phrase": "fragrance vehicles mouth",
+    "p": 0.24
+   },
+   {
+    "phrase": "perfume toothpaste",
+    "p": 0.21
+   },
+   {
+    "phrase": "fragrance vehicles",
+    "p": 0.19
+   },
+   {
+    "phrase": "serum perfume",
+    "p": 0.19
+   },
+   {
+    "phrase": "perfume style oral",
+    "p": 0.19
+   },
+   {
+    "phrase": "hair perfume",
+    "p": 0.18
+   },
+   {
+    "phrase": "mouth and hair",
+    "p": 0.18
+   },
+   {
+    "phrase": "unconventional fragrance",
+    "p": 0.14
+   },
+   {
+    "phrase": "scent styling",
+    "p": 0.12
+   },
+   {
+    "phrase": "purchasing perfume style",
+    "p": 0.12
+   },
+   {
+    "phrase": "vehicles mouth",
+    "p": 0.11
+   },
+   {
+    "phrase": "perfume style",
+    "p": 0.11
+   },
+   {
+    "phrase": "toothpaste rinses",
+    "p": 0.1
+   },
+   {
+    "phrase": "oral care mouth",
+    "p": 0.1
+   },
+   {
+    "phrase": "infused hair",
+    "p": 0.09
+   },
+   {
+    "phrase": "hair serums",
+    "p": 0.09
+   },
+   {
+    "phrase": "fragrance infused",
+    "p": 0.08
+   },
+   {
+    "phrase": "style oral care",
+    "p": 0.08
+   },
+   {
+    "phrase": "perfume",
+    "p": 0.07
+   },
+   {
+    "phrase": "mouth",
+    "p": 0.07
+   },
+   {
+    "phrase": "applying fragrance",
+    "p": 0.07
+   },
+   {
+    "phrase": "fragrance",
+    "p": 0.06
+   },
+   {
+    "phrase": "style oral",
+    "p": 0.06
+   },
+   {
+    "phrase": "oral care",
+    "p": 0.06
+   },
+   {
+    "phrase": "care mouth",
+    "p": 0.06
+   },
+   {
+    "phrase": "serums serum",
+    "p": 0.06
+   },
+   {
+    "phrase": "hair",
+    "p": 0.05
+   },
+   {
+    "phrase": "purchasing perfume",
+    "p": 0.05
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f196557fa2b733d47c1dfca3ee",
+  "usage": {
+   "input_tokens": 4743,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000199206,
+  "duration_ms": 191
+ },
+ "cand-jyjsgmbxmru6fuz6": {
+  "keywords": [
+   "permanent jewelry welding",
+   "weld permanent anklets"
+  ],
+  "ranked": [
+   {
+    "phrase": "permanent jewelry welding",
+    "p": 0.67
+   },
+   {
+    "phrase": "weld permanent anklets",
+    "p": 0.58
+   },
+   {
+    "phrase": "permanent jewelry",
+    "p": 0.41
+   },
+   {
+    "phrase": "permanent anklets bracelets",
+    "p": 0.39
+   },
+   {
+    "phrase": "weld permanent",
+    "p": 0.35
+   },
+   {
+    "phrase": "jewelry welding",
+    "p": 0.29
+   },
+   {
+    "phrase": "welding at retail",
+    "p": 0.26
+   },
+   {
+    "phrase": "permanent anklets",
+    "p": 0.25
+   },
+   {
+    "phrase": "welding",
+    "p": 0.14
+   },
+   {
+    "phrase": "permanent",
+    "p": 0.12
+   },
+   {
+    "phrase": "weld",
+    "p": 0.11
+   },
+   {
+    "phrase": "bracelets at retail",
+    "p": 0.1
+   },
+   {
+    "phrase": "anklets bracelets",
+    "p": 0.09
+   },
+   {
+    "phrase": "retail pop ups",
+    "p": 0.08
+   },
+   {
+    "phrase": "retail pop",
+    "p": 0.07
+   },
+   {
+    "phrase": "pop ups",
+    "p": 0.07
+   },
+   {
+    "phrase": "anklets",
+    "p": 0.07
+   },
+   {
+    "phrase": "bracelets",
+    "p": 0.06
+   },
+   {
+    "phrase": "jewelry",
+    "p": 0.04
+   },
+   {
+    "phrase": "retail",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f1a181754fb8d9e075830acbd0",
+  "usage": {
+   "input_tokens": 3252,
+   "output_tokens": 414
+  },
+  "cost_usd": 0.000136584,
+  "duration_ms": 199
+ },
+ "cand-7f60v9h9mt6iud64": {
+  "keywords": [
+   "candle warmer lamps",
+   "dimmable candle warmer"
+  ],
+  "ranked": [
+   {
+    "phrase": "candle warmer lamps",
+    "p": 0.7
+   },
+   {
+    "phrase": "dimmable candle warmer",
+    "p": 0.66
+   },
+   {
+    "phrase": "candle warmer",
+    "p": 0.49
+   },
+   {
+    "phrase": "warmer lamps",
+    "p": 0.28
+   },
+   {
+    "phrase": "flame free scenting",
+    "p": 0.22
+   },
+   {
+    "phrase": "dimmable candle",
+    "p": 0.2
+   },
+   {
+    "phrase": "warmer",
+    "p": 0.15
+   },
+   {
+    "phrase": "lamps for flame",
+    "p": 0.13
+   },
+   {
+    "phrase": "flame free home",
+    "p": 0.11
+   },
+   {
+    "phrase": "flame free",
+    "p": 0.1
+   },
+   {
+    "phrase": "free home scenting",
+    "p": 0.09
+   },
+   {
+    "phrase": "lamps",
+    "p": 0.08
+   },
+   {
+    "phrase": "candle",
+    "p": 0.07
+   },
+   {
+    "phrase": "home scenting",
+    "p": 0.07
+   },
+   {
+    "phrase": "free scenting",
+    "p": 0.06
+   },
+   {
+    "phrase": "dimmable",
+    "p": 0.06
+   },
+   {
+    "phrase": "scenting",
+    "p": 0.05
+   },
+   {
+    "phrase": "flame",
+    "p": 0.04
+   },
+   {
+    "phrase": "free home",
+    "p": 0.03
+   },
+   {
+    "phrase": "free",
+    "p": 0.02
+   },
+   {
+    "phrase": "home",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f1b7b87561b7bdb10d740dede8",
+  "usage": {
+   "input_tokens": 3387,
+   "output_tokens": 435
+  },
+  "cost_usd": 0.000142254,
+  "duration_ms": 171
+ },
+ "cand-tbeqxzbamtztdler": {
+  "keywords": [
+   "vibration plates"
+  ],
+  "ranked": [
+   {
+    "phrase": "vibration plates",
+    "p": 0.61
+   },
+   {
+    "phrase": "home bone density",
+    "p": 0.22
+   },
+   {
+    "phrase": "density training midlife",
+    "p": 0.21
+   },
+   {
+    "phrase": "bone density training",
+    "p": 0.19
+   },
+   {
+    "phrase": "vibration",
+    "p": 0.17
+   },
+   {
+    "phrase": "plates",
+    "p": 0.16
+   },
+   {
+    "phrase": "density training",
+    "p": 0.14
+   },
+   {
+    "phrase": "home bone",
+    "p": 0.11
+   },
+   {
+    "phrase": "bone density",
+    "p": 0.08
+   },
+   {
+    "phrase": "gadgets for strength",
+    "p": 0.07
+   },
+   {
+    "phrase": "training midlife women",
+    "p": 0.06
+   },
+   {
+    "phrase": "density",
+    "p": 0.06
+   },
+   {
+    "phrase": "training midlife",
+    "p": 0.05
+   },
+   {
+    "phrase": "fitness gadgets",
+    "p": 0.05
+   },
+   {
+    "phrase": "bone health",
+    "p": 0.05
+   },
+   {
+    "phrase": "specialized fitness gadgets",
+    "p": 0.05
+   },
+   {
+    "phrase": "strength and bone",
+    "p": 0.05
+   },
+   {
+    "phrase": "bone",
+    "p": 0.04
+   },
+   {
+    "phrase": "specialized fitness",
+    "p": 0.04
+   },
+   {
+    "phrase": "midlife women investing",
+    "p": 0.04
+   },
+   {
+    "phrase": "training",
+    "p": 0.04
+   },
+   {
+    "phrase": "midlife women",
+    "p": 0.03
+   },
+   {
+    "phrase": "midlife",
+    "p": 0.03
+   },
+   {
+    "phrase": "home",
+    "p": 0.03
+   },
+   {
+    "phrase": "specialized",
+    "p": 0.03
+   },
+   {
+    "phrase": "fitness",
+    "p": 0.03
+   },
+   {
+    "phrase": "women",
+    "p": 0.02
+   },
+   {
+    "phrase": "women investing",
+    "p": 0.02
+   },
+   {
+    "phrase": "investing in specialized",
+    "p": 0.02
+   },
+   {
+    "phrase": "investing",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f1cee076179fe6e165014df9a1",
+  "usage": {
+   "input_tokens": 4672,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.00019622400000000002,
+  "duration_ms": 237
+ },
+ "cand-3xkqv38umu5lzowk": {
+  "keywords": [
+   "filters for pfas"
+  ],
+  "ranked": [
+   {
+    "phrase": "filters for pfas",
+    "p": 0.48
+   },
+   {
+    "phrase": "pfas certified point",
+    "p": 0.31
+   },
+   {
+    "phrase": "installing pfas certified",
+    "p": 0.3
+   },
+   {
+    "phrase": "filters pitchers faucet",
+    "p": 0.3
+   },
+   {
+    "phrase": "pfas microplastic removal",
+    "p": 0.29
+   },
+   {
+    "phrase": "installing pfas",
+    "p": 0.21
+   },
+   {
+    "phrase": "water filters pitchers",
+    "p": 0.21
+   },
+   {
+    "phrase": "filters pitchers",
+    "p": 0.19
+   },
+   {
+    "phrase": "pfas certified",
+    "p": 0.17
+   },
+   {
+    "phrase": "pfas microplastic",
+    "p": 0.16
+   },
+   {
+    "phrase": "pitchers faucet",
+    "p": 0.14
+   },
+   {
+    "phrase": "microplastic removal",
+    "p": 0.12
+   },
+   {
+    "phrase": "water filters",
+    "p": 0.11
+   },
+   {
+    "phrase": "pfas",
+    "p": 0.1
+   },
+   {
+    "phrase": "filters",
+    "p": 0.09
+   },
+   {
+    "phrase": "certified point",
+    "p": 0.08
+   },
+   {
+    "phrase": "pitchers",
+    "p": 0.08
+   },
+   {
+    "phrase": "upgrading point",
+    "p": 0.07
+   },
+   {
+    "phrase": "microplastic",
+    "p": 0.07
+   },
+   {
+    "phrase": "faucet",
+    "p": 0.07
+   },
+   {
+    "phrase": "installing",
+    "p": 0.06
+   },
+   {
+    "phrase": "upgrading",
+    "p": 0.05
+   },
+   {
+    "phrase": "removal",
+    "p": 0.05
+   },
+   {
+    "phrase": "point",
+    "p": 0.04
+   },
+   {
+    "phrase": "water",
+    "p": 0.04
+   },
+   {
+    "phrase": "certified",
+    "p": 0.04
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f1dafb78afbfc3402cf1d3f12d",
+  "usage": {
+   "input_tokens": 4122,
+   "output_tokens": 540
+  },
+  "cost_usd": 0.00017312399999999998,
+  "duration_ms": 210
+ },
+ "cand-n8gvjrptmu46k6ra": {
+  "keywords": [
+   "tallow replacing seed"
+  ],
+  "ranked": [
+   {
+    "phrase": "tallow replacing seed",
+    "p": 0.59
+   },
+   {
+    "phrase": "beef tallow replacing",
+    "p": 0.35
+   },
+   {
+    "phrase": "tallow for cooking",
+    "p": 0.3
+   },
+   {
+    "phrase": "tallow replacing",
+    "p": 0.22
+   },
+   {
+    "phrase": "beef tallow",
+    "p": 0.21
+   },
+   {
+    "phrase": "tallow",
+    "p": 0.17
+   },
+   {
+    "phrase": "replacing seed oils",
+    "p": 0.15
+   },
+   {
+    "phrase": "switching to beef",
+    "p": 0.15
+   },
+   {
+    "phrase": "replacing seed",
+    "p": 0.11
+   },
+   {
+    "phrase": "beef",
+    "p": 0.07
+   },
+   {
+    "phrase": "seed oils",
+    "p": 0.05
+   },
+   {
+    "phrase": "oils",
+    "p": 0.04
+   },
+   {
+    "phrase": "switching",
+    "p": 0.04
+   },
+   {
+    "phrase": "cooking",
+    "p": 0.03
+   },
+   {
+    "phrase": "replacing",
+    "p": 0.03
+   },
+   {
+    "phrase": "seed",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f1e62b7e4b91c304e34ba6f1c7",
+  "usage": {
+   "input_tokens": 2666,
+   "output_tokens": 330
+  },
+  "cost_usd": 0.000111972,
+  "duration_ms": 187
+ },
+ "cand-gmtkokp2ms1k7xsb": {
+  "keywords": [
+   "pick and mix"
+  ],
+  "ranked": [
+   {
+    "phrase": "pick and mix",
+    "p": 0.32
+   },
+   {
+    "phrase": "mix bulk candy",
+    "p": 0.31
+   },
+   {
+    "phrase": "bulk candy displays",
+    "p": 0.21
+   },
+   {
+    "phrase": "swedish pick",
+    "p": 0.2
+   },
+   {
+    "phrase": "mix bulk",
+    "p": 0.2
+   },
+   {
+    "phrase": "mix candy",
+    "p": 0.17
+   },
+   {
+    "phrase": "bulk candy",
+    "p": 0.14
+   },
+   {
+    "phrase": "candy displays",
+    "p": 0.11
+   },
+   {
+    "phrase": "swedish",
+    "p": 0.08
+   },
+   {
+    "phrase": "pick",
+    "p": 0.08
+   },
+   {
+    "phrase": "candy in supermarkets",
+    "p": 0.08
+   },
+   {
+    "phrase": "bulk",
+    "p": 0.08
+   },
+   {
+    "phrase": "displays in us",
+    "p": 0.07
+   },
+   {
+    "phrase": "candy",
+    "p": 0.06
+   },
+   {
+    "phrase": "displays",
+    "p": 0.06
+   },
+   {
+    "phrase": "us grocery",
+    "p": 0.05
+   },
+   {
+    "phrase": "us grocery stores",
+    "p": 0.05
+   },
+   {
+    "phrase": "grocery stores",
+    "p": 0.04
+   },
+   {
+    "phrase": "grocery",
+    "p": 0.04
+   },
+   {
+    "phrase": "supermarkets",
+    "p": 0.04
+   },
+   {
+    "phrase": "stores",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f1f1107c70842774fa3f051537",
+  "usage": {
+   "input_tokens": 3376,
+   "output_tokens": 435
+  },
+  "cost_usd": 0.000141792,
+  "duration_ms": 224
+ },
+ "cand-0lap522tmsmzx6ma": {
+  "keywords": [
+   "upgrading ikea sofas"
+  ],
+  "ranked": [
+   {
+    "phrase": "upgrading ikea sofas",
+    "p": 0.33
+   },
+   {
+    "phrase": "bespoke ikea",
+    "p": 0.32
+   },
+   {
+    "phrase": "bespoke ikea furniture",
+    "p": 0.32
+   },
+   {
+    "phrase": "ikea furniture upgrades",
+    "p": 0.23
+   },
+   {
+    "phrase": "upgrading ikea",
+    "p": 0.21
+   },
+   {
+    "phrase": "third party slipcovers",
+    "p": 0.2
+   },
+   {
+    "phrase": "slipcovers",
+    "p": 0.14
+   },
+   {
+    "phrase": "sofas via third",
+    "p": 0.14
+   },
+   {
+    "phrase": "party slipcovers",
+    "p": 0.13
+   },
+   {
+    "phrase": "slipcovers for instant",
+    "p": 0.13
+   },
+   {
+    "phrase": "ikea sofas",
+    "p": 0.09
+   },
+   {
+    "phrase": "upgrades via third",
+    "p": 0.09
+   },
+   {
+    "phrase": "furniture upgrades",
+    "p": 0.08
+   },
+   {
+    "phrase": "instant custom looks",
+    "p": 0.08
+   },
+   {
+    "phrase": "ikea",
+    "p": 0.07
+   },
+   {
+    "phrase": "ikea furniture",
+    "p": 0.07
+   },
+   {
+    "phrase": "instant custom",
+    "p": 0.06
+   },
+   {
+    "phrase": "bespoke",
+    "p": 0.06
+   },
+   {
+    "phrase": "upgrades",
+    "p": 0.05
+   },
+   {
+    "phrase": "upgrading",
+    "p": 0.05
+   },
+   {
+    "phrase": "sofas",
+    "p": 0.05
+   },
+   {
+    "phrase": "third party",
+    "p": 0.04
+   },
+   {
+    "phrase": "custom looks",
+    "p": 0.04
+   },
+   {
+    "phrase": "custom",
+    "p": 0.04
+   },
+   {
+    "phrase": "third",
+    "p": 0.03
+   },
+   {
+    "phrase": "furniture",
+    "p": 0.03
+   },
+   {
+    "phrase": "party",
+    "p": 0.02
+   },
+   {
+    "phrase": "instant",
+    "p": 0.02
+   },
+   {
+    "phrase": "looks",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f1f1fe7122bbc273e82497de44",
+  "usage": {
+   "input_tokens": 4537,
+   "output_tokens": 603
+  },
+  "cost_usd": 0.000190554,
+  "duration_ms": 197
+ },
+ "cand-0wfno448mt4gjdg8": {
+  "keywords": [
+   "probiotic nasal"
+  ],
+  "ranked": [
+   {
+    "phrase": "probiotic nasal",
+    "p": 0.23
+   },
+   {
+    "phrase": "probiotic nasal sprays",
+    "p": 0.23
+   },
+   {
+    "phrase": "targeted probiotics",
+    "p": 0.21
+   },
+   {
+    "phrase": "specific oral probiotics",
+    "p": 0.2
+   },
+   {
+    "phrase": "probiotics for oral",
+    "p": 0.19
+   },
+   {
+    "phrase": "nasal microbiome care",
+    "p": 0.18
+   },
+   {
+    "phrase": "mouth specific oral",
+    "p": 0.17
+   },
+   {
+    "phrase": "oral probiotics",
+    "p": 0.16
+   },
+   {
+    "phrase": "mouth specific",
+    "p": 0.14
+   },
+   {
+    "phrase": "sprays for nasal",
+    "p": 0.14
+   },
+   {
+    "phrase": "nasal sprays",
+    "p": 0.11
+   },
+   {
+    "phrase": "oral and nasal",
+    "p": 0.11
+   },
+   {
+    "phrase": "nasal microbiome",
+    "p": 0.1
+   },
+   {
+    "phrase": "probiotics",
+    "p": 0.09
+   },
+   {
+    "phrase": "specific oral",
+    "p": 0.09
+   },
+   {
+    "phrase": "probiotic",
+    "p": 0.09
+   },
+   {
+    "phrase": "microbiome care",
+    "p": 0.08
+   },
+   {
+    "phrase": "nasal",
+    "p": 0.06
+   },
+   {
+    "phrase": "sprays",
+    "p": 0.06
+   },
+   {
+    "phrase": "oral",
+    "p": 0.05
+   },
+   {
+    "phrase": "microbiome",
+    "p": 0.05
+   },
+   {
+    "phrase": "targeted",
+    "p": 0.05
+   },
+   {
+    "phrase": "mouth",
+    "p": 0.04
+   },
+   {
+    "phrase": "care",
+    "p": 0.03
+   },
+   {
+    "phrase": "specific",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f1fd197631b0a948d5cc6b9a86",
+  "usage": {
+   "input_tokens": 4004,
+   "output_tokens": 519
+  },
+  "cost_usd": 0.000168168,
+  "duration_ms": 235
+ },
+ "cand-svqujpdimsczr485": {
+  "keywords": [
+   "dried fruit sour"
+  ],
+  "ranked": [
+   {
+    "phrase": "dried fruit sour",
+    "p": 0.2
+   },
+   {
+    "phrase": "fruit sour snacks",
+    "p": 0.19
+   },
+   {
+    "phrase": "candy for dried",
+    "p": 0.18
+   },
+   {
+    "phrase": "gummies for sour",
+    "p": 0.17
+   },
+   {
+    "phrase": "sour dried fruit",
+    "p": 0.17
+   },
+   {
+    "phrase": "trading gummy candy",
+    "p": 0.15
+   },
+   {
+    "phrase": "sour dried",
+    "p": 0.13
+   },
+   {
+    "phrase": "trading gummy",
+    "p": 0.13
+   },
+   {
+    "phrase": "dried fruit snacks",
+    "p": 0.12
+   },
+   {
+    "phrase": "fruit sour",
+    "p": 0.11
+   },
+   {
+    "phrase": "sour gummies",
+    "p": 0.1
+   },
+   {
+    "phrase": "fruit snacks",
+    "p": 0.1
+   },
+   {
+    "phrase": "sour snacks",
+    "p": 0.1
+   },
+   {
+    "phrase": "trading traditional sour",
+    "p": 0.1
+   },
+   {
+    "phrase": "traditional sour gummies",
+    "p": 0.1
+   },
+   {
+    "phrase": "dried fruit",
+    "p": 0.07
+   },
+   {
+    "phrase": "traditional sour",
+    "p": 0.07
+   },
+   {
+    "phrase": "gummies",
+    "p": 0.07
+   },
+   {
+    "phrase": "gummy",
+    "p": 0.06
+   },
+   {
+    "phrase": "dried",
+    "p": 0.05
+   },
+   {
+    "phrase": "gummy candy",
+    "p": 0.05
+   },
+   {
+    "phrase": "trading",
+    "p": 0.04
+   },
+   {
+    "phrase": "sour",
+    "p": 0.04
+   },
+   {
+    "phrase": "fruit",
+    "p": 0.04
+   },
+   {
+    "phrase": "snacks",
+    "p": 0.04
+   },
+   {
+    "phrase": "trading traditional",
+    "p": 0.04
+   },
+   {
+    "phrase": "candy",
+    "p": 0.04
+   },
+   {
+    "phrase": "traditional",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f208be779d9556e94b22f05e8e",
+  "usage": {
+   "input_tokens": 4392,
+   "output_tokens": 582
+  },
+  "cost_usd": 0.000184464,
+  "duration_ms": 188
+ },
+ "cand-mdyia4hfms3b4o69": {
+  "keywords": [
+   "infused wine spritzers"
+  ],
+  "ranked": [
+   {
+    "phrase": "infused wine spritzers",
+    "p": 0.42
+   },
+   {
+    "phrase": "fortified wine spritz",
+    "p": 0.42
+   },
+   {
+    "phrase": "electrolyte infused wine",
+    "p": 0.41
+   },
+   {
+    "phrase": "electrolyte fortified wine",
+    "p": 0.37
+   },
+   {
+    "phrase": "wine spritz rtds",
+    "p": 0.35
+   },
+   {
+    "phrase": "fortified wine rtds",
+    "p": 0.32
+   },
+   {
+    "phrase": "spritzers for hydration",
+    "p": 0.27
+   },
+   {
+    "phrase": "spritz rtds",
+    "p": 0.25
+   },
+   {
+    "phrase": "wine spritz",
+    "p": 0.21
+   },
+   {
+    "phrase": "wine spritzers",
+    "p": 0.19
+   },
+   {
+    "phrase": "wine rtds",
+    "p": 0.16
+   },
+   {
+    "phrase": "drinking electrolyte infused",
+    "p": 0.15
+   },
+   {
+    "phrase": "electrolyte fortified",
+    "p": 0.14
+   },
+   {
+    "phrase": "spritzers",
+    "p": 0.14
+   },
+   {
+    "phrase": "electrolyte infused",
+    "p": 0.13
+   },
+   {
+    "phrase": "spritz",
+    "p": 0.12
+   },
+   {
+    "phrase": "drinking electrolyte",
+    "p": 0.11
+   },
+   {
+    "phrase": "infused wine",
+    "p": 0.11
+   },
+   {
+    "phrase": "rtds",
+    "p": 0.08
+   },
+   {
+    "phrase": "electrolyte",
+    "p": 0.07
+   },
+   {
+    "phrase": "fortified wine",
+    "p": 0.07
+   },
+   {
+    "phrase": "wine",
+    "p": 0.05
+   },
+   {
+    "phrase": "fortified",
+    "p": 0.05
+   },
+   {
+    "phrase": "infused",
+    "p": 0.05
+   },
+   {
+    "phrase": "hydration",
+    "p": 0.05
+   },
+   {
+    "phrase": "drinking",
+    "p": 0.04
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f2150074ba845186f4396ced5b",
+  "usage": {
+   "input_tokens": 4175,
+   "output_tokens": 540
+  },
+  "cost_usd": 0.00017535,
+  "duration_ms": 251
+ },
+ "cand-nli5zc0qmt7bfbg2": {
+  "keywords": [
+   "nasal barrier sprays"
+  ],
+  "ranked": [
+   {
+    "phrase": "nasal barrier sprays",
+    "p": 0.31
+   },
+   {
+    "phrase": "sprays and microbiome",
+    "p": 0.25
+   },
+   {
+    "phrase": "drug free nasal",
+    "p": 0.24
+   },
+   {
+    "phrase": "nasal barrier",
+    "p": 0.22
+   },
+   {
+    "phrase": "barrier sprays",
+    "p": 0.22
+   },
+   {
+    "phrase": "microbiome mists",
+    "p": 0.22
+   },
+   {
+    "phrase": "barrier sprays pre",
+    "p": 0.2
+   },
+   {
+    "phrase": "nasal mists",
+    "p": 0.19
+   },
+   {
+    "phrase": "free nasal barrier",
+    "p": 0.19
+   },
+   {
+    "phrase": "sprays pre exposure",
+    "p": 0.18
+   },
+   {
+    "phrase": "beauty led nasal",
+    "p": 0.15
+   },
+   {
+    "phrase": "block allergens",
+    "p": 0.12
+   },
+   {
+    "phrase": "barrier",
+    "p": 0.1
+   },
+   {
+    "phrase": "mists",
+    "p": 0.1
+   },
+   {
+    "phrase": "free nasal",
+    "p": 0.09
+   },
+   {
+    "phrase": "microbiome",
+    "p": 0.09
+   },
+   {
+    "phrase": "sprays",
+    "p": 0.08
+   },
+   {
+    "phrase": "drug free",
+    "p": 0.08
+   },
+   {
+    "phrase": "sprays pre",
+    "p": 0.08
+   },
+   {
+    "phrase": "pharmacological nasal barrier",
+    "p": 0.08
+   },
+   {
+    "phrase": "nasal",
+    "p": 0.06
+   },
+   {
+    "phrase": "pre exposure",
+    "p": 0.06
+   },
+   {
+    "phrase": "exposure to block",
+    "p": 0.05
+   },
+   {
+    "phrase": "pharmacological nasal",
+    "p": 0.04
+   },
+   {
+    "phrase": "block",
+    "p": 0.04
+   },
+   {
+    "phrase": "allergens",
+    "p": 0.04
+   },
+   {
+    "phrase": "pharmacological",
+    "p": 0.03
+   },
+   {
+    "phrase": "drug",
+    "p": 0.03
+   },
+   {
+    "phrase": "free",
+    "p": 0.03
+   },
+   {
+    "phrase": "exposure",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f21f9c7f69931581a812ca76d5",
+  "usage": {
+   "input_tokens": 4730,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.00019865999999999997,
+  "duration_ms": 212
+ },
+ "cand-jhiif6wdmt5bzell": {
+  "keywords": [
+   "house brand recommerce"
+  ],
+  "ranked": [
+   {
+    "phrase": "house brand recommerce",
+    "p": 0.35
+   },
+   {
+    "phrase": "recommerce and rental",
+    "p": 0.31
+   },
+   {
+    "phrase": "brand recommerce",
+    "p": 0.28
+   },
+   {
+    "phrase": "recommerce",
+    "p": 0.22
+   },
+   {
+    "phrase": "selling preloved ikea",
+    "p": 0.15
+   },
+   {
+    "phrase": "renting preloved",
+    "p": 0.14
+   },
+   {
+    "phrase": "rental platforms",
+    "p": 0.13
+   },
+   {
+    "phrase": "renting preloved charity",
+    "p": 0.13
+   },
+   {
+    "phrase": "preloved ikea furniture",
+    "p": 0.11
+   },
+   {
+    "phrase": "preloved ikea",
+    "p": 0.1
+   },
+   {
+    "phrase": "house brand",
+    "p": 0.09
+   },
+   {
+    "phrase": "selling preloved",
+    "p": 0.09
+   },
+   {
+    "phrase": "ikea marketplace",
+    "p": 0.09
+   },
+   {
+    "phrase": "furniture on ikea",
+    "p": 0.09
+   },
+   {
+    "phrase": "charity clothing online",
+    "p": 0.09
+   },
+   {
+    "phrase": "rental",
+    "p": 0.09
+   },
+   {
+    "phrase": "preloved charity clothing",
+    "p": 0.08
+   },
+   {
+    "phrase": "preloved charity",
+    "p": 0.07
+   },
+   {
+    "phrase": "platforms",
+    "p": 0.07
+   },
+   {
+    "phrase": "renting",
+    "p": 0.07
+   },
+   {
+    "phrase": "preloved",
+    "p": 0.06
+   },
+   {
+    "phrase": "marketplace",
+    "p": 0.06
+   },
+   {
+    "phrase": "ikea furniture",
+    "p": 0.05
+   },
+   {
+    "phrase": "charity clothing",
+    "p": 0.05
+   },
+   {
+    "phrase": "brand",
+    "p": 0.05
+   },
+   {
+    "phrase": "clothing online",
+    "p": 0.04
+   },
+   {
+    "phrase": "house",
+    "p": 0.04
+   },
+   {
+    "phrase": "selling",
+    "p": 0.04
+   },
+   {
+    "phrase": "ikea",
+    "p": 0.04
+   },
+   {
+    "phrase": "furniture",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f22ab47fdda478c6e3da315c0d",
+  "usage": {
+   "input_tokens": 4715,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.00019803,
+  "duration_ms": 215
+ },
+ "cand-58odlvzymt5vyor2": {
+  "keywords": [
+   "grocery store tourism",
+   "shelf discovery foodie"
+  ],
+  "ranked": [
+   {
+    "phrase": "grocery store tourism",
+    "p": 0.92
+   },
+   {
+    "phrase": "store tourism",
+    "p": 0.51
+   },
+   {
+    "phrase": "shelf discovery foodie",
+    "p": 0.51
+   },
+   {
+    "phrase": "shelf discovery",
+    "p": 0.45
+   },
+   {
+    "phrase": "tourism visiting supermarkets",
+    "p": 0.4
+   },
+   {
+    "phrase": "store tourism visiting",
+    "p": 0.39
+   },
+   {
+    "phrase": "supermarkets for regional",
+    "p": 0.24
+   },
+   {
+    "phrase": "discovery foodie",
+    "p": 0.19
+   },
+   {
+    "phrase": "visiting supermarkets",
+    "p": 0.17
+   },
+   {
+    "phrase": "shelf",
+    "p": 0.11
+   },
+   {
+    "phrase": "discovery",
+    "p": 0.11
+   },
+   {
+    "phrase": "grocery store",
+    "p": 0.09
+   },
+   {
+    "phrase": "tourism visiting",
+    "p": 0.09
+   },
+   {
+    "phrase": "grocery",
+    "p": 0.09
+   },
+   {
+    "phrase": "regional foods",
+    "p": 0.08
+   },
+   {
+    "phrase": "supermarkets",
+    "p": 0.08
+   },
+   {
+    "phrase": "tourism",
+    "p": 0.07
+   },
+   {
+    "phrase": "foodie",
+    "p": 0.06
+   },
+   {
+    "phrase": "store",
+    "p": 0.05
+   },
+   {
+    "phrase": "visiting",
+    "p": 0.04
+   },
+   {
+    "phrase": "regional",
+    "p": 0.04
+   },
+   {
+    "phrase": "foods",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f236fb7fbebbd745771b484771",
+  "usage": {
+   "input_tokens": 3555,
+   "output_tokens": 456
+  },
+  "cost_usd": 0.00014931,
+  "duration_ms": 269
+ },
+ "cand-uf6xt7f2mrpnjj3i": {
+  "keywords": [
+   "dissolving supplement strips"
+  ],
+  "ranked": [
+   {
+    "phrase": "dissolving supplement strips",
+    "p": 0.47
+   },
+   {
+    "phrase": "supplement strips",
+    "p": 0.39
+   },
+   {
+    "phrase": "oral supplement strips",
+    "p": 0.38
+   },
+   {
+    "phrase": "strips replacing gummies",
+    "p": 0.34
+   },
+   {
+    "phrase": "dissolving oral supplement",
+    "p": 0.26
+   },
+   {
+    "phrase": "oral dissolving supplement",
+    "p": 0.25
+   },
+   {
+    "phrase": "dissolving supplement",
+    "p": 0.23
+   },
+   {
+    "phrase": "supplement strips replacing",
+    "p": 0.23
+   },
+   {
+    "phrase": "strips",
+    "p": 0.19
+   },
+   {
+    "phrase": "fast dissolving oral",
+    "p": 0.19
+   },
+   {
+    "phrase": "dissolving oral",
+    "p": 0.16
+   },
+   {
+    "phrase": "fast dissolving",
+    "p": 0.15
+   },
+   {
+    "phrase": "oral dissolving",
+    "p": 0.15
+   },
+   {
+    "phrase": "strips replacing",
+    "p": 0.14
+   },
+   {
+    "phrase": "swap pills",
+    "p": 0.11
+   },
+   {
+    "phrase": "pills for fast",
+    "p": 0.11
+   },
+   {
+    "phrase": "dissolving",
+    "p": 0.09
+   },
+   {
+    "phrase": "replacing gummies",
+    "p": 0.09
+   },
+   {
+    "phrase": "gummies for energy",
+    "p": 0.09
+   },
+   {
+    "phrase": "oral supplement",
+    "p": 0.07
+   },
+   {
+    "phrase": "energy and sleep",
+    "p": 0.07
+   },
+   {
+    "phrase": "supplement",
+    "p": 0.06
+   },
+   {
+    "phrase": "gummies",
+    "p": 0.06
+   },
+   {
+    "phrase": "oral",
+    "p": 0.05
+   },
+   {
+    "phrase": "fast",
+    "p": 0.05
+   },
+   {
+    "phrase": "pills",
+    "p": 0.05
+   },
+   {
+    "phrase": "energy",
+    "p": 0.04
+   },
+   {
+    "phrase": "sleep",
+    "p": 0.04
+   },
+   {
+    "phrase": "swap",
+    "p": 0.04
+   },
+   {
+    "phrase": "replacing",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f24d6e7ce29ab4f76f57bc0c6c",
+  "usage": {
+   "input_tokens": 4727,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000198534,
+  "duration_ms": 345
+ },
+ "cand-im74rhbpmrn9tuw5": {
+  "keywords": [
+   "stick acoustic panels"
+  ],
+  "ranked": [
+   {
+    "phrase": "stick acoustic panels",
+    "p": 0.39
+   },
+   {
+    "phrase": "renters installing peel",
+    "p": 0.37
+   },
+   {
+    "phrase": "stick acoustic",
+    "p": 0.24
+   },
+   {
+    "phrase": "acoustic panels",
+    "p": 0.19
+   },
+   {
+    "phrase": "peel and stick",
+    "p": 0.13
+   },
+   {
+    "phrase": "installing peel",
+    "p": 0.11
+   },
+   {
+    "phrase": "renters installing",
+    "p": 0.1
+   },
+   {
+    "phrase": "panels",
+    "p": 0.09
+   },
+   {
+    "phrase": "acoustic",
+    "p": 0.07
+   },
+   {
+    "phrase": "peel",
+    "p": 0.06
+   },
+   {
+    "phrase": "stick",
+    "p": 0.06
+   },
+   {
+    "phrase": "renters",
+    "p": 0.05
+   },
+   {
+    "phrase": "diy architectural",
+    "p": 0.05
+   },
+   {
+    "phrase": "architectural molding",
+    "p": 0.05
+   },
+   {
+    "phrase": "embracing diy architectural",
+    "p": 0.05
+   },
+   {
+    "phrase": "diy architectural molding",
+    "p": 0.05
+   },
+   {
+    "phrase": "molding",
+    "p": 0.05
+   },
+   {
+    "phrase": "installing",
+    "p": 0.04
+   },
+   {
+    "phrase": "embracing diy",
+    "p": 0.04
+   },
+   {
+    "phrase": "architectural",
+    "p": 0.03
+   },
+   {
+    "phrase": "embracing",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f258217e5ca418bfc5379f253f",
+  "usage": {
+   "input_tokens": 3440,
+   "output_tokens": 435
+  },
+  "cost_usd": 0.00014448,
+  "duration_ms": 163
+ },
+ "cand-zxos3r6mmroxtyd7": {
+  "keywords": [
+   "ketamine troche subscriptions",
+   "telehealth ketamine troche"
+  ],
+  "ranked": [
+   {
+    "phrase": "ketamine troche subscriptions",
+    "p": 0.68
+   },
+   {
+    "phrase": "telehealth ketamine troche",
+    "p": 0.6
+   },
+   {
+    "phrase": "home telehealth ketamine",
+    "p": 0.45
+   },
+   {
+    "phrase": "home ketamine therapy",
+    "p": 0.42
+   },
+   {
+    "phrase": "troche subscriptions",
+    "p": 0.37
+   },
+   {
+    "phrase": "telehealth ketamine",
+    "p": 0.32
+   },
+   {
+    "phrase": "ketamine troche",
+    "p": 0.27
+   },
+   {
+    "phrase": "home ketamine",
+    "p": 0.26
+   },
+   {
+    "phrase": "ketamine therapy programs",
+    "p": 0.21
+   },
+   {
+    "phrase": "ketamine therapy",
+    "p": 0.17
+   },
+   {
+    "phrase": "troche",
+    "p": 0.14
+   },
+   {
+    "phrase": "ketamine",
+    "p": 0.12
+   },
+   {
+    "phrase": "home telehealth",
+    "p": 0.09
+   },
+   {
+    "phrase": "booking at home",
+    "p": 0.08
+   },
+   {
+    "phrase": "therapy programs",
+    "p": 0.07
+   },
+   {
+    "phrase": "subscriptions for mental",
+    "p": 0.07
+   },
+   {
+    "phrase": "telehealth",
+    "p": 0.06
+   },
+   {
+    "phrase": "subscriptions",
+    "p": 0.06
+   },
+   {
+    "phrase": "booking",
+    "p": 0.06
+   },
+   {
+    "phrase": "therapy",
+    "p": 0.06
+   },
+   {
+    "phrase": "programs",
+    "p": 0.05
+   },
+   {
+    "phrase": "home",
+    "p": 0.04
+   },
+   {
+    "phrase": "mental health",
+    "p": 0.03
+   },
+   {
+    "phrase": "health",
+    "p": 0.03
+   },
+   {
+    "phrase": "mental",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f2636f7a239d890fd87521a9b8",
+  "usage": {
+   "input_tokens": 3956,
+   "output_tokens": 519
+  },
+  "cost_usd": 0.000166152,
+  "duration_ms": 222
+ },
+ "cand-wzqdgyfhmrn9tuw5": {
+  "keywords": [
+   "jerseys as casual"
+  ],
+  "ranked": [
+   {
+    "phrase": "jerseys as casual",
+    "p": 0.5
+   },
+   {
+    "phrase": "styling soccer jerseys",
+    "p": 0.45
+   },
+   {
+    "phrase": "styling soccer",
+    "p": 0.19
+   },
+   {
+    "phrase": "styling football",
+    "p": 0.17
+   },
+   {
+    "phrase": "styling football sports",
+    "p": 0.16
+   },
+   {
+    "phrase": "soccer jerseys",
+    "p": 0.15
+   },
+   {
+    "phrase": "football sports jerseys",
+    "p": 0.15
+   },
+   {
+    "phrase": "sports jerseys",
+    "p": 0.13
+   },
+   {
+    "phrase": "jerseys",
+    "p": 0.1
+   },
+   {
+    "phrase": "casual everyday tops",
+    "p": 0.09
+   },
+   {
+    "phrase": "casual tops",
+    "p": 0.07
+   },
+   {
+    "phrase": "soccer",
+    "p": 0.07
+   },
+   {
+    "phrase": "football",
+    "p": 0.07
+   },
+   {
+    "phrase": "styling",
+    "p": 0.06
+   },
+   {
+    "phrase": "football sports",
+    "p": 0.05
+   },
+   {
+    "phrase": "casual",
+    "p": 0.04
+   },
+   {
+    "phrase": "tops",
+    "p": 0.04
+   },
+   {
+    "phrase": "sports",
+    "p": 0.04
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f27a4270b4be1d0f63b46a9beb",
+  "usage": {
+   "input_tokens": 2936,
+   "output_tokens": 372
+  },
+  "cost_usd": 0.000123312,
+  "duration_ms": 246
+ },
+ "cand-ymy76uncms4qj4yo": {
+  "keywords": [
+   "tiktok shop livestreams"
+  ],
+  "ranked": [
+   {
+    "phrase": "tiktok shop livestreams",
+    "p": 0.22
+   },
+   {
+    "phrase": "retailer hosted tiktok",
+    "p": 0.18
+   },
+   {
+    "phrase": "shop livestreams",
+    "p": 0.17
+   },
+   {
+    "phrase": "shop lives",
+    "p": 0.17
+   },
+   {
+    "phrase": "tiktok shop",
+    "p": 0.16
+   },
+   {
+    "phrase": "hosted tiktok shop",
+    "p": 0.13
+   },
+   {
+    "phrase": "hosted tiktok",
+    "p": 0.11
+   },
+   {
+    "phrase": "exclusive drops",
+    "p": 0.11
+   },
+   {
+    "phrase": "drops",
+    "p": 0.09
+   },
+   {
+    "phrase": "celebrity drops",
+    "p": 0.09
+   },
+   {
+    "phrase": "tiktok",
+    "p": 0.08
+   },
+   {
+    "phrase": "livestreams",
+    "p": 0.08
+   },
+   {
+    "phrase": "shop",
+    "p": 0.06
+   },
+   {
+    "phrase": "retailer hosted",
+    "p": 0.06
+   },
+   {
+    "phrase": "during tiktok",
+    "p": 0.06
+   },
+   {
+    "phrase": "local food",
+    "p": 0.05
+   },
+   {
+    "phrase": "purchase alcohol",
+    "p": 0.05
+   },
+   {
+    "phrase": "order local",
+    "p": 0.05
+   },
+   {
+    "phrase": "during retailer",
+    "p": 0.04
+   },
+   {
+    "phrase": "local bakery",
+    "p": 0.04
+   },
+   {
+    "phrase": "bakery restaurant",
+    "p": 0.04
+   },
+   {
+    "phrase": "restaurant items",
+    "p": 0.04
+   },
+   {
+    "phrase": "local",
+    "p": 0.03
+   },
+   {
+    "phrase": "retailer",
+    "p": 0.03
+   },
+   {
+    "phrase": "hosted",
+    "p": 0.03
+   },
+   {
+    "phrase": "three stage",
+    "p": 0.03
+   },
+   {
+    "phrase": "age checks",
+    "p": 0.03
+   },
+   {
+    "phrase": "during",
+    "p": 0.02
+   },
+   {
+    "phrase": "stage age",
+    "p": 0.02
+   },
+   {
+    "phrase": "items during",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f27b0a7ad4b8135a46ab379e19",
+  "usage": {
+   "input_tokens": 4787,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000201054,
+  "duration_ms": 221
+ },
+ "cand-xv9pyf00msam04w8": {
+  "keywords": [
+   "premium reusable press"
+  ],
+  "ranked": [
+   {
+    "phrase": "premium reusable press",
+    "p": 0.39
+   },
+   {
+    "phrase": "press ons",
+    "p": 0.35
+   },
+   {
+    "phrase": "press on nails",
+    "p": 0.29
+   },
+   {
+    "phrase": "press on nail",
+    "p": 0.29
+   },
+   {
+    "phrase": "smart press ons",
+    "p": 0.24
+   },
+   {
+    "phrase": "reusable press",
+    "p": 0.23
+   },
+   {
+    "phrase": "premium reusable",
+    "p": 0.2
+   },
+   {
+    "phrase": "replacing salon manicures",
+    "p": 0.2
+   },
+   {
+    "phrase": "nail sets",
+    "p": 0.19
+   },
+   {
+    "phrase": "manicures with premium",
+    "p": 0.14
+   },
+   {
+    "phrase": "smart press",
+    "p": 0.12
+   },
+   {
+    "phrase": "press",
+    "p": 0.11
+   },
+   {
+    "phrase": "replacing salon",
+    "p": 0.1
+   },
+   {
+    "phrase": "shades with app",
+    "p": 0.1
+   },
+   {
+    "phrase": "switching manicure",
+    "p": 0.09
+   },
+   {
+    "phrase": "app controlled smart",
+    "p": 0.09
+   },
+   {
+    "phrase": "controlled smart press",
+    "p": 0.09
+   },
+   {
+    "phrase": "sets",
+    "p": 0.09
+   },
+   {
+    "phrase": "reusable",
+    "p": 0.08
+   },
+   {
+    "phrase": "switching manicure shades",
+    "p": 0.08
+   },
+   {
+    "phrase": "manicures",
+    "p": 0.07
+   },
+   {
+    "phrase": "nails",
+    "p": 0.07
+   },
+   {
+    "phrase": "salon manicures",
+    "p": 0.06
+   },
+   {
+    "phrase": "app controlled",
+    "p": 0.06
+   },
+   {
+    "phrase": "nail",
+    "p": 0.06
+   },
+   {
+    "phrase": "manicure shades",
+    "p": 0.05
+   },
+   {
+    "phrase": "controlled smart",
+    "p": 0.05
+   },
+   {
+    "phrase": "premium",
+    "p": 0.04
+   },
+   {
+    "phrase": "replacing",
+    "p": 0.04
+   },
+   {
+    "phrase": "salon",
+    "p": 0.04
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f2878e7eb8b0016298f79cbd9b",
+  "usage": {
+   "input_tokens": 4711,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000197862,
+  "duration_ms": 199
+ },
+ "cand-jn02q9qamqzarfrw": {
+  "keywords": [
+   "beverages to preserve"
+  ],
+  "ranked": [
+   {
+    "phrase": "beverages to preserve",
+    "p": 0.2
+   },
+   {
+    "phrase": "muscle during glp",
+    "p": 0.18
+   },
+   {
+    "phrase": "medical food",
+    "p": 0.12
+   },
+   {
+    "phrase": "food formulas",
+    "p": 0.12
+   },
+   {
+    "phrase": "purchasing functional foods",
+    "p": 0.12
+   },
+   {
+    "phrase": "functional foods beverages",
+    "p": 0.12
+   },
+   {
+    "phrase": "functional foods",
+    "p": 0.1
+   },
+   {
+    "phrase": "functional beverages",
+    "p": 0.1
+   },
+   {
+    "phrase": "glp 1",
+    "p": 0.09
+   },
+   {
+    "phrase": "preserve muscle",
+    "p": 0.09
+   },
+   {
+    "phrase": "preserve muscle during",
+    "p": 0.09
+   },
+   {
+    "phrase": "during glp 1",
+    "p": 0.08
+   },
+   {
+    "phrase": "purchasing functional",
+    "p": 0.07
+   },
+   {
+    "phrase": "foods beverages",
+    "p": 0.07
+   },
+   {
+    "phrase": "purchasing medical",
+    "p": 0.07
+   },
+   {
+    "phrase": "supporting functional",
+    "p": 0.07
+   },
+   {
+    "phrase": "during glp",
+    "p": 0.06
+   },
+   {
+    "phrase": "functional",
+    "p": 0.06
+   },
+   {
+    "phrase": "beverages",
+    "p": 0.06
+   },
+   {
+    "phrase": "1 supporting",
+    "p": 0.06
+   },
+   {
+    "phrase": "muscle during",
+    "p": 0.04
+   },
+   {
+    "phrase": "purchasing",
+    "p": 0.04
+   },
+   {
+    "phrase": "muscle",
+    "p": 0.04
+   },
+   {
+    "phrase": "therapy",
+    "p": 0.04
+   },
+   {
+    "phrase": "1 therapy",
+    "p": 0.04
+   },
+   {
+    "phrase": "weight loss",
+    "p": 0.04
+   },
+   {
+    "phrase": "loss therapy",
+    "p": 0.04
+   },
+   {
+    "phrase": "preserve",
+    "p": 0.03
+   },
+   {
+    "phrase": "1 weight",
+    "p": 0.03
+   },
+   {
+    "phrase": "during",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f2923c7649a10d00b7d57d9c09",
+  "usage": {
+   "input_tokens": 4747,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000199374,
+  "duration_ms": 167
+ },
+ "cand-lc3v9krrmu1he57w": {
+  "keywords": [
+   "home vaginal microbiome"
+  ],
+  "ranked": [
+   {
+    "phrase": "home vaginal microbiome",
+    "p": 0.45
+   },
+   {
+    "phrase": "vaginal microbiome sequencing",
+    "p": 0.45
+   },
+   {
+    "phrase": "microbiome sequencing kits",
+    "p": 0.25
+   },
+   {
+    "phrase": "home vaginal",
+    "p": 0.17
+   },
+   {
+    "phrase": "sequencing kits",
+    "p": 0.16
+   },
+   {
+    "phrase": "vaginal microbiome",
+    "p": 0.15
+   },
+   {
+    "phrase": "microbiome sequencing",
+    "p": 0.15
+   },
+   {
+    "phrase": "sequencing",
+    "p": 0.09
+   },
+   {
+    "phrase": "order at home",
+    "p": 0.09
+   },
+   {
+    "phrase": "kits",
+    "p": 0.09
+   },
+   {
+    "phrase": "vaginal",
+    "p": 0.07
+   },
+   {
+    "phrase": "microbiome",
+    "p": 0.07
+   },
+   {
+    "phrase": "order",
+    "p": 0.05
+   },
+   {
+    "phrase": "home",
+    "p": 0.04
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f29f217f69b981887141120179",
+  "usage": {
+   "input_tokens": 2376,
+   "output_tokens": 288
+  },
+  "cost_usd": 0.00009979200000000001,
+  "duration_ms": 193
+ },
+ "cand-tlxpqgndmsr1kgik": {
+  "keywords": [
+   "scent stacking",
+   "layering multiple perfumes"
+  ],
+  "ranked": [
+   {
+    "phrase": "scent stacking",
+    "p": 0.85
+   },
+   {
+    "phrase": "stacking",
+    "p": 0.71
+   },
+   {
+    "phrase": "layering multiple perfumes",
+    "p": 0.68
+   },
+   {
+    "phrase": "personalized signature scents",
+    "p": 0.35
+   },
+   {
+    "phrase": "layering",
+    "p": 0.25
+   },
+   {
+    "phrase": "layering multiple",
+    "p": 0.2
+   },
+   {
+    "phrase": "signature scents",
+    "p": 0.19
+   },
+   {
+    "phrase": "create personalized signature",
+    "p": 0.16
+   },
+   {
+    "phrase": "personalized signature",
+    "p": 0.14
+   },
+   {
+    "phrase": "multiple perfumes",
+    "p": 0.13
+   },
+   {
+    "phrase": "perfumes to create",
+    "p": 0.09
+   },
+   {
+    "phrase": "signature",
+    "p": 0.08
+   },
+   {
+    "phrase": "perfumes",
+    "p": 0.07
+   },
+   {
+    "phrase": "create personalized",
+    "p": 0.06
+   },
+   {
+    "phrase": "scent",
+    "p": 0.06
+   },
+   {
+    "phrase": "fragrance",
+    "p": 0.06
+   },
+   {
+    "phrase": "fragrance as affordable",
+    "p": 0.05
+   },
+   {
+    "phrase": "personalized",
+    "p": 0.05
+   },
+   {
+    "phrase": "scents",
+    "p": 0.05
+   },
+   {
+    "phrase": "affordable luxury",
+    "p": 0.04
+   },
+   {
+    "phrase": "multiple",
+    "p": 0.04
+   },
+   {
+    "phrase": "create",
+    "p": 0.03
+   },
+   {
+    "phrase": "luxury",
+    "p": 0.03
+   },
+   {
+    "phrase": "affordable",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f2a07e7b2484834e8bbe5dc5be",
+  "usage": {
+   "input_tokens": 3854,
+   "output_tokens": 498
+  },
+  "cost_usd": 0.000161868,
+  "duration_ms": 189
+ },
+ "cand-zxrs7jm4mraqaj5o": {
+  "keywords": [
+   "wearable cooling accessories"
+  ],
+  "ranked": [
+   {
+    "phrase": "wearable cooling accessories",
+    "p": 0.82
+   },
+   {
+    "phrase": "wearable cooling",
+    "p": 0.42
+   },
+   {
+    "phrase": "cooling accessories",
+    "p": 0.33
+   },
+   {
+    "phrase": "personal acs",
+    "p": 0.18
+   },
+   {
+    "phrase": "styling portable fans",
+    "p": 0.17
+   },
+   {
+    "phrase": "portable fans",
+    "p": 0.16
+   },
+   {
+    "phrase": "portable evaporative coolers",
+    "p": 0.16
+   },
+   {
+    "phrase": "mini portable evaporative",
+    "p": 0.14
+   },
+   {
+    "phrase": "evaporative coolers",
+    "p": 0.12
+   },
+   {
+    "phrase": "portable evaporative",
+    "p": 0.11
+   },
+   {
+    "phrase": "coolers and personal",
+    "p": 0.11
+   },
+   {
+    "phrase": "coolers",
+    "p": 0.11
+   },
+   {
+    "phrase": "fans",
+    "p": 0.1
+   },
+   {
+    "phrase": "mini portable",
+    "p": 0.09
+   },
+   {
+    "phrase": "fans as visible",
+    "p": 0.09
+   },
+   {
+    "phrase": "visible fashion accessories",
+    "p": 0.09
+   },
+   {
+    "phrase": "wearable",
+    "p": 0.09
+   },
+   {
+    "phrase": "cooling",
+    "p": 0.08
+   },
+   {
+    "phrase": "accessories",
+    "p": 0.07
+   },
+   {
+    "phrase": "styling portable",
+    "p": 0.07
+   },
+   {
+    "phrase": "fashion accessories",
+    "p": 0.06
+   },
+   {
+    "phrase": "evaporative",
+    "p": 0.06
+   },
+   {
+    "phrase": "portable",
+    "p": 0.05
+   },
+   {
+    "phrase": "visible fashion",
+    "p": 0.05
+   },
+   {
+    "phrase": "mini",
+    "p": 0.05
+   },
+   {
+    "phrase": "personal",
+    "p": 0.05
+   },
+   {
+    "phrase": "fashion",
+    "p": 0.04
+   },
+   {
+    "phrase": "styling",
+    "p": 0.03
+   },
+   {
+    "phrase": "visible",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f2b9407a0a987ede9e312b26d2",
+  "usage": {
+   "input_tokens": 4569,
+   "output_tokens": 603
+  },
+  "cost_usd": 0.000191898,
+  "duration_ms": 247
+ },
+ "cand-ycugb9bfmrdl5oqk": {
+  "keywords": [
+   "tinted mineral spfs",
+   "oxide tinted spfs"
+  ],
+  "ranked": [
+   {
+    "phrase": "tinted mineral spfs",
+    "p": 0.67
+   },
+   {
+    "phrase": "oxide tinted spfs",
+    "p": 0.52
+   },
+   {
+    "phrase": "tinted spfs",
+    "p": 0.43
+   },
+   {
+    "phrase": "iron oxide tinted",
+    "p": 0.39
+   },
+   {
+    "phrase": "tinted mineral",
+    "p": 0.3
+   },
+   {
+    "phrase": "oxide tinted",
+    "p": 0.21
+   },
+   {
+    "phrase": "mineral spfs",
+    "p": 0.16
+   },
+   {
+    "phrase": "iron oxide",
+    "p": 0.14
+   },
+   {
+    "phrase": "prevent white cast",
+    "p": 0.14
+   },
+   {
+    "phrase": "avoid white cast",
+    "p": 0.13
+   },
+   {
+    "phrase": "cast on melanin",
+    "p": 0.12
+   },
+   {
+    "phrase": "tinted",
+    "p": 0.11
+   },
+   {
+    "phrase": "spfs to prevent",
+    "p": 0.11
+   },
+   {
+    "phrase": "spfs to avoid",
+    "p": 0.1
+   },
+   {
+    "phrase": "spfs",
+    "p": 0.09
+   },
+   {
+    "phrase": "white cast",
+    "p": 0.08
+   },
+   {
+    "phrase": "cast on darker",
+    "p": 0.08
+   },
+   {
+    "phrase": "iron",
+    "p": 0.08
+   },
+   {
+    "phrase": "prevent white",
+    "p": 0.08
+   },
+   {
+    "phrase": "avoid white",
+    "p": 0.06
+   },
+   {
+    "phrase": "oxide",
+    "p": 0.06
+   },
+   {
+    "phrase": "cast",
+    "p": 0.05
+   },
+   {
+    "phrase": "melanin rich",
+    "p": 0.05
+   },
+   {
+    "phrase": "melanin rich skin",
+    "p": 0.05
+   },
+   {
+    "phrase": "white",
+    "p": 0.04
+   },
+   {
+    "phrase": "darker skin",
+    "p": 0.04
+   },
+   {
+    "phrase": "skin",
+    "p": 0.03
+   },
+   {
+    "phrase": "darker",
+    "p": 0.03
+   },
+   {
+    "phrase": "rich skin",
+    "p": 0.03
+   },
+   {
+    "phrase": "avoid",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f2c5387428954f24adec2b407c",
+  "usage": {
+   "input_tokens": 4723,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000198366,
+  "duration_ms": 189
+ },
+ "cand-ig06a2hemqwfvdac": {
+  "keywords": [
+   "sensemaxxing"
+  ],
+  "ranked": [
+   {
+    "phrase": "sensemaxxing",
+    "p": 0.83
+   },
+   {
+    "phrase": "sensemaxxing multi sensory",
+    "p": 0.68
+   },
+   {
+    "phrase": "sensemaxxing multi",
+    "p": 0.53
+   },
+   {
+    "phrase": "extreme texture inclusions",
+    "p": 0.2
+   },
+   {
+    "phrase": "beverage texture innovation",
+    "p": 0.14
+   },
+   {
+    "phrase": "texture inclusions",
+    "p": 0.13
+   },
+   {
+    "phrase": "multi sensory food",
+    "p": 0.11
+   },
+   {
+    "phrase": "innovation with inclusions",
+    "p": 0.11
+   },
+   {
+    "phrase": "extreme texture",
+    "p": 0.1
+   },
+   {
+    "phrase": "texture innovation",
+    "p": 0.1
+   },
+   {
+    "phrase": "multi sensory",
+    "p": 0.09
+   },
+   {
+    "phrase": "beverage texture",
+    "p": 0.09
+   },
+   {
+    "phrase": "beverages via extreme",
+    "p": 0.09
+   },
+   {
+    "phrase": "inclusions",
+    "p": 0.08
+   },
+   {
+    "phrase": "sensory food",
+    "p": 0.08
+   },
+   {
+    "phrase": "texture",
+    "p": 0.06
+   },
+   {
+    "phrase": "sensory",
+    "p": 0.05
+   },
+   {
+    "phrase": "food and beverages",
+    "p": 0.04
+   },
+   {
+    "phrase": "beverages",
+    "p": 0.04
+   },
+   {
+    "phrase": "extreme",
+    "p": 0.04
+   },
+   {
+    "phrase": "beverage",
+    "p": 0.04
+   },
+   {
+    "phrase": "innovation",
+    "p": 0.04
+   },
+   {
+    "phrase": "multi",
+    "p": 0.03
+   },
+   {
+    "phrase": "food",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f2dcb97839989a6753d20d2efa",
+  "usage": {
+   "input_tokens": 3867,
+   "output_tokens": 498
+  },
+  "cost_usd": 0.00016241400000000002,
+  "duration_ms": 268
+ },
+ "cand-jedqrbs1mt200vmm": {
+  "keywords": [
+   "vagus stim wearables"
+  ],
+  "ranked": [
+   {
+    "phrase": "vagus stim wearables",
+    "p": 0.62
+   },
+   {
+    "phrase": "vagus stim",
+    "p": 0.45
+   },
+   {
+    "phrase": "vagus nerve stimulators",
+    "p": 0.4
+   },
+   {
+    "phrase": "pressing vagus stim",
+    "p": 0.37
+   },
+   {
+    "phrase": "wearing vagus nerve",
+    "p": 0.26
+   },
+   {
+    "phrase": "stim wearables",
+    "p": 0.24
+   },
+   {
+    "phrase": "wearing vagus",
+    "p": 0.22
+   },
+   {
+    "phrase": "nerve stimulators",
+    "p": 0.18
+   },
+   {
+    "phrase": "pressing vagus",
+    "p": 0.17
+   },
+   {
+    "phrase": "stimulators",
+    "p": 0.15
+   },
+   {
+    "phrase": "vagus",
+    "p": 0.1
+   },
+   {
+    "phrase": "vagus nerve",
+    "p": 0.09
+   },
+   {
+    "phrase": "demand stress relief",
+    "p": 0.09
+   },
+   {
+    "phrase": "demand calm",
+    "p": 0.08
+   },
+   {
+    "phrase": "demand stress",
+    "p": 0.05
+   },
+   {
+    "phrase": "stress relief",
+    "p": 0.05
+   },
+   {
+    "phrase": "nerve",
+    "p": 0.05
+   },
+   {
+    "phrase": "wearing",
+    "p": 0.04
+   },
+   {
+    "phrase": "stress",
+    "p": 0.04
+   },
+   {
+    "phrase": "demand",
+    "p": 0.03
+   },
+   {
+    "phrase": "relief",
+    "p": 0.03
+   },
+   {
+    "phrase": "probiotic nasal",
+    "p": 0.02
+   },
+   {
+    "phrase": "nasal sprays",
+    "p": 0.02
+   },
+   {
+    "phrase": "nasal microbiome",
+    "p": 0.02
+   },
+   {
+    "phrase": "microbiome care",
+    "p": 0.02
+   },
+   {
+    "phrase": "probiotic nasal sprays",
+    "p": 0.02
+   },
+   {
+    "phrase": "nasal microbiome care",
+    "p": 0.02
+   },
+   {
+    "phrase": "probiotic",
+    "p": 0.02
+   },
+   {
+    "phrase": "nasal",
+    "p": 0.02
+   },
+   {
+    "phrase": "sprays",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f2dd777ea7ab5664e2aa5c9327",
+  "usage": {
+   "input_tokens": 4742,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000199164,
+  "duration_ms": 209
+ },
+ "cand-dvbgrzbpmtnfjptn": {
+  "keywords": [
+   "press on nails"
+  ],
+  "ranked": [
+   {
+    "phrase": "press on nails",
+    "p": 0.47
+   },
+   {
+    "phrase": "nails as salon",
+    "p": 0.19
+   },
+   {
+    "phrase": "premium press",
+    "p": 0.18
+   },
+   {
+    "phrase": "salon manicure replacements",
+    "p": 0.18
+   },
+   {
+    "phrase": "manicure replacements",
+    "p": 0.14
+   },
+   {
+    "phrase": "press",
+    "p": 0.1
+   },
+   {
+    "phrase": "salon manicure",
+    "p": 0.07
+   },
+   {
+    "phrase": "nails",
+    "p": 0.07
+   },
+   {
+    "phrase": "manicure",
+    "p": 0.06
+   },
+   {
+    "phrase": "premium",
+    "p": 0.05
+   },
+   {
+    "phrase": "replacements",
+    "p": 0.05
+   },
+   {
+    "phrase": "salon",
+    "p": 0.04
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f2e89671bbbc7172bb0f50fa8e",
+  "usage": {
+   "input_tokens": 2026,
+   "output_tokens": 246
+  },
+  "cost_usd": 0.000085092,
+  "duration_ms": 175
+ },
+ "cand-wc3x9icrmsef6onu": {
+  "keywords": [
+   "glp 1 companion"
+  ],
+  "ranked": [
+   {
+    "phrase": "glp 1 companion",
+    "p": 0.44
+   },
+   {
+    "phrase": "companion foods",
+    "p": 0.24
+   },
+   {
+    "phrase": "companion beverage",
+    "p": 0.22
+   },
+   {
+    "phrase": "1 companion foods",
+    "p": 0.22
+   },
+   {
+    "phrase": "companion beverage adoption",
+    "p": 0.21
+   },
+   {
+    "phrase": "1 companion beverage",
+    "p": 0.19
+   },
+   {
+    "phrase": "glp 1",
+    "p": 0.14
+   },
+   {
+    "phrase": "1 companion",
+    "p": 0.13
+   },
+   {
+    "phrase": "companion",
+    "p": 0.1
+   },
+   {
+    "phrase": "beverage adoption",
+    "p": 0.08
+   },
+   {
+    "phrase": "foods and beverages",
+    "p": 0.08
+   },
+   {
+    "phrase": "beverages",
+    "p": 0.06
+   },
+   {
+    "phrase": "foods",
+    "p": 0.05
+   },
+   {
+    "phrase": "beverage",
+    "p": 0.05
+   },
+   {
+    "phrase": "ai driven food",
+    "p": 0.04
+   },
+   {
+    "phrase": "adoption",
+    "p": 0.04
+   },
+   {
+    "phrase": "food decisions",
+    "p": 0.03
+   },
+   {
+    "phrase": "food",
+    "p": 0.03
+   },
+   {
+    "phrase": "decisions",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f2f49d7b82b7c01ca8ad130a34",
+  "usage": {
+   "input_tokens": 3134,
+   "output_tokens": 393
+  },
+  "cost_usd": 0.000131628,
+  "duration_ms": 175
+ },
+ "cand-4kuoror9mt8ffrg2": {
+  "keywords": [
+   "pistachio flavor layering"
+  ],
+  "ranked": [
+   {
+    "phrase": "pistachio flavor layering",
+    "p": 0.76
+   },
+   {
+    "phrase": "pistachio flavor",
+    "p": 0.14
+   },
+   {
+    "phrase": "pistachio",
+    "p": 0.13
+   },
+   {
+    "phrase": "layering in confections",
+    "p": 0.13
+   },
+   {
+    "phrase": "flavor layering",
+    "p": 0.08
+   },
+   {
+    "phrase": "confections and beverages",
+    "p": 0.07
+   },
+   {
+    "phrase": "layering",
+    "p": 0.06
+   },
+   {
+    "phrase": "layering in foods",
+    "p": 0.06
+   },
+   {
+    "phrase": "flavor",
+    "p": 0.04
+   },
+   {
+    "phrase": "confections",
+    "p": 0.04
+   },
+   {
+    "phrase": "beverages",
+    "p": 0.04
+   },
+   {
+    "phrase": "foods drinks",
+    "p": 0.03
+   },
+   {
+    "phrase": "drinks",
+    "p": 0.03
+   },
+   {
+    "phrase": "foods",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f2ffb174ac9833de27fb2c4f96",
+  "usage": {
+   "input_tokens": 2390,
+   "output_tokens": 288
+  },
+  "cost_usd": 0.00010038,
+  "duration_ms": 199
+ },
+ "cand-j9u1j205mp702jyn": {
+  "keywords": [
+   "nerve stimulation wearables"
+  ],
+  "ranked": [
+   {
+    "phrase": "nerve stimulation wearables",
+    "p": 0.41
+   },
+   {
+    "phrase": "vagus nerve stimulation",
+    "p": 0.29
+   },
+   {
+    "phrase": "stimulation wearables",
+    "p": 0.25
+   },
+   {
+    "phrase": "electrical vagus",
+    "p": 0.23
+   },
+   {
+    "phrase": "electrical vagus nerve",
+    "p": 0.23
+   },
+   {
+    "phrase": "nerve stimulation devices",
+    "p": 0.2
+   },
+   {
+    "phrase": "wearables for nervous",
+    "p": 0.19
+   },
+   {
+    "phrase": "nervous system training",
+    "p": 0.14
+   },
+   {
+    "phrase": "vagus nerve",
+    "p": 0.13
+   },
+   {
+    "phrase": "nerve stimulation",
+    "p": 0.13
+   },
+   {
+    "phrase": "vagus",
+    "p": 0.13
+   },
+   {
+    "phrase": "stress fitness",
+    "p": 0.12
+   },
+   {
+    "phrase": "stimulation devices",
+    "p": 0.12
+   },
+   {
+    "phrase": "stress fitness neurowellness",
+    "p": 0.12
+   },
+   {
+    "phrase": "neurowellness",
+    "p": 0.11
+   },
+   {
+    "phrase": "fitness neurowellness",
+    "p": 0.11
+   },
+   {
+    "phrase": "neurowellness and stress",
+    "p": 0.1
+   },
+   {
+    "phrase": "stimulation",
+    "p": 0.08
+   },
+   {
+    "phrase": "wearables",
+    "p": 0.07
+   },
+   {
+    "phrase": "system training",
+    "p": 0.06
+   },
+   {
+    "phrase": "electrical",
+    "p": 0.06
+   },
+   {
+    "phrase": "devices",
+    "p": 0.06
+   },
+   {
+    "phrase": "nerve",
+    "p": 0.05
+   },
+   {
+    "phrase": "fitness",
+    "p": 0.04
+   },
+   {
+    "phrase": "nervous system",
+    "p": 0.04
+   },
+   {
+    "phrase": "training",
+    "p": 0.04
+   },
+   {
+    "phrase": "stress",
+    "p": 0.03
+   },
+   {
+    "phrase": "nervous",
+    "p": 0.03
+   },
+   {
+    "phrase": "system",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f30b427ceb9183228a650d8dba",
+  "usage": {
+   "input_tokens": 4615,
+   "output_tokens": 603
+  },
+  "cost_usd": 0.00019383,
+  "duration_ms": 200
+ },
+ "cand-8zeuk1dzmpxlayp5": {
+  "keywords": [
+   "magnesium adaptogen sleep"
+  ],
+  "ranked": [
+   {
+    "phrase": "magnesium adaptogen sleep",
+    "p": 0.41
+   },
+   {
+    "phrase": "melatonin free magnesium",
+    "p": 0.38
+   },
+   {
+    "phrase": "adaptogen sleep beverages",
+    "p": 0.31
+   },
+   {
+    "phrase": "melatonin free nighttime",
+    "p": 0.27
+   },
+   {
+    "phrase": "free magnesium adaptogen",
+    "p": 0.26
+   },
+   {
+    "phrase": "magnesium adaptogen",
+    "p": 0.23
+   },
+   {
+    "phrase": "adaptogen sleep",
+    "p": 0.21
+   },
+   {
+    "phrase": "nighttime recovery drinks",
+    "p": 0.17
+   },
+   {
+    "phrase": "melatonin free",
+    "p": 0.16
+   },
+   {
+    "phrase": "sleep beverages",
+    "p": 0.15
+   },
+   {
+    "phrase": "free nighttime recovery",
+    "p": 0.13
+   },
+   {
+    "phrase": "nighttime recovery",
+    "p": 0.1
+   },
+   {
+    "phrase": "mood support drinks",
+    "p": 0.1
+   },
+   {
+    "phrase": "free magnesium",
+    "p": 0.08
+   },
+   {
+    "phrase": "recovery drinks",
+    "p": 0.08
+   },
+   {
+    "phrase": "free nighttime",
+    "p": 0.07
+   },
+   {
+    "phrase": "magnesium",
+    "p": 0.07
+   },
+   {
+    "phrase": "adaptogen",
+    "p": 0.07
+   },
+   {
+    "phrase": "melatonin",
+    "p": 0.06
+   },
+   {
+    "phrase": "mood support",
+    "p": 0.06
+   },
+   {
+    "phrase": "support drinks",
+    "p": 0.06
+   },
+   {
+    "phrase": "calming and mood",
+    "p": 0.06
+   },
+   {
+    "phrase": "beverages",
+    "p": 0.05
+   },
+   {
+    "phrase": "calming",
+    "p": 0.05
+   },
+   {
+    "phrase": "free",
+    "p": 0.04
+   },
+   {
+    "phrase": "drinks",
+    "p": 0.04
+   },
+   {
+    "phrase": "sleep",
+    "p": 0.04
+   },
+   {
+    "phrase": "nighttime",
+    "p": 0.04
+   },
+   {
+    "phrase": "mood",
+    "p": 0.03
+   },
+   {
+    "phrase": "support",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f3174e74bcaba9dc3124d2100c",
+  "usage": {
+   "input_tokens": 4735,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.00019887000000000003,
+  "duration_ms": 201
+ },
+ "cand-yu6asju1mqfxh0ak": {
+  "keywords": [
+   "prebiotic instant tea"
+  ],
+  "ranked": [
+   {
+    "phrase": "prebiotic instant tea",
+    "p": 0.34
+   },
+   {
+    "phrase": "fiber enriched instant",
+    "p": 0.3
+   },
+   {
+    "phrase": "enriched instant beverages",
+    "p": 0.25
+   },
+   {
+    "phrase": "prebiotic instant",
+    "p": 0.22
+   },
+   {
+    "phrase": "mixing prebiotic instant",
+    "p": 0.21
+   },
+   {
+    "phrase": "beverages for gut",
+    "p": 0.14
+   },
+   {
+    "phrase": "instant tea powders",
+    "p": 0.14
+   },
+   {
+    "phrase": "enriched instant",
+    "p": 0.13
+   },
+   {
+    "phrase": "fiber enriched",
+    "p": 0.12
+   },
+   {
+    "phrase": "mixing prebiotic",
+    "p": 0.11
+   },
+   {
+    "phrase": "instant tea",
+    "p": 0.11
+   },
+   {
+    "phrase": "tea powders",
+    "p": 0.1
+   },
+   {
+    "phrase": "instant beverages",
+    "p": 0.09
+   },
+   {
+    "phrase": "prebiotic",
+    "p": 0.08
+   },
+   {
+    "phrase": "fiber",
+    "p": 0.07
+   },
+   {
+    "phrase": "instant",
+    "p": 0.06
+   },
+   {
+    "phrase": "gut health",
+    "p": 0.06
+   },
+   {
+    "phrase": "powders",
+    "p": 0.06
+   },
+   {
+    "phrase": "enriched",
+    "p": 0.05
+   },
+   {
+    "phrase": "beverages",
+    "p": 0.05
+   },
+   {
+    "phrase": "mixing",
+    "p": 0.04
+   },
+   {
+    "phrase": "cup dining surge",
+    "p": 0.03
+   },
+   {
+    "phrase": "health",
+    "p": 0.03
+   },
+   {
+    "phrase": "world cup",
+    "p": 0.02
+   },
+   {
+    "phrase": "cup dining",
+    "p": 0.02
+   },
+   {
+    "phrase": "dining surge",
+    "p": 0.02
+   },
+   {
+    "phrase": "world cup dining",
+    "p": 0.02
+   },
+   {
+    "phrase": "world",
+    "p": 0.02
+   },
+   {
+    "phrase": "dining",
+    "p": 0.02
+   },
+   {
+    "phrase": "surge",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f322a0753dbeb3cfc96c56c0b0",
+  "usage": {
+   "input_tokens": 4715,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.00019803,
+  "duration_ms": 181
+ },
+ "cand-asgxsqxjmsenrgkw": {
+  "keywords": [
+   "aesthetic pet food"
+  ],
+  "ranked": [
+   {
+    "phrase": "aesthetic pet food",
+    "p": 0.26
+   },
+   {
+    "phrase": "pet food storage",
+    "p": 0.16
+   },
+   {
+    "phrase": "feeding solutions blending",
+    "p": 0.15
+   },
+   {
+    "phrase": "aesthetic pet",
+    "p": 0.14
+   },
+   {
+    "phrase": "feeding solutions",
+    "p": 0.13
+   },
+   {
+    "phrase": "storage and feeding",
+    "p": 0.13
+   },
+   {
+    "phrase": "pet care design",
+    "p": 0.13
+   },
+   {
+    "phrase": "food storage",
+    "p": 0.1
+   },
+   {
+    "phrase": "care design",
+    "p": 0.08
+   },
+   {
+    "phrase": "thoughtful pet care",
+    "p": 0.08
+   },
+   {
+    "phrase": "pet food",
+    "p": 0.07
+   },
+   {
+    "phrase": "storage",
+    "p": 0.07
+   },
+   {
+    "phrase": "feeding",
+    "p": 0.07
+   },
+   {
+    "phrase": "solutions blending",
+    "p": 0.06
+   },
+   {
+    "phrase": "home decor",
+    "p": 0.06
+   },
+   {
+    "phrase": "thoughtful pet",
+    "p": 0.06
+   },
+   {
+    "phrase": "blending into home",
+    "p": 0.06
+   },
+   {
+    "phrase": "aesthetic",
+    "p": 0.06
+   },
+   {
+    "phrase": "pet care",
+    "p": 0.05
+   },
+   {
+    "phrase": "solutions",
+    "p": 0.05
+   },
+   {
+    "phrase": "decor",
+    "p": 0.05
+   },
+   {
+    "phrase": "design",
+    "p": 0.05
+   },
+   {
+    "phrase": "food",
+    "p": 0.04
+   },
+   {
+    "phrase": "blending",
+    "p": 0.04
+   },
+   {
+    "phrase": "home",
+    "p": 0.03
+   },
+   {
+    "phrase": "thoughtful",
+    "p": 0.03
+   },
+   {
+    "phrase": "care",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f32d6478579ffbf92a5306d48e",
+  "usage": {
+   "input_tokens": 4221,
+   "output_tokens": 561
+  },
+  "cost_usd": 0.000177282,
+  "duration_ms": 233
+ },
+ "cand-qeska2aimrnzjc1c": {
+  "keywords": [
+   "pop up padel"
+  ],
+  "ranked": [
+   {
+    "phrase": "pop up padel",
+    "p": 0.42
+   },
+   {
+    "phrase": "courts at retail",
+    "p": 0.23
+   },
+   {
+    "phrase": "courts at stores",
+    "p": 0.23
+   },
+   {
+    "phrase": "sport activations pop",
+    "p": 0.16
+   },
+   {
+    "phrase": "padel courts",
+    "p": 0.13
+   },
+   {
+    "phrase": "hosted sport activations",
+    "p": 0.11
+   },
+   {
+    "phrase": "activations pop",
+    "p": 0.1
+   },
+   {
+    "phrase": "booking brand hosted",
+    "p": 0.1
+   },
+   {
+    "phrase": "brand hosted sport",
+    "p": 0.1
+   },
+   {
+    "phrase": "padel",
+    "p": 0.09
+   },
+   {
+    "phrase": "sport activations",
+    "p": 0.08
+   },
+   {
+    "phrase": "courts",
+    "p": 0.06
+   },
+   {
+    "phrase": "retail flagships",
+    "p": 0.06
+   },
+   {
+    "phrase": "booking brand",
+    "p": 0.06
+   },
+   {
+    "phrase": "brand hosted",
+    "p": 0.06
+   },
+   {
+    "phrase": "hosted sport",
+    "p": 0.06
+   },
+   {
+    "phrase": "activations",
+    "p": 0.06
+   },
+   {
+    "phrase": "flagships",
+    "p": 0.05
+   },
+   {
+    "phrase": "booking",
+    "p": 0.04
+   },
+   {
+    "phrase": "retail",
+    "p": 0.03
+   },
+   {
+    "phrase": "brand",
+    "p": 0.03
+   },
+   {
+    "phrase": "hosted",
+    "p": 0.03
+   },
+   {
+    "phrase": "sport",
+    "p": 0.03
+   },
+   {
+    "phrase": "stores",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f338c0710ab6f1f002e665c7df",
+  "usage": {
+   "input_tokens": 3821,
+   "output_tokens": 498
+  },
+  "cost_usd": 0.000160482,
+  "duration_ms": 210
+ },
+ "cand-js3cb4k4mtwyi26x": {
+  "keywords": [
+   "nad telehealth subscriptions",
+   "home nad telehealth"
+  ],
+  "ranked": [
+   {
+    "phrase": "nad telehealth subscriptions",
+    "p": 0.65
+   },
+   {
+    "phrase": "home nad telehealth",
+    "p": 0.56
+   },
+   {
+    "phrase": "home nad nasal",
+    "p": 0.38
+   },
+   {
+    "phrase": "nad telehealth",
+    "p": 0.37
+   },
+   {
+    "phrase": "home nad",
+    "p": 0.31
+   },
+   {
+    "phrase": "nad nasal sprays",
+    "p": 0.23
+   },
+   {
+    "phrase": "nad nasal",
+    "p": 0.21
+   },
+   {
+    "phrase": "telehealth subscriptions",
+    "p": 0.17
+   },
+   {
+    "phrase": "nasal sprays injectables",
+    "p": 0.14
+   },
+   {
+    "phrase": "sprays injectables",
+    "p": 0.11
+   },
+   {
+    "phrase": "nasal sprays",
+    "p": 0.09
+   },
+   {
+    "phrase": "telehealth",
+    "p": 0.07
+   },
+   {
+    "phrase": "injectables",
+    "p": 0.07
+   },
+   {
+    "phrase": "subscriptions",
+    "p": 0.06
+   },
+   {
+    "phrase": "sprays",
+    "p": 0.06
+   },
+   {
+    "phrase": "nasal",
+    "p": 0.05
+   },
+   {
+    "phrase": "home",
+    "p": 0.04
+   },
+   {
+    "phrase": "subscribe",
+    "p": 0.04
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f3399173519852799282214332",
+  "usage": {
+   "input_tokens": 2964,
+   "output_tokens": 372
+  },
+  "cost_usd": 0.000124488,
+  "duration_ms": 182
+ },
+ "cand-ouy3cgawmtblqu1r": {
+  "keywords": [
+   "shopping prestige beauty"
+  ],
+  "ranked": [
+   {
+    "phrase": "shopping prestige beauty",
+    "p": 0.35
+   },
+   {
+    "phrase": "retailers target beauty",
+    "p": 0.24
+   },
+   {
+    "phrase": "beauty at mass",
+    "p": 0.22
+   },
+   {
+    "phrase": "target beauty",
+    "p": 0.21
+   },
+   {
+    "phrase": "target beauty studio",
+    "p": 0.2
+   },
+   {
+    "phrase": "skincare at mass",
+    "p": 0.19
+   },
+   {
+    "phrase": "market target beauty",
+    "p": 0.17
+   },
+   {
+    "phrase": "shopping prestige",
+    "p": 0.16
+   },
+   {
+    "phrase": "prestige beauty",
+    "p": 0.15
+   },
+   {
+    "phrase": "brands at mass",
+    "p": 0.13
+   },
+   {
+    "phrase": "mass market target",
+    "p": 0.13
+   },
+   {
+    "phrase": "mass retailers target",
+    "p": 0.13
+   },
+   {
+    "phrase": "prestige skincare",
+    "p": 0.12
+   },
+   {
+    "phrase": "prestige and emerging",
+    "p": 0.12
+   },
+   {
+    "phrase": "beauty studio",
+    "p": 0.11
+   },
+   {
+    "phrase": "retailers target",
+    "p": 0.09
+   },
+   {
+    "phrase": "emerging beauty brands",
+    "p": 0.09
+   },
+   {
+    "phrase": "target",
+    "p": 0.08
+   },
+   {
+    "phrase": "prestige",
+    "p": 0.07
+   },
+   {
+    "phrase": "emerging beauty",
+    "p": 0.07
+   },
+   {
+    "phrase": "mass retailers",
+    "p": 0.06
+   },
+   {
+    "phrase": "beauty brands",
+    "p": 0.06
+   },
+   {
+    "phrase": "beauty",
+    "p": 0.05
+   },
+   {
+    "phrase": "studio",
+    "p": 0.05
+   },
+   {
+    "phrase": "mass market",
+    "p": 0.05
+   },
+   {
+    "phrase": "market target",
+    "p": 0.05
+   },
+   {
+    "phrase": "mass",
+    "p": 0.04
+   },
+   {
+    "phrase": "shopping",
+    "p": 0.04
+   },
+   {
+    "phrase": "retailers",
+    "p": 0.03
+   },
+   {
+    "phrase": "emerging",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f34fb5735da6f0c514efbe1990",
+  "usage": {
+   "input_tokens": 4709,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.00019777800000000002,
+  "duration_ms": 293
+ },
+ "cand-zf2qdr4jmri18626": {
+  "keywords": [
+   "removable heat blocking"
+  ],
+  "ranked": [
+   {
+    "phrase": "removable heat blocking",
+    "p": 0.38
+   },
+   {
+    "phrase": "blocking window film",
+    "p": 0.34
+   },
+   {
+    "phrase": "heat blocking window",
+    "p": 0.28
+   },
+   {
+    "phrase": "film for summer",
+    "p": 0.23
+   },
+   {
+    "phrase": "window film",
+    "p": 0.22
+   },
+   {
+    "phrase": "applying removable heat",
+    "p": 0.2
+   },
+   {
+    "phrase": "heat blocking",
+    "p": 0.14
+   },
+   {
+    "phrase": "blocking window",
+    "p": 0.13
+   },
+   {
+    "phrase": "film",
+    "p": 0.13
+   },
+   {
+    "phrase": "removable heat",
+    "p": 0.11
+   },
+   {
+    "phrase": "applying removable",
+    "p": 0.1
+   },
+   {
+    "phrase": "summer cooling",
+    "p": 0.07
+   },
+   {
+    "phrase": "blocking",
+    "p": 0.06
+   },
+   {
+    "phrase": "removable",
+    "p": 0.05
+   },
+   {
+    "phrase": "window",
+    "p": 0.05
+   },
+   {
+    "phrase": "cooling",
+    "p": 0.05
+   },
+   {
+    "phrase": "applying",
+    "p": 0.04
+   },
+   {
+    "phrase": "heat",
+    "p": 0.04
+   },
+   {
+    "phrase": "summer",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f35b847ce8ba5f8ff74711377e",
+  "usage": {
+   "input_tokens": 3088,
+   "output_tokens": 393
+  },
+  "cost_usd": 0.000129696,
+  "duration_ms": 371
+ },
+ "cand-q1gi9punmrcsm7nd": {
+  "keywords": [
+   "olive oil shots"
+  ],
+  "ranked": [
+   {
+    "phrase": "olive oil shots",
+    "p": 0.88
+   },
+   {
+    "phrase": "oil shots",
+    "p": 0.49
+   },
+   {
+    "phrase": "oil shots fad",
+    "p": 0.47
+   },
+   {
+    "phrase": "shots",
+    "p": 0.17
+   },
+   {
+    "phrase": "drinking extra virgin",
+    "p": 0.17
+   },
+   {
+    "phrase": "shots fad",
+    "p": 0.16
+   },
+   {
+    "phrase": "wellness shot",
+    "p": 0.16
+   },
+   {
+    "phrase": "extra virgin olive",
+    "p": 0.14
+   },
+   {
+    "phrase": "shot",
+    "p": 0.14
+   },
+   {
+    "phrase": "olive oil",
+    "p": 0.12
+   },
+   {
+    "phrase": "virgin olive oil",
+    "p": 0.12
+   },
+   {
+    "phrase": "drinking extra",
+    "p": 0.1
+   },
+   {
+    "phrase": "virgin olive",
+    "p": 0.1
+   },
+   {
+    "phrase": "olive",
+    "p": 0.09
+   },
+   {
+    "phrase": "extra virgin",
+    "p": 0.08
+   },
+   {
+    "phrase": "fad or wellness",
+    "p": 0.06
+   },
+   {
+    "phrase": "drinking",
+    "p": 0.06
+   },
+   {
+    "phrase": "wellness staple",
+    "p": 0.05
+   },
+   {
+    "phrase": "extra",
+    "p": 0.05
+   },
+   {
+    "phrase": "virgin",
+    "p": 0.05
+   },
+   {
+    "phrase": "wellness",
+    "p": 0.03
+   },
+   {
+    "phrase": "staple",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f366787c33a8f839617ab292fd",
+  "usage": {
+   "input_tokens": 3544,
+   "output_tokens": 456
+  },
+  "cost_usd": 0.00014884799999999998,
+  "duration_ms": 195
+ },
+ "cand-hsvr0erqmrgg2o4j": {
+  "keywords": [
+   "beauty centric travel"
+  ],
+  "ranked": [
+   {
+    "phrase": "beauty centric travel",
+    "p": 0.36
+   },
+   {
+    "phrase": "abroad for aesthetic",
+    "p": 0.26
+   },
+   {
+    "phrase": "glowmads",
+    "p": 0.23
+   },
+   {
+    "phrase": "glowmads beauty",
+    "p": 0.21
+   },
+   {
+    "phrase": "glowmads beauty centric",
+    "p": 0.2
+   },
+   {
+    "phrase": "aesthetic and skincare",
+    "p": 0.14
+   },
+   {
+    "phrase": "beauty centric",
+    "p": 0.11
+   },
+   {
+    "phrase": "centric travel",
+    "p": 0.1
+   },
+   {
+    "phrase": "skincare treatments",
+    "p": 0.1
+   },
+   {
+    "phrase": "traveling abroad",
+    "p": 0.08
+   },
+   {
+    "phrase": "aesthetic",
+    "p": 0.08
+   },
+   {
+    "phrase": "skincare",
+    "p": 0.07
+   },
+   {
+    "phrase": "treatments",
+    "p": 0.06
+   },
+   {
+    "phrase": "beauty",
+    "p": 0.05
+   },
+   {
+    "phrase": "traveling",
+    "p": 0.05
+   },
+   {
+    "phrase": "travel",
+    "p": 0.04
+   },
+   {
+    "phrase": "abroad",
+    "p": 0.04
+   },
+   {
+    "phrase": "centric",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f3711b7e60a13b24dfc03a487a",
+  "usage": {
+   "input_tokens": 2980,
+   "output_tokens": 372
+  },
+  "cost_usd": 0.00012516,
+  "duration_ms": 213
+ },
+ "cand-fgb3rsxxmp5hpbxg": {
+  "keywords": [
+   "swangy flavor mashups"
+  ],
+  "ranked": [
+   {
+    "phrase": "swangy flavor mashups",
+    "p": 0.52
+   },
+   {
+    "phrase": "swangy flavor",
+    "p": 0.49
+   },
+   {
+    "phrase": "swangy sweet spicy",
+    "p": 0.48
+   },
+   {
+    "phrase": "swangy",
+    "p": 0.38
+   },
+   {
+    "phrase": "sweet spicy tangy",
+    "p": 0.28
+   },
+   {
+    "phrase": "swangy sweet",
+    "p": 0.25
+   },
+   {
+    "phrase": "candy sweet heat",
+    "p": 0.25
+   },
+   {
+    "phrase": "sweet heat flavors",
+    "p": 0.24
+   },
+   {
+    "phrase": "flavor mashups",
+    "p": 0.18
+   },
+   {
+    "phrase": "spicy tangy flavors",
+    "p": 0.18
+   },
+   {
+    "phrase": "sweet heat",
+    "p": 0.16
+   },
+   {
+    "phrase": "sweet spicy",
+    "p": 0.15
+   },
+   {
+    "phrase": "spicy tangy",
+    "p": 0.15
+   },
+   {
+    "phrase": "street candy sweet",
+    "p": 0.15
+   },
+   {
+    "phrase": "rtds with street",
+    "p": 0.14
+   },
+   {
+    "phrase": "street candy",
+    "p": 0.11
+   },
+   {
+    "phrase": "candy sweet",
+    "p": 0.1
+   },
+   {
+    "phrase": "flavors in rtd",
+    "p": 0.1
+   },
+   {
+    "phrase": "bar strength rtds",
+    "p": 0.1
+   },
+   {
+    "phrase": "tangy flavors",
+    "p": 0.07
+   },
+   {
+    "phrase": "strength rtds",
+    "p": 0.07
+   },
+   {
+    "phrase": "heat flavors",
+    "p": 0.07
+   },
+   {
+    "phrase": "rtd beverages",
+    "p": 0.06
+   },
+   {
+    "phrase": "tangy",
+    "p": 0.06
+   },
+   {
+    "phrase": "flavors",
+    "p": 0.05
+   },
+   {
+    "phrase": "bar strength",
+    "p": 0.05
+   },
+   {
+    "phrase": "beverages and snacks",
+    "p": 0.05
+   },
+   {
+    "phrase": "spicy",
+    "p": 0.05
+   },
+   {
+    "phrase": "sweet",
+    "p": 0.04
+   },
+   {
+    "phrase": "beverages",
+    "p": 0.04
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f37c19762a87ec525b6679d768",
+  "usage": {
+   "input_tokens": 4749,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000199458,
+  "duration_ms": 228
+ },
+ "cand-czgsywt6ms3b4o69": {
+  "keywords": [
+   "savory umami cocktails"
+  ],
+  "ranked": [
+   {
+    "phrase": "savory umami cocktails",
+    "p": 0.71
+   },
+   {
+    "phrase": "umami cocktails",
+    "p": 0.69
+   },
+   {
+    "phrase": "mixing savory umami",
+    "p": 0.46
+   },
+   {
+    "phrase": "umami ingredients miso",
+    "p": 0.25
+   },
+   {
+    "phrase": "ingredients miso seaweed",
+    "p": 0.24
+   },
+   {
+    "phrase": "mixing savory",
+    "p": 0.23
+   },
+   {
+    "phrase": "miso seaweed",
+    "p": 0.2
+   },
+   {
+    "phrase": "savory umami",
+    "p": 0.19
+   },
+   {
+    "phrase": "savory and umami",
+    "p": 0.15
+   },
+   {
+    "phrase": "ingredients miso",
+    "p": 0.12
+   },
+   {
+    "phrase": "seaweed in home",
+    "p": 0.12
+   },
+   {
+    "phrase": "umami ingredients",
+    "p": 0.11
+   },
+   {
+    "phrase": "umami",
+    "p": 0.1
+   },
+   {
+    "phrase": "home mixology",
+    "p": 0.1
+   },
+   {
+    "phrase": "miso",
+    "p": 0.08
+   },
+   {
+    "phrase": "savory",
+    "p": 0.07
+   },
+   {
+    "phrase": "mixology",
+    "p": 0.07
+   },
+   {
+    "phrase": "cocktails",
+    "p": 0.07
+   },
+   {
+    "phrase": "wine customization",
+    "p": 0.06
+   },
+   {
+    "phrase": "spicy wine customization",
+    "p": 0.06
+   },
+   {
+    "phrase": "seaweed",
+    "p": 0.06
+   },
+   {
+    "phrase": "mixing",
+    "p": 0.06
+   },
+   {
+    "phrase": "spicy wine",
+    "p": 0.05
+   },
+   {
+    "phrase": "ingredients",
+    "p": 0.04
+   },
+   {
+    "phrase": "customization",
+    "p": 0.04
+   },
+   {
+    "phrase": "home",
+    "p": 0.03
+   },
+   {
+    "phrase": "spicy",
+    "p": 0.03
+   },
+   {
+    "phrase": "wine",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f386f5748993f30783320b36fe",
+  "usage": {
+   "input_tokens": 4451,
+   "output_tokens": 582
+  },
+  "cost_usd": 0.000186942,
+  "duration_ms": 199
+ },
+ "cand-7bx93236ms90uelp": {
+  "keywords": [
+   "topical exosome serums"
+  ],
+  "ranked": [
+   {
+    "phrase": "topical exosome serums",
+    "p": 0.75
+   },
+   {
+    "phrase": "exosome serums",
+    "p": 0.57
+   },
+   {
+    "phrase": "topical exosome",
+    "p": 0.42
+   },
+   {
+    "phrase": "exosome",
+    "p": 0.24
+   },
+   {
+    "phrase": "liquid microneedling",
+    "p": 0.11
+   },
+   {
+    "phrase": "spicule serums",
+    "p": 0.09
+   },
+   {
+    "phrase": "liquid microneedling effects",
+    "p": 0.09
+   },
+   {
+    "phrase": "skin regeneration",
+    "p": 0.08
+   },
+   {
+    "phrase": "spicule",
+    "p": 0.08
+   },
+   {
+    "phrase": "serums",
+    "p": 0.07
+   },
+   {
+    "phrase": "serums for skin",
+    "p": 0.07
+   },
+   {
+    "phrase": "serums for liquid",
+    "p": 0.06
+   },
+   {
+    "phrase": "microneedling",
+    "p": 0.06
+   },
+   {
+    "phrase": "regeneration",
+    "p": 0.05
+   },
+   {
+    "phrase": "microneedling effects",
+    "p": 0.05
+   },
+   {
+    "phrase": "topical",
+    "p": 0.05
+   },
+   {
+    "phrase": "skin",
+    "p": 0.03
+   },
+   {
+    "phrase": "liquid",
+    "p": 0.03
+   },
+   {
+    "phrase": "effects",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f3923d7224be733fe30e9a695a",
+  "usage": {
+   "input_tokens": 3140,
+   "output_tokens": 393
+  },
+  "cost_usd": 0.00013188,
+  "duration_ms": 192
+ },
+ "cand-yfzm4xesmr568v3c": {
+  "keywords": [
+   "grocery tourism"
+  ],
+  "ranked": [
+   {
+    "phrase": "grocery tourism",
+    "p": 0.88
+   },
+   {
+    "phrase": "grocery tourism traveling",
+    "p": 0.64
+   },
+   {
+    "phrase": "grocery tourism planning",
+    "p": 0.55
+   },
+   {
+    "phrase": "haul novel cpg",
+    "p": 0.27
+   },
+   {
+    "phrase": "haul novel",
+    "p": 0.11
+   },
+   {
+    "phrase": "tourism planning",
+    "p": 0.11
+   },
+   {
+    "phrase": "tourism traveling abroad",
+    "p": 0.11
+   },
+   {
+    "phrase": "abroad to haul",
+    "p": 0.1
+   },
+   {
+    "phrase": "grocery",
+    "p": 0.09
+   },
+   {
+    "phrase": "tourism",
+    "p": 0.09
+   },
+   {
+    "phrase": "tourism traveling",
+    "p": 0.09
+   },
+   {
+    "phrase": "novel cpg",
+    "p": 0.09
+   },
+   {
+    "phrase": "shelf discovery",
+    "p": 0.09
+   },
+   {
+    "phrase": "haul",
+    "p": 0.09
+   },
+   {
+    "phrase": "novel cpg products",
+    "p": 0.08
+   },
+   {
+    "phrase": "products from supermarkets",
+    "p": 0.08
+   },
+   {
+    "phrase": "traveling abroad",
+    "p": 0.06
+   },
+   {
+    "phrase": "planning",
+    "p": 0.06
+   },
+   {
+    "phrase": "cpg products",
+    "p": 0.05
+   },
+   {
+    "phrase": "traveling",
+    "p": 0.04
+   },
+   {
+    "phrase": "supermarkets",
+    "p": 0.04
+   },
+   {
+    "phrase": "shelf",
+    "p": 0.04
+   },
+   {
+    "phrase": "discovery",
+    "p": 0.04
+   },
+   {
+    "phrase": "abroad",
+    "p": 0.03
+   },
+   {
+    "phrase": "novel",
+    "p": 0.03
+   },
+   {
+    "phrase": "products",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f39d8b7918bb5e37aac0165c84",
+  "usage": {
+   "input_tokens": 4146,
+   "output_tokens": 540
+  },
+  "cost_usd": 0.000174132,
+  "duration_ms": 200
+ },
+ "cand-3lsjb4dfmq65ybxy": {
+  "keywords": [
+   "gourmand cosmetics layering",
+   "layering gourmand cosmetics"
+  ],
+  "ranked": [
+   {
+    "phrase": "gourmand cosmetics layering",
+    "p": 0.84
+   },
+   {
+    "phrase": "layering gourmand cosmetics",
+    "p": 0.83
+   },
+   {
+    "phrase": "layering gourmand",
+    "p": 0.59
+   },
+   {
+    "phrase": "gourmand cosmetics food",
+    "p": 0.36
+   },
+   {
+    "phrase": "gourmand cosmetics",
+    "p": 0.35
+   },
+   {
+    "phrase": "food inspired makeup",
+    "p": 0.33
+   },
+   {
+    "phrase": "cosmetics food inspired",
+    "p": 0.31
+   },
+   {
+    "phrase": "food inspired beauty",
+    "p": 0.29
+   },
+   {
+    "phrase": "edible beauty",
+    "p": 0.25
+   },
+   {
+    "phrase": "skincare with edible",
+    "p": 0.2
+   },
+   {
+    "phrase": "gourmand",
+    "p": 0.19
+   },
+   {
+    "phrase": "food inspired",
+    "p": 0.18
+   },
+   {
+    "phrase": "inspired makeup skincare",
+    "p": 0.18
+   },
+   {
+    "phrase": "ingredients edible beauty",
+    "p": 0.18
+   },
+   {
+    "phrase": "cosmetics food",
+    "p": 0.17
+   },
+   {
+    "phrase": "beauty ingredients edible",
+    "p": 0.17
+   },
+   {
+    "phrase": "cosmetics layering",
+    "p": 0.15
+   },
+   {
+    "phrase": "edible scents",
+    "p": 0.13
+   },
+   {
+    "phrase": "ingredients edible",
+    "p": 0.12
+   },
+   {
+    "phrase": "inspired beauty ingredients",
+    "p": 0.12
+   },
+   {
+    "phrase": "inspired makeup",
+    "p": 0.11
+   },
+   {
+    "phrase": "layering",
+    "p": 0.1
+   },
+   {
+    "phrase": "edible",
+    "p": 0.09
+   },
+   {
+    "phrase": "inspired beauty",
+    "p": 0.07
+   },
+   {
+    "phrase": "makeup skincare",
+    "p": 0.06
+   },
+   {
+    "phrase": "cosmetics",
+    "p": 0.05
+   },
+   {
+    "phrase": "food",
+    "p": 0.05
+   },
+   {
+    "phrase": "beauty ingredients",
+    "p": 0.05
+   },
+   {
+    "phrase": "beauty innovations",
+    "p": 0.05
+   },
+   {
+    "phrase": "inspired",
+    "p": 0.04
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f39e54752b8b022f6db1afab45",
+  "usage": {
+   "input_tokens": 4764,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.00020008799999999999,
+  "duration_ms": 223
+ },
+ "cand-2bteyisfms71f40x": {
+  "keywords": [
+   "nordic walking"
+  ],
+  "ranked": [
+   {
+    "phrase": "nordic walking",
+    "p": 0.57
+   },
+   {
+    "phrase": "nordic walking poles",
+    "p": 0.31
+   },
+   {
+    "phrase": "nordic",
+    "p": 0.2
+   },
+   {
+    "phrase": "walking poles",
+    "p": 0.18
+   },
+   {
+    "phrase": "poles for full",
+    "p": 0.16
+   },
+   {
+    "phrase": "poles for low",
+    "p": 0.12
+   },
+   {
+    "phrase": "full body walks",
+    "p": 0.11
+   },
+   {
+    "phrase": "poles",
+    "p": 0.1
+   },
+   {
+    "phrase": "full body outdoor",
+    "p": 0.07
+   },
+   {
+    "phrase": "body outdoor walks",
+    "p": 0.07
+   },
+   {
+    "phrase": "low impact full",
+    "p": 0.07
+   },
+   {
+    "phrase": "impact full body",
+    "p": 0.07
+   },
+   {
+    "phrase": "walking",
+    "p": 0.06
+   },
+   {
+    "phrase": "walks",
+    "p": 0.06
+   },
+   {
+    "phrase": "outdoor walks",
+    "p": 0.06
+   },
+   {
+    "phrase": "body walks",
+    "p": 0.06
+   },
+   {
+    "phrase": "full body",
+    "p": 0.04
+   },
+   {
+    "phrase": "low impact",
+    "p": 0.04
+   },
+   {
+    "phrase": "body outdoor",
+    "p": 0.03
+   },
+   {
+    "phrase": "impact full",
+    "p": 0.03
+   },
+   {
+    "phrase": "outdoor",
+    "p": 0.03
+   },
+   {
+    "phrase": "full",
+    "p": 0.02
+   },
+   {
+    "phrase": "body",
+    "p": 0.02
+   },
+   {
+    "phrase": "impact",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f3b53873ffbfee586915f12df1",
+  "usage": {
+   "input_tokens": 3803,
+   "output_tokens": 498
+  },
+  "cost_usd": 0.00015972599999999998,
+  "duration_ms": 261
+ },
+ "cand-r67orx7mmt1rdm69": {
+  "keywords": [
+   "purse guys"
+  ],
+  "ranked": [
+   {
+    "phrase": "purse guys",
+    "p": 0.67
+   },
+   {
+    "phrase": "handbags purse guys",
+    "p": 0.61
+   },
+   {
+    "phrase": "luxury crossbody",
+    "p": 0.24
+   },
+   {
+    "phrase": "men adopting micro",
+    "p": 0.21
+   },
+   {
+    "phrase": "luxury crossbody bags",
+    "p": 0.21
+   },
+   {
+    "phrase": "luxury handbags purse",
+    "p": 0.17
+   },
+   {
+    "phrase": "micro and luxury",
+    "p": 0.16
+   },
+   {
+    "phrase": "guys",
+    "p": 0.14
+   },
+   {
+    "phrase": "crossbody bags",
+    "p": 0.13
+   },
+   {
+    "phrase": "purse",
+    "p": 0.13
+   },
+   {
+    "phrase": "handbags purse",
+    "p": 0.12
+   },
+   {
+    "phrase": "luxury handbags",
+    "p": 0.09
+   },
+   {
+    "phrase": "crossbody",
+    "p": 0.09
+   },
+   {
+    "phrase": "handbags",
+    "p": 0.09
+   },
+   {
+    "phrase": "micro",
+    "p": 0.08
+   },
+   {
+    "phrase": "bags",
+    "p": 0.06
+   },
+   {
+    "phrase": "luxury",
+    "p": 0.04
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f3b5ee73a280ac8a67821baca0",
+  "usage": {
+   "input_tokens": 2809,
+   "output_tokens": 351
+  },
+  "cost_usd": 0.000117978,
+  "duration_ms": 175
+ },
+ "cand-l4n7phtmmu5rti52": {
+  "keywords": [
+   "looksmaxxing facial optimization"
+  ],
+  "ranked": [
+   {
+    "phrase": "looksmaxxing facial optimization",
+    "p": 0.4
+   },
+   {
+    "phrase": "looksmaxxing facial",
+    "p": 0.23
+   },
+   {
+    "phrase": "looksmaxxing",
+    "p": 0.23
+   },
+   {
+    "phrase": "adoption of looksmaxxing",
+    "p": 0.23
+   },
+   {
+    "phrase": "facial optimization routines",
+    "p": 0.19
+   },
+   {
+    "phrase": "facial optimization",
+    "p": 0.18
+   },
+   {
+    "phrase": "optimization routines",
+    "p": 0.09
+   },
+   {
+    "phrase": "mainstream female adoption",
+    "p": 0.09
+   },
+   {
+    "phrase": "optimization",
+    "p": 0.06
+   },
+   {
+    "phrase": "female adoption",
+    "p": 0.06
+   },
+   {
+    "phrase": "facial",
+    "p": 0.04
+   },
+   {
+    "phrase": "routines",
+    "p": 0.04
+   },
+   {
+    "phrase": "mainstream female",
+    "p": 0.04
+   },
+   {
+    "phrase": "adoption",
+    "p": 0.04
+   },
+   {
+    "phrase": "mainstream",
+    "p": 0.03
+   },
+   {
+    "phrase": "female",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f3c10c722e9c1ae82ab9b230d3",
+  "usage": {
+   "input_tokens": 2678,
+   "output_tokens": 330
+  },
+  "cost_usd": 0.000112476,
+  "duration_ms": 211
+ },
+ "cand-5rpgm0z7mokqklqv": {
+  "keywords": [
+   "telehealth peptide stacking"
+  ],
+  "ranked": [
+   {
+    "phrase": "telehealth peptide stacking",
+    "p": 0.91
+   },
+   {
+    "phrase": "telehealth prescribes peptides",
+    "p": 0.33
+   },
+   {
+    "phrase": "telehealth peptide",
+    "p": 0.31
+   },
+   {
+    "phrase": "peptide stacking",
+    "p": 0.31
+   },
+   {
+    "phrase": "prescribes peptides",
+    "p": 0.17
+   },
+   {
+    "phrase": "telehealth prescribes",
+    "p": 0.13
+   },
+   {
+    "phrase": "stacking",
+    "p": 0.13
+   },
+   {
+    "phrase": "peptides",
+    "p": 0.1
+   },
+   {
+    "phrase": "peptide",
+    "p": 0.09
+   },
+   {
+    "phrase": "telehealth",
+    "p": 0.07
+   },
+   {
+    "phrase": "prescribes",
+    "p": 0.05
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f3cbe07c278f73e1fbcd7252ed",
+  "usage": {
+   "input_tokens": 2094,
+   "output_tokens": 225
+  },
+  "cost_usd": 0.000087948,
+  "duration_ms": 183
+ },
+ "cand-tpwe2jwjmsxh2u0v": {
+  "keywords": [
+   "applying lime plaster"
+  ],
+  "ranked": [
+   {
+    "phrase": "applying lime plaster",
+    "p": 0.4
+   },
+   {
+    "phrase": "lime plaster",
+    "p": 0.28
+   },
+   {
+    "phrase": "plaster for textured",
+    "p": 0.24
+   },
+   {
+    "phrase": "applying lime",
+    "p": 0.18
+   },
+   {
+    "phrase": "textured interior walls",
+    "p": 0.14
+   },
+   {
+    "phrase": "plaster",
+    "p": 0.13
+   },
+   {
+    "phrase": "lime",
+    "p": 0.11
+   },
+   {
+    "phrase": "raw earth textures",
+    "p": 0.09
+   },
+   {
+    "phrase": "textured interior",
+    "p": 0.08
+   },
+   {
+    "phrase": "earth textures",
+    "p": 0.08
+   },
+   {
+    "phrase": "texture first crafting",
+    "p": 0.08
+   },
+   {
+    "phrase": "texture first",
+    "p": 0.07
+   },
+   {
+    "phrase": "raw earth",
+    "p": 0.06
+   },
+   {
+    "phrase": "textured",
+    "p": 0.05
+   },
+   {
+    "phrase": "texture",
+    "p": 0.05
+   },
+   {
+    "phrase": "textures",
+    "p": 0.05
+   },
+   {
+    "phrase": "interior walls",
+    "p": 0.04
+   },
+   {
+    "phrase": "first crafting",
+    "p": 0.04
+   },
+   {
+    "phrase": "applying",
+    "p": 0.04
+   },
+   {
+    "phrase": "walls",
+    "p": 0.04
+   },
+   {
+    "phrase": "earth",
+    "p": 0.04
+   },
+   {
+    "phrase": "interior",
+    "p": 0.03
+   },
+   {
+    "phrase": "crafting",
+    "p": 0.03
+   },
+   {
+    "phrase": "first",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f3d722794bb102f39d152259cd",
+  "usage": {
+   "input_tokens": 3803,
+   "output_tokens": 498
+  },
+  "cost_usd": 0.00015972599999999998,
+  "duration_ms": 235
+ },
+ "cand-8tiebei2mp840jsl": {
+  "keywords": [
+   "wearable cramp patch",
+   "cramp patch underwear"
+  ],
+  "ranked": [
+   {
+    "phrase": "wearable cramp patch",
+    "p": 0.79
+   },
+   {
+    "phrase": "cramp patch underwear",
+    "p": 0.73
+   },
+   {
+    "phrase": "wearable adhesive cramp",
+    "p": 0.61
+   },
+   {
+    "phrase": "cramp patch",
+    "p": 0.57
+   },
+   {
+    "phrase": "adhesive cramp relief",
+    "p": 0.5
+   },
+   {
+    "phrase": "cramp relief patches",
+    "p": 0.44
+   },
+   {
+    "phrase": "patch underwear adhered",
+    "p": 0.38
+   },
+   {
+    "phrase": "wearable cramp",
+    "p": 0.37
+   },
+   {
+    "phrase": "adhesive cramp",
+    "p": 0.35
+   },
+   {
+    "phrase": "patch underwear",
+    "p": 0.32
+   },
+   {
+    "phrase": "underwear adhered pain",
+    "p": 0.32
+   },
+   {
+    "phrase": "adhered pain relief",
+    "p": 0.17
+   },
+   {
+    "phrase": "relief patches",
+    "p": 0.16
+   },
+   {
+    "phrase": "underwear adhered",
+    "p": 0.15
+   },
+   {
+    "phrase": "cramp relief",
+    "p": 0.14
+   },
+   {
+    "phrase": "wearable adhesive",
+    "p": 0.12
+   },
+   {
+    "phrase": "patches",
+    "p": 0.12
+   },
+   {
+    "phrase": "patch",
+    "p": 0.12
+   },
+   {
+    "phrase": "adhered pain",
+    "p": 0.1
+   },
+   {
+    "phrase": "cramp",
+    "p": 0.09
+   },
+   {
+    "phrase": "wearable",
+    "p": 0.07
+   },
+   {
+    "phrase": "pain relief",
+    "p": 0.06
+   },
+   {
+    "phrase": "adhesive",
+    "p": 0.06
+   },
+   {
+    "phrase": "relief",
+    "p": 0.05
+   },
+   {
+    "phrase": "adhered",
+    "p": 0.05
+   },
+   {
+    "phrase": "underwear",
+    "p": 0.04
+   },
+   {
+    "phrase": "pain",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f3e1d97814b4fd8215dfe81769",
+  "usage": {
+   "input_tokens": 4322,
+   "output_tokens": 561
+  },
+  "cost_usd": 0.00018152400000000002,
+  "duration_ms": 202
+ },
+ "cand-rbxj0cxomp840jsl": {
+  "keywords": [
+   "intranasal nad sprays"
+  ],
+  "ranked": [
+   {
+    "phrase": "intranasal nad sprays",
+    "p": 0.64
+   },
+   {
+    "phrase": "intranasal nad",
+    "p": 0.41
+   },
+   {
+    "phrase": "nad sprays",
+    "p": 0.38
+   },
+   {
+    "phrase": "sprays for cognitive",
+    "p": 0.18
+   },
+   {
+    "phrase": "sprays for energy",
+    "p": 0.13
+   },
+   {
+    "phrase": "energy cognitive boost",
+    "p": 0.11
+   },
+   {
+    "phrase": "intranasal",
+    "p": 0.09
+   },
+   {
+    "phrase": "sprays",
+    "p": 0.08
+   },
+   {
+    "phrase": "cognitive energy",
+    "p": 0.07
+   },
+   {
+    "phrase": "energy cognitive",
+    "p": 0.07
+   },
+   {
+    "phrase": "cognitive boost",
+    "p": 0.06
+   },
+   {
+    "phrase": "energy",
+    "p": 0.04
+   },
+   {
+    "phrase": "cognitive",
+    "p": 0.03
+   },
+   {
+    "phrase": "boost",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f3f7a17020950775dce52227ac",
+  "usage": {
+   "input_tokens": 2433,
+   "output_tokens": 288
+  },
+  "cost_usd": 0.00010218599999999999,
+  "duration_ms": 269
+ },
+ "cand-bvp7t306mpzksmz7": {
+  "keywords": [
+   "taking chitosan supplements"
+  ],
+  "ranked": [
+   {
+    "phrase": "taking chitosan supplements",
+    "p": 0.43
+   },
+   {
+    "phrase": "chitosan supplements",
+    "p": 0.31
+   },
+   {
+    "phrase": "taking chitosan",
+    "p": 0.29
+   },
+   {
+    "phrase": "supplements for microplastic",
+    "p": 0.29
+   },
+   {
+    "phrase": "microplastic detox",
+    "p": 0.24
+   },
+   {
+    "phrase": "take microplastic binding",
+    "p": 0.24
+   },
+   {
+    "phrase": "microplastic binding supplements",
+    "p": 0.23
+   },
+   {
+    "phrase": "chitosan",
+    "p": 0.2
+   },
+   {
+    "phrase": "microplastic binding",
+    "p": 0.15
+   },
+   {
+    "phrase": "take microplastic",
+    "p": 0.13
+   },
+   {
+    "phrase": "microplastics mitigation rituals",
+    "p": 0.11
+   },
+   {
+    "phrase": "microplastics mitigation",
+    "p": 0.1
+   },
+   {
+    "phrase": "binding supplements",
+    "p": 0.1
+   },
+   {
+    "phrase": "mitigation rituals",
+    "p": 0.08
+   },
+   {
+    "phrase": "microplastic",
+    "p": 0.07
+   },
+   {
+    "phrase": "supplements to manage",
+    "p": 0.06
+   },
+   {
+    "phrase": "detox",
+    "p": 0.06
+   },
+   {
+    "phrase": "microplastics",
+    "p": 0.06
+   },
+   {
+    "phrase": "supplements",
+    "p": 0.05
+   },
+   {
+    "phrase": "binding",
+    "p": 0.05
+   },
+   {
+    "phrase": "manage exposure",
+    "p": 0.04
+   },
+   {
+    "phrase": "mitigation",
+    "p": 0.04
+   },
+   {
+    "phrase": "rituals",
+    "p": 0.04
+   },
+   {
+    "phrase": "taking",
+    "p": 0.03
+   },
+   {
+    "phrase": "take",
+    "p": 0.03
+   },
+   {
+    "phrase": "exposure",
+    "p": 0.03
+   },
+   {
+    "phrase": "manage",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f40295791e8baf98a7beecb37c",
+  "usage": {
+   "input_tokens": 4320,
+   "output_tokens": 561
+  },
+  "cost_usd": 0.00018144,
+  "duration_ms": 194
+ },
+ "cand-w1zftg5hmt4gjdg8": {
+  "keywords": [
+   "self tanning blush"
+  ],
+  "ranked": [
+   {
+    "phrase": "self tanning blush",
+    "p": 0.69
+   },
+   {
+    "phrase": "tanning blush",
+    "p": 0.55
+   },
+   {
+    "phrase": "multi day cheek",
+    "p": 0.2
+   },
+   {
+    "phrase": "blush for multi",
+    "p": 0.15
+   },
+   {
+    "phrase": "apply self tanning",
+    "p": 0.13
+   },
+   {
+    "phrase": "self tanning",
+    "p": 0.1
+   },
+   {
+    "phrase": "blush",
+    "p": 0.1
+   },
+   {
+    "phrase": "day cheek color",
+    "p": 0.08
+   },
+   {
+    "phrase": "cheek color",
+    "p": 0.07
+   },
+   {
+    "phrase": "multi day",
+    "p": 0.06
+   },
+   {
+    "phrase": "tanning",
+    "p": 0.06
+   },
+   {
+    "phrase": "apply self",
+    "p": 0.06
+   },
+   {
+    "phrase": "day cheek",
+    "p": 0.05
+   },
+   {
+    "phrase": "self",
+    "p": 0.04
+   },
+   {
+    "phrase": "cheek",
+    "p": 0.04
+   },
+   {
+    "phrase": "multi",
+    "p": 0.03
+   },
+   {
+    "phrase": "color",
+    "p": 0.03
+   },
+   {
+    "phrase": "apply",
+    "p": 0.03
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f40d827d9ea6fd249a2d2dfc38",
+  "usage": {
+   "input_tokens": 2943,
+   "output_tokens": 372
+  },
+  "cost_usd": 0.000123606,
+  "duration_ms": 421
+ },
+ "cand-07g7opihmrjawva5": {
+  "keywords": [
+   "plastic free prestige"
+  ],
+  "ranked": [
+   {
+    "phrase": "plastic free prestige",
+    "p": 0.6
+   },
+   {
+    "phrase": "plastic free luxury",
+    "p": 0.38
+   },
+   {
+    "phrase": "free prestige makeup",
+    "p": 0.27
+   },
+   {
+    "phrase": "plastic free makeup",
+    "p": 0.26
+   },
+   {
+    "phrase": "free luxury makeup",
+    "p": 0.25
+   },
+   {
+    "phrase": "fully plastic free",
+    "p": 0.19
+   },
+   {
+    "phrase": "selecting plastic free",
+    "p": 0.15
+   },
+   {
+    "phrase": "plastic free",
+    "p": 0.14
+   },
+   {
+    "phrase": "free prestige",
+    "p": 0.11
+   },
+   {
+    "phrase": "free luxury",
+    "p": 0.1
+   },
+   {
+    "phrase": "fully plastic",
+    "p": 0.1
+   },
+   {
+    "phrase": "makeup in prestige",
+    "p": 0.09
+   },
+   {
+    "phrase": "prestige makeup",
+    "p": 0.08
+   },
+   {
+    "phrase": "luxury makeup",
+    "p": 0.08
+   },
+   {
+    "phrase": "selecting plastic",
+    "p": 0.07
+   },
+   {
+    "phrase": "free makeup",
+    "p": 0.07
+   },
+   {
+    "phrase": "makeup at sephora",
+    "p": 0.07
+   },
+   {
+    "phrase": "plastic",
+    "p": 0.06
+   },
+   {
+    "phrase": "makeup",
+    "p": 0.05
+   },
+   {
+    "phrase": "prestige",
+    "p": 0.05
+   },
+   {
+    "phrase": "prestige retail",
+    "p": 0.05
+   },
+   {
+    "phrase": "free",
+    "p": 0.04
+   },
+   {
+    "phrase": "luxury",
+    "p": 0.04
+   },
+   {
+    "phrase": "sephora",
+    "p": 0.04
+   },
+   {
+    "phrase": "selecting",
+    "p": 0.03
+   },
+   {
+    "phrase": "fully",
+    "p": 0.03
+   },
+   {
+    "phrase": "retail",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f4193b71159b81edac5b969d1b",
+  "usage": {
+   "input_tokens": 4268,
+   "output_tokens": 561
+  },
+  "cost_usd": 0.00017925599999999998,
+  "duration_ms": 211
+ },
+ "cand-c9rrhclrmrznmlmu": {
+  "keywords": [
+   "skinifying hands",
+   "hand creams retinol"
+  ],
+  "ranked": [
+   {
+    "phrase": "skinifying hands",
+    "p": 0.55
+   },
+   {
+    "phrase": "hand creams retinol",
+    "p": 0.55
+   },
+   {
+    "phrase": "active hand creams",
+    "p": 0.36
+   },
+   {
+    "phrase": "skinifying",
+    "p": 0.36
+   },
+   {
+    "phrase": "creams retinol bakuchiol",
+    "p": 0.29
+   },
+   {
+    "phrase": "actives retinol bakuchiol",
+    "p": 0.22
+   },
+   {
+    "phrase": "creams retinol",
+    "p": 0.2
+   },
+   {
+    "phrase": "retinol bakuchiol",
+    "p": 0.17
+   },
+   {
+    "phrase": "grade actives retinol",
+    "p": 0.17
+   },
+   {
+    "phrase": "actives retinol",
+    "p": 0.15
+   },
+   {
+    "phrase": "active hand",
+    "p": 0.15
+   },
+   {
+    "phrase": "face grade actives",
+    "p": 0.15
+   },
+   {
+    "phrase": "face grade",
+    "p": 0.11
+   },
+   {
+    "phrase": "bakuchiol",
+    "p": 0.1
+   },
+   {
+    "phrase": "hand creams",
+    "p": 0.09
+   },
+   {
+    "phrase": "retinol",
+    "p": 0.08
+   },
+   {
+    "phrase": "grade actives",
+    "p": 0.08
+   },
+   {
+    "phrase": "creams",
+    "p": 0.06
+   },
+   {
+    "phrase": "actives",
+    "p": 0.06
+   },
+   {
+    "phrase": "hand",
+    "p": 0.05
+   },
+   {
+    "phrase": "hands",
+    "p": 0.05
+   },
+   {
+    "phrase": "active",
+    "p": 0.05
+   },
+   {
+    "phrase": "face",
+    "p": 0.04
+   },
+   {
+    "phrase": "grade",
+    "p": 0.04
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f424097024b81bcd3e6a0b07e8",
+  "usage": {
+   "input_tokens": 3829,
+   "output_tokens": 498
+  },
+  "cost_usd": 0.00016081800000000002,
+  "duration_ms": 181
+ },
+ "cand-ibjcdz4smrdqvw5k": {
+  "keywords": [
+   "wet lash look"
+  ],
+  "ranked": [
+   {
+    "phrase": "wet lash look",
+    "p": 0.89
+   },
+   {
+    "phrase": "wet lash",
+    "p": 0.76
+   },
+   {
+    "phrase": "glossing lashes",
+    "p": 0.3
+   },
+   {
+    "phrase": "glossing",
+    "p": 0.18
+   },
+   {
+    "phrase": "lash look",
+    "p": 0.12
+   },
+   {
+    "phrase": "clear gels",
+    "p": 0.1
+   },
+   {
+    "phrase": "lash",
+    "p": 0.08
+   },
+   {
+    "phrase": "gels",
+    "p": 0.08
+   },
+   {
+    "phrase": "lashes",
+    "p": 0.07
+   },
+   {
+    "phrase": "clear",
+    "p": 0.05
+   },
+   {
+    "phrase": "look",
+    "p": 0.04
+   }
+  ],
+  "fell_back_below_half": false,
+  "request_id": "req_01a0e6f43b1a7943b19ae8cca9120589",
+  "usage": {
+   "input_tokens": 1928,
+   "output_tokens": 225
+  },
+  "cost_usd": 0.000080976,
+  "duration_ms": 244
+ },
+ "cand-i6b3cyc1mtblqu1r": {
+  "keywords": [
+   "astrotourism and storm"
+  ],
+  "ranked": [
+   {
+    "phrase": "astrotourism and storm",
+    "p": 0.43
+   },
+   {
+    "phrase": "natural phenomena astrotourism",
+    "p": 0.39
+   },
+   {
+    "phrase": "nature scarcity tourism",
+    "p": 0.3
+   },
+   {
+    "phrase": "phenomena astrotourism",
+    "p": 0.24
+   },
+   {
+    "phrase": "sky chasing",
+    "p": 0.23
+   },
+   {
+    "phrase": "astrotourism",
+    "p": 0.22
+   },
+   {
+    "phrase": "scarcity tourism",
+    "p": 0.2
+   },
+   {
+    "phrase": "storm chasing",
+    "p": 0.16
+   },
+   {
+    "phrase": "nature scarcity",
+    "p": 0.16
+   },
+   {
+    "phrase": "chasing and scarcity",
+    "p": 0.15
+   },
+   {
+    "phrase": "rare natural phenomena",
+    "p": 0.14
+   },
+   {
+    "phrase": "travel around rare",
+    "p": 0.13
+   },
+   {
+    "phrase": "chasing",
+    "p": 0.12
+   },
+   {
+    "phrase": "booking travel around",
+    "p": 0.09
+   },
+   {
+    "phrase": "around rare natural",
+    "p": 0.09
+   },
+   {
+    "phrase": "rare natural",
+    "p": 0.08
+   },
+   {
+    "phrase": "natural phenomena",
+    "p": 0.08
+   },
+   {
+    "phrase": "scarcity",
+    "p": 0.07
+   },
+   {
+    "phrase": "booking travel",
+    "p": 0.06
+   },
+   {
+    "phrase": "phenomena",
+    "p": 0.06
+   },
+   {
+    "phrase": "storm",
+    "p": 0.06
+   },
+   {
+    "phrase": "travel around",
+    "p": 0.05
+   },
+   {
+    "phrase": "around rare",
+    "p": 0.05
+   },
+   {
+    "phrase": "booking",
+    "p": 0.05
+   },
+   {
+    "phrase": "rare",
+    "p": 0.05
+   },
+   {
+    "phrase": "tourism",
+    "p": 0.04
+   },
+   {
+    "phrase": "travel",
+    "p": 0.04
+   },
+   {
+    "phrase": "natural",
+    "p": 0.04
+   },
+   {
+    "phrase": "nature",
+    "p": 0.04
+   },
+   {
+    "phrase": "around",
+    "p": 0.02
+   }
+  ],
+  "fell_back_below_half": true,
+  "request_id": "req_01a0e6f4466170b2a624e763b910bfb0",
+  "usage": {
+   "input_tokens": 4679,
+   "output_tokens": 624
+  },
+  "cost_usd": 0.000196518,
+  "duration_ms": 179
+ }
+}
