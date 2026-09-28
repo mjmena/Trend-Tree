@@ -4,7 +4,7 @@
 //
 // Reads the CSV (one row per variant/extra-image), collapses it to one row
 // per distinct product Handle, hands the result to the shared
-// agents/lib/catalog_transform.mjs planner alongside the current
+// services/lib/catalog_transform.mjs planner alongside the current
 // DIM_CATALOG_PRODUCT state, and executes the resulting upsert / delist
 // plan against Snowflake via the `snow` CLI (per this repo's convention:
 // `snow sql -c <connection>`, never `snowsql`). Idempotent — re-running
@@ -29,9 +29,8 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 
-import { collapseShopifyCsvRows, planCatalogUpsert, EMBED_MODEL } from "../agents/lib/catalog_transform.mjs";
-
-const DIM_TABLE = "MCC_PRESENTATION.TREND_AGENT.DIM_CATALOG_PRODUCT";
+import { collapseShopifyCsvRows, planCatalogUpsert } from "../services/lib/catalog_transform.mjs";
+import { buildDelistBatchSql, buildUpsertBatchSql, chunk, DIM_TABLE } from "../services/lib/catalog_sql.mjs";
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -186,103 +185,6 @@ function parseSnowJson(stdout) {
   return parsed;
 }
 
-function sqlLiteral(value) {
-  if (value === null || value === undefined) return "NULL";
-  // Snowflake's default single-quoted string-literal grammar treats
-  // backslash as an escape introducer (\n, \t, \\, \' ...) — unlike
-  // standard ANSI SQL, where '' is the only escape. Backslashes MUST be
-  // escaped first: doubling only the quotes would let a value ending in a
-  // backslash (e.g. "50% off\") swallow the closing quote via `\'` and
-  // desync the rest of the generated statement. Confirmed live in this
-  // exact seed CSV — 2 of the 187 products contain a backslash.
-  return `'${String(value).replace(/\\/g, "\\\\").replace(/'/g, "''")}'`;
-}
-
-function sqlBool(value) {
-  return value ? "TRUE" : "FALSE";
-}
-
-// ---------------------------------------------------------------------------
-// Batch SQL builders
-// ---------------------------------------------------------------------------
-
-// NOTE on batch atomicity: a single row exceeding a VARCHAR cap (TITLE
-// 1000 / VENDOR 255 / PRODUCT_TYPE 255 — see sql/dim_catalog_product.sql)
-// fails the whole batch's MERGE with no per-row isolation or retry, so nothing
-// in that batch lands, not just the offending row. Verified against the
-// 2026-08-20 seed CSV that no field is anywhere close to these caps (max
-// observed: title 235, vendor 26, type 30) — not a live risk today, but a
-// future export with materially longer fields could hit this.
-function buildUpsertBatchSql(batch, asOf) {
-  const values = batch
-    .map(
-      (u) =>
-        `(${[
-          sqlLiteral(u.tier),
-          sqlLiteral(u.catalogProductId),
-          sqlLiteral(u.title),
-          sqlLiteral(u.vendor),
-          sqlLiteral(u.type),
-          sqlLiteral(u.tags),
-          sqlLiteral(u.embedDoc),
-          sqlLiteral(u.embedDocHash),
-          sqlLiteral(u.embedDocVersion),
-          sqlBool(u.needsEmbed),
-          `TO_TIMESTAMP_NTZ(${sqlLiteral(asOf)})`,
-        ].join(",")})`,
-    )
-    .join(",\n    ");
-
-  return `
-MERGE INTO ${DIM_TABLE} AS tgt
-USING (
-  SELECT * FROM VALUES
-    ${values}
-  AS v(TIER, CATALOG_PRODUCT_ID, TITLE, VENDOR, PRODUCT_TYPE, TAGS, EMBED_DOC, EMBED_DOC_HASH, EMBED_DOC_VERSION, NEEDS_EMBED, LAST_SEEN_AT)
-) AS src
-ON tgt.TIER = src.TIER AND tgt.CATALOG_PRODUCT_ID = src.CATALOG_PRODUCT_ID
-WHEN MATCHED THEN UPDATE SET
-  TITLE = src.TITLE,
-  VENDOR = src.VENDOR,
-  PRODUCT_TYPE = src.PRODUCT_TYPE,
-  TAGS = src.TAGS,
-  EMBED_DOC = src.EMBED_DOC,
-  EMBED_DOC_HASH = src.EMBED_DOC_HASH,
-  EMBED_DOC_VERSION = src.EMBED_DOC_VERSION,
-  PRODUCT_VECTOR = CASE WHEN src.NEEDS_EMBED THEN SNOWFLAKE.CORTEX.EMBED_TEXT_1024('${EMBED_MODEL}', src.EMBED_DOC) ELSE tgt.PRODUCT_VECTOR END,
-  CATALOG_STATUS = 'active',
-  LAST_SEEN_AT = src.LAST_SEEN_AT,
-  UPDATED_AT = CURRENT_TIMESTAMP()
-WHEN NOT MATCHED THEN INSERT (
-  TIER, CATALOG_PRODUCT_ID, TITLE, VENDOR, PRODUCT_TYPE, TAGS, EMBED_DOC, EMBED_DOC_HASH, EMBED_DOC_VERSION,
-  PRODUCT_VECTOR, CATALOG_STATUS, FIRST_SEEN_AT, LAST_SEEN_AT, UPDATED_AT
-) VALUES (
-  src.TIER, src.CATALOG_PRODUCT_ID, src.TITLE, src.VENDOR, src.PRODUCT_TYPE, src.TAGS, src.EMBED_DOC, src.EMBED_DOC_HASH, src.EMBED_DOC_VERSION,
-  SNOWFLAKE.CORTEX.EMBED_TEXT_1024('${EMBED_MODEL}', src.EMBED_DOC), 'active', CURRENT_TIMESTAMP(), src.LAST_SEEN_AT, CURRENT_TIMESTAMP()
-);`.trim();
-}
-
-function buildDelistBatchSql(batch) {
-  const values = batch
-    .map((d) => `(${sqlLiteral(d.tier)},${sqlLiteral(d.catalogProductId)})`)
-    .join(",\n    ");
-  return `
-MERGE INTO ${DIM_TABLE} AS tgt
-USING (
-  SELECT * FROM VALUES
-    ${values}
-  AS v(TIER, CATALOG_PRODUCT_ID)
-) AS src
-ON tgt.TIER = src.TIER AND tgt.CATALOG_PRODUCT_ID = src.CATALOG_PRODUCT_ID
-WHEN MATCHED THEN UPDATE SET CATALOG_STATUS = 'delisted', UPDATED_AT = CURRENT_TIMESTAMP();`.trim();
-}
-
-function chunk(arr, size) {
-  const out = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
-}
-
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -366,4 +268,4 @@ if (isMain) {
   main();
 }
 
-export { parseCsv, csvRowsToObjects, buildUpsertBatchSql, buildDelistBatchSql, sqlLiteral };
+export { parseCsv, csvRowsToObjects };

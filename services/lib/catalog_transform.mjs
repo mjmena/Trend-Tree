@@ -2,13 +2,13 @@
 //
 // Pure functions only: no I/O, no Snowflake calls, no fetch. This module is
 // the shared brain behind BOTH the one-off CSV seed
-// (scripts/seed_catalog_from_csv.mjs) and the future Shopify live-sync Cloud
-// Run job — each producer normalizes its own raw rows into the common
-// NormalizedProduct shape (see collapseShopifyCsvRows for the CSV producer;
-// a REST producer would add a sibling normalizer with the same output
-// shape), then hands the normalized array + current DIM_CATALOG_PRODUCT
-// state to planCatalogUpsert(). Adding a new source later should mean
-// "write one more normalizer," not "touch this planner."
+// (scripts/seed_catalog_from_csv.mjs) and the daily live-sync Cloud Run job
+// (services/catalog-sync, CRMA-777) — each producer normalizes its own raw
+// rows into the common NormalizedProduct shape (collapseShopifyCsvRows for
+// the CSV export, normalizeStorefrontProducts for the storefront
+// products.json feed), then hands the normalized array + current
+// DIM_CATALOG_PRODUCT state to planCatalogUpsert(). Adding a new source
+// later should mean "write one more normalizer," not "touch this planner."
 //
 // Embed doc v1 recipe (settled CRMA-745 design map):
 //   "title. Type: <type>. Vendor: <vendor>. Tags: <tags>. <body_html
@@ -26,8 +26,8 @@ export const BODY_CHAR_CAP = 600;
 
 // Canonical Cortex embed model for the whole catalog vector space — lives
 // here (not in a producer script) because PRODUCT_VECTOR is only comparable
-// against FCT_TREND_ENRICHMENT_LEDGER.TREND_VECTOR if every producer (this
-// CSV seed today, the future live-sync job) embeds against the same model.
+// against FCT_TREND_ENRICHMENT_LEDGER.TREND_VECTOR if every producer (the
+// CSV seed and the live catalog sync) embeds against the same model.
 // One source of truth so a future model bump can't drift between producers.
 export const EMBED_MODEL = "snowflake-arctic-embed-l-v2.0";
 
@@ -170,6 +170,42 @@ function isPurchasableShopifyStatus(statusRaw) {
 }
 
 // ---------------------------------------------------------------------------
+// Shopify storefront feed normalization
+// ---------------------------------------------------------------------------
+
+// Maps products from the public storefront feed
+// (https://<store>.myshopify.com/products.json) onto NormalizedProduct. The
+// feed already carries one object per product, so there is nothing to
+// collapse — but it differs from the CSV export in two ways that matter:
+//   - `tags` is an ARRAY, not the export's comma-separated string. It is
+//     joined with ", " — the export's own separator — so an unchanged
+//     product hashes to the same embed doc the CSV seed wrote and graduates
+//     without a re-embed.
+//   - there is no `status`. The feed lists only products published to the
+//     Online Store channel, so a product's absence from the sweep is the
+//     delist signal; planCatalogUpsert already turns absence into a delist.
+// The key is the handle, same as the CSV producer. A duplicated handle keeps
+// its first occurrence; the planner assumes one row per key.
+export function normalizeStorefrontProducts(products) {
+  const byHandle = new Map();
+  for (const p of products ?? []) {
+    const handle = String(p?.handle ?? "").trim();
+    if (!handle || byHandle.has(handle)) continue;
+    const tagList = Array.isArray(p.tags) ? p.tags.map((t) => String(t).trim()).filter((t) => t.length > 0) : [];
+    byHandle.set(handle, {
+      tier: "shopify",
+      catalogProductId: handle,
+      title: String(p.title ?? "").trim(),
+      vendor: String(p.vendor ?? "").trim(),
+      type: p.product_type ?? "",
+      tags: tagList.join(", "),
+      bodyHtml: p.body_html ?? "",
+    });
+  }
+  return [...byHandle.values()];
+}
+
+// ---------------------------------------------------------------------------
 // Upsert / delist / re-embed planner
 // ---------------------------------------------------------------------------
 
@@ -182,8 +218,8 @@ function isPurchasableShopifyStatus(statusRaw) {
 //   undefined) if the caller didn't fetch it; version drift is then simply
 //   not detected, same as before this field existed.
 // options.asOf: value to stamp as LAST_SEEN_AT on every upserted row (the
-//   CSV seed passes the export date; a live-sync job would pass its sweep
-//   timestamp).
+//   CSV seed passes the export date; the live catalog sync passes its sweep
+//   time, read from Snowflake's clock).
 //
 // Returns:
 //   upserts   — one plan row per currently-seen product, whether its embed

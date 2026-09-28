@@ -1,5 +1,5 @@
 // Tests for the product-catalog upsert/delist planner (CRMA-773).
-// Run: node --test agents/lib/
+// Run: scripts/test_services_lib.sh
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -8,6 +8,7 @@ import {
   buildEmbedDoc,
   hashEmbedDoc,
   collapseShopifyCsvRows,
+  normalizeStorefrontProducts,
   planCatalogUpsert,
   EMBED_DOC_VERSION,
   EMBED_MODEL,
@@ -225,6 +226,94 @@ test("collapseShopifyCsvRows picks the Title-bearing row even if it isn't first"
   assert.equal(out.length, 1);
   assert.equal(out[0].title, "Real Title");
   assert.equal(out[0].vendor, "V");
+});
+
+// ---------------------------------------------------------------------------
+// normalizeStorefrontProducts — the live sync's producer (CRMA-777)
+// ---------------------------------------------------------------------------
+
+const feedProduct = (overrides = {}) => ({
+  id: 1,
+  handle: "fish-and-chips-mug",
+  title: "Fish & Chips Mug",
+  vendor: "Acme",
+  product_type: "Mugs",
+  tags: ["kitchen", "gift"],
+  body_html: "<p>A mug.</p>",
+  variants: [{ id: 11, price: "12.00" }],
+  images: [],
+  ...overrides,
+});
+
+test("normalizeStorefrontProducts maps a feed product onto the NormalizedProduct shape", () => {
+  const [p] = normalizeStorefrontProducts([feedProduct()]);
+  assert.deepEqual(p, {
+    tier: "shopify",
+    catalogProductId: "fish-and-chips-mug",
+    title: "Fish & Chips Mug",
+    vendor: "Acme",
+    type: "Mugs",
+    tags: "kitchen, gift",
+    bodyHtml: "<p>A mug.</p>",
+  });
+});
+
+test("normalizeStorefrontProducts joins the feed's tag ARRAY rather than splitting a string", () => {
+  const [p] = normalizeStorefrontProducts([feedProduct({ tags: [" kitchen ", "", "gift"] })]);
+  assert.equal(p.tags, "kitchen, gift");
+});
+
+test("normalizeStorefrontProducts tolerates a missing tags array and null fields", () => {
+  const [p] = normalizeStorefrontProducts([
+    feedProduct({ tags: undefined, vendor: null, body_html: null, product_type: null }),
+  ]);
+  assert.equal(p.tags, "");
+  assert.equal(p.vendor, "");
+  assert.equal(p.bodyHtml, "");
+  assert.equal(p.type, "");
+});
+
+test("normalizeStorefrontProducts drops products with no handle and keeps the first of a duplicated handle", () => {
+  const out = normalizeStorefrontProducts([
+    feedProduct({ handle: "" }),
+    feedProduct({ handle: "a", title: "First" }),
+    feedProduct({ handle: " a ", title: "Second" }),
+  ]);
+  assert.deepEqual(
+    out.map((p) => [p.catalogProductId, p.title]),
+    [["a", "First"]],
+  );
+});
+
+// The first live sweep must graduate the CSV-seeded rows in place: same key,
+// same embed doc, so no re-key and no re-embed for an unchanged product.
+test("a feed product and its CSV export rows produce the same key and embed-doc hash", () => {
+  const [fromCsv] = collapseShopifyCsvRows([
+    {
+      Handle: "fish-and-chips-mug",
+      Title: "Fish & Chips Mug",
+      Vendor: "Acme",
+      Type: "Mugs",
+      Tags: "kitchen, gift",
+      "Body (HTML)": "<p>A mug.</p>",
+      Status: "active",
+    },
+  ]);
+  const [fromFeed] = normalizeStorefrontProducts([feedProduct()]);
+  assert.equal(fromFeed.catalogProductId, fromCsv.catalogProductId);
+  assert.equal(hashEmbedDoc(buildEmbedDoc(fromFeed)), hashEmbedDoc(buildEmbedDoc(fromCsv)));
+
+  const seeded = {
+    tier: "shopify",
+    catalogProductId: fromCsv.catalogProductId,
+    embedDocHash: hashEmbedDoc(buildEmbedDoc(fromCsv)),
+    embedDocVersion: EMBED_DOC_VERSION,
+    catalogStatus: "active",
+  };
+  const plan = planCatalogUpsert([fromFeed], [seeded], { asOf: "2026-09-28 09:00:00.000" });
+  assert.equal(plan.toEmbed.length, 0);
+  assert.equal(plan.delists.length, 0);
+  assert.equal(plan.upserts[0].lastSeenAt, "2026-09-28 09:00:00.000");
 });
 
 // ---------------------------------------------------------------------------

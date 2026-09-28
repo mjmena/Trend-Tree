@@ -12,12 +12,15 @@
 -- shape is tier-defined (the Shopify tier keys on the product Handle; a
 -- future Amazon/other tier would key on its own natural id, e.g. ASIN).
 --
--- Populated today by the one-off CSV seed (scripts/seed_catalog_from_csv.mjs,
--- CRMA-773) and, later, by a recurring live-sync Cloud Run job hitting the
--- Shopify Admin REST API. Both producers normalize their raw rows into the
--- same shape and call the shared agents/lib/catalog_transform.mjs planner,
--- so the upsert/delist/re-embed semantics below are identical regardless of
--- source.
+-- Seeded once from a CSV export (scripts/seed_catalog_from_csv.mjs,
+-- CRMA-773) and kept current by the daily Cloud Run job
+-- trend-tree-catalog-sync (services/catalog-sync, CRMA-777), which sweeps the
+-- public storefront products.json feed. Both producers normalize their raw
+-- rows into the same shape and call the shared
+-- services/lib/catalog_transform.mjs planner and services/lib/catalog_sql.mjs
+-- writers, so the upsert/delist/re-embed semantics below are identical
+-- regardless of source. (The column COMMENTs below still name the planner's
+-- pre-CRMA-777 path, agents/lib/; they mirror the live table's metadata.)
 --
 -- Deliberately NO presentation fields (price, image, availability) — this
 -- is an identity + retrieval dimension, not a merchandising feed. A product
