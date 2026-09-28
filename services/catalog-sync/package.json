@@ -1,0 +1,17 @@
+{
+  "name": "trend-tree-catalog-sync",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Daily Shopify storefront catalog sync into DIM_CATALOG_PRODUCT (CRMA-777) — Cloud Run job.",
+  "main": "sync.mjs",
+  "scripts": {
+    "start": "node sync.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "snowflake-sdk": "^2.2.0"
+  }
+}

@@ -51,26 +51,36 @@
 # OIDC, which is CRMA-441's decided pattern, and CRMA-762's move to IAP was a
 # response to the 404 that is now understood and has a direct fix.
 #
+# Cloud Run JOBS (KIND=job in deploy.env, CRMA-777's catalog sync) share steps
+# 1-3 and then take a shorter path: a job has no traffic to split, so there is
+# no dark deploy and no promote. `gcloud run jobs deploy` replaces the job's
+# image, and the smoke test is one real execution (`jobs execute --wait`) —
+# which is only acceptable because a job deployed here must be idempotent.
+# Rollback is a redeploy of the prior image; the script prints that command.
+#
 # Usage:
 #   services/deploy.sh ecomm-agent                 full flow
 #   services/deploy.sh ecomm-agent --no-build      redeploy the SHA's existing image
 #   services/deploy.sh ecomm-agent --no-promote    stop after the smoke test
+#   services/deploy.sh catalog-sync --no-execute   (job) deploy, skip the smoke execution
 set -euo pipefail
 
 NAME="${1:-}"
 if [[ -z "$NAME" || "$NAME" == -* ]]; then
-  echo "usage: services/deploy.sh <name> [--no-build] [--no-promote]" >&2
+  echo "usage: services/deploy.sh <name> [--no-build] [--no-promote] [--no-execute]" >&2
   exit 2
 fi
 shift
 
 BUILD=1
 PROMOTE=1
+EXECUTE=1
 for arg in "$@"; do
   case "$arg" in
     --no-build) BUILD=0 ;;
     --no-promote) PROMOTE=0 ;;
-    *) echo "unknown flag: $arg (expected --no-build / --no-promote)" >&2; exit 2 ;;
+    --no-execute) EXECUTE=0 ;;
+    *) echo "unknown flag: $arg (expected --no-build / --no-promote / --no-execute)" >&2; exit 2 ;;
   esac
 done
 
@@ -87,9 +97,16 @@ log() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
 # shellcheck disable=SC1090
 source "$ENV_FILE_SRC"
 
-for v in SERVICE PROJECT REGION REPO SERVICE_ACCOUNT TIMEOUT PORT HEALTH_PATH; do
+KIND="${KIND:-service}"
+case "$KIND" in
+  service) REQUIRED_VARS=(SERVICE PROJECT REGION REPO SERVICE_ACCOUNT TIMEOUT PORT HEALTH_PATH) ;;
+  job) REQUIRED_VARS=(SERVICE PROJECT REGION REPO SERVICE_ACCOUNT TIMEOUT ENTRYPOINT) ;;
+  *) echo "services/$NAME/deploy.env: KIND must be 'service' or 'job', got '$KIND'" >&2; exit 2 ;;
+esac
+for v in "${REQUIRED_VARS[@]}"; do
   [[ -n "${!v:-}" ]] || { echo "services/$NAME/deploy.env is missing $v" >&2; exit 2; }
 done
+ENTRYPOINT="${ENTRYPOINT:-server.mjs}"
 
 cd "$REPO_ROOT"
 
@@ -177,13 +194,18 @@ if [[ "$BUILD" == "1" ]]; then
   WITH_LAYER="$("$CRANE" append --platform linux/amd64 \
     -b "$BASE_IMAGE" -f "$CTX/layer.tar" -t "${IMAGE%:*}:layer")"
 
+  # A job listens on no port, so it gets no PORT env (its Dockerfile sets none).
+  port_env=()
+  if [[ "$KIND" == "service" ]]; then
+    port_env=(--env "PORT=${PORT}")
+  fi
   "$CRANE" mutate "$WITH_LAYER" -t "$IMAGE" \
     --workdir "/app/services/$NAME" \
     --env NODE_ENV=production \
-    --env "PORT=${PORT}" \
+    ${port_env[@]+"${port_env[@]}"} \
     --user node \
     --entrypoint node \
-    --cmd server.mjs
+    --cmd "$ENTRYPOINT"
 fi
 
 # ---------------------------------------------------------------------------
@@ -193,14 +215,53 @@ ENV_FILE="$(mktemp -t "${SERVICE}-env.XXXXXX.yaml")"
 trap 'rm -f "$ENV_FILE"' EXIT
 printf '%s\n' "${ENV_VARS:-}" > "$ENV_FILE"
 
+# An `[[ ... ]] && arr=(...)` one-liner would return 1 when SECRETS is empty
+# and `set -e` would abort the whole deploy on it. Use a real if.
+secrets_flag=()
+if [[ -n "${SECRETS:-}" ]]; then
+  secrets_flag=(--set-secrets "$SECRETS")
+fi
+
+# ---------------------------------------------------------------------------
+# Job path: deploy, print the rollback, run once, stop.
+# ---------------------------------------------------------------------------
+if [[ "$KIND" == "job" ]]; then
+  PRIOR_IMAGE="$(gcloud run jobs describe "$SERVICE" --region "$REGION" --project "$PROJECT" \
+    --format 'value(spec.template.spec.template.spec.containers[0].image)' 2>/dev/null || true)"
+
+  log "Deploying job ${SERVICE} at ${IMAGE}..."
+  gcloud run jobs deploy "$SERVICE" \
+    --project "$PROJECT" --region "$REGION" \
+    --image "$IMAGE" \
+    --service-account "$SERVICE_ACCOUNT" \
+    --cpu "${CPU:-1}" --memory "${MEMORY:-512Mi}" \
+    --tasks 1 --max-retries "${MAX_RETRIES:-0}" \
+    --task-timeout "${TIMEOUT}s" \
+    ${secrets_flag[@]+"${secrets_flag[@]}"} \
+    --env-vars-file "$ENV_FILE"
+
+  if [[ -n "$PRIOR_IMAGE" && "$PRIOR_IMAGE" != "$IMAGE" ]]; then
+    log "Rollback command for this deploy (redeploy the prior image):"
+    echo "  gcloud run jobs update $SERVICE --project $PROJECT --region $REGION --image ${PRIOR_IMAGE}"
+  fi
+
+  if [[ "$EXECUTE" == "1" ]]; then
+    log "Smoke test: executing ${SERVICE} once and waiting for it to finish..."
+    if ! gcloud run jobs execute "$SERVICE" --project "$PROJECT" --region "$REGION" --wait; then
+      echo "Smoke execution FAILED. The job now runs ${IMAGE}; roll back with the command above." >&2
+      echo "Read the run's log:" >&2
+      echo "  gcloud logging read 'resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"${SERVICE}\"' --project ${PROJECT} --limit 20 --freshness 1h" >&2
+      exit 1
+    fi
+    log "Smoke execution succeeded."
+  else
+    log "Skipping the smoke execution (--no-execute). Run it by hand: gcloud run jobs execute ${SERVICE} --project ${PROJECT} --region ${REGION} --wait"
+  fi
+  exit 0
+fi
+
 deploy_step() {
   local traffic_flag="$1"  # "--no-traffic", or "" on a first-ever create
-  # An `[[ ... ]] && arr=(...)` one-liner would return 1 when SECRETS is empty
-  # and `set -e` would abort the whole deploy on it. Use a real if.
-  local secrets_flag=()
-  if [[ -n "${SECRETS:-}" ]]; then
-    secrets_flag=(--set-secrets "$SECRETS")
-  fi
   # shellcheck disable=SC2086 -- traffic_flag is either empty or one flag token
   gcloud run deploy "$SERVICE" \
     --project "$PROJECT" --region "$REGION" \
