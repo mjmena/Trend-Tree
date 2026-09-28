@@ -371,15 +371,15 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   `stands_alone` the oracle never runs, so it can never veto a candidate whose evidence already stands.
 - **The composition rule is ordered, and reject precedes merge.** (1) `not_a_topic` →
   `REJECT`/`LOW_QUALITY`. (2) neighbours at `same_thing` → `MERGE_INTO_EXISTING`, target = highest
-  `pair_sameness` **confidence** — **unless that neighbour's `is_same_recurring_topic` and
+  P(`same_thing`) (amended by CRMA-1223) — **unless that neighbour's `is_same_recurring_topic` and
   `recurrence_deserves_own_row` are both high, which blocks the merge and sends the candidate to
   `PROMOTE_NEW`**; two or more clearing the bar means those two *trends* are duplicates — merge into
   the older and raise an operational flag, which this map does not try to fix. (3) `stands_alone` →
   `PROMOTE_NEW`. (4) `needs_corroboration` → code filters oracle results by the volume floor
   **before** asking; any `same_concept` → `PROMOTE_NEW`, else `REJECT`/`INSUFFICIENT_EVIDENCE`. Reject
-  precedes merge because a merge attaches the candidate's signals to a live trend. **Routing always
-  reads a Score's confidence, never a Choice's**, and `is_narrower_instance` blocks nothing on its
-  own. The oracle keyword is the candidate query when present and the `signal_frequency` terms
+  precedes merge because a merge attaches the candidate's signals to a live trend. **Routing reads a
+  Score's level, never its confidence and never a Choice's** (amended by CRMA-1223), and
+  `is_narrower_instance` blocks nothing on its own. The oracle keyword is the candidate query when present and the `signal_frequency` terms
   otherwise, **and which one was sent must be recorded** (amended by CRMA-1332 — see below).
 - **When the candidate query is null, code derives the oracle keyword from signal frequency, and
   `oracle_match` stays strict.** Code takes the 1–3 word n-grams from the trend topic and the signal
@@ -392,11 +392,23 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   instead of one, and the ET monthly quota is unverified.
   _Decided by [CRMA-1332](https://mcclatchy.atlassian.net/browse/CRMA-1332), 2026-09-28; detail in
   `docs/wayfinder/assets/crma-1332-report.md`._
-- **Scores round to the nearest level, and no threshold is fitted anywhere.** The level meaning sets
-  the cut point. The only numbers this path needs — the Noul cut points and the confidence band —
-  belong to [CRMA-1223](https://mcclatchy.atlassian.net/browse/CRMA-1223). The ET volume floor stays
-  at **1000**, inherited from `agents/lib/exploding_topics.mjs:39` and unvalidated, and moves out of
-  the model into code.
+- **Scores round to the nearest level, and no threshold is fitted anywhere** — except that a split
+  `pair_sameness` takes the heavier extreme (next constraint). The level meaning sets the cut point.
+  The ET volume floor stays at **1000**, inherited from `agents/lib/exploding_topics.mjs:39` and
+  unvalidated, and moves out of the model into code.
+- **Confidence gates nothing; it measures a split, not correctness.** On the 555 replay pairs,
+  `same_thing` is right at every confidence (incumbent merged 33 of 34), and all 45 `unsettled` pairs
+  are splits between the extremes that rounding turns into the middle level. So: **(1)** when
+  `unsettled` is not `pair_sameness`'s top level, code takes the heavier of P(`same_thing`) and
+  P(`different_thing`) — merges found rise from 33 to 54 of the incumbent's 70. `evidence_quality` and
+  `oracle_match` keep rounding; their split goes to a check, not a guess. **(2)** There is **no
+  confidence floor** on any Score or action; confidence is stored and read as a rubric diagnostic.
+  **(3)** Both recurrence Nouls cut at **0.5** (the midpoint, never fitted); the override needs both.
+  `is_narrower_instance` is **recorded only**. **(4)** The ET volume floor lives in `deploy.env` via
+  `createDecider({config})`; the 0.5 cut and the flag count (2) are code constants in
+  `services/lib/promotion/`. Nothing numeric goes in `DIM_LLM_PROMPT`. The adopt-bar score was **not**
+  re-measured under rule (1). _Decided by [CRMA-1223](https://mcclatchy.atlassian.net/browse/CRMA-1223),
+  2026-09-28._
 - **The rubric is six `DIM_LLM_PROMPT` rows, one per question**, keyed `promotion.jev.<question>` —
   the last segment **is** the Jev question key — with the definition JSON in `TEMPLATE`. The migration
   retires `promotion.subagent.decision_rubric`, `promotion.subagent.system` **and
@@ -517,6 +529,8 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
 - [Decide: what seam promotion's Cloud Run extraction must leave for the typed path](https://mcclatchy.atlassian.net/browse/CRMA-1242) — **Decided:** One services/promotion service with a replaceable in-process decider (Gemini loop now, typed Jev later); PROC_PROMOTION_APPLY stays the only writer; helpers exported from services/lib/promotion/ for the replay harness; oracles are an injected list; Decision carries failed from day one; decider chosen per revision in deploy.env; dry_run removed. Checklist: docs/wayfinder/assets/crma-1242-extraction-seam.md
 
 - [Prototype: give the ET oracle a searchable keyword and re-run the needs_corroboration cases](https://mcclatchy.atlassian.net/browse/CRMA-1332) — **Decided:** oracle_match stays strict: an ET parent concept is not corroboration, so (a3) stands with its throughput cost (multi-AI-agent group 0 of 19 in every keyword arm, hand-written ceiling included). The null-query oracle keyword becomes signal_frequency: 11 promotions vs 1, hand check 11 of 12 exact.
+
+- [Decide: the confidence-routing thresholds and what each band does](https://mcclatchy.atlassian.net/browse/CRMA-1223) — **Decided:** Confidence measures a split, not correctness, so it gates nothing. A split pair_sameness takes the heavier extreme (merges found 33→54 of 70), merge target ranked by P(same_thing), recurrence Nouls cut at 0.5, ET floor in deploy.env.
 
 ## Not yet specified
 
