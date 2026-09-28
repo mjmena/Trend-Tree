@@ -248,7 +248,11 @@ if [[ "$KIND" == "job" ]]; then
   if [[ "$EXECUTE" == "1" ]]; then
     log "Smoke test: executing ${SERVICE} once and waiting for it to finish..."
     if ! gcloud run jobs execute "$SERVICE" --project "$PROJECT" --region "$REGION" --wait; then
-      echo "Smoke execution FAILED. The job now runs ${IMAGE}; roll back with the command above." >&2
+      if [[ -n "$PRIOR_IMAGE" && "$PRIOR_IMAGE" != "$IMAGE" ]]; then
+        echo "Smoke execution FAILED. The job now runs ${IMAGE}; roll back with the command above." >&2
+      else
+        echo "Smoke execution FAILED on ${IMAGE}. There is no different prior image to roll back to." >&2
+      fi
       echo "Read the run's log:" >&2
       echo "  gcloud logging read 'resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"${SERVICE}\"' --project ${PROJECT} --limit 20 --freshness 1h" >&2
       exit 1

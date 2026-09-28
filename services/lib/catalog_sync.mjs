@@ -24,7 +24,13 @@ import { normalizeStorefrontProducts, planCatalogUpsert } from "./catalog_transf
 
 const SWEEP_AT_SQL = `SELECT TO_VARCHAR(CURRENT_TIMESTAMP()::TIMESTAMP_NTZ, 'YYYY-MM-DD HH24:MI:SS.FF3') AS SWEEP_AT`;
 
-export async function runCatalogSync({ fetchProducts, query, tier = "shopify", batchSize = 40 }) {
+// Fixed, not a parameter: normalizeStorefrontProducts stamps every product
+// 'shopify', and the delist plan is "existing rows of THIS tier not seen".
+// Reading any other tier's rows would plan all of them for delisting.
+const TIER = "shopify";
+
+export async function runCatalogSync({ fetchProducts, query, batchSize = 40 }) {
+  const tier = TIER;
   const feed = await fetchProducts();
   const normalized = normalizeStorefrontProducts(feed.products);
   if (normalized.length === 0) {

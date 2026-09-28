@@ -26,8 +26,8 @@ export const BODY_CHAR_CAP = 600;
 
 // Canonical Cortex embed model for the whole catalog vector space — lives
 // here (not in a producer script) because PRODUCT_VECTOR is only comparable
-// against FCT_TREND_ENRICHMENT_LEDGER.TREND_VECTOR if every producer (this
-// CSV seed today, the future live-sync job) embeds against the same model.
+// against FCT_TREND_ENRICHMENT_LEDGER.TREND_VECTOR if every producer (the
+// CSV seed and the live catalog sync) embeds against the same model.
 // One source of truth so a future model bump can't drift between producers.
 export const EMBED_MODEL = "snowflake-arctic-embed-l-v2.0";
 
@@ -218,8 +218,8 @@ export function normalizeStorefrontProducts(products) {
 //   undefined) if the caller didn't fetch it; version drift is then simply
 //   not detected, same as before this field existed.
 // options.asOf: value to stamp as LAST_SEEN_AT on every upserted row (the
-//   CSV seed passes the export date; a live-sync job would pass its sweep
-//   timestamp).
+//   CSV seed passes the export date; the live catalog sync passes its sweep
+//   time, read from Snowflake's clock).
 //
 // Returns:
 //   upserts   — one plan row per currently-seen product, whether its embed
