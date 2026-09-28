@@ -379,8 +379,19 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   **before** asking; any `same_concept` → `PROMOTE_NEW`, else `REJECT`/`INSUFFICIENT_EVIDENCE`. Reject
   precedes merge because a merge attaches the candidate's signals to a live trend. **Routing always
   reads a Score's confidence, never a Choice's**, and `is_narrower_instance` blocks nothing on its
-  own. The oracle keyword is the candidate query when present and the trend topic otherwise, **and
-  which one was sent must be recorded**.
+  own. The oracle keyword is the candidate query when present and the `signal_frequency` terms
+  otherwise, **and which one was sent must be recorded** (amended by CRMA-1332 — see below).
+- **When the candidate query is null, code derives the oracle keyword from signal frequency, and
+  `oracle_match` stays strict.** Code takes the 1–3 word n-grams from the trend topic and the signal
+  texts that recur across the most texts, at most 2 per candidate, with no model call. The trend
+  topic sentence is never sent — it matched ET on 0 of 104 calls. The keyword is deliberately broad:
+  `oracle_match` is the precision gate. **An ET result that names the candidate's parent concept is
+  not corroboration** — it stays `adjacent_not_same`, so (a3) stands and the multi-AI-agent-only
+  candidates (~41.8% of historical subagent promotions) reject under the typed path. That throughput
+  cost is accepted, not an open question. `signal_frequency` sends about two ET calls per oracle case
+  instead of one, and the ET monthly quota is unverified.
+  _Decided by [CRMA-1332](https://mcclatchy.atlassian.net/browse/CRMA-1332), 2026-09-28; detail in
+  `docs/wayfinder/assets/crma-1332-report.md`._
 - **Scores round to the nearest level, and no threshold is fitted anywhere.** The level meaning sets
   the cut point. The only numbers this path needs — the Noul cut points and the confidence band —
   belong to [CRMA-1223](https://mcclatchy.atlassian.net/browse/CRMA-1223). The ET volume floor stays
@@ -399,7 +410,7 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
   the `evidence_quality` answer, the `oracle_match` answers, and the per-request vendor ids. **Full
   width, always on, never sampled**: the neighbour pool changes as trends are promoted, so a sampled
   run cannot be reconstructed later. New columns: `RUN_OUTCOME` (`decided`/`failed`/`parked`),
-  `DECISION_RULE`, `ORACLE_KEYWORD`, `ORACLE_KEYWORD_SOURCE` (`candidate_query`/`trend_topic`).
+  `DECISION_RULE`, `ORACLE_KEYWORD`, `ORACLE_KEYWORD_SOURCE` (`candidate_query`/`signal_frequency`).
   `DECISION` becomes **nullable** — NULL is no verdict, never a sentinel, because a sentinel is how
   DEFER spread through six files. `ITERATION` re-points at the subagent's attempt, making CRMA-1219's
   retry bound a `COUNT(*)` with no counter to desync. `MODEL_USED` **loses its
@@ -504,6 +515,8 @@ All settled during charting, 2026-09-20. No tickets sit behind these.
 - [Prototype: the pairwise duplicate check on the widened replay set](https://mcclatchy.atlassian.net/browse/CRMA-1222) — **Decided:** Fails the adopt bar at 50.7% (69/136); 85% of mismatches are the ET oracle, which never matched a trend_topic keyword. (a3) decided: AI discovery agents agreeing is NOT independent corroboration, no carve-out; the oracle keyword is re-tested on CRMA-1332.
 
 - [Decide: what seam promotion's Cloud Run extraction must leave for the typed path](https://mcclatchy.atlassian.net/browse/CRMA-1242) — **Decided:** One services/promotion service with a replaceable in-process decider (Gemini loop now, typed Jev later); PROC_PROMOTION_APPLY stays the only writer; helpers exported from services/lib/promotion/ for the replay harness; oracles are an injected list; Decision carries failed from day one; decider chosen per revision in deploy.env; dry_run removed. Checklist: docs/wayfinder/assets/crma-1242-extraction-seam.md
+
+- [Prototype: give the ET oracle a searchable keyword and re-run the needs_corroboration cases](https://mcclatchy.atlassian.net/browse/CRMA-1332) — **Decided:** oracle_match stays strict: an ET parent concept is not corroboration, so (a3) stands with its throughput cost (multi-AI-agent group 0 of 19 in every keyword arm, hand-written ceiling included). The null-query oracle keyword becomes signal_frequency: 11 promotions vs 1, hand check 11 of 12 exact.
 
 ## Not yet specified
 
