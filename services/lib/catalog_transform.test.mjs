@@ -246,7 +246,7 @@ const feedProduct = (overrides = {}) => ({
 });
 
 test("normalizeStorefrontProducts maps a feed product onto the NormalizedProduct shape", () => {
-  const [p] = normalizeStorefrontProducts([feedProduct()]);
+  const [p] = normalizeStorefrontProducts([feedProduct()], { storeUrl: "https://shop.example.com/" });
   assert.deepEqual(p, {
     tier: "shopify",
     catalogProductId: "fish-and-chips-mug",
@@ -255,7 +255,77 @@ test("normalizeStorefrontProducts maps a feed product onto the NormalizedProduct
     type: "Mugs",
     tags: "kitchen, gift",
     bodyHtml: "<p>A mug.</p>",
+    productUrl: "https://shop.example.com/products/fish-and-chips-mug",
+    price: 12,
+    imageUrl: null,
+    available: false,
   });
+});
+
+// Presentation fields (CRMA-1327 rules) — carried to DIM_CATALOG_PRODUCT,
+// never into the embed doc.
+
+test("PRICE is the lowest price among available variants, not the lowest overall", () => {
+  const [p] = normalizeStorefrontProducts([
+    feedProduct({
+      variants: [
+        { price: "5.00", available: false },
+        { price: "18.50", available: true },
+        { price: "14.25", available: true },
+      ],
+    }),
+  ]);
+  assert.equal(p.price, 14.25);
+  assert.equal(p.available, true);
+});
+
+test("a product with no available variant takes the lowest price of all variants and AVAILABLE false", () => {
+  const [p] = normalizeStorefrontProducts([
+    feedProduct({
+      variants: [
+        { price: "22.00", available: false },
+        { price: "19.99", available: false },
+      ],
+    }),
+  ]);
+  assert.equal(p.price, 19.99);
+  assert.equal(p.available, false);
+});
+
+test("a product with no variants or no parseable price has a NULL price", () => {
+  assert.equal(normalizeStorefrontProducts([feedProduct({ variants: undefined })])[0].price, null);
+  assert.equal(normalizeStorefrontProducts([feedProduct({ variants: [{ price: "", available: true }] })])[0].price, null);
+});
+
+test("IMAGE_URL is the first image's src, and NULL when the product has no images", () => {
+  const withImages = feedProduct({ images: [{ src: "https://cdn.example.com/a.jpg" }, { src: "https://cdn.example.com/b.jpg" }] });
+  assert.equal(normalizeStorefrontProducts([withImages])[0].imageUrl, "https://cdn.example.com/a.jpg");
+  assert.equal(normalizeStorefrontProducts([feedProduct({ images: [] })])[0].imageUrl, null);
+  assert.equal(normalizeStorefrontProducts([feedProduct({ images: undefined })])[0].imageUrl, null);
+});
+
+test("PRODUCT_URL is NULL when the caller gives no store URL", () => {
+  assert.equal(normalizeStorefrontProducts([feedProduct()])[0].productUrl, null);
+});
+
+test("presentation fields never change the embed doc, so a price change does not re-embed", () => {
+  const [cheap] = normalizeStorefrontProducts([feedProduct({ variants: [{ price: "5.00", available: true }] })]);
+  const [dear] = normalizeStorefrontProducts([
+    feedProduct({ variants: [{ price: "50.00", available: false }], images: [{ src: "https://cdn.example.com/a.jpg" }] }),
+  ]);
+  assert.equal(hashEmbedDoc(buildEmbedDoc(cheap)), hashEmbedDoc(buildEmbedDoc(dear)));
+  const seeded = {
+    tier: "shopify",
+    catalogProductId: cheap.catalogProductId,
+    embedDocHash: hashEmbedDoc(buildEmbedDoc(cheap)),
+    embedDocVersion: EMBED_DOC_VERSION,
+    catalogStatus: "active",
+  };
+  const plan = planCatalogUpsert([dear], [seeded]);
+  assert.equal(plan.toEmbed.length, 0);
+  assert.equal(plan.upserts[0].price, 50);
+  assert.equal(plan.upserts[0].available, false);
+  assert.equal(plan.upserts[0].imageUrl, "https://cdn.example.com/a.jpg");
 });
 
 test("normalizeStorefrontProducts joins the feed's tag ARRAY rather than splitting a string", () => {

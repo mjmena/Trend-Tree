@@ -137,6 +137,33 @@ export function formatCandidatesForPrompt(pool) {
     .join("\n");
 }
 
+// One sql/sourcing_retrieval_query.sql row -> one pool entry.
+//
+// product_handle: the Shopify tier's CATALOG_PRODUCT_ID IS the product
+// handle (sql/dim_catalog_product.sql: "shopify tier: the product Handle";
+// DIM_CATALOG_PRODUCT carries no separate handle column). A future
+// non-Shopify tier whose CATALOG_PRODUCT_ID is NOT the handle (e.g. an ASIN)
+// would need to fetch/derive PRODUCT_HANDLE separately — this assumption is
+// tier-scoped, not a general truth.
+//
+// The presentation fields keep a catalog NULL as null: a product the sync has
+// not yet priced must not read as $0 or out of stock.
+export function poolEntryFromRetrievalRow(r) {
+  return {
+    catalog_product_id: r.CATALOG_PRODUCT_ID,
+    product_handle: r.CATALOG_PRODUCT_ID,
+    product_title: r.PRODUCT_TITLE ?? null,
+    vendor: r.VENDOR ?? null,
+    product_type: r.PRODUCT_TYPE ?? null,
+    embed_doc: r.EMBED_DOC ?? "",
+    semantic_score: typeof r.SEMANTIC_SCORE === "number" ? r.SEMANTIC_SCORE : Number(r.SEMANTIC_SCORE),
+    product_url: r.PRODUCT_URL ?? null,
+    price_at_match: r.PRICE === null || r.PRICE === undefined ? null : Number(r.PRICE),
+    image_url_at_match: r.IMAGE_URL ?? null,
+    available_at_match: r.AVAILABLE ?? null,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Selector emit -> ledger write plan
 // ---------------------------------------------------------------------------

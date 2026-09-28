@@ -121,7 +121,13 @@ unlike a score, so nobody averages them).
 
 **`DIM_CATALOG_PRODUCT`** — one mutable dimension for all tiers, upserted by
 `(TIER, CATALOG_PRODUCT_ID)`. Holds identity, the embed doc plus its hash and version, the
-1024-dim product vector, `CATALOG_STATUS`, and `LAST_SEEN_AT` — never presentation fields.
+1024-dim product vector, `CATALOG_STATUS`, and `LAST_SEEN_AT`, plus four presentation fields
+the live sync overwrites on every sweep (CRMA-1328, rules decided on CRMA-1327):
+`PRODUCT_URL` (`https://<store domain>/products/<handle>`), `PRICE` (the lowest price among
+available variants, else the lowest of all variants — "from $X"), `IMAGE_URL` (the featured
+image, `images[0].src`) and `AVAILABLE` (any variant available). They never enter the embed
+doc, so a price change never re-embeds. They are the source of the candidates' `*_AT_MATCH`
+snapshots.
 **The Shopify tier's `CATALOG_PRODUCT_ID` is the product handle** (the CSV export carries
 no numeric id; the handle is the URL identity; the numeric id rides in the payload once the
 live sync observes it). A product missing from a sweep is **soft-delisted, never deleted**;
@@ -291,8 +297,8 @@ geometry could not separate was resolved correctly in both directions on every r
   export ahead of the live sync — same embed doc, same handle key, `LAST_SEEN_AT` stamped
   with the export date. Seed rows graduate through the first live sweep as a normal sweep;
   nothing is re-keyed. The 2026-08-20 export (187 products, all active) is the seed corpus;
-  its wholesale cost column never lands in Snowflake because the dimension stores no
-  presentation fields. A manual re-export was the freshness lever until the sync job landed.
+  its wholesale cost column never lands in Snowflake. The seed writes no presentation
+  fields; the next live sweep fills them. A manual re-export was the freshness lever until the sync job landed.
 - **Freshness is guarded at the outcome layer only**: an audit-agent freshness row on the
   catalog's `MAX(LAST_SEEN_AT)` (YELLOW past 3 days, RED past 7) plus the ecomm agent
   **declining to source** against a catalog older than 7 days. No per-workflow registry

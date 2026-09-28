@@ -29,10 +29,10 @@ const SWEEP_AT_SQL = `SELECT TO_VARCHAR(CURRENT_TIMESTAMP()::TIMESTAMP_NTZ, 'YYY
 // Reading any other tier's rows would plan all of them for delisting.
 const TIER = "shopify";
 
-export async function runCatalogSync({ fetchProducts, query, batchSize = 40 }) {
+export async function runCatalogSync({ fetchProducts, query, storeUrl = null, batchSize = 40 }) {
   const tier = TIER;
   const feed = await fetchProducts();
-  const normalized = normalizeStorefrontProducts(feed.products);
+  const normalized = normalizeStorefrontProducts(feed.products, { storeUrl });
   if (normalized.length === 0) {
     throw new Error(`storefront feed returned ${feed.products.length} products but no product with a handle — refusing to sweep`);
   }
