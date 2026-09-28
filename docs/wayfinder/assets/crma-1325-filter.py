@@ -19,7 +19,7 @@ Results:
 def gemini(batch):
     body = PROMPT + "\n".join(f'{i}. {it["title"]} | {it.get("snippet") or ""}' for i, it in batch)
     req = dict(contents=[{"parts":[{"text":body}]}], generationConfig={"responseMimeType":"application/json","temperature":0})
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key={key}"
     r = json.load(urllib.request.urlopen(urllib.request.Request(url, json.dumps(req).encode(), {"Content-Type":"application/json"}), timeout=120))
     return json.loads(r["candidates"][0]["content"]["parts"][0]["text"]), r.get("usageMetadata", {})
 idx = list(enumerate(items))

@@ -21,7 +21,9 @@ was graded before either filter ran**, so the grades do not depend on filter out
 
 ## The two filters
 
-- **LLM filter**: Gemini 2.5 Flash, temperature 0, JSON output, 40 titles per call.
+- **LLM filter**: first run on Gemini 2.5 Flash, then re-run on `gemini-3.7-flash`
+  and `gemini-3.8-flash` (see **Model comparison**). Temperature 0, JSON output,
+  40 titles per call. **The decided model is `gemini-3.7-flash`.**
   The prompt restates the rubric's test ("a noun phrase you can put on a slide and a
   verb a consumer is doing"), its good examples, and a drop list: categories,
   routines, listicles, hauls, rankings, unboxings of established products, brand
@@ -53,6 +55,24 @@ was graded before either filter ran**, so the grades do not depend on filter out
 - **The regex filter does not help.** It drops 2 PASS and keeps most sneaker
   and brand posts.
 
+### Model comparison
+
+The first run used `gemini-2.5-flash`, which is not the fleet target. The same
+prompt was re-run on the same 108 titles with the fleet target `gemini-3.7-flash`
+(CRMA-726) and with `gemini-3.8-flash`. The grades did not change. The filter call
+is not grounded, so the grounded-truncation defect CRMA-726 found in 3.7 Flash
+does not apply.
+
+| Model | Base: kept, PASS | All shapes: kept, PASS | PASS dropped | Tokens (108 titles) |
+|---|---|---|---|---|
+| `gemini-2.5-flash` | 12, 5 (42%) | 27, 6 (22%) | Dollar Tree dupes, PDRN masks | 13,964 |
+| **`gemini-3.7-flash`** | **11, 5 (45%)** | **20, 7 (35%)** | Dollar Tree dupes | 10,180 |
+| `gemini-3.8-flash` | 5, 3 (60%) | 10, 5 (50%) | protein snack, Vans sneaker loafer, Dollar Tree dupes | 11,051 |
+
+`gemini-3.7-flash` is the decided model. It keeps 7 of 8 PASS results and clears
+the bar across all shapes. `gemini-3.8-flash` has a higher rate but drops the Vans
+sneaker loafer, a new-to-us topic, and keeps only 10 results.
+
 ### Limits of this sample
 
 - **42 of the 60 base results repeat the CRMA-1317 sample**, which ran hours earlier
@@ -81,8 +101,8 @@ glycinate are late.
 ## Cost per run under the 50-call cap
 
 - SerpApi: 50 calls at ~$0.009 = ~$0.45 of the shared plan's quota per run.
-- Gemini 2.5 Flash filter: ~130 tokens per title including thinking. At ~12
-  results per productive call, 50 calls give ~600 titles, ~80K tokens, under
+- `gemini-3.7-flash` filter: ~95 tokens per title including thinking. At ~12
+  results per productive call, 50 calls give ~600 titles, ~57K tokens, under
   $0.25 per run.
 
 ## All 108 results

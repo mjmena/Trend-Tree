@@ -74,7 +74,7 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
   exploration, or needing more, reopens the quota with the owner (CRMA-1321).
 - The TikTok ingester keeps the CRMA-1320 query shape (`site:tiktok.com
   <seed>`, one atomic term per seed) and adds an LLM specificity filter on the
-  result title before the `FCT_SIGNALS` write: Gemini 2.5 Flash with the
+  result title before the `FCT_SIGNALS` write: `gemini-3.7-flash` with the
   distillation rubric's noun-phrase-plus-verb test. No changed query shape:
   `google_short_videos` returns 0 for most multi-word queries. Results are
   deduplicated by TikTok video ID across runs. The spec requires a spot-check
@@ -95,7 +95,7 @@ defines). The map stops at the spec; `/to-tickets` cuts the build from it.
 
 - [Task: Settle who owns the SerpApi quota](https://mcclatchy.atlassian.net/browse/CRMA-1321) — **Decided:** Trend Tree draws on the shared dev@trendhunter.com SerpApi plan at 50-100 searches/day while exploring, key in Secret Manager as serpapi-api-key; no plan of its own.
 
-- [Prototype: Does a changed query shape or a specificity filter lift TikTok to the 30% bar?](https://mcclatchy.atlassian.net/browse/CRMA-1325) — **Decided:** A Gemini Flash title filter lifts TikTok to 42% on the category seeds (small sample); changed query shapes fail. TikTok stays, with video-ID dedup and a first-week 30% spot-check that drops it on failure.
+- [Prototype: Does a changed query shape or a specificity filter lift TikTok to the 30% bar?](https://mcclatchy.atlassian.net/browse/CRMA-1325) — **Decided:** A gemini-3.7-flash title filter lifts TikTok to 45% on the category seeds and 35% overall (small sample); changed query shapes fail. TikTok stays, with video-ID dedup and a first-week 30% spot-check that drops it on failure.
 
 ## Not yet specified
 
