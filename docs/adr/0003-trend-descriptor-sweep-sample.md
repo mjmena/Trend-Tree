@@ -147,3 +147,78 @@ the #55 legacy-recipe retire decision — which remains the human gate.
 -- sample:           MCC_RAW.MARKETING_DEV.TMP_DESC_SWEEP_SAMPLE
 -- comparison query: see #54 working notes (within-sample top-3, old vs new)
 ```
+
+## 2026-09-29 — active-set sweep of the frozen-name remainder (CRMA-463)
+
+The August triage counted about 150 active trends still on the legacy fallback.
+Before this sweep the count was **144** of 481 active trends (all outside
+`food_beverage`/`beauty` except one in each). Those 144 split cleanly into two groups:
+
+| Group | Count | Action |
+|---|---|---|
+| `FCT_TRENDS.TREND_NAME` already frozen | 70 | **Swept** |
+| `FCT_TRENDS.TREND_NAME IS NULL` (ATLAS shows the legacy B2C/B2B name) | 74 | **Held**: needs a product decision |
+
+**Why the 74 are held.** The write step calls `PROC_ENRICHMENT_APPLY` with
+`KIND='initial'`. That call sets `TREND_NAME` whenever it is NULL (ADR-0001).
+`DT_TREND_DASHBOARD.TREND_NAME` is `COALESCE(t.TREND_NAME, t.TREND_NAME_B2C, …)`,
+so re-enriching these 74 trends would **rename their cards in ATLAS**. Examples:
+"Backyard Barkitecture", "Beestings & Biomes", "Candy-Aisle Creatine". ADR-0001's
+migration intended that rename, but it is a user-visible change, so it needs a
+human go-ahead. For the 70 frozen-name trends the sweep changes no identity:
+name, category and subcategory are all frozen non-null on `FCT_TRENDS`.
+
+**Results (70 swept).**
+
+- 69 of 70 succeeded on the first pass (3 in flight, about 60 minutes).
+- The one failure was the known transient `llm failed: HTTP 400`. It cleared on a
+  single re-run, which the driver's selection picked up on its own.
+- **70/70** trends now have a new `KIND='initial'` ledger row that carries a
+  `descriptor.statement` and a vector. For all 70, the latest non-null vector is
+  now statement-based: the minimum cosine against a fresh embed of its own
+  statement is 0.99999.
+- **Cost:** $10.91 total, $0.136 median, $0.296 max. All 70 rows carry an
+  `LLM_COST_ESTIMATE`.
+- **No identity changes:** the before/after `FCT_TRENDS` diff of `TREND_NAME`,
+  `CATEGORY`, `SUBCATEGORY` and `TREND_TOPIC` over all 581 trends shows 0 changes.
+- **Dormant/retired untouched:** 52 DORMANT and 48 RETIRED trends. Their ledger
+  row counts (137 / 109) and latest `WRITTEN_AT` are unchanged.
+
+After the sweep, **407/481** active trends carry a statement-based vector. The
+**74** remaining are exactly the held NULL-name group.
+
+**Selection query** (a trend needs the sweep when the payload of its current
+vector row has no statement):
+
+```sql
+WITH active AS (
+  SELECT TREND_ID FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD
+  WHERE LIFECYCLE_STATUS IN ('NEW','GROWING','STABLE','RESURGENT')
+),
+latest_vec AS (   -- same row DT_TREND_DASHBOARD.trend_vectors reads
+  SELECT TREND_ID, NULLIF(TRIM(PAYLOAD:descriptor:statement::STRING), '') AS STMT
+  FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+  WHERE TREND_VECTOR IS NOT NULL
+  QUALIFY ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) = 1
+)
+SELECT a.TREND_ID
+FROM active a
+JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t USING (TREND_ID)
+LEFT JOIN latest_vec lv USING (TREND_ID)
+WHERE lv.STMT IS NULL
+  AND t.TREND_NAME IS NOT NULL;   -- drop this line to include the NULL-name group
+```
+
+**Re-run.** `scripts/descriptor_sweep.sh` selects by the query above, so it is
+idempotent: a second run fires only the trends that have not landed.
+
+```sh
+DRY_RUN=1 scripts/descriptor_sweep.sh          # count + list, fires nothing
+scripts/descriptor_sweep.sh                    # fire the dispatcher chain, <=3 in flight
+INCLUDE_UNNAMED=1 scripts/descriptor_sweep.sh  # ALSO the NULL-name group: renames ATLAS cards
+```
+
+The driver needs the `snow` CLI (connection `claude`, run it unsandboxed), `jq`
+and `curl`. It refuses to start above `MAX_TRENDS=240` (about $60 at $0.25/run)
+and writes a per-trend TSV log to `$LOG_DIR`. Check the outcome with rows, not
+the log: run `DRY_RUN=1` again and the target is 0.
