@@ -88,11 +88,15 @@ export default defineComponent({
       return {
         proposals: [], model: prompt.model, prompt_key: PROMPT_KEY, prompt_version: prompt.version,
         shards_attempted: 0, shards_succeeded: 0, per_vertical_counts: {},
-        _token_usage: { input: 0, output: 0, model: prompt.model }, error: null, skipped: true,
+        _token_usage: { input: 0, output: 0, model: prompt.model }, _llm_calls: [], error: null, skipped: true,
       };
     }
     const verticals = Array.isArray(ctx.verticals) && ctx.verticals.length ? ctx.verticals : ["consumer"];
     const apiKey = this.google_gemini.$auth.api_key;
+
+    // Raw per-call usage for write_run_cost -> STG_AGENT_RUN_COSTS (CRMA-725).
+    // Recorded before parsing so a shard whose answer fails to parse is still billed.
+    const llmCalls = [];
 
     async function callShard(vertical) {
       const rendered = render(prompt.template, {
@@ -112,6 +116,7 @@ export default defineComponent({
       );
       if (!resp.ok) throw new Error(`Gemini HTTP ${resp.status}: ${(await resp.text()).slice(0, 400)}`);
       const data = await resp.json();
+      llmCalls.push({ provider: "gemini", model: prompt.model, usage: data.usageMetadata || null });
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
       const arrText = extractJsonArray(text);
       if (!arrText) throw new Error(`No JSON array in Gemini response: ${text.slice(0, 240)}`);
@@ -158,6 +163,7 @@ export default defineComponent({
       shards_succeeded: successCount,
       per_vertical_counts: perVerticalCounts,
       _token_usage: { input: totalIn, output: totalOut, model: prompt.model },
+      _llm_calls: llmCalls,
       error: successCount === 0 ? (firstError || "all shards failed") : null,
     };
   },

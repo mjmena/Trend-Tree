@@ -86,11 +86,15 @@ export default defineComponent({
       return {
         proposals: [], model: prompt.model, prompt_key: PROMPT_KEY, prompt_version: prompt.version,
         shards_attempted: 0, shards_succeeded: 0, per_vertical_counts: {},
-        _token_usage: { input: 0, output: 0, model: prompt.model }, error: null, skipped: true,
+        _token_usage: { input: 0, output: 0, model: prompt.model }, _llm_calls: [], error: null, skipped: true,
       };
     }
     const verticals = Array.isArray(ctx.verticals) && ctx.verticals.length ? ctx.verticals : ["consumer"];
     const apiKey = this.openai.$auth.api_key;
+
+    // Raw per-call usage for write_run_cost -> STG_AGENT_RUN_COSTS (CRMA-725).
+    // Recorded before parsing so a shard whose answer fails to parse is still billed.
+    const llmCalls = [];
 
     async function callShard(vertical) {
       const rendered = render(prompt.template, {
@@ -115,6 +119,7 @@ export default defineComponent({
       });
       if (!resp.ok) throw new Error(`OpenAI HTTP ${resp.status}: ${(await resp.text()).slice(0, 400)}`);
       const data = await resp.json();
+      llmCalls.push({ provider: "openai", model: prompt.model, usage: data.usage || null });
       let text = "";
       if (typeof data.output_text === "string") text = data.output_text;
       else if (Array.isArray(data.output)) {
@@ -170,6 +175,7 @@ export default defineComponent({
       shards_succeeded: successCount,
       per_vertical_counts: perVerticalCounts,
       _token_usage: { input: totalIn, output: totalOut, model: prompt.model },
+      _llm_calls: llmCalls,
       error: successCount === 0 ? (firstError || "all shards failed") : null,
     };
   },

@@ -142,7 +142,7 @@ function previewOutput(out) {
   } catch { return "<unserializable>"; }
 }
 
-async function runAgentLoop({ anthropic, system, user_message, context, max_iterations, budget_usd }) {
+async function runAgentLoop({ anthropic, system, user_message, context, llm_calls = [], max_iterations, budget_usd }) {
   if (!anthropic?.$auth?.api_key) throw new Error("anthropic app prop missing $auth.api_key");
 
   const messages = [{
@@ -203,6 +203,8 @@ async function runAgentLoop({ anthropic, system, user_message, context, max_iter
     }
 
     const data = await resp.json();
+    // Raw per-call usage for write_run_cost -> STG_AGENT_RUN_COSTS (CRMA-725).
+    llm_calls.push({ provider: "anthropic", model: MODEL, usage: data.usage || null, tool_calls: (Array.isArray(data.content) ? data.content : []).filter((b) => b.type === "tool_use").length });
     const usage = data.usage || {};
     const tin = usage.input_tokens || 0;
     const tout = usage.output_tokens || 0;
@@ -302,8 +304,10 @@ export default defineComponent({
     };
 
     const t0 = Date.now();
+    const llm_calls = [];
     const result = await runAgentLoop({
       anthropic: this.anthropic,
+      llm_calls,
       system,
       user_message: userMessage,
       context,
@@ -330,6 +334,7 @@ export default defineComponent({
       run_duration_ms,
       reasoning_trace: result.reasoning_trace,
       prompt_version: sysPrompt.version,
+      _llm_calls: llm_calls,
     };
   },
 });

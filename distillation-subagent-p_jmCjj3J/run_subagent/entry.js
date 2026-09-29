@@ -354,7 +354,7 @@ function toFunctionDeclarations(toolNames) {
 }
 
 async function runAgentLoop({
-  google_gemini, tool_names, system, user_message, context,
+  google_gemini, tool_names, system, user_message, context, llm_calls = [],
   max_iterations = LOOP_DEFAULTS.max_iterations,
   budget_usd = LOOP_DEFAULTS.budget_usd,
   per_call_max_tokens = LOOP_DEFAULTS.per_call_max_tokens,
@@ -425,6 +425,8 @@ async function runAgentLoop({
     }
 
     const data = await resp.json();
+    // Raw per-call usage for write_run_cost -> STG_AGENT_RUN_COSTS (CRMA-725).
+    llm_calls.push({ provider: "gemini", model: MODEL, usage: data.usageMetadata || null, tool_calls: ((data.candidates || [])[0]?.content?.parts || []).filter((p) => p.functionCall).length });
     const usage = data.usageMetadata || {};
     const tin = usage.promptTokenCount || 0;
     // candidatesTokenCount on the AI Studio API already includes thinking
@@ -592,11 +594,13 @@ Your verdict and any candidates are emitted via propose_trend_candidate. Be opin
       };
     }
 
+    const llm_calls = [];
     let result;
     try {
       result = await runAgentLoop({
         google_gemini: this.google_gemini,
         tool_names: SUBAGENT_TOOL_NAMES,
+        llm_calls,
         system, user_message: userMsg, context,
         max_iterations: sysPrompt.params.max_iterations ?? 12,
         budget_usd: sysPrompt.params.budget_usd ?? 1.0,
@@ -610,6 +614,7 @@ Your verdict and any candidates are emitted via propose_trend_candidate. Be opin
         candidates: [], reasoning_trace: [], tool_calls: [],
         cost_usd: 0, tokens: { input: 0, output: 0, total: 0 },
         turns: 0, stop_reason: "error",
+        _llm_calls: llm_calls,
       };
     }
 
@@ -635,6 +640,7 @@ Your verdict and any candidates are emitted via propose_trend_candidate. Be opin
       })),
       cost_usd: result.cost_usd, tokens: result.tokens,
       turns: result.turns, stop_reason: result.stop_reason,
+      _llm_calls: llm_calls,
     };
   },
 });

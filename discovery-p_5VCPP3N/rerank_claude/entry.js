@@ -85,7 +85,7 @@ export default defineComponent({
     if (all.length === 0) {
       console.log("No proposals to rerank — returning empty kept set");
       $.export("$summary", "0 proposals from upstream — nothing to rerank");
-      return { kept_proposals: [], dropped_count: 0, raw_input_count: 0, _token_usage: { input: 0, output: 0, model: prompt.model } };
+      return { kept_proposals: [], dropped_count: 0, raw_input_count: 0, _token_usage: { input: 0, output: 0, model: prompt.model }, _llm_calls: [] };
     }
 
     // Format proposals for the prompt: numbered list with index for the rubric
@@ -98,6 +98,10 @@ export default defineComponent({
       valuable_examples: ctx.valuable_examples_formatted || "(none)",
       proposals: proposalsFormatted,
     });
+
+    // Raw usage for write_run_cost -> STG_AGENT_RUN_COSTS (CRMA-725); captured
+    // before parsing so a failed parse still records the spend.
+    const llmCalls = [];
 
     try {
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -117,6 +121,7 @@ export default defineComponent({
 
       if (!resp.ok) throw new Error(`Claude HTTP ${resp.status}: ${(await resp.text()).slice(0, 400)}`);
       const data = await resp.json();
+      llmCalls.push({ provider: "anthropic", model: prompt.model, usage: data.usage || null });
       const text = data?.content?.[0]?.text || "";
 
       // Extract JSON array (Claude may wrap in code block).
@@ -155,6 +160,7 @@ export default defineComponent({
           output: usage.output_tokens || 0,
           model: prompt.model,
         },
+        _llm_calls: llmCalls,
         prompt_key: PROMPT_KEY,
         prompt_version: prompt.version,
       };
@@ -168,6 +174,7 @@ export default defineComponent({
         dropped_count: 0,
         raw_input_count: all.length,
         error: e.message,
+        _llm_calls: llmCalls,
       };
     }
   },

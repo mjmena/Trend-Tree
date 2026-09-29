@@ -90,6 +90,9 @@ Respond with only the JSON array.`;
     // matcher wants these unpadded, query-shaped phrases. Empty on fallback.
     let llmTerms = [];
     let tokenUsage = null;
+    // Raw usage for write_run_cost -> STG_AGENT_RUN_COSTS (CRMA-725); captured
+    // before parsing so a failed parse still records the spend.
+    const llmCalls = [];
 
     try {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -112,6 +115,7 @@ Respond with only the JSON array.`;
         terms = fallback();
       } else {
         const data = await response.json();
+        llmCalls.push({ provider: "anthropic", model: "claude-haiku-4-5-20251001", usage: data.usage || null });
         const text = (data.content?.[0]?.text || "").trim();
         const clean = text
           .replace(/^```(?:json)?\s*/i, "")
@@ -156,6 +160,7 @@ Respond with only the JSON array.`;
       // aggregate step when this is empty, e.g. on Claude failure).
       llm_terms: llmTerms,
       _token_usage: tokenUsage,
+      _llm_calls: llmCalls,
     };
   },
 });

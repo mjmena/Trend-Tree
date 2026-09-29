@@ -214,3 +214,11 @@ steps:
   props:
     aggregate_output: "{{steps.aggregate.$return_value}}"
     merge_result: "{{steps.merge_fct_metrics.$return_value}}"
+- namespace: write_run_cost
+  runtime: nodejs20.x
+  uses: "./write_run_cost/entry.mjs"
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    workflow_name: sources
+    usage_steps: generate_search_terms
