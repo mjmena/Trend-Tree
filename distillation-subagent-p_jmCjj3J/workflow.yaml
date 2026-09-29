@@ -59,3 +59,13 @@ steps:
   props:
     request: "{{steps.handle_request.$return_value}}"
     agent_result: "{{steps.run_subagent.$return_value}}"
+- namespace: write_run_cost
+  runtime: nodejs20.x
+  uses: "./write_run_cost/entry.mjs"
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    workflow_name: distillation-subagent
+    usage_steps: run_subagent
+    chain_id: "{{steps.handle_request.$return_value.chain_id}}"
+    agent_session_id: "{{steps.handle_request.$return_value.agent_session_id}}"

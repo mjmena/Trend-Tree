@@ -131,4 +131,14 @@ steps:
     request: "{{steps.handle_request.$return_value}}"
     agent_result: "{{steps.run_lead_agent.$return_value}}"
     resume_url: "{{steps.handle_request.$return_value.resume_url}}"
+- namespace: write_run_cost
+  runtime: nodejs20.x
+  uses: "./write_run_cost/entry.mjs"
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    workflow_name: distillation-cluster-agent
+    usage_steps: run_lead_agent
+    chain_id: "{{steps.handle_request.$return_value.chain_id}}"
+    agent_session_id: "{{steps.handle_request.$return_value.agent_session_id}}"
 

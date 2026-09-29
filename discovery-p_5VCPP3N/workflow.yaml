@@ -213,4 +213,12 @@ steps:
     gemini_result: "{{steps.discover_gemini.$return_value}}"
     grok_result: "{{steps.discover_grok.$return_value}}"
     chatgpt_result: "{{steps.discover_chatgpt.$return_value}}"
+- namespace: write_run_cost
+  runtime: nodejs20.x
+  uses: "./write_run_cost/entry.mjs"
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    workflow_name: discovery
+    usage_steps: discover_gemini,discover_grok,discover_chatgpt,rerank_claude
 

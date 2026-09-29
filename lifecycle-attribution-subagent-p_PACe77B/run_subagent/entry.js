@@ -160,7 +160,7 @@ function toFunctionDeclarations(toolNames) {
 }
 
 async function runAgentLoop({
-  google_gemini, tool_names, system, user_message, context,
+  google_gemini, tool_names, system, user_message, context, llm_calls = [],
   max_iterations = LOOP_DEFAULTS.max_iterations,
   budget_usd = LOOP_DEFAULTS.budget_usd,
   per_call_max_tokens = LOOP_DEFAULTS.per_call_max_tokens,
@@ -233,6 +233,8 @@ async function runAgentLoop({
     }
 
     const data = await resp.json();
+    // Raw per-call usage for write_run_cost -> STG_AGENT_RUN_COSTS (CRMA-725).
+    llm_calls.push({ provider: "gemini", model: MODEL, usage: data.usageMetadata || null, tool_calls: ((data.candidates || [])[0]?.content?.parts || []).filter((p) => p.functionCall).length });
     const usage = data.usageMetadata || {};
     const tin = usage.promptTokenCount || 0;
     const tout = usage.candidatesTokenCount || 0;
@@ -431,11 +433,13 @@ EXISTING SIGNAL SOURCE TYPES: ${existing_source_types.length ? existing_source_t
       `prompt=${SYSTEM_PROMPT_KEY} v${systemPrompt.version}`
     );
 
+    const llm_calls = [];
     let result;
     try {
       result = await runAgentLoop({
         google_gemini: this.google_gemini,
         tool_names: ALL_TOOL_NAMES,
+        llm_calls,
         system: renderedSystem,
         user_message: userMessage,
         context,
@@ -483,6 +487,7 @@ EXISTING SIGNAL SOURCE TYPES: ${existing_source_types.length ? existing_source_t
       tool_call_count: result.tool_calls.length,
       duration_ms,
       model: result.model,
+      _llm_calls: llm_calls,
     };
   },
 });

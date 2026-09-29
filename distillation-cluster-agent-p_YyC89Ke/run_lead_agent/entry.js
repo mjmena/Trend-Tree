@@ -477,7 +477,7 @@ function toFunctionDeclarations(toolNames) {
   });
 }
 
-async function runAgentLoop({ google_gemini, tool_names, system, user_message, context, max_iterations = LOOP_DEFAULTS.max_iterations, budget_usd = LOOP_DEFAULTS.budget_usd, per_call_max_tokens = LOOP_DEFAULTS.per_call_max_tokens, thinking_level = LOOP_DEFAULTS.thinking_level }) {
+async function runAgentLoop({ google_gemini, tool_names, system, user_message, context, llm_calls = [], max_iterations = LOOP_DEFAULTS.max_iterations, budget_usd = LOOP_DEFAULTS.budget_usd, per_call_max_tokens = LOOP_DEFAULTS.per_call_max_tokens, thinking_level = LOOP_DEFAULTS.thinking_level }) {
   if (!google_gemini?.$auth?.api_key) throw new Error("google_gemini app prop missing $auth.api_key");
   if (!Array.isArray(tool_names) || tool_names.length === 0) throw new Error("tool_names is required");
   const apiKey = google_gemini.$auth.api_key;
@@ -530,6 +530,8 @@ async function runAgentLoop({ google_gemini, tool_names, system, user_message, c
     }
 
     const data = await resp.json();
+    // Raw per-call usage for write_run_cost -> STG_AGENT_RUN_COSTS (CRMA-725).
+    llm_calls.push({ provider: "gemini", model: MODEL, usage: data.usageMetadata || null, tool_calls: ((data.candidates || [])[0]?.content?.parts || []).filter((p) => p.functionCall).length });
     const usage = data.usageMetadata || {};
     const tin = usage.promptTokenCount || 0;
     const tout = usage.candidatesTokenCount || 0;
@@ -759,11 +761,13 @@ Begin your scan. Be opinionated about specificity.`;
       return emptyResult({ chain_id: evt.chain_id, max_signal_ts: null, started, signals_seen: signal_pool.length, skipped: "dry_run" });
     }
 
+    const llm_calls = [];
     let result;
     try {
       result = await runAgentLoop({
         google_gemini: this.google_gemini,
         tool_names: LEAD_TOOL_NAMES,
+        llm_calls,
         system: renderedSystem,
         user_message: userMsg,
         context,
@@ -774,7 +778,7 @@ Begin your scan. Be opinionated about specificity.`;
       });
     } catch (e) {
       console.log(`lead loop error: ${e.message}`);
-      return emptyResult({ chain_id: evt.chain_id, max_signal_ts, started, signals_seen: signal_pool.length, skipped: "error", error: e.message });
+      return emptyResult({ chain_id: evt.chain_id, max_signal_ts, started, signals_seen: signal_pool.length, skipped: "error", error: e.message, llm_calls });
     }
 
     const candidates = (context.proposed_candidates || []).map((c) => ({
@@ -796,6 +800,7 @@ Begin your scan. Be opinionated about specificity.`;
       max_signal_ts, run_duration_ms: duration_ms,
       cost_usd: result.cost_usd, tokens: result.tokens,
       turns: result.turns, stop_reason: result.stop_reason,
+      _llm_calls: llm_calls,
       final_text: result.final_text,
       reasoning_trace: capTrace(result.reasoning_trace, 30_000),
       tool_calls_summary: (result.tool_calls || []).map((c) => ({
@@ -806,7 +811,7 @@ Begin your scan. Be opinionated about specificity.`;
   },
 });
 
-function emptyResult({ chain_id, max_signal_ts, started, signals_seen, skipped, error }) {
+function emptyResult({ chain_id, max_signal_ts, started, signals_seen, skipped, error, llm_calls = [] }) {
   return {
     chain_id,
     candidates: [], candidates_json: "[]", candidates_count: 0,
@@ -814,6 +819,7 @@ function emptyResult({ chain_id, max_signal_ts, started, signals_seen, skipped, 
     max_signal_ts, run_duration_ms: Date.now() - started,
     cost_usd: 0, tokens: { input: 0, output: 0, total: 0 },
     turns: 0, stop_reason: skipped, error: error || null,
+    _llm_calls: llm_calls,
   };
 }
 
