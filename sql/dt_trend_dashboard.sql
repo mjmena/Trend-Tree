@@ -82,6 +82,20 @@
 -- gone and KEY_DATA_POINTS is always an empty array. The column stays so the
 -- UI contract holds. FCT_TREND_GTRENDS_DAILY is kept as history but no longer
 -- read by this dynamic table.
+--
+-- 2026-09-29 (CRMA-453 Content Gap): additive CONTENT_GAP_FLAG /
+-- CONTENT_GAP_TOP_SIMILARITY / CONTENT_GAP_EVALUATED_AT columns, appended
+-- after SOURCED_AT. Content Gap is the supply-side component of white space
+-- (CONTEXT.md): "is this trend under-covered in McClatchy's own published
+-- corpus?" A live trend is a gap when the latest CRMA-452 content-match
+-- generation holds NO article at or above CONTENT_GAP_MIN_SIMILARITY — so
+-- the recent window is the recompute task's 180-day filter on
+-- CUE_CONTENT_VECTORS.PUBLISHED_DATE, recorded per row as WINDOW_DAYS. Read
+-- straight off FCT_TREND_CONTENT_MATCHES_LEDGER; no new Cortex call and no
+-- new scan of CUE_CONTENT_VECTORS here. The threshold is the single named
+-- constant in the content_gap_params CTE; see that CTE for its calibration
+-- and why it is not CRMA-767's 0.78. Isolated like NEAREST_CONTENT: never
+-- read by HEAT_INDEX, LIFECYCLE_STATUS or PREDICTION_SCORE.
 
 CREATE OR REPLACE DYNAMIC TABLE MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD
   TARGET_LAG = '15 minutes'
@@ -302,7 +316,9 @@ related_trends AS (
 latest_content_match_chain AS (
     -- CRMA-452: "latest generation" pointer into FCT_TREND_CONTENT_MATCHES_
     -- LEDGER, same pattern as DT_TREND_CONNECTIONS' CHAIN_ID lookup.
-    SELECT CHAIN_ID
+    -- COMPUTED_AT rides along for content_gap (CRMA-453); nearest_content
+    -- joins on CHAIN_ID alone and is unaffected.
+    SELECT CHAIN_ID, COMPUTED_AT
     FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_CONTENT_MATCHES_LEDGER
     QUALIFY ROW_NUMBER() OVER (ORDER BY COMPUTED_AT DESC) = 1
 ),
@@ -325,6 +341,51 @@ nearest_content AS (
         ) WITHIN GROUP (ORDER BY m.MATCH_RANK) AS NEAREST_CONTENT
     FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_CONTENT_MATCHES_LEDGER m
     JOIN latest_content_match_chain c ON c.CHAIN_ID = m.CHAIN_ID
+    GROUP BY m.TREND_ID
+),
+content_gap_params AS (
+    -- CRMA-453: CONTENT_GAP_MIN_SIMILARITY — the one knob for Content Gap.
+    -- A trend counts as covered when at least one article in the latest
+    -- content-match generation scores at or above it; otherwise it is a gap.
+    --
+    -- 0.60 today, which equals the recompute task's MATCH_THRESHOLD (the
+    -- ledger's storage floor): "gap" = "the trend cleared zero rows", the
+    -- raw zero-match reading CRMA-453 asks for under Path A. It is kept
+    -- separate from MATCH_THRESHOLD on purpose: the editorial calibration
+    -- (CRMA-455) can RAISE the coverage bar here without shrinking
+    -- NEAREST_CONTENT. It cannot usefully go BELOW 0.60 — the ledger stores
+    -- nothing under that, so a lower value behaves as 0.60.
+    --
+    -- Measured 2026-09-29 against the 2026-09-28 generation (533 live
+    -- trends): 111 gaps at 0.60, 249 at 0.65, 395 at 0.70, 499 at 0.78.
+    -- Genuine gaps sit well under the bar (Burrowcore Interiors 0.54,
+    -- Pinpoint Patch Pharmacy 0.55, C15:0 Longevity Supplements 0.58 — all
+    -- adjacent, none on-topic). Known weakness in the other direction: the
+    -- 0.60-0.65 band holds adjacency that reads as coverage ("Garment
+    -- Digital Passports" -> a digital-wallet piece at 0.61), so 0.60
+    -- under-reports gaps rather than over-reports them.
+    --
+    -- Not CRMA-767's 0.78 (prediction coverage detection): that cut was
+    -- measured for a short SUBJECT_DESCRIPTOR phrase, while this ledger
+    -- embeds TREND_NAME + SUMMARY_SHORT, and the longer text scores lower
+    -- against the same content vectors. At 0.78 genuine coverage reads as a
+    -- gap — "Garment Dry Shampoo" (0.75, an article on exactly that) and
+    -- "Dollar-Store Default" (0.68) — and 94% of live trends would flag.
+    -- Same corpus, same 768-dim space, same 180-day window as CRMA-767;
+    -- only the threshold differs, because the query text differs.
+    SELECT 0.60::FLOAT AS CONTENT_GAP_MIN_SIMILARITY
+),
+content_gap AS (
+    -- CRMA-453: best covering article per trend in the latest generation.
+    -- A trend with no row here was either a gap at compute time or not
+    -- evaluated at all; the final SELECT tells those apart.
+    SELECT
+        m.TREND_ID,
+        MAX(m.SCORE) AS CONTENT_GAP_TOP_SIMILARITY
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_CONTENT_MATCHES_LEDGER m
+    JOIN latest_content_match_chain c ON c.CHAIN_ID = m.CHAIN_ID
+    CROSS JOIN content_gap_params p
+    WHERE m.SCORE >= p.CONTENT_GAP_MIN_SIMILARITY
     GROUP BY m.TREND_ID
 ),
 latest_sourcing AS (
@@ -506,7 +567,35 @@ SELECT
     -- a trend that has never been sourced.
     COALESCE(ls.STATUS, 'not_sourced')                                    AS SOURCING_STATUS,
     sp.SOURCED_PRODUCTS,
-    ls.COMPLETED_AT                                                       AS SOURCED_AT
+    ls.COMPLETED_AT                                                       AS SOURCED_AT,
+
+    -- 2026-09-29 (CRMA-453): Content Gap, see content_gap_params. Three-state
+    -- flag: TRUE = evaluated, nothing in our corpus clears the bar (a gap);
+    -- FALSE = at least one covering article; NULL = not evaluated — RETIRED
+    -- (the recompute task skips it), promoted after the latest generation
+    -- was computed (both timestamps are account-local NTZ), or no generation
+    -- exists yet. NULL is never a gap: "we did not look" must not read as
+    -- "nobody wrote about this".
+    CASE
+        WHEN cgc.COMPUTED_AT IS NULL                     THEN NULL
+        WHEN NVL(tb.LIFECYCLE_STATUS, 'NEW') = 'RETIRED' THEN NULL
+        WHEN t.PROMOTED_AT > cgc.COMPUTED_AT             THEN NULL
+        ELSE cg.TREND_ID IS NULL
+    END                                                                   AS CONTENT_GAP_FLAG,
+    -- Cosine of the best covering article (>= CONTENT_GAP_MIN_SIMILARITY).
+    -- NULL whenever CONTENT_GAP_FLAG is not FALSE: the ledger stores nothing
+    -- under its 0.60 floor, so a gap has no nearest-miss score to report.
+    -- The RETIRED guard covers a trend retired after the recompute ran,
+    -- which still has rows in that generation.
+    IFF(NVL(tb.LIFECYCLE_STATUS, 'NEW') = 'RETIRED', NULL,
+        cg.CONTENT_GAP_TOP_SIMILARITY)                                    AS CONTENT_GAP_TOP_SIMILARITY,
+    -- When the generation behind the flag was computed, so a stalled daily
+    -- recompute is visible. NULL exactly when CONTENT_GAP_FLAG is NULL.
+    CASE
+        WHEN NVL(tb.LIFECYCLE_STATUS, 'NEW') = 'RETIRED' THEN NULL
+        WHEN t.PROMOTED_AT > cgc.COMPUTED_AT             THEN NULL
+        ELSE cgc.COMPUTED_AT
+    END                                                                   AS CONTENT_GAP_EVALUATED_AT
 
 FROM trend_base tb
 LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t  ON tb.TREND_ID = t.TREND_ID
@@ -519,4 +608,6 @@ LEFT JOIN trend_vectors tv                            ON tb.TREND_ID = tv.TREND_
 LEFT JOIN latest_prediction pred                      ON tb.TREND_ID = pred.TREND_ID
 LEFT JOIN nearest_content nc                          ON tb.TREND_ID = nc.TREND_ID
 LEFT JOIN latest_sourcing ls                          ON tb.TREND_ID = ls.TREND_ID
-LEFT JOIN sourced_products sp                         ON tb.TREND_ID = sp.TREND_ID;
+LEFT JOIN sourced_products sp                         ON tb.TREND_ID = sp.TREND_ID
+LEFT JOIN latest_content_match_chain cgc              ON 1 = 1
+LEFT JOIN content_gap cg                              ON tb.TREND_ID = cg.TREND_ID;

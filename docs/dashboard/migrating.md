@@ -56,6 +56,8 @@ Before implementation, each field needs a real **definition**. So every section 
 ## 🟡 Content Gap
 
 > **Status:** Definition **locked 2026-06-12** (grill session → `CONTEXT.md` "Content gap"). Mockup still renders on ATLAS; the real version ships as the supply-side leg of the [Opportunity Score](#overall-score).
+>
+> **2026-09-29 (CRMA-453):** a first, simpler Content Gap is on `DT_TREND_DASHBOARD`, replacing the mockup value: `CONTENT_GAP_FLAG` / `CONTENT_GAP_TOP_SIMILARITY` / `CONTENT_GAP_EVALUATED_AT`. A trend is a gap when no article from the last 180 days clears `CONTENT_GAP_MIN_SIMILARITY` (0.60) in the CRMA-452 content-match ledger. It is a nearest-match flag on the trend-level match, not the per-term recent count locked below, so it does not meet the "one borderline article must not erase a gap" rule. Treat it as the interim field until the `gap_factor` below is built and calibrated. Contract: [Data Contract → Content gap](data-contract.md#content-gap).
 
 **At a glance** — How uncovered the trend is in **McClatchy's own** published corpus. The supply-side *component* of white space — a gap nobody is searching for is not an opportunity.
 **Scale** — `gap_factor` 0–1 in the ledger; surfaced alongside the Opportunity Score so the "why" is visible.
