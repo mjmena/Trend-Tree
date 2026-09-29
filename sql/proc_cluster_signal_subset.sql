@@ -11,7 +11,7 @@
 -- Singletons (communities of size < 2) are excluded from the output.
 --
 -- Signals without a row in FCT_SIGNALS (not yet promoted by
--- TASK_PROMOTE_SIGNALS_TO_FCT) are dropped — caller should filter to recent signals.
+-- MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT) are dropped — caller should filter to recent signals.
 --
 -- Usage:
 --   CALL MCC_RAW.MARKETING_DEV.PROC_CLUSTER_SIGNAL_SUBSET(

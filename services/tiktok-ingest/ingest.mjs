@@ -2,7 +2,7 @@
 //
 // One run = up to 50 SerpApi short-video searches over the fixed seed list,
 // the gemini-3.7-flash title filter, then one MERGE of the kept videos into
-// STG_EXTERNAL_SIGNALS as SOURCE_NAME = 'tiktok'. TASK_PROMOTE_SIGNALS_TO_FCT
+// STG_EXTERNAL_SIGNALS as SOURCE_NAME = 'tiktok'. MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT
 // moves them into FCT_SIGNALS. `gcloud run jobs execute trend-tree-tiktok-ingest`
 // starts it by hand; CRMA-1338 adds the daily Cloud Scheduler trigger. The
 // ingest logic lives in services/lib/tiktok_ingest.mjs; this file only wires

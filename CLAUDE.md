@@ -63,7 +63,7 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 ```
 discovery agents (every 2h) → STG_EXTERNAL_SIGNALS
                                   ↓
-                        TASK_PROMOTE_SIGNALS_TO_FCT (5-min)
+                        MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT (5-min)
                                   ↓
                           FCT_SIGNALS  ←  embedded signal record
                                   ↓
