@@ -2,7 +2,7 @@
 -- Database: MCC_PRESENTATION.TREND_AGENT
 --
 -- Append-only fact table promoted from STG_EXTERNAL_SIGNALS by
--- TASK_PROMOTE_SIGNALS_TO_FCT (5-min cadence). Single SIGNAL_VECTOR
+-- MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT (5-min cadence). Single SIGNAL_VECTOR
 -- column over (SIGNAL_TITLE + first 512 chars of SIGNAL_TEXT) via
 -- Cortex EMBED_TEXT_1024('snowflake-arctic-embed-l-v2.0', ...).
 --
@@ -34,9 +34,12 @@ CREATE OR REPLACE TABLE MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS (
 -- Cortex EMBED rejects them and one such row halts the whole INSERT.
 -- See sql/alter_task_promote_signals_utf8_guard.sql for the incident.
 --
--- The live object carries a MARKETING_ prefix
--- (MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT). Apply changes to that name.
-CREATE OR REPLACE TASK MCC_PRESENTATION.TREND_AGENT.TASK_PROMOTE_SIGNALS_TO_FCT
+-- Task name matches production (CRMA-1030): the live object is
+-- MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT, owned by MARKETING_ENGINEER.
+-- CREATE OR REPLACE TASK does not preserve the owner — see the OWNERSHIP
+-- TRAP note in sql/alter_task_promote_signals_utf8_guard.sql before
+-- re-running this statement.
+CREATE OR REPLACE TASK MCC_PRESENTATION.TREND_AGENT.MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT
     WAREHOUSE = MARKETING_WH
     SCHEDULE  = '5 MINUTE'
 AS
@@ -61,4 +64,4 @@ WHERE s.SIGNAL_TITLE IS NOT NULL
   )
 QUALIFY ROW_NUMBER() OVER (PARTITION BY s.SIGNAL_ID ORDER BY s.INGESTED_AT ASC) = 1;
 
-ALTER TASK MCC_PRESENTATION.TREND_AGENT.TASK_PROMOTE_SIGNALS_TO_FCT RESUME;
+ALTER TASK MCC_PRESENTATION.TREND_AGENT.MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT RESUME;

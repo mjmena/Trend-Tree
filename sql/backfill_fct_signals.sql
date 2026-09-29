@@ -1,6 +1,6 @@
 -- One-time backfill: populate FCT_SIGNALS from existing STG_EXTERNAL_SIGNALS
 -- so cluster procs and the new q_cluster_signals step have data on day one.
--- Same body as TASK_PROMOTE_SIGNALS_TO_FCT — runs immediately, then the
+-- Same body as MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT — runs immediately, then the
 -- recurring TASK takes over.
 --
 -- Idempotent (NOT EXISTS guard); safe to re-run.

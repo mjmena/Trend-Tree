@@ -22,7 +22,7 @@
 -- the agent's per-trend classification survives end-to-end.
 --
 -- No FK enforcement to FCT_SIGNALS.SIGNAL_ID — eventual consistency is
--- by design. The 5-minute lag on TASK_PROMOTE_SIGNALS_TO_FCT means a
+-- by design. The 5-minute lag on MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT means a
 -- brand-new evidence link can point at a SIGNAL_ID that doesn't yet
 -- have an FCT_SIGNALS row. That's fine — link-level use cases (dashboard
 -- top_signals, audit, counts) don't need the embedding.
