@@ -5,7 +5,7 @@
 
 **Purpose:** The full column schema, type, meaning, and an example value for the two dynamic tables the downstream platforms read.
 
-**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`), `sql/task_recompute_content_matches.sql` (+ `sql/fct_trend_content_matches_ledger.sql`), `sql/fct_trend_sourcing_ledger.sql` (+ `sql/fct_trend_sourcing_candidates.sql`). This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-09-28.
+**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`), `sql/task_recompute_content_matches.sql` (+ `sql/fct_trend_content_matches_ledger.sql`), `sql/fct_trend_sourcing_ledger.sql` (+ `sql/fct_trend_sourcing_candidates.sql`). This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-09-29.
 
 **Example values are real, pulled 2026-06-08** — mostly from the live trend **Hyper-Tactile Interiors** (`c51f1620-a832-4f13-a443-a7df03bf6a99`). A few fields that are null for that trend (geographic hotspots, macrotrend tags, the social-evidence object) use a populated row from another live trend to show the shape. Column names and types are authoritative.
 
@@ -146,7 +146,28 @@ The enrichment agent produces a typed pool of links. The dashboard pre-buckets i
 
 **Separate vector space from `TREND_VECTOR_ARCTIC_EMBED_L_V2_0` above.** `NEAREST_CONTENT` is powered by a 768-dim `snowflake-arctic-embed-m-v1.5` companion vector (trend name + short summary), cosined against the data team's existing `MCC_RAW.STORY_DATA.CUE_CONTENT_VECTORS.KEY_WORDS_VECTOR` — the same space the data team already embeds published content into, reused as-is (no content re-embedding). This is deliberately isolated from the 1024-dim `arctic-embed-l-v2.0` internal trend-identity space; the two are never compared. Recomputed daily by the `MARKETING_TASK_RECOMPUTE_CONTENT_MATCHES` Snowflake task (CRMA-452) into `FCT_TREND_CONTENT_MATCHES_LEDGER`, which this dashboard reads for the latest generation only (same "latest `CHAIN_ID`" pattern as `DT_TREND_CONNECTIONS`). Calibrated cosine threshold **0.60**, rolling content window **180 days**, top **5** matches per trend — see `sql/task_recompute_content_matches.sql` for the calibration readout.
 
-This is the vector-match **substrate** only — it does not yet feed a Content Gap metric or an AI Match % score (those are separate, forward-looking fields).
+This is the vector-match **substrate**. Content Gap (below) is read off it; AI Match % is a separate, forward-looking field.
+
+### Content gap
+
+| Column | Type | What it is | Example value |
+| --- | --- | --- | --- |
+| `CONTENT_GAP_FLAG` | BOOLEAN | Is this trend **whitespace in our own published corpus**? `TRUE` = no McClatchy article from the last **180 days** scores at or above `CONTENT_GAP_MIN_SIMILARITY` (**0.60**) against the trend — a candidate gap to write into. `FALSE` = at least one article clears the bar. `NULL` = **not evaluated**: the trend is `RETIRED`, was promoted after the latest content-match recompute, or no recompute exists yet. `NULL` never means "gap". | `true` (Pinpoint Patch Pharmacy) · `false` (Protein Coffee) |
+| `CONTENT_GAP_TOP_SIMILARITY` | FLOAT | Cosine of the best covering article — the same number as `NEAREST_CONTENT[0].score` when the flag is `FALSE`. `NULL` whenever the flag is not `FALSE`: the ledger stores nothing under 0.60, so a gap has no near-miss score to show. | `0.8344` (Protein Coffee) |
+| `CONTENT_GAP_EVALUATED_AT` | TIMESTAMP_NTZ | When the content-match generation behind the flag was computed (daily, 17:00 UTC, stored as account-local Eastern wall clock). Use it to spot a stalled recompute. `NULL` exactly when the flag is `NULL`. | `2026-09-28 13:00:02` |
+
+**Definition (CRMA-453).** A live trend is a content gap when the latest `FCT_TREND_CONTENT_MATCHES_LEDGER` generation holds no article for it at or above `CONTENT_GAP_MIN_SIMILARITY`. The recent window is the recompute task's filter on `CUE_CONTENT_VECTORS.PUBLISHED_DATE` — the last 180 days, recorded per ledger row as `WINDOW_DAYS` — so an all-time back catalogue never erases a gap. Coverage is ours only: `CUE_CONTENT_VECTORS` is McClatchy's corpus, and market saturation stays heat's job. The flag is supply-side only; it carries no demand, so a gap nobody searches for is still flagged (demand is the Opportunity Score's other leg).
+
+**The threshold is one named constant**, `CONTENT_GAP_MIN_SIMILARITY` in the `content_gap_params` CTE of `sql/dt_trend_dashboard.sql`. It starts at **0.60**, equal to the recompute task's `MATCH_THRESHOLD`, so today "gap" means "the trend cleared zero content matches". It is kept separate from `MATCH_THRESHOLD` so the editorial calibration (CRMA-455) can raise the coverage bar without shrinking `NEAREST_CONTENT`. It cannot usefully go below 0.60, because the ledger stores nothing under that. On the 2026-09-28 generation, 111 of 533 live trends flag as gaps at 0.60; 249 would at 0.65, 395 at 0.70, and 499 at 0.78.
+
+**Caveat: matching is keyword-level.** Under Path A the content side is the data team's `KEY_WORDS_VECTOR`, a vector of each article's keywords, not its text. Treat a `TRUE` as a *candidate* gap for an editor to confirm, not a verdict. The error runs in both directions:
+
+* **False "covered".** The 0.60–0.65 band holds adjacent articles that read as coverage — e.g. Garment Digital Passports → a digital-wallet explainer at 0.61. At 0.60 the flag under-reports gaps rather than over-reports them.
+* **Corpus mix.** The corpus skews local news, so some lifestyle "gaps" are corpus mix rather than editorial whitespace (see `docs/dashboard/migrating-data-sources.md`).
+
+**Not weighted by content performance.** The optional pageview weighting from `MCC_PRESENTATION.TABLEAU_REPORTING.CSA_CONTENT_LANDE` is left out: none of the 620 matched `CONTENT_ID`s in the 2026-09-28 generation join to that table's `SOURCE_ID`, `CSA_CANONICAL_ARTICLE_ID` or `CSA_VARIANT_ID`, so there is no key to weight by today.
+
+Isolated like `NEAREST_CONTENT`: these columns never feed `HEAT_INDEX`, `LIFECYCLE_STATUS` or `PREDICTION_SCORE`. Inherits the table's 15-minute lag on top of the daily recompute.
 
 ### Product sourcing
 
