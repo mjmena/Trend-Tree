@@ -471,7 +471,7 @@ steps:
     params: []
 - namespace: fetch_pipedream_errors
   runtime: nodejs20.x
-  uses: "./fetch_pipedream_errors/entry.js"
+  uses: "./fetch_pipedream_errors/entry.mjs"
   props:
     event: "{{steps.normalize_event.$return_value}}"
 - namespace: q_et_rescue
@@ -533,7 +533,7 @@ steps:
         --     applied yet, or a retired key. Usually benign; not usually urgent.
         WITH manifest AS (
           SELECT * FROM VALUES
-            ('audit.report_rubric', 2),
+            ('audit.report_rubric', 3),
             ('audit.system', 4),
             ('discovery.chatgpt.search', 4),
             ('discovery.claude.rerank', 2),
@@ -583,7 +583,7 @@ steps:
       query: |-
         WITH manifest AS (
           SELECT * FROM VALUES
-            ('audit.report_rubric', 2),
+            ('audit.report_rubric', 3),
             ('audit.system', 4),
             ('discovery.chatgpt.search', 4),
             ('discovery.claude.rerank', 2),
@@ -631,6 +631,45 @@ steps:
         FULL OUTER JOIN manifest m ON m.PROMPT_KEY = l.PROMPT_KEY
         ORDER BY 1
     params: []
+- namespace: q_audit_history
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        -- CRMA-1031: saturation guard. One row per scheduled (cron) audit run,
+        -- newest first, with the areas that graded RED in it. saturation.mjs
+        -- counts each area's RED streak from these rows and compares this run
+        -- with the newest one. An HTTP run never counts toward a streak, so
+        -- HTTP rows are left out. This run's own row is not here yet:
+        -- commit_audit_ledger writes it later. No LIMIT: the cron writes one
+        -- row a day, and a streak can be as long as the table.
+        SELECT
+          TO_CHAR(l.EVALUATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS EVALUATED_AT,
+          l.TRIGGER_KIND,
+          l.OVERALL_STATUS,
+          ARRAY_AGG(DISTINCT CASE WHEN UPPER(a.value:severity::STRING) = 'RED'
+            THEN COALESCE(NULLIF(LOWER(TRIM(a.value:area::STRING)), ''), 'unknown') END) AS RED_AREAS
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_AUDIT_LEDGER l,
+             LATERAL FLATTEN(INPUT => l.ALERTS, OUTER => TRUE) a
+        WHERE l.TRIGGER_KIND = 'cron'
+        GROUP BY l.AUDIT_ID, l.EVALUATED_AT, l.TRIGGER_KIND, l.OVERALL_STATUS
+        ORDER BY l.EVALUATED_AT DESC
+      query: |-
+        SELECT
+          TO_CHAR(l.EVALUATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS EVALUATED_AT,
+          l.TRIGGER_KIND,
+          l.OVERALL_STATUS,
+          ARRAY_AGG(DISTINCT CASE WHEN UPPER(a.value:severity::STRING) = 'RED'
+            THEN COALESCE(NULLIF(LOWER(TRIM(a.value:area::STRING)), ''), 'unknown') END) AS RED_AREAS
+        FROM MCC_PRESENTATION.TREND_AGENT.FCT_AUDIT_LEDGER l,
+             LATERAL FLATTEN(INPUT => l.ALERTS, OUTER => TRUE) a
+        WHERE l.TRIGGER_KIND = 'cron'
+        GROUP BY l.AUDIT_ID, l.EVALUATED_AT, l.TRIGGER_KIND, l.OVERALL_STATUS
+        ORDER BY l.EVALUATED_AT DESC
+    params: []
 - namespace: run_audit_agent
   runtime: nodejs20.x
   uses: "./run_audit_agent/entry.mjs"
@@ -649,6 +688,7 @@ steps:
     pipedream_errors: "{{steps.fetch_pipedream_errors.$return_value}}"
     prompts_rows: "{{steps.q_audit_prompts.$return_value}}"
     prompt_drift_rows: "{{steps.q_prompt_drift.$return_value}}"
+    audit_history_rows: "{{steps.q_audit_history.$return_value}}"
 - namespace: commit_audit_ledger
   runtime: nodejs20.x
   uses: "./commit_audit_ledger/entry.js"
