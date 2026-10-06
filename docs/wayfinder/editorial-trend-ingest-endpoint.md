@@ -53,6 +53,29 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 - **A Cloud Run service in this repo is not public.** `services/deploy.sh` deploys with
   `--no-allow-unauthenticated`, so a caller needs a `roles/run.invoker` binding.
   _Source: `services/deploy.sh:25-43,278`, 2026-10-06._
+- **ATLAS runs in its own GCP projects, not in `mcc-crm-automations`.** The backend is the
+  Cloud Run service `insights-agent-backend` in `insights-agent-dev-504817` (dev) and
+  `insights-agent-504817` (prod). No stage environment exists. The email of its runtime
+  service account is in no source.
+  _Source: Confluence "Atlas (insights-agent) — Deployment Runbook" (id `2325315603`,
+  2026-09-15), reported in
+  [CRMA-1428](https://mcclatchy.atlassian.net/browse/CRMA-1428), 2026-10-06._
+- **ATLAS authenticates every outbound service call with a static key in a header.** It
+  sends `X-API-Key` to CSA and `X-Api-Key` to Harbor. Harbor is a Cloud Run service in
+  `mcc-crm-automations` that binds `allUsers` to `roles/run.invoker` and checks the key in
+  the application. No source shows ATLAS sending a Google ID token.
+  _Source: CRMA-1428 findings; the `harbor-api` policy re-read with `gcloud` on 2026-10-06._
+- **No cross-project `roles/run.invoker` grant exists in `mcc-crm-automations`.** All 12
+  services and the project policy were read. `trend-tree-ecomm-agent` admits one service
+  account from the same project. No `trend-tree-*` service checks a header key.
+  _Source: CRMA-1428 findings, read-only `gcloud`, 2026-10-06._
+- **ATLAS reaches Trend Tree only through Snowflake today.** It reads
+  `MCC_PRESENTATION.TREND_AGENT` as user `TH_APIUSER` with role `TH_APIROLE`. No ATLAS →
+  Trend Tree HTTP call exists.
+  _Source: CRMA-749 (2026-08-20), repo grep, reported in CRMA-1428, 2026-10-06._
+- **The Pipedream HTTP triggers in this repo are open URLs.** No step checks a caller
+  credential, and the internal callers send none.
+  _Source: repo code read in CRMA-1428, CRMA-528, 2026-10-06._
 - **No request for this endpoint exists in writing.** A search of Slack and of Jira `CRMA`
   on 2026-10-06 found no message or ticket that asks for it. The requirement comes from the
   map's driver directly.
@@ -84,6 +107,8 @@ The map stops before the build. When no decision remains, `/to-spec` writes
      '## Standing constraints' in the same edit — never a per-entry Binds block.
 
      `resolve` appends here. Do not hand-edit while a session is running. -->
+
+- [Find out how the ATLAS backend can authenticate to a Cloud Run service](https://mcclatchy.atlassian.net/browse/CRMA-1428) — **Decided:** ATLAS runs on Cloud Run in its own GCP projects and authenticates outbound calls with a static header key today; a Google ID token is possible but has no cross-project precedent here
 
 ## Not yet specified
 
