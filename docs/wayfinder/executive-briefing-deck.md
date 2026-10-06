@@ -19,7 +19,7 @@ A finished, self-contained executive HTML deck (~12 slides) presenting Trend Tre
 
 - The May showcase deck exists at the repo root: `Martin Mena_Trend Tree_filled.pptx` (5 slides, "AI Forward Award" template, Plot-Driven PTO example). The unfilled `Martin Mena_Trend Tree.pptx` variant carries stale claims — a GPT-4/Claude cross-model cascade and $0.45/trend — superseded by the single Gemini 3.1 Pro agent and the measured $0.15/run median. Verified 2026-09-19 by reading the slide XML.
 - No tree image asset exists in the repo (searched 2026-09-19; `docs/images/` holds only `atlas-flow.mmd`/`.svg`).
-- Median enrichment cost: $0.15/run across 167 runs, 30 days to 2026-08-20 (`CLAUDE.md`; only ~half the ledger rows carry a cost value — CRMA-442).
+- Current-state numbers, live snapshot 2026-10-06: 590 trends (485 STABLE, none GROWING), 154,500 signals since 2026-04-28 (36,831 in the last 30 days, 76% from `google_trends_rss`), 2,254 candidates, 12 source names with rows in the last 30 days, 37 trends matched to products, median enrichment cost $0.13/run across 133 runs with full cost coverage. This supersedes the $0.15/run figure in `CLAUDE.md`. Detail and refresh queries: [docs/wayfinder/assets/crma-1203-current-state-snapshot.md](https://github.com/mjmena/Trend-Tree/blob/wayfinder/executive-briefing-deck/docs/wayfinder/assets/crma-1203-current-state-snapshot.md).
 
 ## Standing constraints
 
@@ -27,6 +27,9 @@ A finished, self-contained executive HTML deck (~12 slides) presenting Trend Tre
 - Built for live presentation, but every slide must explain itself — Martin expects the deck to be forwarded.
 - Target length: ~12 content slides (title, use-case framing ×2, tree overview, how-it-works by layer ×3, worked example, current state + integrations ×2, future plans ×2, close) — the starting shape, refined by the outline ticket.
 - Styling follows the showcase deck's **explicit per-slide hex/font overrides**, captured in [docs/wayfinder/assets/crma-1202-showcase-deck-style-tokens.md](https://github.com/mjmena/Trend-Tree/blob/wayfinder/executive-briefing-deck/docs/wayfinder/assets/crma-1202-showcase-deck-style-tokens.md) — not the theme's declared (unused) scheme colors. Headline: primary accent `#16A34A`, primary text `#0F172A`, Plus Jakarta Sans ExtraBold for titles, Inter (multi-weight) for body/labels, white background with a framed-canvas treatment on content slides.
+
+- Current-state slides take every number and every named integration from the CRMA-1203 snapshot asset, and from nowhere else. A source is named as current only if it wrote rows in the last 30 days: today that is 4 direct platform sources (`google_trends_rss`, `bluesky`, `google_trends_explore`, `tiktok`), 7 discovery agents, and `grok_live`. Amazon, Pinterest and GDELT are not named as current, although the repo docs still list them. Reddit, Kickstarter and the ATLAS to CSA handoff go to Future Plans.
+- The numbers are re-run with the asset's refresh queries the day before presenting. TikTok stays on a current-state slide only if that re-run shows fresh `tiktok` rows.
 
 ## Decisions so far
 
@@ -44,6 +47,8 @@ A finished, self-contained executive HTML deck (~12 slides) presenting Trend Tre
 
 - [Extract the showcase deck's style tokens](https://mcclatchy.atlassian.net/browse/CRMA-1202) — **Decided:** Captured in docs/wayfinder/assets/crma-1202-showcase-deck-style-tokens.md — the deck build follows explicit per-slide hex/font overrides (primary accent #16A34A, headline #0F172A, Plus Jakarta Sans ExtraBold titles + Inter body), not the theme's unused declared scheme colors
 
+- [Snapshot current-state metrics and the integration inventory](https://mcclatchy.atlassian.net/browse/CRMA-1203) — **Decided:** Live snapshot 2026-10-06: 590 trends, 154,500 signals (36,831 in 30 days), 2,254 candidates, median enrichment cost 0.13 USD per run; 12 source names are live, and Amazon, Pinterest and GDELT are silent despite the repo docs. Numbers, inventory and refresh queries are in docs/wayfinder/assets/crma-1203-current-state-snapshot.md
+
 ## Not yet specified
 
 - How the presenter narration is carried for forwarded readers — visible notes, a toggle, or per-slide captions. Depends on the outline and the build approach.
@@ -55,3 +60,4 @@ A finished, self-contained executive HTML deck (~12 slides) presenting Trend Tre
 - Editing or refreshing the May showcase PPTX — it is a source of styling and narrative, not a deliverable.
 - Building new pipeline features, dashboards, or docs to make the deck look better.
 - Publishing the deck into Confluence — the ATLAS space carries stakeholder docs, not this briefing.
+- Repairing the pipeline gaps the CRMA-1203 snapshot exposed — the exhausted SerpApi quota that stalls `tiktok`, the silent `amazon_trends` ingester, the silent `search-gdelt` tool. They are pipeline defects for the CRMA board, not steps toward the deck.
