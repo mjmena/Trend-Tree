@@ -11,6 +11,7 @@ Each of TikTok, Reddit, and Kickstarter has a decided ingest route — entry mec
 - Skills: `/grilling` + `/domain-modeling` on every decide ticket. Decision tickets resolve as written prose recommendations with reasoning, not option cards.
 - Vocabulary: `CONTEXT.md`'s **Source** entry defines the three entry mechanisms — direct platform source / discovery agent / agent search tool. Use those terms exactly; "add a platform" means choosing one of the three.
 - Execution override: this map carries one execution ticket — provisioning the scraping tool. The destination includes the tool being usable, not just chosen.
+- **Reopened 2026-10-06.** The map closed 2026-09-08, and `/to-spec` was the next step. A later map, [CRMA-1315](https://mcclatchy.atlassian.net/browse/CRMA-1315) (SerpApi sources, closed 2026-09-28), ruled on the same three platforms without referencing this one, and its rulings contradict this map's decisions on all three. See the CRMA-1315 entry under **Established facts**. `/to-spec` cannot run until the two maps agree, so two tickets are back on the frontier: [CRMA-1422](https://mcclatchy.atlassian.net/browse/CRMA-1422) measures, then [CRMA-1423](https://mcclatchy.atlassian.net/browse/CRMA-1423) decides.
 
 ## Established facts
 
@@ -25,6 +26,15 @@ Each of TikTok, Reddit, and Kickstarter has a decided ingest route — entry mec
 - **Bright Data refuses `country: "US"` on the TikTok dataset — there is no US geo-targeting at any price.** Both the async `/trigger` and the sync `/scrape` path return `["country","This value is not allowed"]`. The field itself works and takes ISO-2 codes: `CA`, `MX`, `FR`, `AU`, `GB`, `IN`, `BR`, `DE`, `JP`, `PR`, `GU` and empty are all accepted; `US` alone is blocked, and no long form (`United States`, `USA`, `America`) is accepted either. The Reddit dataset has no `country` field at all. This makes CRMA-1021's "ingester sets country=US" binding unimplementable. Source: live enumeration via the zero-cost validation oracle, verified 2026-09-08 on CRMA-1005.
 - **The Bright Data synchronous endpoint is not usable for TikTok discovery, and job duration is fixed vendor overhead.** `POST /datasets/v3/scrape` succeeded 3 times in 15 attempts; every other call returned 202 at the 60-second cap, and a small `limit_per_input` is not the lever (1 success in 6 at `lim=3`). Real job duration is 139/187/237/283s. **The vendor parallelizes inputs**: 1 keyword / 10 records took 183.7s, 3 keywords / 30 records took 190.0s — 3x the work for 6 seconds. So breadth costs credits, not wall clock. Source: live probing, verified 2026-09-08 on CRMA-1005.
 - **Bright Data's Reddit discover-by-subreddit input DOES take a time parameter — `sort_by_time`, which is undocumented.** The docs describe only `url` and `sort_by`, but validation errors echo the normalized input and leak `sort_by_time`, `keyword` and `start_date`. Enumerated by pairing a candidate value with a deliberately invalid `sort_by`, so validation fails before any job runs (a zero-cost oracle): `sort_by` = `Top|New|Hot|Rising`, `sort_by_time` = `Now|Today|This Week|This Month|This Year|All Time`. Both are case-sensitive and capitalized; lowercase `top` is a 400, so the API reference's own lowercase example is wrong. **`sort_by_time` is effectively mandatory for a `Top` pull** — `Top` alone returns all-time posts (r/Cooking gave 2020/2021/2024 posts at 25k–35k upvotes), while `Top`+`Today` returned posts inside 24 hours. `Rising` is available too, so CRMA-981's "Apify alone covers rising" claim was wrong. Source: live probing, verified 2026-09-07 on CRMA-986.
+- **CRMA-1315 ruled on all three platforms after this map closed, and production follows CRMA-1315.**
+  - **TikTok** ships through SerpApi `google_short_videos`, not Bright Data. `services/tiktok-ingest` is a daily Cloud Run job that writes `SOURCE_NAME='tiktok'` (CRMA-1337, CRMA-1338). Its rows carry no `METADATA.lane`, no `METADATA.url` and no Level 1 record, so they break CRMA-1006's METADATA contract. Its keep-or-drop check, [CRMA-1340](https://mcclatchy.atlassian.net/browse/CRMA-1340), is still open.
+  - **Reddit:** CRMA-1315 says "Reddit writes no `FCT_SIGNALS` row". Its replacement role, a corroboration oracle, closed wontfix (CRMA-1339) after CRMA-1344 rejected the typed decider.
+  - **Kickstarter:** CRMA-1315 dropped it "in any role".
+  - **The evidence was SerpApi-only.** CRMA-1317's rubric prototype graded Google-index results: Reddit 0% PASS, Kickstarter 4% PASS. It did not grade this map's routes, Bright Data subreddit posts (ADR-0006) and traction-gated `discover/advanced` JSON (ADR-0008). This map never graded them against the rubric either.
+  - **Nothing calls `scrape-gateway`.** There is no Reddit or Kickstarter ingester, no creator-list table, no scrape run ledger and no `scrape_freshness.mjs`. The only TikTok freshness check is the single-source `tiktok_freshness.mjs` row from CRMA-1338.
+  - **Neither map references the other.** ADR-0006, ADR-0008, ADR-0009, ADR-0010 and `CONTEXT.md`'s **Lane** entry still describe the Bright Data design as current.
+
+  Source: repo survey of `origin/production` at `354662a` and the CRMA-1315 map issue, 2026-10-06.
 
 ## Standing constraints
 
@@ -88,7 +98,8 @@ Each of TikTok, Reddit, and Kickstarter has a decided ingest route — entry mec
 
 ## Not yet specified
 
-_Empty — the map is complete. Every decision on the route to the destination is made._
+- [Prototype: Do Bright Data samples of Reddit and Kickstarter pass the distillation specificity rubric?](https://mcclatchy.atlassian.net/browse/CRMA-1422) — on the frontier. It grades this map's own routes, which CRMA-1315 never graded.
+- [Decide: reconcile CRMA-977's Bright Data routes with CRMA-1315's SerpApi rulings — what still gets built](https://mcclatchy.atlassian.net/browse/CRMA-1423) — blocked by CRMA-1422. It covers Reddit, Kickstarter, the parked Bright Data TikTok lanes, what happens to `scrape-gateway`, and which ADR and `CONTEXT.md` amendments `/to-spec` inherits.
 
 ## Out of scope
 
