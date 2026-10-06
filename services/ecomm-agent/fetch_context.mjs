@@ -20,7 +20,7 @@
 //      and 2 both succeeded.
 //   4. The sourcing.selector v1 prompt row — only when retrieval ran.
 
-import { checkCatalogFreshness } from "../lib/sourcing_run.mjs";
+import { checkCatalogFreshness, poolEntryFromRetrievalRow } from "../lib/sourcing_run.mjs";
 import { runWithRetry } from "./snowflake.mjs";
 
 const Q_FRESHNESS = `
@@ -67,6 +67,10 @@ const Q_RETRIEVAL = `
     p.VENDOR,
     p.PRODUCT_TYPE,
     p.EMBED_DOC,
+    p.PRODUCT_URL,
+    p.PRICE,
+    p.IMAGE_URL,
+    p.AVAILABLE,
     ROUND(VECTOR_COSINE_SIMILARITY(t.TREND_VECTOR, p.PRODUCT_VECTOR), 4) AS SEMANTIC_SCORE
   FROM t
   JOIN MCC_PRESENTATION.TREND_AGENT.DIM_CATALOG_PRODUCT p
@@ -133,21 +137,7 @@ export async function fetchContext({ connOpts, trend_id, tier }) {
     runWithRetry(connOpts, Q_PROMPT, []),
   ]);
 
-  // product_handle: the Shopify tier's CATALOG_PRODUCT_ID IS the product
-  // handle (sql/dim_catalog_product.sql: "shopify tier: the product Handle";
-  // DIM_CATALOG_PRODUCT carries no separate handle column). A future
-  // non-Shopify tier whose CATALOG_PRODUCT_ID is NOT the handle (e.g. an ASIN)
-  // would need to fetch/derive PRODUCT_HANDLE separately here — this
-  // assumption is tier-scoped, not a general truth.
-  const pool = (retrievalRows || []).map((r) => ({
-    catalog_product_id: r.CATALOG_PRODUCT_ID,
-    product_handle: r.CATALOG_PRODUCT_ID,
-    product_title: r.PRODUCT_TITLE ?? null,
-    vendor: r.VENDOR ?? null,
-    product_type: r.PRODUCT_TYPE ?? null,
-    embed_doc: r.EMBED_DOC ?? "",
-    semantic_score: typeof r.SEMANTIC_SCORE === "number" ? r.SEMANTIC_SCORE : Number(r.SEMANTIC_SCORE),
-  }));
+  const pool = (retrievalRows || []).map(poolEntryFromRetrievalRow);
 
   let prompt = null;
   if (promptRows && promptRows.length > 0) {

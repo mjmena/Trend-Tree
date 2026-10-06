@@ -7,8 +7,9 @@
 # Explicit file list — `node --test <dir>` is flaky across Node versions.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-# services/lib/normalize/ is listed separately because the glob above does not
-# recurse — the (platform, vendor) normalizers CRMA-985 put in that
-# subdirectory would otherwise be silently untested.
-exec node --test services/lib/*.test.mjs services/lib/normalize/*.test.mjs \
-  services/scrape-gateway/*.test.mjs services/deploy_layout.test.mjs
+# services/lib/normalize/ and services/lib/sources/ are listed separately
+# because the glob above does not recurse — the (platform, vendor) normalizers
+# CRMA-985 put in that subdirectory would otherwise be silently untested.
+exec node --test services/lib/*.test.mjs services/lib/sources/*.test.mjs \
+  services/lib/normalize/*.test.mjs services/scrape-gateway/*.test.mjs \
+  services/deploy_layout.test.mjs

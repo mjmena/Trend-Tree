@@ -13,6 +13,7 @@ import {
   capEmbedDoc,
   formatCandidatesForPrompt,
   buildSourcingRunPlan,
+  poolEntryFromRetrievalRow,
 } from "./sourcing_run.mjs";
 
 // ---------------------------------------------------------------------------
@@ -384,4 +385,49 @@ test("buildSourcingRunPlan re-applies the floor even if the caller handed an unf
   const plan = buildSourcingRunPlan({ pool, selectorEmit });
   assert.equal(plan.candidates.length, 1);
   assert.equal(plan.candidates[0].catalog_product_id, "above");
+});
+
+// ---------------------------------------------------------------------------
+// poolEntryFromRetrievalRow — retrieval row -> pool entry (CRMA-1328)
+// ---------------------------------------------------------------------------
+
+const retrievalRow = (over = {}) => ({
+  CATALOG_PRODUCT_ID: "fish-mug",
+  PRODUCT_TITLE: "Fish Mug",
+  VENDOR: "Acme",
+  PRODUCT_TYPE: "Mugs",
+  EMBED_DOC: "Fish Mug. Vendor: Acme.",
+  SEMANTIC_SCORE: "0.5123",
+  PRODUCT_URL: "https://shop.example.com/products/fish-mug",
+  PRICE: "14.25",
+  IMAGE_URL: "https://cdn.example.com/fish-mug.jpg",
+  AVAILABLE: true,
+  ...over,
+});
+
+test("poolEntryFromRetrievalRow carries the catalog's presentation fields into the candidate", () => {
+  const entry = poolEntryFromRetrievalRow(retrievalRow());
+  assert.equal(entry.product_url, "https://shop.example.com/products/fish-mug");
+  assert.equal(entry.price_at_match, 14.25);
+  assert.equal(entry.image_url_at_match, "https://cdn.example.com/fish-mug.jpg");
+  assert.equal(entry.available_at_match, true);
+  assert.equal(entry.semantic_score, 0.5123);
+  assert.equal(entry.product_handle, "fish-mug");
+
+  const plan = buildSourcingRunPlan({
+    pool: [entry],
+    selectorEmit: { outcome: "matched", picks: [{ catalog_product_id: "fish-mug", reasoned_fit: "strong", rationale: "fits" }] },
+  });
+  assert.equal(plan.candidates[0].product_url, "https://shop.example.com/products/fish-mug");
+  assert.equal(plan.candidates[0].price_at_match, 14.25);
+});
+
+test("poolEntryFromRetrievalRow keeps a catalog row's NULL presentation fields as null, not 0 or false", () => {
+  const entry = poolEntryFromRetrievalRow(
+    retrievalRow({ PRODUCT_URL: null, PRICE: null, IMAGE_URL: undefined, AVAILABLE: null }),
+  );
+  assert.equal(entry.product_url, null);
+  assert.equal(entry.price_at_match, null);
+  assert.equal(entry.image_url_at_match, null);
+  assert.equal(entry.available_at_match, null);
 });

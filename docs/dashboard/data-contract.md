@@ -5,7 +5,7 @@
 
 **Purpose:** The full column schema, type, meaning, and an example value for the two dynamic tables the downstream platforms read.
 
-**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`), `sql/task_recompute_content_matches.sql` (+ `sql/fct_trend_content_matches_ledger.sql`), `sql/fct_trend_sourcing_ledger.sql` (+ `sql/fct_trend_sourcing_candidates.sql`). This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-08-21.
+**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`), `sql/task_recompute_content_matches.sql` (+ `sql/fct_trend_content_matches_ledger.sql`), `sql/fct_trend_sourcing_ledger.sql` (+ `sql/fct_trend_sourcing_candidates.sql`). This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-09-28.
 
 **Example values are real, pulled 2026-06-08** — mostly from the live trend **Hyper-Tactile Interiors** (`c51f1620-a832-4f13-a443-a7df03bf6a99`). A few fields that are null for that trend (geographic hotspots, macrotrend tags, the social-evidence object) use a populated row from another live trend to show the shape. Column names and types are authoritative.
 
@@ -88,14 +88,7 @@ Written daily by the prediction agent. **Additive and isolated** — never read 
 
 | Column | Type | What it is | Example value |
 | --- | --- | --- | --- |
-| `KEY_DATA_POINTS` | ARRAY | Latest Google Trends pull's interest scalars. One object per metric: `{ source, metric_name, metric_value }`. Empty array if no gtrends row. | see shape below |
-
-```json
-[
-  { "source": "google_trends", "metric_name": "interest_peak_pct", "metric_value": 100 },
-  { "source": "google_trends", "metric_name": "interest_avg_pct",  "metric_value": 1.6 }
-]
-```
+| `KEY_DATA_POINTS` | ARRAY | **Always an empty array since 2026-09-27.** The gtrends-poller that fed it was removed (CRMA-1313). The column stays so consumers do not break. It used to carry the latest Google Trends interest scalars as `{ source, metric_name, metric_value }` objects. | `[]` |
 
 ### Cultural narrative
 
@@ -169,9 +162,9 @@ This is the vector-match **substrate** only — it does not yet feed a Content G
 
 **Latest run, per trend.** These three columns read the most recent header in `FCT_TREND_SOURCING_LEDGER` for the trend — a per-trend `ROW_NUMBER`, not a global generation like `NEAREST_CONTENT`'s `CHAIN_ID`, because sourcing runs are per-trend and independent. A `failed` retry therefore supersedes an earlier `matched` run (the row reads `failed` with `SOURCED_PRODUCTS = NULL`) until the trend is successfully re-sourced. Inherits the table's 15-minute lag.
 
-**`tier` is part of product identity.** `catalog_product_id` is only unique within `(TIER, CATALOG_PRODUCT_ID)`, so the tier rides on each entry rather than becoming a fourth column. `shopify` is the only tier live today; the multi-tier contract (see `docs/prd/trend-to-product-sourcing.md`) adds tiers as new header rows, not new columns. **Today these columns surface exactly one header per trend**, so when a second tier goes live this exposure needs a shape decision (nested per-tier objects vs. a merged pick list) before it can represent more than one tier's run — until then, treat a multi-tier trend's dashboard row as showing one tier, not all of them.
+**`tier` is part of product identity.** `catalog_product_id` is only unique within `(TIER, CATALOG_PRODUCT_ID)`, so the tier rides on each entry rather than becoming a fourth column. `shopify` is the only tier live today; the multi-tier contract (see `docs/prd/trend-to-product-sourcing.md`) adds tiers as new header rows, not new columns. **Today these columns surface exactly one header per trend.** The shape for more than one tier is decided (CRMA-780) and ships before any second tier goes live: the same three columns, with `SOURCED_PRODUCTS` a single merged list of at most 5 picks — ordered by tier preference, then `semantic_score` within a tier — `SOURCING_STATUS` reading `matched` whenever any tier matched, and `SOURCED_AT` the most recent tier completion. Entry shape does not change. Full rule: "Dashboard exposure across tiers" in `docs/prd/trend-to-product-sourcing.md`.
 
-**The `_AT_MATCH` fields are frozen snapshots, not live data.** `price_at_match` / `image_url_at_match` / `available_at_match` are what the catalog said when the match was made; a consumer that needs current price or stock must hydrate it live. As of 2026-08-21 they — and `product_url` — read `null` in production: `DIM_CATALOG_PRODUCT` stores no presentation fields yet, so nothing upstream supplies them. The keys are in the contract and populate the moment a catalog source carries them.
+**The `_AT_MATCH` fields are frozen snapshots, not live data.** `price_at_match` / `image_url_at_match` / `available_at_match` are what the catalog said when the match was made; a consumer that needs current price or stock must hydrate it live. They — and `product_url` — come from `DIM_CATALOG_PRODUCT`, which the daily catalog sync fills from the storefront feed (CRMA-1328). `product_url` is the storefront product page. `price_at_match` is the lowest price among the product's available variants, or the lowest price of all variants when none is available — read it as "from $X". `image_url_at_match` is the featured image, `null` when the product has no image. `available_at_match` is `true` when any variant is available. Products matched before the first sweep that carried these fields keep `null` in all four; those rows are not backfilled.
 
 ### Timestamps & provenance
 

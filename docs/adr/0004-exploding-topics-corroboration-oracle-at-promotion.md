@@ -112,3 +112,21 @@ Mechanism:
 - The ET adapter, candidate `query`, and ledger are forward-compatible with a
   fuller agentic-verification revamp (promotion agent with more external tools)
   and with a #56-style validation-oracle re-use of the same ledger.
+
+## Amendment (2026-09-28): the second oracle does not get a sibling ledger
+
+The rejected alternative above says "add a sibling ledger if a second oracle
+arrives". The second oracle is Reddit, through SerpApi (CRMA-1326, map
+CRMA-1315). It gets **no** sibling ledger. The typed promotion path
+(CRMA-1224, map CRMA-1214) stores every `oracle_match` answer in the promotion
+ledger's `JUDGMENT_DETAIL` VARIANT, with `ORACLE_KEYWORD` and
+`ORACLE_KEYWORD_SOURCE` beside it. Each oracle result there carries its oracle
+name. That store did not exist when this ADR was written. The rest of this ADR
+stands: an oracle is additive-only, writes no `FCT_SIGNALS` row, and is not a
+Source.
+
+**Superseded the same day.** CRMA-1344 rejected Jev for promotion (map
+CRMA-1214), so the typed path and its `JUDGMENT_DETAIL` store will not be
+built, and the Reddit oracle closed as wontfix (CRMA-1339). Exploding Topics
+remains the only oracle. The sibling-ledger question stays open for a future
+second oracle.

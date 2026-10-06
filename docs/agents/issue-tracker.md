@@ -21,6 +21,10 @@ that resolves an issue back to a repo. Agents standing here read this block and 
   workspace. Local directory is `trend-tree`.
 - **Default branch:** `production` — do **not** assume `main`. A commit to `production`
   **is** a Pipedream deploy (see `CLAUDE.md`), so branches merge there deliberately.
+- **PR target branch:** `production` — the same branch. Feature branches cut from here and
+  PR back into here. Other repos target `staging`, because they run the standard
+  branch-per-env pipeline (see the `repo-pipelines` skill). **This repo does not** — it has
+  no `bitbucket-pipelines.yml` and no `staging` branch, so the default branch is the target.
 
 CRMA scopes work with **components**: a component is the **filter** this repo uses to pull
 its slice of the board (`component = trend-tree`). An issue with no component is invisible
@@ -45,6 +49,66 @@ and the component wins. Do not scope on them.
 - **`triage` roles → JIRA labels** (see `triage-labels.md`). `/triage` must also read
   **Triage operations** below before it buckets or closes anything — two of its default
   readings are wrong on this board.
+
+## Implementation and release flow
+
+**One story = one feature branch = one PR.** There are no integration branches and no epic
+branches — an Epic is a JIRA grouping, never a branch. The epic-integrated
+`epic-orchestrator` model was retired 2026-09-20 and the skill no longer exists. An
+`epic/<key>` branch you find is a leftover, not a convention — see **Branches the retired
+epic model left behind** below.
+
+### Implement
+
+1. **Pick** a ready issue from the frontier (`/board-standing`, or the cookbook JQL).
+   `ready-for-agent` work an agent session may take; `ready-for-human` work a person takes.
+   An issue with an open `Blocks` blocker is not takeable — it enters the frontier when
+   the blocker's PR merges.
+2. **Claim** it: assign yourself **and** transition to In Progress. Status is the claim;
+   the assignee only says whose it is.
+3. **Branch**: `CRMA-<n>-<short-slug>`, cut from `production`. JIRA's dev panel auto-links
+   the branch, its commits, and the PR back to the issue, so epic progress stays visible
+   with no extra calls.
+4. **Implement** on that branch. Run `/code-review` before opening the PR — that is the
+   pre-review; the human review on the PR is the real gate.
+5. **Open a small PR** to `production` with `gh pr create`, titled `CRMA-<n>: <summary>`.
+   One story per PR — never bundle stories into one PR.
+6. **Stop at PR-opened. Never merge it yourself.** A human reviews and merges. On merge,
+   transition the story to Done.
+
+Parallel work is parallel sessions: one worktree per story, each on its own branch, each
+ending in its own PR. Dependencies need no extra machinery — a blocked story stays off the
+frontier until its blocker merges.
+
+### Release
+
+**There is no promotion PR here.** Repos on the standard pipeline promote `staging` → `main`;
+this repo has neither branch. The merge into `production` is the release, and both tiers
+deploy out of band from it:
+
+- **Pipedream workflows** redeploy **asynchronously** after the push. The merge and the
+  running code are two different facts.
+- **Cloud Run services** under `services/` do not deploy on merge at all. A person runs
+  `services/deploy.sh <name>`, which dark-deploys the revision and then moves the traffic
+  pointer (see `CLAUDE.md`).
+
+So Done still means what **Triage operations → Merged is not shipped** says: verification
+ends at the running workflow or the serving Cloud Run revision, never at the merge commit.
+
+### Branches the retired epic model left behind
+
+Two `epic/<key>` branches predate the 2026-09-20 retirement. They are **legacy, not
+corrupt** — read them as history, and never cut a new one.
+
+| Branch | State | Disposition |
+| --- | --- | --- |
+| `epic/CRMA-772` | merged into `production` 2026-08-21 | spent; safe to delete |
+| `epic/CRMA-761` | open as **PR #113** against `production`, tip 2026-08-25 | grandfathered |
+
+`epic/CRMA-761` is the only live one. Its PR bundles a whole wave of stories, which the
+one-story-one-PR rule above forbids from now on. It is **grandfathered under the old
+model**: finish it as the epic PR it already is, or split it into per-story PRs. That is a
+maintainer decision. Do not split it unasked, and do not read it as a precedent.
 
 ## Conventions
 
@@ -104,8 +168,8 @@ and every one wants compact output — **always pass `responseContentFormat: "ma
 > The JQL below still describes what it asks for; the transport differs. Don't "fix" it
 > back onto the MCP tools.
 
-- **`ready-for-agent` frontier** — all agent-ready work board-wide (`epic-orchestrator`
-  consumes it per epic; `board-standing` surfaces it as each effort's takeable set):
+- **`ready-for-agent` frontier** — all agent-ready work board-wide (`board-standing`
+  surfaces it as each effort's takeable set):
   ```
   project = CRMA AND labels = ready-for-agent AND statusCategory != Done ORDER BY created ASC
   ```
@@ -337,8 +401,8 @@ real date while you are fixing the URL.
 
 ### Wayfinder tickets are not agent pickup work
 
-**Never label a wayfinder map or ticket `ready-for-agent`.** `epic-orchestrator`
-implements `ready-for-agent` stories unattended and would try to implement a
+**Never label a wayfinder map or ticket `ready-for-agent`.** That label marks work
+an implementation session may pick up unattended — and it would try to implement a
 decision ticket as if it were a code change. Wayfinder tickets are worked only by a
 `/wayfinder` session invoked against the map.
 

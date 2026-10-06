@@ -29,6 +29,13 @@ CREATE OR REPLACE TABLE MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS (
 -- (earliest INGESTED_AT wins) — Snowflake's PRIMARY KEY is informational,
 -- not enforced, so without this an INSERT statement would re-introduce
 -- the ~9% intra-STG SIGNAL_ID dupes. NOT EXISTS handles cross-run dedup.
+--
+-- The HEX_ENCODE guard skips rows whose embed input is not valid UTF-8;
+-- Cortex EMBED rejects them and one such row halts the whole INSERT.
+-- See sql/alter_task_promote_signals_utf8_guard.sql for the incident.
+--
+-- The live object carries a MARKETING_ prefix
+-- (MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT). Apply changes to that name.
 CREATE OR REPLACE TASK MCC_PRESENTATION.TREND_AGENT.TASK_PROMOTE_SIGNALS_TO_FCT
     WAREHOUSE = MARKETING_WH
     SCHEDULE  = '5 MINUTE'
@@ -46,6 +53,8 @@ SELECT
 FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
 WHERE s.SIGNAL_TITLE IS NOT NULL
   AND s.SOURCE_NAME != 'amazon_movers'
+  AND NOT HEX_ENCODE(s.SIGNAL_TITLE || ' ' || LEFT(COALESCE(s.SIGNAL_TEXT, ''), 512))
+          RLIKE '([0-9A-F][0-9A-F])*ED[AB][0-9A-F].*'
   AND NOT EXISTS (
       SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f
       WHERE f.SIGNAL_ID = s.SIGNAL_ID

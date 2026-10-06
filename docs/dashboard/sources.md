@@ -38,7 +38,7 @@ The pipeline knows about ~14 sources today; several are paused, retired, or on-d
 - **Cadence** — Periodic — _TODO: confirm cadence_
 - **Publisher** — Always `trends.google.com`.
 - **Reliability** — Canonical.
-- **Notes** — A separate `gtrends-poller` workflow pulls per-trend interest curves daily (this feeds [`KEY_DATA_POINTS`](fields/key-data-points.md)).
+- **Notes** — The separate `gtrends-poller` workflow that pulled per-trend interest curves daily was removed on 2026-09-25 (CRMA-1313). [`KEY_DATA_POINTS`](fields/key-data-points.md) is now always empty.
 
 ### `amazon_trends`
 

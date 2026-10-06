@@ -3,7 +3,7 @@
 // Single Gemini 3.1 Pro agent loop. Purely evaluative — no live HTTP tools.
 // Reads pre-fetched Snowflake context (trend metrics, source metrics,
 // lifecycle history, narrative history, recent signals via flatten-join,
-// gtrends history, vector neighbors), computes heat_base in SQL-equivalent
+// vector neighbors), computes heat_base in SQL-equivalent
 // JS, then runs an agent loop with three in-process query tools and one
 // terminal tool (propose_lifecycle_decision).
 //
@@ -480,7 +480,6 @@ export default defineComponent({
     lifecycle_history_rows: { type: "any", optional: true },
     recent_signal_rows: { type: "any", optional: true },
     candidate_signal_rows: { type: "any", optional: true },
-    gtrends_rows: { type: "any", optional: true },
     neighbor_rows: { type: "any", optional: true },
     prompts_rows: { type: "any" },
   },
@@ -558,13 +557,6 @@ export default defineComponent({
       signal_title: r.SIGNAL_TITLE,
       signal_text: r.SIGNAL_TEXT,
       similarity: Number(r.SIMILARITY || 0),
-    }));
-
-    const gtrends_history = (this.gtrends_rows || []).map((r) => ({
-      pulled_at: r.PULLED_AT,
-      interest_peak_pct: r.INTEREST_PEAK_PCT,
-      interest_avg_pct: r.INTEREST_AVG_PCT,
-      related_queries: parseVariant(r.RELATED_QUERIES),
     }));
 
     const neighbor_pool = (this.neighbor_rows || []).map((r) => ({
@@ -654,12 +646,6 @@ Specificity score: ${metrics.specificity_score}`;
         ).join("\n")
       : "(no signals in last 14d)";
 
-    const gtrends_block = gtrends_history.length
-      ? gtrends_history.slice(0, 10).map((g) =>
-          `${g.pulled_at}: peak=${g.interest_peak_pct}, avg=${g.interest_avg_pct}`
-        ).join("\n")
-      : "(no GTrends data yet — gtrends-poller may not have run for this trend)";
-
     const neighbor_block = neighbor_pool.length
       ? neighbor_pool.slice(0, 10).map((n, i) =>
           `${i + 1}. sim=${n.similarity.toFixed(2)} | ${n.lifecycle_status} | "${n.trend_name_b2c || n.trend_topic}" (heat ${n.heat})`
@@ -695,7 +681,6 @@ Status heat factor is FIXED and applied at commit: GROWING/RESURGENT +10%, STABL
       lifecycle_history_block,
       recent_signals_block,
       candidate_signals_block,
-      gtrends_block,
       neighbor_block,
       heat_baseline_block,
     });

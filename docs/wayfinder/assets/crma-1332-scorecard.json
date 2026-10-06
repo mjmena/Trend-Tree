@@ -1,0 +1,508 @@
+{
+  "arms": {
+    "trend_topic": {
+      "adopt_bar": {
+        "matches": 69,
+        "scored": 136,
+        "rate": 0.5073529411764706
+      },
+      "errors": 0,
+      "oracle_route_in_adopt_bar": {
+        "one_family": {
+          "n": 77,
+          "matched": 39,
+          "promoted": 1
+        },
+        "multi_ai_agent": {
+          "n": 19,
+          "matched": 0,
+          "promoted": 0
+        },
+        "other_multi": {
+          "n": 0,
+          "matched": 0,
+          "promoted": 0
+        }
+      },
+      "oracle_promotions_total": 1,
+      "keyword_stats": null,
+      "rule1": "3/5",
+      "rule2_agrees": "2/12",
+      "oracle_cost_usd": 0.000182028
+    },
+    "signal_frequency": {
+      "adopt_bar": {
+        "matches": 72,
+        "scored": 136,
+        "rate": 0.5294117647058824
+      },
+      "errors": 0,
+      "oracle_route_in_adopt_bar": {
+        "one_family": {
+          "n": 77,
+          "matched": 42,
+          "promoted": 11
+        },
+        "multi_ai_agent": {
+          "n": 19,
+          "matched": 0,
+          "promoted": 0
+        },
+        "other_multi": {
+          "n": 0,
+          "matched": 0,
+          "promoted": 0
+        }
+      },
+      "oracle_promotions_total": 11,
+      "keyword_stats": {
+        "keyword_calls": 208,
+        "et_any_result": 156,
+        "et_result_above_floor": 151,
+        "null_query_cases": 104,
+        "null_query_cases_promoted": 10
+      },
+      "rule1": "3/5",
+      "rule2_agrees": "2/12",
+      "oracle_cost_usd": 0.007226646000000001
+    },
+    "jev_selected": {
+      "adopt_bar": {
+        "matches": 73,
+        "scored": 136,
+        "rate": 0.5367647058823529
+      },
+      "errors": 0,
+      "oracle_route_in_adopt_bar": {
+        "one_family": {
+          "n": 77,
+          "matched": 43,
+          "promoted": 6
+        },
+        "multi_ai_agent": {
+          "n": 19,
+          "matched": 0,
+          "promoted": 0
+        },
+        "other_multi": {
+          "n": 0,
+          "matched": 0,
+          "promoted": 0
+        }
+      },
+      "oracle_promotions_total": 6,
+      "keyword_stats": {
+        "keyword_calls": 122,
+        "et_any_result": 28,
+        "et_result_above_floor": 24,
+        "null_query_cases": 104,
+        "null_query_cases_promoted": 5
+      },
+      "rule1": "3/5",
+      "rule2_agrees": "2/12",
+      "oracle_cost_usd": 0.004889640000000001
+    },
+    "hand_written_ceiling": {
+      "adopt_bar": {
+        "matches": 73,
+        "scored": 136,
+        "rate": 0.5367647058823529
+      },
+      "errors": 0,
+      "oracle_route_in_adopt_bar": {
+        "one_family": {
+          "n": 77,
+          "matched": 43,
+          "promoted": 6
+        },
+        "multi_ai_agent": {
+          "n": 19,
+          "matched": 0,
+          "promoted": 0
+        },
+        "other_multi": {
+          "n": 0,
+          "matched": 0,
+          "promoted": 0
+        }
+      },
+      "oracle_promotions_total": 7,
+      "keyword_stats": {
+        "keyword_calls": 146,
+        "et_any_result": 56,
+        "et_result_above_floor": 51,
+        "null_query_cases": 104,
+        "null_query_cases_promoted": 6
+      },
+      "rule1": "3/5",
+      "rule2_agrees": "3/12",
+      "oracle_cost_usd": 0.005406828000000001
+    }
+  },
+  "same_concept_matches": [
+    {
+      "arm": "trend_topic",
+      "audit_id": "0a846d5c-f5b6-44e7-ae0e-657b43a50d8d",
+      "candidate_id": "cand-zsfynoogmsmiohzo",
+      "trend_topic": "Sparkling Protein Beverages",
+      "sent_keyword": "sparkling protein",
+      "keyword_source": "trend_topic",
+      "et_keyword": "Sparkling protein water",
+      "absolute_volume": 5400,
+      "score": 1.65,
+      "confidence": 0.48,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "signal_frequency",
+      "audit_id": "3398620c-2c97-452f-81f3-d68301eed09c",
+      "candidate_id": "cand-7twu3v8mms3b2zsk",
+      "trend_topic": "Replacing creatine powders with snackable gummy formats for daily wellness",
+      "sent_keyword": "creatine",
+      "keyword_source": "signal_frequency",
+      "et_keyword": "Creatine chews",
+      "absolute_volume": 2900,
+      "score": 1.65,
+      "confidence": 0.48,
+      "ledger_decision": "MERGE_INTO_EXISTING"
+    },
+    {
+      "arm": "signal_frequency",
+      "audit_id": "b4c13c59-8406-4f41-8e0a-db2ad4ba5018",
+      "candidate_id": "cand-o332rjugmspdk41v",
+      "trend_topic": "Topical NAD+ serums for cellular longevity and anti-aging",
+      "sent_keyword": "nad serums",
+      "keyword_source": "signal_frequency",
+      "et_keyword": "NAD serum",
+      "absolute_volume": 3600,
+      "score": 1.77,
+      "confidence": 0.65,
+      "ledger_decision": "REJECT"
+    },
+    {
+      "arm": "signal_frequency",
+      "audit_id": "0a846d5c-f5b6-44e7-ae0e-657b43a50d8d",
+      "candidate_id": "cand-zsfynoogmsmiohzo",
+      "trend_topic": "Sparkling Protein Beverages",
+      "sent_keyword": "sparkling protein",
+      "keyword_source": "candidate_query",
+      "et_keyword": "Sparkling protein water",
+      "absolute_volume": 5400,
+      "score": 1.65,
+      "confidence": 0.48,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "signal_frequency",
+      "audit_id": "b4df991d-c42a-4bf0-b652-ca86f6d6798c",
+      "candidate_id": "cand-xu2ccb00mtlagofq",
+      "trend_topic": "Clinical biological age testing for longevity optimization",
+      "sent_keyword": "clinical biological",
+      "keyword_source": "signal_frequency",
+      "et_keyword": "Biological age testing",
+      "absolute_volume": 9900,
+      "score": 1.71,
+      "confidence": 0.56,
+      "ledger_decision": "REJECT"
+    },
+    {
+      "arm": "signal_frequency",
+      "audit_id": "17ad6105-7b17-4f86-856a-e32c359c3016",
+      "candidate_id": "cand-aylpg2oamsfm1gyi",
+      "trend_topic": "Wearing light therapy glasses for sleep and circadian regulation",
+      "sent_keyword": "light therapy",
+      "keyword_source": "signal_frequency",
+      "et_keyword": "Light therapy glasses",
+      "absolute_volume": 1600,
+      "score": 1.54,
+      "confidence": 0.31,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "signal_frequency",
+      "audit_id": "655d3ac6-f246-4ed1-8fca-7c00e6b15bd9",
+      "candidate_id": "cand-dfjgk7o4mrqg415h",
+      "trend_topic": "Electric countertop composters for urban food waste",
+      "sent_keyword": "composters",
+      "keyword_source": "signal_frequency",
+      "et_keyword": "Electric kitchen composter",
+      "absolute_volume": 1000,
+      "score": 1.86,
+      "confidence": 0.79,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "signal_frequency",
+      "audit_id": "66c0dee2-bf0d-4c8c-9231-bd9adec157e5",
+      "candidate_id": "cand-d98f75pzmt200vmm",
+      "trend_topic": "Applying manga-inspired spiky lash styles",
+      "sent_keyword": "manga inspired",
+      "keyword_source": "signal_frequency",
+      "et_keyword": "Manga lashes",
+      "absolute_volume": 33100,
+      "score": 1.94,
+      "confidence": 0.91,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "signal_frequency",
+      "audit_id": "d1d5baac-e08f-4b2d-9612-05c5635e62fb",
+      "candidate_id": "cand-wyp7tqpomrm5sz9i",
+      "trend_topic": "Pocket aromatherapy inhalers for on-the-go stress relief",
+      "sent_keyword": "inhalers",
+      "keyword_source": "signal_frequency",
+      "et_keyword": "Nasal Stick inhaler",
+      "absolute_volume": 4400,
+      "score": 1.62,
+      "confidence": 0.43,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "signal_frequency",
+      "audit_id": "b113854f-3e41-45d1-979a-0942a3af5bf8",
+      "candidate_id": "cand-7f60v9h9mt6iud64",
+      "trend_topic": "Using dimmable candle warmer lamps for flame-free home scenting",
+      "sent_keyword": "candle warmer",
+      "keyword_source": "signal_frequency",
+      "et_keyword": "Candle Warmer Lamp",
+      "absolute_volume": 74000,
+      "score": 1.86,
+      "confidence": 0.79,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "signal_frequency",
+      "audit_id": "d118092b-9b1d-4e19-bab8-6603f39e0933",
+      "candidate_id": "cand-jedqrbs1mt200vmm",
+      "trend_topic": "Wearing vagus nerve stimulators for on-demand stress relief",
+      "sent_keyword": "vagus",
+      "keyword_source": "signal_frequency",
+      "et_keyword": "Vagus nerve stimulator",
+      "absolute_volume": 3400,
+      "score": 1.5,
+      "confidence": 0.25,
+      "ledger_decision": "MERGE_INTO_EXISTING"
+    },
+    {
+      "arm": "signal_frequency",
+      "audit_id": "b15158d5-0b92-47fc-9b98-bb842365d70f",
+      "candidate_id": "cand-ibjcdz4smrdqvw5k",
+      "trend_topic": "The Wet Lash Look",
+      "sent_keyword": "wet lash",
+      "keyword_source": "signal_frequency",
+      "et_keyword": "Wet look lashes",
+      "absolute_volume": 4400,
+      "score": 1.98,
+      "confidence": 0.97,
+      "ledger_decision": "REJECT"
+    },
+    {
+      "arm": "jev_selected",
+      "audit_id": "0a846d5c-f5b6-44e7-ae0e-657b43a50d8d",
+      "candidate_id": "cand-zsfynoogmsmiohzo",
+      "trend_topic": "Sparkling Protein Beverages",
+      "sent_keyword": "sparkling protein",
+      "keyword_source": "candidate_query",
+      "et_keyword": "Sparkling protein water",
+      "absolute_volume": 5400,
+      "score": 1.65,
+      "confidence": 0.48,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "jev_selected",
+      "audit_id": "b4df991d-c42a-4bf0-b652-ca86f6d6798c",
+      "candidate_id": "cand-xu2ccb00mtlagofq",
+      "trend_topic": "Clinical biological age testing for longevity optimization",
+      "sent_keyword": "biological age testing",
+      "keyword_source": "jev_selected",
+      "et_keyword": "Biological age testing",
+      "absolute_volume": 9900,
+      "score": 1.69,
+      "confidence": 0.53,
+      "ledger_decision": "REJECT"
+    },
+    {
+      "arm": "jev_selected",
+      "audit_id": "17ad6105-7b17-4f86-856a-e32c359c3016",
+      "candidate_id": "cand-aylpg2oamsfm1gyi",
+      "trend_topic": "Wearing light therapy glasses for sleep and circadian regulation",
+      "sent_keyword": "light therapy glasses",
+      "keyword_source": "jev_selected",
+      "et_keyword": "Light therapy glasses",
+      "absolute_volume": 1600,
+      "score": 1.57,
+      "confidence": 0.35,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "jev_selected",
+      "audit_id": "66c0dee2-bf0d-4c8c-9231-bd9adec157e5",
+      "candidate_id": "cand-d98f75pzmt200vmm",
+      "trend_topic": "Applying manga-inspired spiky lash styles",
+      "sent_keyword": "manga inspired lash",
+      "keyword_source": "jev_selected",
+      "et_keyword": "Manga lashes",
+      "absolute_volume": 33100,
+      "score": 1.93,
+      "confidence": 0.9,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "jev_selected",
+      "audit_id": "b113854f-3e41-45d1-979a-0942a3af5bf8",
+      "candidate_id": "cand-7f60v9h9mt6iud64",
+      "trend_topic": "Using dimmable candle warmer lamps for flame-free home scenting",
+      "sent_keyword": "candle warmer lamps",
+      "keyword_source": "jev_selected",
+      "et_keyword": "Candle Warmer Lamp",
+      "absolute_volume": 74000,
+      "score": 1.83,
+      "confidence": 0.75,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "jev_selected",
+      "audit_id": "b51a95b6-36f0-43b4-9976-7d1796ec0e54",
+      "candidate_id": "cand-tbeqxzbamtztdler",
+      "trend_topic": "Vibration plates for at-home bone density training (midlife women)",
+      "sent_keyword": "vibration plates",
+      "keyword_source": "jev_selected",
+      "et_keyword": "Vibration plate",
+      "absolute_volume": 301000,
+      "score": 1.65,
+      "confidence": 0.47,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "jev_selected",
+      "audit_id": "b51a95b6-36f0-43b4-9976-7d1796ec0e54",
+      "candidate_id": "cand-tbeqxzbamtztdler",
+      "trend_topic": "Vibration plates for at-home bone density training (midlife women)",
+      "sent_keyword": "vibration plates",
+      "keyword_source": "jev_selected",
+      "et_keyword": "Waver vibration plate",
+      "absolute_volume": 1300,
+      "score": 1.72,
+      "confidence": 0.58,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "hand_written_ceiling",
+      "audit_id": "6f4cfd32-9a6a-4f70-a87f-f34f19b5ab79",
+      "candidate_id": "cand-7cmhaqa0mohwyh6e",
+      "trend_topic": "Relaxed/wide-leg denim silhouette replacing skinny jeans as everyday default",
+      "sent_keyword": "wide leg jeans",
+      "keyword_source": "hand_written_ceiling",
+      "et_keyword": "Wide-leg jeans",
+      "absolute_volume": 201000,
+      "score": 1.6,
+      "confidence": 0.39,
+      "ledger_decision": "DEFER"
+    },
+    {
+      "arm": "hand_written_ceiling",
+      "audit_id": "6f4cfd32-9a6a-4f70-a87f-f34f19b5ab79",
+      "candidate_id": "cand-7cmhaqa0mohwyh6e",
+      "trend_topic": "Relaxed/wide-leg denim silhouette replacing skinny jeans as everyday default",
+      "sent_keyword": "baggy jeans",
+      "keyword_source": "hand_written_ceiling",
+      "et_keyword": "Baggy jeans",
+      "absolute_volume": 1000000,
+      "score": 1.78,
+      "confidence": 0.67,
+      "ledger_decision": "DEFER"
+    },
+    {
+      "arm": "hand_written_ceiling",
+      "audit_id": "0a846d5c-f5b6-44e7-ae0e-657b43a50d8d",
+      "candidate_id": "cand-zsfynoogmsmiohzo",
+      "trend_topic": "Sparkling Protein Beverages",
+      "sent_keyword": "sparkling protein",
+      "keyword_source": "candidate_query",
+      "et_keyword": "Sparkling protein water",
+      "absolute_volume": 5400,
+      "score": 1.65,
+      "confidence": 0.48,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "hand_written_ceiling",
+      "audit_id": "b4df991d-c42a-4bf0-b652-ca86f6d6798c",
+      "candidate_id": "cand-xu2ccb00mtlagofq",
+      "trend_topic": "Clinical biological age testing for longevity optimization",
+      "sent_keyword": "biological age testing",
+      "keyword_source": "hand_written_ceiling",
+      "et_keyword": "Biological age testing",
+      "absolute_volume": 9900,
+      "score": 1.69,
+      "confidence": 0.53,
+      "ledger_decision": "REJECT"
+    },
+    {
+      "arm": "hand_written_ceiling",
+      "audit_id": "17ad6105-7b17-4f86-856a-e32c359c3016",
+      "candidate_id": "cand-aylpg2oamsfm1gyi",
+      "trend_topic": "Wearing light therapy glasses for sleep and circadian regulation",
+      "sent_keyword": "light therapy glasses",
+      "keyword_source": "hand_written_ceiling",
+      "et_keyword": "Light therapy glasses",
+      "absolute_volume": 1600,
+      "score": 1.57,
+      "confidence": 0.35,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "hand_written_ceiling",
+      "audit_id": "66c0dee2-bf0d-4c8c-9231-bd9adec157e5",
+      "candidate_id": "cand-d98f75pzmt200vmm",
+      "trend_topic": "Applying manga-inspired spiky lash styles",
+      "sent_keyword": "manga inspired lash",
+      "keyword_source": "hand_written_ceiling",
+      "et_keyword": "Manga lashes",
+      "absolute_volume": 33100,
+      "score": 1.93,
+      "confidence": 0.9,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "hand_written_ceiling",
+      "audit_id": "b113854f-3e41-45d1-979a-0942a3af5bf8",
+      "candidate_id": "cand-7f60v9h9mt6iud64",
+      "trend_topic": "Using dimmable candle warmer lamps for flame-free home scenting",
+      "sent_keyword": "candle warmer lamps",
+      "keyword_source": "hand_written_ceiling",
+      "et_keyword": "Candle Warmer Lamp",
+      "absolute_volume": 74000,
+      "score": 1.83,
+      "confidence": 0.75,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "hand_written_ceiling",
+      "audit_id": "b51a95b6-36f0-43b4-9976-7d1796ec0e54",
+      "candidate_id": "cand-tbeqxzbamtztdler",
+      "trend_topic": "Vibration plates for at-home bone density training (midlife women)",
+      "sent_keyword": "vibration plates",
+      "keyword_source": "hand_written_ceiling",
+      "et_keyword": "Vibration plate",
+      "absolute_volume": 301000,
+      "score": 1.65,
+      "confidence": 0.47,
+      "ledger_decision": "PROMOTE_NEW"
+    },
+    {
+      "arm": "hand_written_ceiling",
+      "audit_id": "b51a95b6-36f0-43b4-9976-7d1796ec0e54",
+      "candidate_id": "cand-tbeqxzbamtztdler",
+      "trend_topic": "Vibration plates for at-home bone density training (midlife women)",
+      "sent_keyword": "vibration plates",
+      "keyword_source": "hand_written_ceiling",
+      "et_keyword": "Waver vibration plate",
+      "absolute_volume": 1300,
+      "score": 1.72,
+      "confidence": 0.58,
+      "ledger_decision": "PROMOTE_NEW"
+    }
+  ]
+}

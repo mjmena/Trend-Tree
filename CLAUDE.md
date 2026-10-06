@@ -18,9 +18,11 @@ A GitHub-synced Pipedream project **plus** a Cloud Run services tree. Every top-
 Pipedream does **not** deploy anything under `services/`. These are containerized Cloud Run services in the shared `mcc-crm-automations` GCP project (`us-east4`), deployed by `services/deploy.sh <name>` — a git-SHA-tagged amd64 build to the `mcc` Artifact Registry repo, dark-deployed `--no-traffic --tag candidate`, smoke-tested, then promoted by moving the traffic pointer. Rollback is the same `update-traffic` command aimed at the prior revision.
 
 - `services/lib/` — shared pure-function modules (CRMA-439). Unit-tested by `scripts/test_services_lib.sh`. The Pipedream-era `agents/lib/` still serves the Pipedream workflows and is unaffected.
-- `services/<name>/` — one service: its HTTP server, `Dockerfile`, and `deploy.env` (config + Secret Manager names, never secret values). **Build context is the repo root**, so a Dockerfile can see `services/lib/`.
+- `services/<name>/` — one service (its HTTP server) or one job (its entrypoint), plus its `Dockerfile` and `deploy.env` (config + Secret Manager names, never secret values). **Build context is the repo root**, so a Dockerfile can see `services/lib/`.
 - **Do not add a `package.json` at the repo root** — Pipedream's GitHub sync watches the root. Node dependencies live in the service's own directory.
 - `services/ecomm-agent` — the ecomm (trend-to-product sourcing) agent, `POST /source {trend_id}` + `GET /healthz`. See [`docs/prd/trend-to-product-sourcing.md`](docs/prd/trend-to-product-sourcing.md).
+- `services/tiktok-ingest` — Cloud Run **job** `trend-tree-tiktok-ingest` (CRMA-1337). SerpApi `google_short_videos` over a fixed seed list → `gemini-3.7-flash` title filter (`DIM_LLM_PROMPT` `ingestion.tiktok.filter`) → `SOURCE_NAME = 'tiktok'` rows via `MERGE_EXTERNAL_SIGNALS`. Max 50 SerpApi calls per run on the shared `dev@trendhunter.com` plan. Run by hand with `gcloud run jobs execute trend-tree-tiktok-ingest --region us-east4 --project mcc-crm-automations --wait`.
+- `services/catalog-sync` — Cloud Run **job** `trend-tree-catalog-sync` (CRMA-777): sweeps the public Shopify storefront `products.json` feed into `DIM_CATALOG_PRODUCT` daily at 09:00 UTC (Scheduler job `trend-tree-catalog-sync-daily`, managed by its `schedule.sh`). `deploy.env` sets `KIND=job`, which sends `services/deploy.sh` down its job path: deploy, then one real execution as the smoke test.
 
 ## Workflow defaults
 
@@ -37,10 +39,9 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 | `distillation-cluster-agent-p_YyC89Ke` | Shared Gemini 3.1 Pro **cluster reasoner** (the LLM "lead"). HTTP suspend/resume subagent called by *both* `distillation` and `distillation-revisit` — works around the ~5.5-min HTTP sync-response cap. Fetches signals + embedding neighbors, emits trend candidates. |
 | `distillation-watchdog-p_dDCWWPg` | Demand-driven trigger. 15-min cron reads the unclaimed-signal pool size + cursor age; POSTs the distillation HTTP trigger when the pool is full enough and enough time has passed. Shrinks the gap the 4h baseline cron would otherwise leave. |
 | `distillation-revisit-p_o7CWWZl` + `distillation-revisit-subagent-p_ezCwwKm` | Re-clustering pass over *already-ingested* signals (batches from `STG_REVISIT_BATCH_QUEUE`), 24h cron. Reuses the shared cluster-agent. Recovers trends that earlier passes missed. |
-| `promotion-p_xMC99jg` + `promotion-agent-p_yKCmm9r` | Gemini 3.1 Pro promotion agent. Evaluates candidates → calls `PROC_PROMOTION_APPLY` to write `FCT_TRENDS` rows → `fire_enrichment_chain` step fans out to dispatcher |
+| `promotion-p_xMC99jg` + `promotion-agent-p_yKCmm9r` | Gemini 3.1 Pro promotion agent. Evaluates candidates → calls `PROC_PROMOTION_APPLY` to write `FCT_TRENDS` rows → `fire_enrichment_chain` step fans out to dispatcher. The same step re-dispatches trends whose chain failed (no `initial` or `refinement` ledger row 6 h after promotion), once a day per trend (CRMA-1032) |
 | `dispatcher-p_8rCBgnl` | Stateless chain runner — takes `{trend_id}` POST → fires `sources` → `enrichment` → `write` synchronously |
 | `sources-p_7NCy36w` | Per-trend source-metrics fetcher — populates `FCT_TREND_SOURCE_METRICS` |
-| `gtrends-poller-p_13CN9KG` | Per-active-trend Google Trends interest fetcher. 24h cron + HTTP → writes `FCT_TREND_GTRENDS_DAILY` (feeds `INTEREST_PEAK_PCT` / `INTEREST_AVG_PCT`). |
 | `enrichment-p_xMC995w` | Single Gemini 3.1 Pro agent loop — produces the canonical enrichment record. Its `run_name_reviewer` step is one of four remaining Sonnet 4.6 (Anthropic) callers; see **Anthropic callers** below |
 | `write-p_o7CWa2K` | Persists enrichment to `FCT_TREND_ENRICHMENT_LEDGER` (append-only ledger; the legacy `DIM_TREND_ENRICHMENT` was retired in the 2026-04-28 agent-owned-ledgers refactor) |
 | `lifecycle-agent-p_JZCz73w` + `lifecycle-subagent-p_gYC562o` | Gemini 3.1 Pro lifecycle agent. Sweeps every hour, re-evaluates trend status (NEW/GROWING/STABLE/DECLINING/DORMANT/RESURGENT/RETIRED) → `FCT_TREND_LIFECYCLE_LEDGER` |
@@ -51,7 +52,9 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 | `ingestion/*` | Per-source ingestion workflows (Bluesky, Amazon, Pinterest, Google Trends) + `ingestion/tools/` (agent search tools) + `ingestion/LLM/` (Gemini discovery verticals: food-drink / other / travel / wellness) |
 
 **Deactivated** (kept in repo for rollback / reference):
-- `ingestion/tiktok-p_yKCm9Am` — Creative Center hashtag scraper, scrapped 2026-06-09. TikTok retired the scraped page (301 → "TikTok One Creative Suite"; the `creative_radar_api` XHR is gone), and the hashtag-level output never met the distillation specificity rubric anyway (#18). The discovery workflow's Grok lane covers the TikTok cultural niche.
+- `ingestion/tiktok-p_yKCm9Am` — Creative Center hashtag scraper, scrapped 2026-06-09. TikTok retired the scraped page (301 → "TikTok One Creative Suite"; the `creative_radar_api` XHR is gone), and the hashtag-level output never met the distillation specificity rubric anyway (#18). The discovery workflow's Grok lane covers the TikTok cultural niche. TikTok now enters through `services/tiktok-ingest` (SerpApi, CRMA-1337) instead; this workflow stays off.
+
+> The `gtrends-poller-p_13CN9KG` workflow (daily Google Trends interest fetcher → `FCT_TREND_GTRENDS_DAILY`) was broken and has been **removed** from the repo (CRMA-1313, 2026-09-25). `FCT_TREND_GTRENDS_DAILY` stays in Snowflake as history; `DT_TREND_DASHBOARD.KEY_DATA_POINTS` is now always an empty array. The live `search-google-trends` agent tool is a separate component and stays.
 
 > The legacy `llm-enrichment-p_YyC86Zo` (3-LLM cascade, replaced by `enrichment-p_xMC995w` on 2026-04-27) has been **removed** from the repo — no longer kept for rollback.
 
@@ -184,7 +187,7 @@ A commit to `production` **is** the deploy — Pipedream redeploys changed workf
 
 ### Issue tracker
 
-Issues live in **JIRA project `CRMA`** (board 1626), scoped to this repo by the `trend-tree` **component**, via the Atlassian MCP tools. See `docs/agents/issue-tracker.md` — the tracker-consuming skills (`/triage`, `/to-spec`, `/to-tickets`, `/wayfinder`, `/board-standing`, `/epic-orchestrator`, `/implement`, `/grill-with-docs`) all read it by that exact path, and it is the single source of truth for where long-form artifacts live. GitHub Issues on `mjmena/Trend-Tree` are the pre-2026-08-07 archive — read-only history; new work goes to CRMA.
+Issues live in **JIRA project `CRMA`** (board 1626), scoped to this repo by the `trend-tree` **component**, via the Atlassian MCP tools. See `docs/agents/issue-tracker.md` — the tracker-consuming skills (`/triage`, `/to-spec`, `/to-tickets`, `/wayfinder`, `/board-standing`, `/implement`, `/grill-with-docs`) all read it by that exact path, and it is the single source of truth for where long-form artifacts live. GitHub Issues on `mjmena/Trend-Tree` are the pre-2026-08-07 archive — read-only history; new work goes to CRMA.
 
 If `docs/agents/issue-tracker.md` is missing, or references a skill name that
 no longer exists, stop and tell the user to run `/setup-crma-skills` — do not
