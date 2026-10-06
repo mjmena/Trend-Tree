@@ -15,14 +15,21 @@ test("lifecycle-subagent with 10 errors over 588 runs grades WARN, not RED", () 
   const g = gradeWorkflowErrors(wf("lifecycle-subagent", 10), 588);
   assert.equal(g.severity, "WARN");
   assert.equal(g.rule, "rate");
-  assert.equal(g.error_rate_pct, 1.7);
+  assert.equal(g.note, "10 errors over 588 runs = 1.7% (RED at >= 5%)");
 });
 
 test("lifecycle-subagent with 40 errors over 588 runs grades RED", () => {
   const g = gradeWorkflowErrors(wf("lifecycle-subagent", 40), 588);
   assert.equal(g.severity, "RED");
   assert.equal(g.rule, "rate");
-  assert.equal(g.error_rate_pct, 6.8);
+  assert.equal(g.note, "40 errors over 588 runs = 6.8% (RED at >= 5%)");
+});
+
+test("a rate just below 5% never prints as 5%: the note agrees with the grade", () => {
+  // 30 / 601 = 4.99%. Rounded to the nearest tenth it would read "5%" beside WARN.
+  const g = gradeWorkflowErrors(wf("lifecycle-subagent", 30), 601);
+  assert.equal(g.severity, "WARN");
+  assert.equal(g.note, "30 errors over 601 runs = 4.9% (RED at >= 5%)");
 });
 
 test("a low-volume workflow with 10 errors still grades RED, on the count rule", () => {
@@ -30,7 +37,7 @@ test("a low-volume workflow with 10 errors still grades RED, on the count rule",
   const g = gradeWorkflowErrors(wf("promotion-agent", 10), 588);
   assert.equal(g.severity, "RED");
   assert.equal(g.rule, "count");
-  assert.equal(g.error_rate_pct, null);
+  assert.equal(g.note, null);
 });
 
 test("the count rule keeps its tiers: INFO 1-2, WARN 3-9, RED 10 and above", () => {
@@ -57,7 +64,6 @@ test("a fan-out subagent with no run volume falls back to the count rule and say
     const g = gradeWorkflowErrors(wf("lifecycle-attribution-subagent", 10), runs);
     assert.equal(g.severity, "RED");
     assert.equal(g.rule, "count");
-    assert.equal(g.error_rate_pct, null);
     assert.match(g.note, /run volume unavailable/);
   }
   assert.equal(gradeWorkflowErrors(wf("lifecycle-attribution-subagent", 2), null).severity, "INFO");
@@ -68,11 +74,6 @@ test("a truncated count on a fan-out subagent grades RED: the true rate is unkno
   const g = gradeWorkflowErrors(wf("lifecycle-subagent", 100, { errors_24h_truncated: true }), 5000);
   assert.equal(g.severity, "RED");
   assert.match(g.note, /at least 100 errors/);
-});
-
-test("the note of a rate grade states the count, the runs and the rate", () => {
-  const g = gradeWorkflowErrors(wf("lifecycle-subagent", 10), 588);
-  assert.equal(g.note, "10 errors over 588 runs = 1.7% (RED at >= 5%)");
 });
 
 // ── The rows of the PIPEDREAM WORKFLOW HEALTH block ──────────────────────

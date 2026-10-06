@@ -29,7 +29,9 @@ export function normalizeArea(area) {
 
 const isRed = (alert) => String(alert?.severity).toUpperCase() === "RED";
 
-// The Snowflake action can return an ARRAY column as a JSON string.
+// The Snowflake action can return an ARRAY column as a JSON string. A value
+// that does not parse reads as "no RED area": a RED in this run then differs
+// from that run, so the gate sends the DM instead of staying silent.
 function parseAreas(value) {
   let list = value;
   if (typeof value === "string") {

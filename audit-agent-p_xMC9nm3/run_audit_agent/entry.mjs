@@ -20,7 +20,7 @@
 // ./workflow_health.mjs and ./saturation.mjs (CRMA-1031) are the same kind:
 // the workflow_health severity per workflow, and the RED streaks plus the
 // Slack send decision.
-// This file is named entry.mjs (not entry.js, unlike this workflow's other
+// This file is named entry.mjs (not entry.js, unlike most of this workflow's
 // steps) BECAUSE it does these sibling imports — a hand-authored .js step
 // cannot use sibling .mjs imports (pipedream-synced-project skill).
 // =====================================================================
@@ -191,8 +191,8 @@ function queryWorkflowErrors(input, ctx) {
   const filtered = pool
     .map(({ errors_24h, ...w }) => {
       const errs = (errors_24h || []).filter((e) => !e.ts_ms || e.ts_ms >= sinceMs);
-      // CRMA-1031: the pool holds up to 100 errors per workflow. `count` is
-      // exact; the detail list is cut so one tool call stays small.
+      // CRMA-1031: the pool holds up to 100 errors per workflow. `count`
+      // covers all of them; the detail list is cut so one tool call stays small.
       return { ...w, count: errs.length, errors_in_window: errs.slice(0, MAX_TOOL_ERRORS) };
     })
     .filter((w) => w.count >= minCount)
@@ -521,7 +521,7 @@ export default defineComponent({
     const pipedreamHealthBlock = fmtJson({
       summary: pipedream_health.summary,
       note: "active flag is NOT surfaced — Pipedream REST has no GET endpoint for it. Do not infer 'workflow deactivated' from missing active field. " +
-        "errors_24h_count is the true 24h count, up to 100 (the error stream keeps no more). errors_24h_truncated=true means the true count is at least that number — report it as '≥ N'. " +
+        "errors_24h_count is the true 24h count, up to 100 (the error stream keeps no more). errors_24h_truncated=true means the true count is at least that number — report it as '≥ N'. A fetch_error means the count is unknown, not 0. " +
         "severity is precomputed from the rubric's count rule or error-rate rule; severity_note gives the numbers. Use the severity as given.",
       workflows: buildWorkflowHealthRows(pipedream_health.workflows, { lifecycleInserts24h }),
     });
@@ -612,7 +612,7 @@ export default defineComponent({
         : "Fallback emission — no propose_audit_report call observed.",
     };
 
-    // CRMA-775: fold the deterministic catalog-freshness grade in last, on
+    // CRMA-775: fold the deterministic catalog-freshness grade in, on
     // BOTH paths (LLM-emitted or fallback) — a dead catalog sync must be
     // noticed even if the rest of the agent loop misbehaves. Escalates
     // (never de-escalates) overall_status and adds its own alert, so

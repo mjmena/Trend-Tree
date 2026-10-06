@@ -133,19 +133,19 @@ export default defineComponent({
 
       // Detail is a second request so that a failure there cannot lose the
       // count. Skip it when no row is inside the window.
-      const hasRecent = buildErrors24h({ summaries, sinceMs: since }).errors_24h_count > 0;
-      const detail = hasRecent
-        ? await fetchJson(`${url}&limit=${DETAIL_LIMIT}&expand=event`, apiKey)
-        : null;
+      let built = buildErrors24h({ summaries, sinceMs: since });
+      let detail = null;
+      if (built.errors_24h_count > 0) {
+        detail = await fetchJson(`${url}&limit=${DETAIL_LIMIT}&expand=event`, apiKey);
+        if (detail.ok) {
+          built = buildErrors24h({ summaries, detailed: detail.data?.data || [], sinceMs: since });
+        }
+      }
 
       return {
         workflow_id: w.id,
         workflow_name: w.name,
-        ...buildErrors24h({
-          summaries,
-          detailed: detail?.ok ? detail.data?.data || [] : [],
-          sinceMs: since,
-        }),
+        ...built,
         fetch_error: errors.ok ? null : (errors.error || `status ${errors.status || "?"}`),
         detail_error: detail && !detail.ok ? (detail.error || `status ${detail.status || "?"}`) : null,
       };

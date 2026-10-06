@@ -645,13 +645,15 @@ steps:
         -- with the newest one. An HTTP run never counts toward a streak, so
         -- HTTP rows are left out. This run's own row is not here yet:
         -- commit_audit_ledger writes it later. No LIMIT: the cron writes one
-        -- row a day, and a streak can be as long as the table.
+        -- row a day, and a streak can be as long as the table. Area names
+        -- come back as written; saturation.mjs alone normalizes them, and it
+        -- reads the '' of an alert with no area as 'unknown'.
         SELECT
           TO_CHAR(l.EVALUATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS EVALUATED_AT,
           l.TRIGGER_KIND,
           l.OVERALL_STATUS,
           ARRAY_AGG(DISTINCT CASE WHEN UPPER(a.value:severity::STRING) = 'RED'
-            THEN COALESCE(NULLIF(LOWER(TRIM(a.value:area::STRING)), ''), 'unknown') END) AS RED_AREAS
+            THEN COALESCE(a.value:area::STRING, '') END) AS RED_AREAS
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_AUDIT_LEDGER l,
              LATERAL FLATTEN(INPUT => l.ALERTS, OUTER => TRUE) a
         WHERE l.TRIGGER_KIND = 'cron'
@@ -663,7 +665,7 @@ steps:
           l.TRIGGER_KIND,
           l.OVERALL_STATUS,
           ARRAY_AGG(DISTINCT CASE WHEN UPPER(a.value:severity::STRING) = 'RED'
-            THEN COALESCE(NULLIF(LOWER(TRIM(a.value:area::STRING)), ''), 'unknown') END) AS RED_AREAS
+            THEN COALESCE(a.value:area::STRING, '') END) AS RED_AREAS
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_AUDIT_LEDGER l,
              LATERAL FLATTEN(INPUT => l.ALERTS, OUTER => TRUE) a
         WHERE l.TRIGGER_KIND = 'cron'

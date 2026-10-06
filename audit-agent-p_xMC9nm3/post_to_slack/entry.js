@@ -30,14 +30,15 @@ export default defineComponent({
     const status = report.overall_status || "UNKNOWN";
     const force = !!ev.force_slack;
 
-    // A report with no decision gets the rule from before CRMA-1031: send
-    // unless GREEN. A repeated DM costs less than a lost one.
+    // The decision already accounts for force_slack. A report with no
+    // decision gets the rule from before CRMA-1031: send unless GREEN, or
+    // when forced.
     const gate = report.saturation?.slack || {
-      send: status !== "GREEN",
-      reason: `no send decision in the report; status ${status}`,
+      send: force || status !== "GREEN",
+      reason: force ? "force_slack=true" : `no send decision in the report; status ${status}`,
     };
 
-    if (!gate.send && !force) {
+    if (!gate.send) {
       return $.flow.exit(`audit ${status} — no Slack DM: ${gate.reason}`);
     }
 
@@ -50,8 +51,7 @@ export default defineComponent({
     // Belt-and-suspenders length cap (~1500 chars per the prompt contract).
     const capped = md.length > 2000 ? md.slice(0, 2000) + "…" : md;
 
-    const why = force ? "force_slack=true" : gate.reason;
-    const slack_text = `${headerLine}\n${capped}\n_chain=${ev.chain_id || "?"} · sent: ${why}_`;
+    const slack_text = `${headerLine}\n${capped}\n_chain=${ev.chain_id || "?"} · sent: ${gate.reason}_`;
 
     return { slack_text, status, force };
   },

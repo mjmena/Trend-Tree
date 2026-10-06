@@ -12,8 +12,12 @@
 // entry.mjs puts the grade into the PIPEDREAM WORKFLOW HEALTH block, and the
 // audit.report_rubric prompt tells the agent to use it as given. The agent
 // still writes the alert; it no longer derives the severity from a count.
+// The thresholds here must stay equal to the ones that prompt states.
 
-export const FAN_OUT_SUBAGENTS = ["lifecycle-subagent", "lifecycle-attribution-subagent"];
+const LIFECYCLE_SUBAGENT = "lifecycle-subagent";
+const ATTRIBUTION_SUBAGENT = "lifecycle-attribution-subagent";
+
+export const FAN_OUT_SUBAGENTS = [LIFECYCLE_SUBAGENT, ATTRIBUTION_SUBAGENT];
 export const RATE_RED_PCT = 5;
 export const COUNT_WARN_MIN = 3;
 export const COUNT_RED_MIN = 10;
@@ -24,33 +28,32 @@ export const COUNT_RED_MIN = 10;
  * runs24h: the workflow's total runs in the same 24h. Only the fan-out
  *   subagents use it. A NULL, missing, zero or negative value means the volume
  *   is unavailable, never "0 runs": the grade then falls back to the count rule.
- * Returns { severity: null | INFO | WARN | RED, rule, error_rate_pct, note }.
+ * Returns { severity: null | INFO | WARN | RED, rule, note }.
  */
 export function gradeWorkflowErrors(workflow, runs24h) {
   const errors = Number(workflow?.errors_24h_count || 0);
-  if (errors <= 0) return { severity: null, rule: null, error_rate_pct: null, note: null };
+  if (errors <= 0) return { severity: null, rule: null, note: null };
 
   const fanOut = FAN_OUT_SUBAGENTS.includes(workflow.workflow_name);
   const runs = runs24h === null || runs24h === undefined ? NaN : Number(runs24h);
 
   if (fanOut && Number.isFinite(runs) && runs > 0) {
-    const rate = (errors / runs) * 100;
-    const error_rate_pct = Math.round(rate * 10) / 10;
     // A truncated count is a floor, so the rate is a floor too. It cannot
     // prove the workflow is below the RED line.
     if (workflow.errors_24h_truncated === true) {
       return {
         severity: "RED",
         rule: "rate",
-        error_rate_pct,
         note: `at least ${errors} errors over ${runs} runs; the count is truncated, so the true rate is unknown`,
       };
     }
+    // The printed rate is cut, not rounded: 4.99% must not read "5%" beside
+    // a WARN.
+    const pct = Math.floor((errors * 1000) / runs) / 10;
     return {
-      severity: rate >= RATE_RED_PCT ? "RED" : "WARN",
+      severity: errors * 100 >= RATE_RED_PCT * runs ? "RED" : "WARN",
       rule: "rate",
-      error_rate_pct,
-      note: `${errors} errors over ${runs} runs = ${error_rate_pct}% (RED at >= ${RATE_RED_PCT}%)`,
+      note: `${errors} errors over ${runs} runs = ${pct}% (RED at >= ${RATE_RED_PCT}%)`,
     };
   }
 
@@ -58,17 +61,19 @@ export function gradeWorkflowErrors(workflow, runs24h) {
   return {
     severity,
     rule: "count",
-    error_rate_pct: null,
     note: fanOut ? "run volume unavailable — count rule applied" : null,
   };
 }
 
-// lifecycle-subagent writes one FCT_TREND_LIFECYCLE_LEDGER row per successful
-// run, and a failed run writes none: its runs are the inserts plus the errors.
+// lifecycle-subagent writes one FCT_TREND_LIFECYCLE_LEDGER row per decision,
+// and a failed run writes none, so its runs are close to the ledger inserts
+// plus the errors. The figure is approximate: the ledger also holds one seed
+// row per promoted trend (a few a day), and a run that ends with no decision
+// writes no row. Against a 5% line on about 590 runs that is noise.
 // lifecycle-attribution-subagent leaves no per-run record (a run that links
 // no signal writes nothing), so no source counts its runs yet.
 function runs24hFor(workflow, { lifecycleInserts24h }) {
-  if (workflow.workflow_name !== "lifecycle-subagent") return null;
+  if (workflow.workflow_name !== LIFECYCLE_SUBAGENT) return null;
   if (lifecycleInserts24h === null || lifecycleInserts24h === undefined) return null;
   return Number(lifecycleInserts24h) + Number(workflow.errors_24h_count || 0);
 }
