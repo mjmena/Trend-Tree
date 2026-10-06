@@ -71,7 +71,7 @@ All workflows share network `net_5Lnie3` (required for Snowflake egress allowlis
 | `p_PACe77B` | `lifecycle-attribution-subagent-p_PACe77B` | HTTP | Attribution lifecycle subagent | 4096 MB · 600s |
 | `p_QPCkLP1` | `prediction-agent-p_QPCkLP1` | cron daily 14:00 UTC + HTTP | Deterministic emergence scorer over all live trends → FCT_TREND_PREDICTION_LEDGER | 4096 MB · 600s |
 | `p_vQCkwgV` | `daily-digest-p_vQCkwgV` | cron daily | Assembles + sends trend digest via Braze | 2048 MB · 300s |
-| `p_xMC9nm3` | `audit-agent-p_xMC9nm3` | cron daily 13:00 UTC + HTTP | Gemini 3.1 Pro health auditor → FCT_AUDIT_LEDGER + Slack DM (gated non-GREEN) | 2048 MB · 300s |
+| `p_xMC9nm3` | `audit-agent-p_xMC9nm3` | cron daily 13:00 UTC + HTTP | Gemini 3.1 Pro health auditor → FCT_AUDIT_LEDGER + Slack DM (sent when the status or the RED areas change, and every 7th run of a RED streak) | 2048 MB · 300s |
 
 ---
 

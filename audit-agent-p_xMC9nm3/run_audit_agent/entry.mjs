@@ -4,8 +4,8 @@
 // no Snowflake from inside the loop. All inputs prefetched in workflow.yaml
 // (pipeline_freshness, dashboard_freshness, stuck_trends, cost_24h_rows,
 // audit_prompts, pipedream_errors, catalog_freshness, tiktok_freshness,
-// prompt_drift). The query tools just slice and filter that prefetched data;
-// propose_audit_report is the terminal capture.
+// prompt_drift, audit_history). The query tools just slice and filter that
+// prefetched data; propose_audit_report is the terminal capture.
 //
 // =====================================================================
 // Helper code below is INLINED. Pipedream packages each step as a single
@@ -17,13 +17,18 @@
 // allows). They hold the CRMA-775 catalog-freshness and CRMA-1338
 // tiktok-freshness grading as plain, defineComponent-free modules —
 // deterministic, not LLM-judged, and independently unit-testable.
-// This file is named entry.mjs (not entry.js, unlike this workflow's other
+// ./workflow_health.mjs and ./saturation.mjs (CRMA-1031) are the same kind:
+// the workflow_health severity per workflow, and the RED streaks plus the
+// Slack send decision.
+// This file is named entry.mjs (not entry.js, unlike most of this workflow's
 // steps) BECAUSE it does these sibling imports — a hand-authored .js step
 // cannot use sibling .mjs imports (pipedream-synced-project skill).
 // =====================================================================
 
 import { gradeCatalogFreshness, buildCatalogFreshnessBlock, applyCatalogFinding } from "./catalog_freshness.mjs";
 import { gradeTiktokFreshness, applyTiktokFinding } from "./tiktok_freshness.mjs";
+import { buildWorkflowHealthRows } from "./workflow_health.mjs";
+import { applySaturation } from "./saturation.mjs";
 
 // ─────────────────────────────────────────────────────────────────────
 // prompt_loader (canonical: agents/lib/prompt_loader.mjs)
@@ -115,7 +120,7 @@ const TOOL_SCHEMAS = {
   propose_audit_report: {
     name: "propose_audit_report",
     description:
-      "Emit the final structured audit report. Call exactly ONCE near the end of the loop. The commit step persists this; the Slack step posts slack_summary_md (gated on overall_status != GREEN unless force_slack=true). If you don't call it, nothing gets written.",
+      "Emit the final structured audit report. Call exactly ONCE near the end of the loop. The commit step persists this; the Slack step posts slack_summary_md when the status or the set of RED areas changed since the last scheduled run (or force_slack=true). If you don't call it, nothing gets written.",
     input_schema: {
       type: "object",
       properties: {
@@ -136,7 +141,11 @@ const TOOL_SCHEMAS = {
             type: "object",
             properties: {
               severity: { type: "string", enum: ["INFO", "WARN", "RED"] },
-              area: { type: "string" },
+              area: {
+                type: "string",
+                description:
+                  "The report area, spelled exactly as its key in this report: ingestion | distillation | promotion | enrichment | lifecycle | dashboard | data_hygiene | governance | workflow_health. Use cost and et_corroboration for those findings. RED streaks are tracked by this exact string, so do not vary it.",
+              },
               summary: { type: "string" },
               evidence: { type: "string" },
             },
@@ -170,6 +179,8 @@ function queryPipelineFreshness(input, ctx) {
   return { [area]: snap[area] ?? null };
 }
 
+const MAX_TOOL_ERRORS = 20;
+
 function queryWorkflowErrors(input, ctx) {
   const pool = ctx.pipedream_health?.workflows || [];
   const nameSub = (input?.workflow_name || "").toLowerCase();
@@ -178,9 +189,11 @@ function queryWorkflowErrors(input, ctx) {
   const sinceMs = Date.now() - sinceHours * 3600_000;
 
   const filtered = pool
-    .map((w) => {
-      const errs = (w.errors_24h || []).filter((e) => !e.ts_ms || e.ts_ms >= sinceMs);
-      return { ...w, errors_in_window: errs, count: errs.length };
+    .map(({ errors_24h, ...w }) => {
+      const errs = (errors_24h || []).filter((e) => !e.ts_ms || e.ts_ms >= sinceMs);
+      // CRMA-1031: the pool holds up to 100 errors per workflow. `count`
+      // covers all of them; the detail list is cut so one tool call stays small.
+      return { ...w, count: errs.length, errors_in_window: errs.slice(0, MAX_TOOL_ERRORS) };
     })
     .filter((w) => w.count >= minCount)
     .filter((w) => (nameSub ? (w.workflow_name || "").toLowerCase().includes(nameSub) : true));
@@ -210,7 +223,7 @@ function proposeAuditReport(input, ctx) {
   ctx.proposed_report = { ...input, emitted_at: new Date().toISOString() };
   return {
     accepted: true,
-    note: "Audit report captured. Commit step will persist; Slack step will post if overall_status != GREEN or force_slack=true.",
+    note: "Audit report captured. Commit step will persist; Slack step will post when the status or the set of RED areas changed, or force_slack=true.",
   };
 }
 
@@ -406,6 +419,7 @@ export default defineComponent({
     pipedream_errors: { type: "any" },
     prompts_rows: { type: "any" },
     prompt_drift_rows: { type: "any", optional: true },
+    audit_history_rows: { type: "any", optional: true },
   },
   async run({ $ }) {
     const ev = this.event || {};
@@ -500,18 +514,16 @@ export default defineComponent({
           `name every affected PROMPT_KEY. REPO_AHEAD_OF_LIVE or MANIFEST_KEY_NOT_LIVE usually means ` +
           `a migration was committed but not yet applied, or a key was retired — WARN unless it has ` +
           `been stale across multiple audit runs.`;
+    // CRMA-1031: each workflow with errors carries a severity computed in
+    // workflow_health.mjs (count rule, or error rate for the fan-out
+    // subagents). The rate needs the lifecycle ledger's 24h insert count.
+    const lifecycleInserts24h = pipeline_freshness.lifecycle.find((r) => r.KEY === "all_24h")?.COUNT_24H;
     const pipedreamHealthBlock = fmtJson({
       summary: pipedream_health.summary,
-      note: "active flag is NOT surfaced — Pipedream REST has no GET endpoint for it. Do not infer 'workflow deactivated' from missing active field.",
-      workflows: (pipedream_health.workflows || []).map((w) => ({
-        workflow_name: w.workflow_name,
-        workflow_id: w.workflow_id,
-        errors_24h_count: w.errors_24h_count,
-        top_errors: (w.errors_24h || []).slice(0, 3).map((e) => ({
-          ts_iso: e.ts_iso, code: e.code, msg: e.msg, cell_id: e.cell_id,
-        })),
-        fetch_error: w.fetch_error,
-      })),
+      note: "active flag is NOT surfaced — Pipedream REST has no GET endpoint for it. Do not infer 'workflow deactivated' from missing active field. " +
+        "errors_24h_count is the true 24h count, up to 100 (the error stream keeps no more). errors_24h_truncated=true means the true count is at least that number — report it as '≥ N'. A fetch_error means the count is unknown, not 0. " +
+        "severity is precomputed from the rubric's count rule or error-rate rule; severity_note gives the numbers. Use the severity as given.",
+      workflows: buildWorkflowHealthRows(pipedream_health.workflows, { lifecycleInserts24h }),
     });
 
     const renderedSystem = render(systemTpl, {
@@ -600,15 +612,20 @@ export default defineComponent({
         : "Fallback emission — no propose_audit_report call observed.",
     };
 
-    // CRMA-775: fold the deterministic catalog-freshness grade in last, on
+    // CRMA-775: fold the deterministic catalog-freshness grade in, on
     // BOTH paths (LLM-emitted or fallback) — a dead catalog sync must be
     // noticed even if the rest of the agent loop misbehaves. Escalates
-    // (never de-escalates) overall_status, so the existing post_to_slack /
-    // commit_audit_ledger non-GREEN gating picks it up with no changes.
+    // (never de-escalates) overall_status and adds its own alert, so
+    // commit_audit_ledger and the Slack gate pick it up with no changes.
     // CRMA-1338: same fold-in for the tiktok ingester's EMBEDDED_AT freshness.
-    const report = applyTiktokFinding(
-      applyCatalogFinding(baseReport, catalogGraded),
-      gradeTiktokFreshness(this.tiktok_freshness_rows || []),
+    // CRMA-1031: the saturation guard goes last, so that its RED streaks and
+    // its Slack send decision see the alerts of both fold-ins above.
+    const report = applySaturation(
+      applyTiktokFinding(
+        applyCatalogFinding(baseReport, catalogGraded),
+        gradeTiktokFreshness(this.tiktok_freshness_rows || []),
+      ),
+      { history: this.audit_history_rows, triggerKind: ev.trigger_kind, force: ev.force_slack },
     );
 
     return {

@@ -1,9 +1,10 @@
 // Audit Agent — fetch_pipedream_errors
 //
 // Iterates a hardcoded list of workflow IDs, fetching each workflow's
-// $errors event_summaries (last 24h, capped) plus its current active flag.
-// Returns a normalized pool that the agent's `query_workflow_errors` tool
-// slices.
+// $errors event_summaries for the last 24h. Returns a normalized pool that
+// the agent's `query_workflow_errors` tool slices. ./errors_24h.mjs owns the
+// count and its truncation flag (CRMA-1031); this file is entry.mjs, not
+// entry.js, because it imports that sibling.
 //
 // **No project-listing endpoint** exists in the Pipedream REST API
 // (cookbook: "Use this instead of asking 'what workflows are in this
@@ -23,9 +24,10 @@
 // Pipedream UI → Account Settings → Environment Variables. The
 // `PIPEDREAM_*` prefix is reserved by Pipedream, hence the inverted name).
 
+import { PAGE_LIMIT, DETAIL_LIMIT, buildErrors24h } from "./errors_24h.mjs";
+
 const ORG_ID = "o_qOIvyEa";
 const API_BASE = "https://api.pipedream.com/v1";
-const ERRORS_LIMIT = 10;
 const FETCH_TIMEOUT_MS = 15_000;
 const CONCURRENCY = 4;
 
@@ -125,34 +127,27 @@ export default defineComponent({
     // which would be a future enhancement (one more emits API call per workflow).
     const since = Date.now() - 24 * 3600_000;
     const results = await pmap(WORKFLOW_REGISTRY, CONCURRENCY, async (w) => {
-      const errors = await fetchJson(
-        `${API_BASE}/workflows/${w.id}/%24errors/event_summaries?org_id=${ORG_ID}&limit=${ERRORS_LIMIT}&expand=event`,
-        apiKey,
-      );
+      const url = `${API_BASE}/workflows/${w.id}/%24errors/event_summaries?org_id=${ORG_ID}`;
+      const errors = await fetchJson(`${url}&limit=${PAGE_LIMIT}`, apiKey);
+      const summaries = errors.ok ? errors.data?.data || [] : [];
 
-      const errs = (errors.ok ? errors.data?.data || [] : [])
-        .map((e) => {
-          const orig = e.event?.original_context || {};
-          const err = e.event?.error || {};
-          const ts = e.indexed_at_ms ? Number(e.indexed_at_ms) : null;
-          return {
-            event_id: e.id,
-            ts_ms: ts,
-            ts_iso: ts ? new Date(ts).toISOString() : null,
-            recent_24h: ts ? ts >= since : false,
-            cell_id: orig.cell_id || null,
-            code: err.code || null,
-            msg: typeof err.msg === "string" ? err.msg.slice(0, 400) : null,
-          };
-        })
-        .filter((e) => e.ts_ms === null || e.recent_24h);
+      // Detail is a second request so that a failure there cannot lose the
+      // count. Skip it when no row is inside the window.
+      let built = buildErrors24h({ summaries, sinceMs: since });
+      let detail = null;
+      if (built.errors_24h_count > 0) {
+        detail = await fetchJson(`${url}&limit=${DETAIL_LIMIT}&expand=event`, apiKey);
+        if (detail.ok) {
+          built = buildErrors24h({ summaries, detailed: detail.data?.data || [], sinceMs: since });
+        }
+      }
 
       return {
         workflow_id: w.id,
         workflow_name: w.name,
-        errors_24h_count: errs.length,
-        errors_24h: errs,
+        ...built,
         fetch_error: errors.ok ? null : (errors.error || `status ${errors.status || "?"}`),
+        detail_error: detail && !detail.ok ? (detail.error || `status ${detail.status || "?"}`) : null,
       };
     });
 
@@ -161,6 +156,7 @@ export default defineComponent({
       workflows_audited: results.length,
       errored_24h_count: results.filter((r) => r.errors_24h_count > 0).length,
       total_errors_24h: results.reduce((s, r) => s + r.errors_24h_count, 0),
+      truncated_count: results.filter((r) => r.errors_24h_truncated).length,
       fetch_failures: results.filter((r) => r.fetch_error).length,
     };
 
