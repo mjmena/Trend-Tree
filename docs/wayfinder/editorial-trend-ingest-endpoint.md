@@ -38,13 +38,42 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   _Source: `sql/fct_trends.sql:18`, `sql/proc_promotion_apply.sql:405`, repo-wide grep,
   2026-10-06 at `354662a`._
 - **The promotion gate counts source families from the candidate's `SOURCE_BREAKDOWN`.**
-  Two or more families route to the normal path. One family routes to the Exploding Topics
-  rescue only when confidence and specificity both reach the threshold. Anything else is a
-  reject. A candidate with no signals has zero families.
+  Two or more families route to the normal path. Fewer than two families route to the
+  Exploding Topics rescue when confidence and specificity both reach the threshold.
+  Anything else is a reject. A candidate with no signals has zero families, and the gate
+  still routes it to the rescue when its scores are high enough.
   _Source: `agents/lib/promotion_gate.mjs:70-100` (`classifyCandidate`), 2026-10-06._
-- **A trend with no linked signals earns zero heat.** The lifecycle subagent's formula
-  comment reads "0 linked = 0 pts".
-  _Source: `lifecycle-subagent-p_gYC562o/run_subagent/entry.js:239`, 2026-10-06._
+- **The pipeline already holds trends that were promoted with no evidence.** 20 trends came
+  from candidates with an empty `SUPPORTING_SIGNAL_IDS` and an empty `SOURCE_BREAKDOWN`, all
+  through the Exploding Topics rescue, between 2026-08-28 and 2026-09-21. 19 of them still
+  have zero rows in `FCT_TREND_SIGNALS`. ADR-0004 states that distillation enforces at least
+  two supporting signals, so these 20 contradict it.
+  _Source: [CRMA-1427](https://mcclatchy.atlassian.net/browse/CRMA-1427) findings,
+  Snowflake, 2026-10-06; the count of 19 re-measured by the charting session the same day._
+- **A trend with no linked signals shows a heat index of 8.4 to 9.6, not zero.** Only the
+  confidence term scores: 10 times the candidate's promotion confidence. The recency,
+  velocity and breadth terms read linked signals and score 0. Promotion seeds about 33,
+  which decays to the floor in about two days. This replaces an earlier line on this map
+  that read "zero heat" from one code comment.
+  _Source: CRMA-1427 findings, Snowflake (19 trends, median 8.6), 2026-10-06._
+- **A trend with no linked signals stays `STABLE` and never retires.** The lifecycle agent
+  sets `NEW` for 24 hours, then `STABLE`. The rubric allows `STABLE` → `DECLINING` only with
+  at least 5 linked signals in 14 days, and `DORMANT` is reachable only from `DECLINING`.
+  All 19 are `STABLE` at 15 to 39 days old.
+  _Source: CRMA-1427 findings, `lifecycle-subagent-p_gYC562o` prompt version 7 and
+  Snowflake, 2026-10-06._
+- **The enrichment chain completes for a trend with no linked signals.** All 19 have a full
+  `initial` enrichment record, written 2 to 3 minutes after promotion, with 3 to 6 evidence
+  items. Every step that reads `FCT_TREND_SIGNALS` proceeds on an empty result.
+  _Source: CRMA-1427 findings, code read and Snowflake, 2026-10-06._
+- **The lifecycle-attribution agent does not reach a new trend in practice.** A trend is
+  eligible as soon as it has a `TREND_VECTOR`, and promotion writes one from `TREND_TOPIC`.
+  But 0 of the 192 trends promoted since 2026-07-20 has an `attributed` link. The reason is
+  an inference: the sweep works a queue that is about 11 weeks behind.
+  _Source: CRMA-1427 findings, Snowflake, 2026-10-06._
+- **A trend with no linked signals is never `PREDICTION_ELIGIBLE`, and shows 0 for
+  `DISTINCT_PUBLISHER_COUNT` and `TOTAL_CLUSTER_SIZE`.** No audit query counts such trends.
+  _Source: CRMA-1427 findings, 2026-10-06._
 - **A system-authored claim already has one permitted door into the pipeline.** Open
   white-space predictions enter the shared cluster-agent's prompt as hints over
   independently ingested signals. They never become rows.
@@ -110,6 +139,8 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 
 - [Find out how the ATLAS backend can authenticate to a Cloud Run service](https://mcclatchy.atlassian.net/browse/CRMA-1428) — **Decided:** ATLAS runs on Cloud Run in its own GCP projects and authenticates outbound calls with a static header key today; a Google ID token is possible but has no cross-project precedent here
 
+- [Find out what the pipeline does with a trend that has no linked signals](https://mcclatchy.atlassian.net/browse/CRMA-1427) — **Decided:** A trend with no linked signals is a permanent quiet row: heat about 8.6, STABLE and never retired, fully enriched, and not reached by attribution; 19 such live trends exist already through the Exploding Topics rescue
+
 ## Not yet specified
 
 <!-- The fog of war: in-scope decisions you can tell are coming but cannot yet
@@ -120,9 +151,11 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   candidate. The shape of this question depends on where an editorial trend enters the
   pipeline: the promotion agent already merges duplicates for a candidate, and nothing does
   for a direct row.
-- **Lifecycle protection.** Whether a young editorial trend needs protection from the
-  lifecycle agent's `DORMANT` and `RETIRED` thresholds while its evidence is thin. Waits on
-  the zero-evidence research and on the entry point.
+- **How an editorial trend without evidence gains evidence, or leaves.** The research
+  reversed the first form of this question. A trend with no linked signals does not retire
+  too early: it stays `STABLE` at a heat of about 8.6 and never retires, and the
+  lifecycle-attribution agent does not reach it. So an editorial trend that enters without
+  evidence needs its own path to evidence and its own exit rule. Waits on the entry point.
 - **Who names the trend.** Whether the person's wording becomes the [trend name], the
   [trend topic], or only an input to enrichment. The [trend name] freezes at first
   enrichment (ADR-0001), so the first writer wins.
