@@ -2,7 +2,7 @@
 
 Feeds the current-state slides of the executive briefing deck (map CRMA-1199).
 
-**Status, 2026-10-06.** The integration inventory is verified against production commit `354662a` (2026-10-06). The refresh queries are verified against the table DDL in `sql/` at the same commit. **The metric values are still pending**: Snowflake SSO was expired on 2026-10-06 and on 2026-09-19, so no query has run yet. `gcloud` auth was also expired, so the Cloud Run rows below rest on repo evidence, not on a live listing.
+**Status, 2026-10-06.** The integration inventory is verified against production commit `354662a` (2026-10-06) and against a live `gcloud` listing of Cloud Run and Cloud Scheduler taken the same day. The refresh queries are verified against the table DDL in `sql/` at the same commit. **The metric values are still pending**: Snowflake SSO was expired on 2026-10-06 and on 2026-09-19, so no query has run yet.
 
 ## Metrics
 
@@ -117,7 +117,7 @@ A **signal** is one ingested data point. Its **source** is the name in `FCT_SIGN
 | `pinterest` | live | Trending pins and boards. |
 | `google_trends_rss` | live | Trending-story RSS, one signal per article. |
 | `google_trends_explore` | live | Search-interest data. Legacy name: the `search-google-trends` tool also writes it. |
-| `tiktok` | **live again since 2026-09-28** | Cloud Run job `trend-tree-tiktok-ingest` (CRMA-1337), daily Scheduler job (CRMA-1338). SerpApi `google_short_videos` over a fixed seed-query list, then a `gemini-3.7-flash` title filter. Capped at 50 SerpApi calls per run. On a first-week 30% specificity spot-check that drops the source if it fails. |
+| `tiktok` | **live again since 2026-09-28, failing since 2026-10-05** | Cloud Run job `trend-tree-tiktok-ingest` (CRMA-1337), daily Scheduler job at 09:00 UTC (CRMA-1338). SerpApi `google_short_videos` over a fixed seed-query list, then a `gemini-3.7-flash` title filter. Capped at 50 SerpApi calls per run. A successful run writes 24 to 34 signals. See "TikTok run history" below. The first-week 30% specificity check (CRMA-1340) is still open and can drop the source. |
 | `wikimedia` | retired | Passive ingester retired late April 2026. Historical rows stay. |
 | `gdelt` (passive batch) | retired 2026-04-26 | The name lives on: the `search-gdelt` tool is its only writer. |
 | TikTok Creative Center scraper | retired 2026-06-09 | The Pipedream workflow `ingestion/tiktok-p_yKCm9Am` stays off. The SerpApi job replaced it. |
@@ -125,7 +125,18 @@ A **signal** is one ingested data point. Its **source** is the name in `FCT_SIGN
 | `kickstarter` | **decided, not built** | ADR-0008 accepts a traction-gated vendor scrape. No ingester exists in `services/`. The SerpApi route dropped Kickstarter (CRMA-1318). |
 | TikTok creator lanes | **decided, not built** | ADR-0009: a `profile_url` precision lane and a `#`-keyword breadth lane over a curated creator list, through Bright Data. Not what runs today. |
 
-`CONTEXT.md` lists `reddit` and `kickstarter` in the source taxonomy because their routes are decided. They belong on the Future Plans slide ("Building now — intake expansion"), not on a current-state slide.
+`CONTEXT.md` lists `reddit` and `kickstarter` in the source taxonomy because their routes are decided. They belong on the Future Plans slide ("Building now — intake expansion"), not on a current-state slide. What still gets built is itself open: CRMA-1423 (created 2026-10-06) reconciles the Bright Data routes with the later SerpApi rulings.
+
+**TikTok run history** (live `gcloud` listing and Cloud Logging, 2026-10-06). The daily job ran nine times and succeeded five times.
+
+| Date (09:00 UTC run) | Result | Detail |
+| --- | --- | --- |
+| 2026-09-28 | succeeded | first scheduled run |
+| 2026-09-29, 2026-09-30 | failed | SerpApi `HTTP 503: We couldn't get valid results for this search`. One failed search fails the whole run. |
+| 2026-10-01 to 2026-10-04 | succeeded | wrote 33, 24, 29 and 34 signals |
+| 2026-10-05, 2026-10-06 | failed | SerpApi `HTTP 429: Your account has run out of searches`. The shared `dev@trendhunter.com` plan is out of quota. |
+
+No CRMA ticket covers the quota failure as of 2026-10-06. Until the quota returns, `tiktok` writes no new signals. A slide can name TikTok as a current source only if the per-source query shows fresh rows the day before presenting.
 
 ### Discovery agents — LLMs on a 2-hour cron that propose emerging topics
 
@@ -144,7 +155,7 @@ Unchanged since 2026-09-19. A `search-tiktok` tool is decided (CRMA-1005) and no
 
 ### Corroboration oracle
 
-**Exploding Topics** (ADR-0004). The promotion gate queries it; a concept match earns a single-family candidate its second source family. It writes no `FCT_SIGNALS` row, so it is **not a source**. A second oracle on Reddit was decided on 2026-09-28 (CRMA-1326) and lapsed the same day, when CRMA-1344 rejected the typed promotion path it attached to.
+**Exploding Topics** (ADR-0004). The promotion gate queries it; a concept match earns a single-family candidate its second source family. It writes no `FCT_SIGNALS` row, so it is **not a source**. A second oracle on Reddit was decided on 2026-09-28 (CRMA-1326) and lapsed the same day, when CRMA-1344 rejected the typed promotion path it attached to. Its build story CRMA-1339 closed as `wontfix`.
 
 ### Removed since 2026-09-19
 
@@ -157,11 +168,11 @@ The `gtrends-poller` workflow was removed on 2026-09-25 (CRMA-1313). `DT_TREND_D
 | **ATLAS** (the trend dashboard UI in the Insights Agent) | live | `DT_TREND_DASHBOARD`, one row per trend, 15-minute refresh lag. |
 | **Insights Agent Predictions Queue** | live | `PREDICTION_SCORE` / `PREDICTION_FLAG` / `PREDICTION_ELIGIBLE` from the deterministic `prediction-agent` workflow (daily). |
 | **Daily digest email** | live | Recently promoted trends from `DT_TREND_DASHBOARD`, with ATLAS deep links. |
-| **Ecomm sourcing agent** | live | Cloud Run service `trend-tree-ecomm-agent`: `POST /source` plus a 15-minute `POST /poll`. It matches each promoted trend against the Trend Hunter Shopify catalog and writes `SOURCING_STATUS` back to the dashboard. The Decision Page in the Insights Agent is its only designed consumer surface. |
-| **Catalog sync** (feeds the sourcing agent) | live since 2026-09-28 | Cloud Run job `trend-tree-catalog-sync`, daily 09:00 UTC, sweeps the public storefront feed into `DIM_CATALOG_PRODUCT` (201 products on 2026-10-06). |
+| **Ecomm sourcing agent** | live | Cloud Run service `trend-tree-ecomm-agent` (revision `00007-xax`): `POST /source` plus the Scheduler job `trend-tree-ecomm-poll` every 15 minutes. It matches each promoted trend against the Trend Hunter Shopify catalog and writes `SOURCING_STATUS` back to the dashboard. The Decision Page in the Insights Agent is its only designed consumer surface. |
+| **Catalog sync** (feeds the sourcing agent) | live since 2026-09-28 | Cloud Run job `trend-tree-catalog-sync`, daily 09:00 UTC, sweeps the public storefront feed into `DIM_CATALOG_PRODUCT` (201 products on 2026-10-06). The run on 2026-10-06 succeeded. |
 | **ATLAS to CSA handoff** (PGS-836) | **in progress, not ours** | Owned by the Product Growth Squad. It moves research drafts from ATLAS into the Content Scaling Agent, not trend data from Trend Tree. On 2026-10-06 the epic PGS-836 is in Backlog and the "Send to CSA" action PGS-828 is in Product Review. On 2026-09-16 it worked on dev only. |
 
-The prediction pillar service (`services/prediction`, with a `trend-tree-prediction-daily-sweep` cron named in the repo) is the "prediction engine" of the Future Plans slide. Its live state is unverified here.
+The prediction pillar service is the "prediction engine" of the Future Plans slide. It is deployed and it runs: Cloud Run service `trend-tree-prediction` (revision `00013-mib`, ready), with the Scheduler job `trend-tree-prediction-daily-sweep` at 14:00 UTC, enabled, last fired 2026-10-06. Deployed is not the same as visible: the Future Plans decision (CRMA-1200) puts a capability on a current-state slide only if a reader can see it on ATLAS today. This snapshot did not check ATLAS for it.
 
 ## Vendors and infrastructure
 
@@ -172,8 +183,8 @@ The prediction pillar service (`services/prediction`, with a `trend-tree-predict
 - **OpenAI ChatGPT** — the `agent_chatgpt_discovery` lane.
 - **Snowflake Cortex** — arctic-embed 1024-dimension embeddings, trend-topic coining at promotion.
 - **Exploding Topics** — corroboration oracle API.
-- **SerpApi** — the TikTok ingester, on the shared `dev@trendhunter.com` plan (new since 2026-09-19).
-- **Bright Data** — behind the Cloud Run service `trend-tree-scrape-gateway`. The gateway is deployed; no ingester calls it yet.
+- **SerpApi** — the TikTok ingester, on the shared `dev@trendhunter.com` plan (new since 2026-09-19). The plan ran out of searches on 2026-10-05.
+- **Bright Data** — behind the Cloud Run service `trend-tree-scrape-gateway` (revision `00003-sul`, ready). The gateway is deployed; no ingester calls it yet.
 - **Shopify storefront feed** — the product catalog for sourcing (`shop.trendhunter.com`).
 - **Infrastructure** — Pipedream (workflow tier, redeploys on push to `production`), GCP Cloud Run + Cloud Scheduler in `mcc-crm-automations` / `us-east4` (services tier), Snowflake `MCC_PRESENTATION.TREND_AGENT`.
 
@@ -189,4 +200,4 @@ The prediction pillar service (`services/prediction`, with a `trend-tree-predict
 ## Open verification
 
 1. **Run queries 1 to 6** and fill the metrics table. Blocked on Snowflake SSO.
-2. **List the live Cloud Run jobs, services and Scheduler jobs** to confirm `trend-tree-tiktok-ingest`, `trend-tree-catalog-sync`, `trend-tree-ecomm-agent`, `trend-tree-scrape-gateway`, and the state of the prediction service. Blocked on `gcloud auth login`.
+2. **Confirm on ATLAS** whether any output of the `trend-tree-prediction` service is visible to a reader today.
