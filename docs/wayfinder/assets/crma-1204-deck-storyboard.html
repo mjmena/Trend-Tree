@@ -1,0 +1,265 @@
+<title>Trend Tree Briefing Storyboard</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;800&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+  /* Layout: a sequence strip, then one row per slide: a 16:9 slide preview on the left, build notes on the right. */
+  :root {
+    --bg: #FFFFFF;
+    --canvas: #F3F6F8;
+    --fg: #0F172A;
+    --fg-2: #334155;
+    --fg-3: #64748B;
+    --line: #E2E8F0;
+    --accent: #16A34A;
+    --accent-2: #22C55E;
+    --accent-soft: #DCFCE7;
+    --display: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+    --body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0B1220; --canvas: #111A2B; --fg: #F1F5F9; --fg-2: #CBD5E1; --fg-3: #94A3B8;
+      --line: #1F2A3D; --accent: #4ADE80; --accent-2: #22C55E; --accent-soft: #14532D; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0B1220; --canvas: #111A2B; --fg: #F1F5F9; --fg-2: #CBD5E1; --fg-3: #94A3B8;
+    --line: #1F2A3D; --accent: #4ADE80; --accent-2: #22C55E; --accent-soft: #14532D; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.55; margin: 0; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 64px; }
+  h1, h2, h3 { font-family: var(--display); font-weight: 800; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+  h1 { font-size: 2rem; line-height: 1.15; }
+  h2 { font-size: 1.25rem; margin-block: 40px 12px; }
+  p { margin: 0; }
+  .eyebrow { font-family: var(--body); font-weight: 700; font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+  .lede { color: var(--fg-2); max-width: 64ch; margin-top: 10px; }
+  .meta { color: var(--fg-3); font-size: 0.85rem; margin-top: 8px; }
+  .accent { color: var(--accent); }
+
+  .strip { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 24px; }
+  .strip a { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--fg-2); text-decoration: none; font-size: 0.8rem; font-weight: 500; background: var(--bg); }
+  .strip a:hover, .strip a:focus-visible { border-color: var(--accent); color: var(--fg); outline: none; }
+  .strip .n { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 700; }
+
+  .decisions { display: grid; gap: 10px; counter-reset: d; list-style: none; padding: 0; margin: 0; }
+  .decisions li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; }
+  .decisions li::before { counter-increment: d; content: counter(d); font-family: var(--display); font-weight: 800; color: var(--accent); font-size: 1.1rem; line-height: 1.3; }
+  .decisions b { color: var(--fg); }
+  .decisions span { color: var(--fg-2); }
+
+  .section { margin-top: 36px; }
+  .section > .eyebrow { display: block; padding-bottom: 8px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+
+  .row { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 20px; align-items: start; padding-block: 18px; border-bottom: 1px solid var(--line); scroll-margin-top: 12px; }
+  .row:last-child { border-bottom: 0; }
+
+  .slide { aspect-ratio: 16 / 9; max-width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); padding: 5.5% 6%; display: flex; flex-direction: column; gap: 10px; position: relative; overflow: hidden; min-width: 0; }
+  .slide.title-slide { background: linear-gradient(180deg, var(--bg) 0 36%, var(--canvas) 36% 100%); }
+  .slide .kicker { display: flex; align-items: center; gap: 8px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-3); }
+  .slide .kicker .num { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .slide .head { display: flex; align-items: center; gap: 10px; }
+  .slide .tick { width: 3px; height: 1.1em; background: var(--accent-2); border-radius: 1px; flex: none; }
+  .slide h3 { font-size: clamp(1rem, 2.4vw, 1.45rem); line-height: 1.2; }
+  .slide .says { font-size: clamp(0.78rem, 1.5vw, 0.95rem); color: var(--fg-2); max-width: 56ch; }
+  .slide .visual { margin-top: auto; border: 1px dashed var(--line); border-radius: 8px; background: var(--canvas); padding: 8px 12px; display: flex; align-items: center; gap: 12px; min-height: 2.6em; }
+  .slide .visual .label { font-size: 0.74rem; color: var(--fg-3); font-weight: 500; min-width: 0; }
+  .slide .nums { display: flex; flex-wrap: wrap; gap: 6px; }
+  .slide .nums span { font-size: 0.72rem; font-weight: 600; color: var(--fg); background: var(--accent-soft); border-radius: 6px; padding: 2px 8px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .tree { flex: none; width: 34px; height: 44px; }
+  .tree .lit { fill: var(--accent); stroke: var(--accent); }
+  .tree .dim { fill: none; stroke: var(--fg-3); stroke-width: 1.6; opacity: 0.6; }
+  .tree .dimfill { fill: var(--line); stroke: var(--fg-3); stroke-width: 1.2; opacity: 0.8; }
+
+  .notes { min-width: 0; display: grid; gap: 10px; font-size: 0.88rem; }
+  .notes dt { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-3); margin-bottom: 2px; }
+  .notes dd { margin: 0; color: var(--fg-2); }
+  .notes dd b { color: var(--fg); font-weight: 600; }
+  .notes dd code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82em; background: var(--canvas); padding: 1px 5px; border-radius: 4px; }
+  .notes .rules { border-left: 2px solid var(--accent-2); padding-left: 10px; }
+
+  .asks { display: grid; gap: 10px; }
+  .asks div { padding: 12px 14px; border-radius: 10px; background: var(--canvas); color: var(--fg-2); }
+  .asks b { color: var(--fg); }
+
+  @media (max-width: 760px) {
+    .row { grid-template-columns: 1fr; }
+    h1 { font-size: 1.6rem; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .strip a { transition: border-color 120ms ease; }
+  }
+</style>
+
+<div class="wrap">
+  <span class="eyebrow">CRMA-1204 · Draft 1 · 2026-10-07</span>
+  <h1>Trend Tree briefing <span class="accent">storyboard</span></h1>
+  <p class="lede">Thirteen slides for the executive briefing. Each card is one slide: its title with the accent word, the one sentence it lands, and the visual or number behind it. Build notes sit beside each card.</p>
+  <p class="meta">Numbers are the 2026-10-06 snapshot and get refreshed the day before presenting. Future Plans items map one to one to the roadmap page.</p>
+
+  <nav class="strip" id="strip" aria-label="Slide sequence"></nav>
+
+  <h2>Decisions to react to</h2>
+  <ol class="decisions">
+    <li><div><b>Thirteen slides, not twelve.</b> <span>A title slide plus a close needs one more slot than the charting shape had. Slides 2 and 3 fold into one if twelve is a hard target.</span></div></li>
+    <li><div><b>Every slide carries its sentence.</b> <span>The sentence under each title is rendered on the slide. That is the narration a forwarded reader gets. Speaker notes beyond it are a build detail.</span></div></li>
+    <li><div><b>The tree is the chapter marker.</b> <span>Slide 4 shows the full tree. Slides 5 to 7 repeat it small beside the title with one layer lit, replacing May's green tick.</span></div></li>
+    <li><div><b>The three layers keep the May names.</b> <span>Discovery &amp; Ingestion, Distillation &amp; Promotion, and Lifecycle become the roots, trunk and crown. The third is renamed Enrichment &amp; Lifecycle because naming and profiling is most of the crown's work.</span></div></li>
+    <li><div><b>Two-tone titles, one payload word.</b> <span>Exactly one word per title in the accent green, as in the showcase deck.</span></div></li>
+    <li><div><b>The worked example is one slide.</b> <span>May's Signal, Decision and Payoff rhythm compressed into a single root-to-crown trace. It waits on the trend pick in CRMA-1201.</span></div></li>
+    <li><div><b>Current state shows only what a strategist sees on ATLAS today.</b> <span>The daily prediction score is current; the prediction engine with a verdict is future. Product matching is current; the external catalogue is future.</span></div></li>
+  </ol>
+
+  <div id="sections"></div>
+
+  <h2>What this outline asks of the open tickets</h2>
+  <div class="asks">
+    <div><b>Design the tree visual (CRMA-1205)</b> needs two states: the full tree for slides 4 and 13, and a small glyph with one layer lit for slides 5 to 7. The layer labels are the slide titles, word for word. The funnel numbers sit on the full state only.</div>
+    <div><b>Decide: the worked-example trend (CRMA-1201)</b> gets slide 8's shortlist criteria: promoted after May 2026, at least three publishers, more than one source family, legible to a non-technical executive, and ideally carrying both nearest content and a matched product.</div>
+    <div><b>Build and publish the deck (CRMA-1206)</b> inherits decisions 2, 3 and 5 as layout rules and each slide's rules as copy rules.</div>
+  </div>
+</div>
+
+<script>
+  const treeSvg = (lit) => {
+    const c = (k) => (lit === k ? 'lit' : (k === 'crown' ? 'dimfill' : 'dim'));
+    return `<svg class="tree" viewBox="0 0 34 44" aria-hidden="true">
+      <ellipse class="${c('crown')}" cx="17" cy="12" rx="12" ry="10"/>
+      <rect class="${c('trunk')}" x="14.5" y="20" width="5" height="14" rx="1"/>
+      <path class="${c('roots')}" d="M17 34 L17 40 M17 35 L9 42 M17 35 L25 42 M17 37 L12 43 M17 37 L22 43" stroke-linecap="round"/>
+    </svg>`;
+  };
+
+  const sections = [
+    { key: 'Open', slides: [
+      { n: 1, cls: 'title-slide', title: 'Trend <em>Tree</em>',
+        says: 'Trend Tree is the intelligence pipeline behind ATLAS. It discovers cultural signals, identifies the real trends among them, names and scores them, and tracks them across their lifecycle.',
+        visual: 'Eyebrow "Executive briefing · October 2026". Tree mark small. Presenter name and title. No agenda list.',
+        shows: 'Title-slide treatment from the style tokens: pale wash, white band, Plus Jakarta Sans ExtraBold.',
+        from: 'The roadmap page\'s own opening sentence.',
+        rules: 'The tree on slide 4 is the agenda.' },
+      { n: 2, title: 'Where Trend Tree <em>shows up</em>',
+        says: 'Strategists never see the pipeline. They see its output in four places.',
+        visual: 'Four surface tiles: ATLAS trend cards, the Predictions Queue, the daily digest, product matches on the Decision Page.',
+        nums: ['590 trends on ATLAS', '13 flagged in the Queue', '37 matched to products'],
+        shows: 'Each tile: who reads it and what it shows. Screenshot thumbnails optional.',
+        from: 'CRMA-1203 outbound consumers.',
+        rules: 'Live surfaces only. The handoff to the Content Scaling Agent is another squad\'s work and is not shown.' },
+      { n: 3, title: 'What one <em>trend</em> carries',
+        says: 'Every trend arrives named, summarized, evidenced and scored, with the nearest McClatchy content and matching products attached, so a strategist can act without research.',
+        visual: 'One annotated ATLAS trend card. Callouts map May\'s three lenses: Audience, Content Gaps, Monetization.',
+        shows: 'Audience = social narrative + voice-of-customer quote. Content Gaps = nearest McClatchy content. Monetization = matched products. Also called out: name, summary, heat index, lifecycle status, publisher count.',
+        from: '<code>docs/dashboard/data-contract.md</code>; showcase slide 5.',
+        rules: 'Only fields visible on ATLAS today. Count publishers, never sources. Trend name, never trend topic.' },
+    ]},
+    { key: 'The tree', slides: [
+      { n: 4, title: 'The <em>tree</em>', tree: 'all',
+        says: 'Thousands of signals enter at the roots. A few hundred candidates climb the trunk. Only trends that clear the bar reach the crown.',
+        visual: 'The full tree, three layers labelled, with the funnel on it.',
+        nums: ['154,500 signals', '2,254 candidates', '590 trends', '3.7% linked as evidence'],
+        shows: 'This slide is the section map. The three layer labels are the titles of slides 5, 6 and 7, word for word.',
+        from: 'CRMA-1203 funnel line. CRMA-1205 supplies the visual.',
+        rules: 'Numbers refreshed the day before.' },
+      { n: 5, title: 'The roots: discovery and <em>ingestion</em>', tree: 'roots',
+        says: 'Autonomous listeners pull from platforms and AI scouts propose topics around the clock. No human decides what to search for.',
+        visual: 'Tree glyph, roots lit. Three inbound groups: 4 platform sources, 7 discovery lanes, 3 on-demand search tools. One line: every signal is embedded at ingest so it can be compared by meaning.',
+        nums: ['12 live sources', '36,831 signals in 30 days'],
+        shows: 'Platforms: Google Trends stories, Bluesky, Google Trends search interest, TikTok*. Lanes: Gemini ×5, Grok, ChatGPT. Tools: Grok live search, Bluesky search, Google Trends search.',
+        from: 'CRMA-1203 inbound sources. <code>CONTEXT.md</code> entry mechanisms.',
+        rules: 'Name a source only if it wrote rows in the last 30 days. *TikTok stays only if the refresh shows fresh rows. Never Amazon, Pinterest or GDELT. No outage story.' },
+      { n: 6, title: 'The trunk: distillation and <em>promotion</em>', tree: 'trunk',
+        says: 'Agents cluster signals by meaning into candidates. A promotion agent decides each one: a new trend, more proof for a trend we already track, or not yet.',
+        visual: 'Tree glyph, trunk lit. The bar stated plainly: two independent source families, or one plus a confirmed match from Exploding Topics.',
+        nums: ['2,254 → 590 since April', 'about 2 new trends a day', '65 confirmed via Exploding Topics'],
+        shows: 'Exploding Topics described as a licensed search-demand service the pipeline queries for confirmation.',
+        from: '<code>CONTEXT.md</code> corroboration oracle; roadmap "A second opinion"; CRMA-1203 rows 1a, 7, promotion rate.',
+        rules: 'Exploding Topics is confirmation, never a source. "Source family", not "second source".' },
+      { n: 7, title: 'The crown: enrichment and <em>lifecycle</em>', tree: 'crown',
+        says: 'Each promoted trend is named and profiled with live grounding, then tracked hourly, with every new signal attributed as evidence and every change kept on an append-only ledger.',
+        visual: 'Tree glyph, crown lit. Three mini-cards in May\'s pipeline-stage pattern: Name and profile · Track · Predict.',
+        nums: ['$0.13 median per profile', '6,550 evidence links', '13 prediction-eligible'],
+        shows: 'Name and profile: one Gemini 3.1 Pro agent grounds the trend live, proposes names, a reviewer pass checks them. Track: hourly heat index and lifecycle status; new signals attributed to live trends. Predict: daily prediction score feeds the Predictions Queue.',
+        from: '<code>CLAUDE.md</code> enrichment section; CRMA-1203 rows 4, 5a, 5b.',
+        rules: 'No lifecycle breakdown chart. No per-trend Google Trends curve. The prediction engine with a verdict is not on this slide.' },
+    ]},
+    { key: 'Example', slides: [
+      { n: 8, title: 'One trend, root to <em>crown</em>', tree: 'all',
+        says: '[Trend name]: [n] signals from [m] publishers over [span], promoted [date] on [families], named and profiled the same day, [status] today.',
+        visual: 'Trend name as the big accent callout. Mini tree with this trend\'s own numbers at each layer. One voice-of-customer quote. ATLAS card thumbnail. Nearest content and a matched product if present.',
+        shows: 'Build pulls <code>TREND_NAME</code>, <code>SUMMARY_SHORT</code>, <code>ORIGINALLY_SURFACED_AT</code>, <code>TOTAL_CLUSTER_SIZE</code>, <code>DISTINCT_PUBLISHER_COUNT</code>, <code>VOICE_OF_CUSTOMER</code>, <code>EVIDENCE</code>, <code>HEAT_INDEX</code>, <code>LIFECYCLE_STATUS</code>, <code>NEAREST_CONTENT</code>, <code>SOURCED_PRODUCTS</code>, plus the promotion record.',
+        from: 'CRMA-1201 picks the trend.',
+        rules: 'Shortlist criteria: promoted after May 2026, at least three publishers, more than one source family, legible to a non-technical executive, ideally with both nearest content and a matched product.' },
+    ]},
+    { key: 'Today', slides: [
+      { n: 9, title: 'Where it stands <em>today</em>',
+        says: 'Trend Tree has run in production since April 2026. Today it holds 590 trends built from 154,500 signals, at a median AI cost of 13 cents per trend profile.',
+        visual: 'Three stat tiles in May\'s 3-up pattern, then a secondary row.',
+        nums: ['590 trends', '154,500 signals', '$0.13 median', '~2 a day', '36,831 in 30 days', '37 matched', '13 eligible'],
+        shows: 'Optional callback for the May audience: "200+ trends in May, 590 today", only if the build verifies the May count from <code>FCT_TRENDS</code>.',
+        from: 'CRMA-1203 metrics table.',
+        rules: 'Numbers only from the snapshot, refreshed the day before. No outage candor. No lifecycle breakdown.' },
+      { n: 10, title: 'What feeds it, what <em>reads</em> it',
+        says: 'Trend Tree sits between twelve live sources and four McClatchy surfaces, with a licensed demand service for confirmation and three model vendors doing the reasoning.',
+        visual: 'Left-to-right diagram. Inbound: platforms, discovery lanes, confirmation (drawn apart). Centre: Snowflake, Gemini 3.1 Pro with Claude on four steps, Pipedream and Google Cloud Run. Outbound: ATLAS, Predictions Queue, daily digest, product matching against the Trend Hunter store.',
+        shows: 'Vendor names plain, no logos unless the build has rights to them.',
+        from: 'CRMA-1203 inbound, outbound and vendors sections.',
+        rules: 'Exploding Topics in its own confirmation slot, not among sources. The CSA handoff is absent.' },
+    ]},
+    { key: 'Ahead', slides: [
+      { n: 11, title: 'Building <em>now</em>',
+        says: 'Four things are in build: a prediction engine that makes checkable calls, a wider intake, sharper lifecycle reads, and the move onto our own infrastructure.',
+        visual: 'Four rows, bold green lead-in and one plain sentence each on what changes for the audience.',
+        shows: '<b>Predictions with a verdict</b> leads: running now, reaching strategists next, as a short list with Approve and Dismiss and a track record. <b>A wider intake:</b> Reddit and Kickstarter join, TikTok returns on creator posts. <b>Sharper lifecycle detection:</b> momentum rather than inertia. <b>Our own infrastructure</b>, the closing beat: product matching and the prediction engine already run there; the rest follows piece by piece.',
+        from: 'CRMA-1200 sub-decisions 1, 2, 3, 5. Roadmap lozenges IN DEVELOPMENT and SCOPED &amp; SCHEDULED.',
+        rules: 'No dates, no quarter labels, no "in final review". No vendor grievance. The quiet-feeds repair is folded into intake as pure expansion.' },
+      { n: 12, title: '<em>Exploring</em>',
+        says: 'Three directions are being explored, none scheduled: connections that explain themselves, products beyond our own store, and proving quality rather than asserting it.',
+        visual: 'Three rows in the same pattern.',
+        shows: '<b>Reasoned Connections:</b> an AI explains why trends belong together and writes the story; connections persist week to week. <b>Beyond the internal store:</b> matching against a broad external catalogue once commercial access is settled. <b>Proving quality:</b> versioned prompts, then A/B-tested prompts, then a regression safety net.',
+        from: 'CRMA-1200 sub-decision 3. Roadmap lozenges DIRECTIONAL, prompt governance folded into the arc.',
+        rules: 'Nothing unwritten. The deck never scoops the roadmap page.' },
+    ]},
+    { key: 'Close', slides: [
+      { n: 13, title: 'Trend <em>Tree</em>', tree: 'all',
+        says: 'Trend Tree is live, selective, and getting more so. Find it on ATLAS, in the morning digest, and on the Trend Tree Roadmap.',
+        visual: 'Small tree with the three funnel numbers. Three links: ATLAS, the daily digest, the roadmap page. Contact: Martin Mena, backend and pipeline.',
+        shows: 'Same tree state as slide 4, smaller.',
+        from: 'The roadmap page footer.',
+        rules: 'No ask. No next-steps list.' },
+    ]},
+  ];
+
+  const esc = (s) => s.replace(/&(?!amp;|lt;|gt;|quot;|#)/g, '&amp;');
+  const titleHtml = (t) => t.replace('<em>', '<span class="accent">').replace('</em>', '</span>');
+  const plainTitle = (t) => t.replace(/<\/?em>/g, '');
+
+  const strip = document.getElementById('strip');
+  const host = document.getElementById('sections');
+  for (const sec of sections) {
+    const wrap = document.createElement('div');
+    wrap.className = 'section';
+    wrap.innerHTML = `<span class="eyebrow">${sec.key}</span>`;
+    for (const s of sec.slides) {
+      strip.insertAdjacentHTML('beforeend', `<a href="#s${s.n}"><span class="n">${s.n}</span>${plainTitle(s.title)}</a>`);
+      const nums = s.nums ? `<div class="nums">${s.nums.map((x) => `<span>${x}</span>`).join('')}</div>` : '';
+      const tree = s.tree ? treeSvg(s.tree) : '';
+      wrap.insertAdjacentHTML('beforeend', `
+        <article class="row" id="s${s.n}">
+          <div class="slide ${s.cls || ''}">
+            <div class="kicker"><span class="num">${String(s.n).padStart(2, '0')}</span><span>${sec.key}</span></div>
+            <div class="head">${tree || '<span class="tick"></span>'}<h3>${titleHtml(s.title)}</h3></div>
+            <p class="says">${esc(s.says)}</p>
+            ${nums}
+            <div class="visual"><span class="label">${esc(s.visual)}</span></div>
+          </div>
+          <dl class="notes">
+            <div><dt>Shows</dt><dd>${s.shows}</dd></div>
+            <div><dt>Comes from</dt><dd>${s.from}</dd></div>
+            <div class="rules"><dt>Rules</dt><dd>${esc(s.rules)}</dd></div>
+          </dl>
+        </article>`);
+    }
+    host.appendChild(wrap);
+  }
+</script>
