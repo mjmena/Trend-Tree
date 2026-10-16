@@ -17,11 +17,12 @@ export default defineComponent({
     if (!trend_id || typeof trend_id !== "string") {
       throw new Error(`enrichment requires {trend_id: <uuid>} in body; got ${JSON.stringify(body).slice(0, 200)}`);
     }
+    checkId("trend_id", trend_id);
 
     // chain_id propagates upstream-supplied identifiers (dispatcher chain)
     // or generates a new one for direct/manual fires.
-    const chain_id = body.chain_id || cryptoRandomId("enr-chain-");
-    const agent_session_id = body.agent_session_id || cryptoRandomId("enr-sess-");
+    const chain_id = checkId("chain_id", body.chain_id || cryptoRandomId("enr-chain-"));
+    const agent_session_id = checkId("agent_session_id", body.agent_session_id || cryptoRandomId("enr-sess-"));
     const iteration = Number.isInteger(body.iteration) ? body.iteration : 1;
 
     const out = {
@@ -41,6 +42,12 @@ export default defineComponent({
     return out;
   },
 });
+
+// Downstream SQL steps paste these IDs inside quotes (CRMA-1445).
+function checkId(name, v) {
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(v)) throw new Error(`invalid ${name}: ${JSON.stringify(v).slice(0, 80)}`);
+  return v;
+}
 
 function cryptoRandomId(prefix = "") {
   return prefix + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);

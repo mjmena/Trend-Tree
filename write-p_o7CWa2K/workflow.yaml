@@ -7,6 +7,11 @@ settings:
 triggers:
 - id: hi_VOHVGYB
 steps:
+- namespace: validate_event
+  runtime: nodejs20.x
+  uses: "./validate_event/entry.js"
+  props:
+    trigger_event: "{{steps.trigger.event}}"
 - namespace: query_source_metrics
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3

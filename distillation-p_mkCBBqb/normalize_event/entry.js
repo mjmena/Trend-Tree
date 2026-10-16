@@ -18,6 +18,12 @@ const DEFAULTS = {
   dry_run: false,
 };
 
+// Downstream SQL steps paste these IDs inside quotes (CRMA-1445).
+function checkId(name, v) {
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(v)) throw new Error(`invalid ${name}: ${JSON.stringify(v).slice(0, 80)}`);
+  return v;
+}
+
 function coerceBool(v, fallback) {
   if (v === true || v === "true") return true;
   if (v === false || v === "false") return false;
@@ -38,8 +44,8 @@ export default defineComponent({
     const body = this.trigger_event?.body ?? this.trigger_event ?? {};
 
     const cursor_name = String(body.cursor_name || DEFAULTS.cursor_name).replace(/[^a-zA-Z0-9_-]/g, "");
-    const chain_id = String(body.chain_id || `chain-${randomUUID()}`).slice(0, 64);
-    const agent_session_id = String(body.agent_session_id || `sess-${randomUUID()}`).slice(0, 64);
+    const chain_id = checkId("chain_id", body.chain_id || `chain-${randomUUID()}`);
+    const agent_session_id = checkId("agent_session_id", body.agent_session_id || `sess-${randomUUID()}`);
     const iteration = Math.max(1, coerceNum(body.iteration, 1));
     const max_iterations = Math.max(1, coerceNum(body.max_iterations, DEFAULTS.max_iterations));
     const budget_usd = Math.max(0, coerceNum(body.budget_usd, DEFAULTS.budget_usd));
