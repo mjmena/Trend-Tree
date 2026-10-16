@@ -319,10 +319,28 @@ the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 1
 - **The instrument exists, and every lane ticket uses it.** `scripts/replay/` on this
   branch — `node scripts/replay/replay.mjs <lane> --model gemini-3.7-flash`. Ten lanes, one
   per lane ticket. A lane decision cites a run artifact under `scripts/replay/out/`, not an
-  impression. Read `scripts/replay/README.md` **before** reading a diff: each lane carries
-  named limits, and a decision made without them is a decision made on an artifact of the
-  harness. Grounded lanes compare **re-run vs re-run** — the harness does this automatically
-  for any lane declaring `requiresRerun`.
+  impression, **and copies the cited runs to `docs/wayfinder/assets/crma-726-replay/` on
+  this branch when it resolves** — `out/` is gitignored, so an uncopied artifact lives in
+  one worktree only. Read `scripts/replay/README.md` **before** reading a diff: each lane
+  carries named limits, and a decision made without them is a decision made on an artifact
+  of the harness. Grounded lanes compare **re-run vs re-run** — the harness does this
+  automatically for any lane declaring `requiresRerun`. **A decision cites a diff only if
+  `smoke.sh` was green on the same commit that day, and the resolution comment says so.**
+- **The harness outlives the map** ([CRMA-746](https://mcclatchy.atlassian.net/browse/CRMA-746)).
+  It lands on `production` at `scripts/replay/` in **its own PR**
+  ([CRMA-1546](https://mcclatchy.atlassian.net/browse/CRMA-1546)), cut from this branch's
+  `scripts/replay` tree only — never a merge of this branch, which carries the map file.
+  Merge gate: `smoke.sh` green against `production`. Measured 2026-10-16 against `dee4f52`:
+  8 ok, 3 failed, every failure a hard error (multi-file `run_audit_agent` step since
+  CRMA-775; `q_gtrends_history` removed by CRMA-1313 but still bound at
+  `lanes/lifecycle.mjs:89`; `smoke.sh` globbing `promotion.test.mjs` as a lane) — the PR
+  fixes all three. Lane facts stay **declared**, not derived; a PR that changes a
+  `workflow.yaml` or a step file an adapter binds runs `smoke.sh` first, and the README
+  carries the adapter→workflow table that makes that checkable. `probes/` merges as-is,
+  flagged unmaintained. When [CRMA-429](https://mcclatchy.atlassian.net/browse/CRMA-429)
+  moves a lane to `services/<name>/`, **the adapter follows its lane** in the same slice,
+  and `smoke.sh` green is part of that slice's done; Python services are outside the
+  harness. No CI, no scheduled runner.
 - **Grounded lanes STAY on their incumbent. The head-truncation has no fix.**
   [CRMA-757](https://mcclatchy.atlassian.net/browse/CRMA-757) settled this by measurement
   rather than leaving it pending: the truncation fires only when `google_search` actually
@@ -505,6 +523,8 @@ the harness, and [CRMA-727](https://mcclatchy.atlassian.net/browse/CRMA-727)'s 1
 
 - [Decide: the four discovery verticals and the prompt-tester default](https://mcclatchy.atlassian.net/browse/CRMA-730) — **Decided:** All five gemini-3-flash-preview pins STAY, now on this lane's own measurement: 3.7 Flash grounds on only 27/80 calls vs the incumbent's 40/40, and the head-truncation costs this lane the WHOLE run (7/7 truncated runs stored zero signals) because its bracket-regex parser needs the array opener the cut removes.
   **Binds:** A prompt rewrite cannot rescue this lane - truncation fires ONLY on grounded calls, so raising the grounding rate raises zero-yield runs to ~26%; both doors are shut, which meets the redraw's infeasibility bar. Defect 10 is NOT model-independent as written: the incumbent skips grounding 5/39 on discovery's prompt but 0/40 on the verticals' - the rate is prompt- AND model-dependent. New defect 11: vertical errors[] reach no table (workflow.yaml consumes only signals_json), so a zero-signal run is indistinguishable from a quiet one - the spec must persist emitted/stored/grounded per run whether or not the pin moves. Prompt-tester DEFAULT_MODEL remains a mirror rule, not an allocation.
+
+- [Decide: whether the replay harness becomes a permanent regression instrument](https://mcclatchy.atlassian.net/browse/CRMA-746) — **Decided:** KEEP: the harness lands on production at scripts/replay in its own PR (CRMA-1546), never a merge of this branch; cited run artifacts are now committed under docs/wayfinder/assets/crma-726-replay; an adapter follows its lane to Cloud Run and Python services are outside; lane facts stay declared; no CI or scheduled runner — a decision cites a diff only with smoke.sh green on the same commit. Smoke against production on 2026-10-16: 8/10, three loud failures (multi-file audit step, removed q_gtrends_history, test-file glob) the PR fixes.
 
 ## Not yet specified
 
