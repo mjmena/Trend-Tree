@@ -26,6 +26,12 @@ const DEFAULTS = {
   max_candidates_cap: 50,
 };
 
+// apply_promotion pastes chain_id inside quotes (CRMA-1445).
+function checkId(name, v) {
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(v)) throw new Error(`invalid ${name}: ${JSON.stringify(v).slice(0, 80)}`);
+  return v;
+}
+
 function coerceBool(v, fallback) {
   if (v === true || v === "true") return true;
   if (v === false || v === "false") return false;
@@ -55,7 +61,7 @@ export default defineComponent({
       this.trigger_event ??
       {};
 
-    const chain_id = body.chain_id || `chain-${randomUUID()}`;
+    const chain_id = checkId("chain_id", body.chain_id || `chain-${randomUUID()}`);
     const iteration = Math.max(1, coerceNum(body.iteration, 1));
     const max_iterations = Math.max(1, coerceNum(body.max_iterations, DEFAULTS.max_iterations));
     const budget_usd = Math.max(0, coerceNum(body.budget_usd, DEFAULTS.budget_usd));

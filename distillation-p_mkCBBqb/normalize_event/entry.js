@@ -9,6 +9,12 @@ import { randomUUID } from "crypto";
 
 const DEFAULT_CURSOR_NAME = "distillation_main";
 
+// Downstream SQL steps paste these IDs inside quotes (CRMA-1445).
+function checkId(name, v) {
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(v)) throw new Error(`invalid ${name}: ${JSON.stringify(v).slice(0, 80)}`);
+  return v;
+}
+
 function coerceNum(v, fallback) {
   if (v === undefined || v === null || v === "") return fallback;
   const n = Number(v);
@@ -23,8 +29,8 @@ export default defineComponent({
     const body = this.trigger_event?.body ?? this.trigger_event ?? {};
 
     const cursor_name = String(body.cursor_name || DEFAULT_CURSOR_NAME).replace(/[^a-zA-Z0-9_-]/g, "");
-    const chain_id = String(body.chain_id || `chain-${randomUUID()}`).slice(0, 64);
-    const agent_session_id = String(body.agent_session_id || `sess-${randomUUID()}`).slice(0, 64);
+    const chain_id = checkId("chain_id", body.chain_id || `chain-${randomUUID()}`);
+    const agent_session_id = checkId("agent_session_id", body.agent_session_id || `sess-${randomUUID()}`);
     const iteration = Math.max(1, coerceNum(body.iteration, 1));
 
     console.log(
