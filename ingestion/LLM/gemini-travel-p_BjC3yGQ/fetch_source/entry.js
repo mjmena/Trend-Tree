@@ -19,6 +19,9 @@ Return ONLY a JSON array matching this exact format — no other text:
 Every object MUST have all 4 fields. Do not omit source_url.`;
 }
 
+// 401/403 count as live: paywalls and bot walls (NYT, WSJ, Reuters) answer both HEAD and GET with them.
+const isLive = (resp) => resp.ok || resp.status === 401 || resp.status === 403;
+
 // Resolve grounding redirects and verify the URL is live (2xx or 3xx).
 // Returns { url, ok } — ok=false means the URL is dead (404/5xx/timeout).
 async function resolveAndVerify(url) {
@@ -28,7 +31,7 @@ async function resolveAndVerify(url) {
       redirect: "follow",
       signal: AbortSignal.timeout(8000),
     });
-    return { url: resp.url || url, ok: resp.ok };
+    return { url: resp.url || url, ok: isLive(resp) };
   } catch {
     try {
       const resp = await fetch(url, {
@@ -37,7 +40,7 @@ async function resolveAndVerify(url) {
         signal: AbortSignal.timeout(8000),
       });
       await resp.text();
-      return { url: resp.url || url, ok: resp.ok };
+      return { url: resp.url || url, ok: isLive(resp) };
     } catch {
       return { url, ok: false };
     }
