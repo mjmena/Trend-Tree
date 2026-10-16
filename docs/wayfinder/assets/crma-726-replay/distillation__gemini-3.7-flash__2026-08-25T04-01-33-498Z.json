@@ -1,0 +1,96 @@
+{
+  "lane": "distillation",
+  "summary": "Shared cluster reasoner behind both distillation and distillation-revisit. Decides what counts as a trend at all.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-25T04:01:33.498Z",
+  "finished_at": "2026-08-25T04:01:45.377Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 1,
+    "rerunIncumbent": false,
+    "caseId": null,
+    "dryRun": true,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "cand-0gln5hzrmt7bfbg2",
+        "label": "Perimenopause supplement stacking for brain fog and longevity · REAL_TREND · 3 signals @ 2026-08-24T10:12",
+        "incumbentAt": "2026-08-24",
+        "signalIds": [
+          "https://businesswire.com/news/home/20260819717551/en/Biograph-Establishes-Comprehensive-Womens-Health-Program-Expanding-Personalized-Preventive-Care-Across-Every-Life-Stage",
+          "https://wellnesstoday.kr/news/view.php?no=2547",
+          "https://cougarpubertyclub.com/articles/microdosing-and-menopause"
+        ],
+        "incumbent": {
+          "emission": {
+            "candidates": [
+              {
+                "topic": "Perimenopause supplement stacking for brain fog and longevity",
+                "query": null,
+                "verdict": "REAL_TREND",
+                "confidence": 0.85,
+                "specificity_score": 0.85,
+                "reasoning": "Women in their 30s and 40s are no longer waiting for full menopause to address symptoms. They are building specific supplement stacks (including theanine, organ meats, and even microdosing) focused on early intervention for perimenopausal cognitive issues and ovarian health."
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "cluster_size": 3
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_trend_candidate",
+        "tool_names": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "query_trend_metrics",
+          "validate_dedupe_pair",
+          "validate_url_canonical",
+          "discover_external_tools",
+          "dispatch_subagent",
+          "propose_trend_candidate"
+        ],
+        "prompt_provenance": {
+          "distillation.lead.system": {
+            "version": 7,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5803
+          }
+        },
+        "system_chars": 5805,
+        "user_chars": 691,
+        "input_notes": {
+          "signals_in_pool": 3,
+          "neighbors": 200,
+          "cluster_hint": "single synthetic community — the real Louvain hint is not persisted",
+          "few_shot_examples": "none passed (production renders these from q_load_examples)",
+          "subagent": "unconfigured on purpose — replay must not fan out real work",
+          "dead_code_note": "distillation-p_mkCBBqb/run_lead_agent is NOT deployed; its pin is not live"
+        }
+      },
+      "skipped": "dry-run"
+    }
+  ]
+}

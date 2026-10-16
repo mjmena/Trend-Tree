@@ -1,0 +1,86 @@
+{
+  "lane": "verticals",
+  "summary": "The four Gemini discovery verticals. The only lanes with no thinking parameter — where 3.7 Flash's thinking floor actually bites.",
+  "incumbent_model": "gemini-3-flash-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 0.3,
+    "output": 2.5
+  },
+  "started_at": "2026-08-20T08:55:34.130Z",
+  "finished_at": "2026-08-20T08:55:36.975Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 1,
+    "rerunIncumbent": false,
+    "caseId": null,
+    "dryRun": true,
+    "json": false
+  },
+  "results": [
+    {
+      "case": {
+        "id": "wellness",
+        "label": "wellness (gemini_wellness) · last run 2026-08-20 · pin gemini-3-flash-preview",
+        "incumbentAt": "2026-08-20",
+        "incumbent": {
+          "emission": {
+            "trends": [
+              {
+                "title": "Low-Profile Collegiate Sneakers",
+                "source_url": "https://www.nbcnews.com/select/shopping/best-new-products-august-2026-rcna166544"
+              },
+              {
+                "title": "Fitness Studios as Social Hubs",
+                "source_url": "https://www.forbes.com/sites/jefffromm/2026/08/19/gen-zs-new-social-network-may-be-the-fitness-studio/"
+              },
+              {
+                "title": "Community-Driven Health Tech",
+                "source_url": "https://newsroom.heart.org/news/national-cohort-of-founders-brings-community-driven-health-solutions-to-scale"
+              },
+              {
+                "title": "Healthspan-Centric Aging",
+                "source_url": "https://keyt.com/stacker-longevity/2026/08/18/what-healthy-aging-really-looks-like-in-2026/"
+              },
+              {
+                "title": "Machine-Washable Vegan Footwear",
+                "source_url": "https://www.nbcnews.com/select/shopping/best-new-products-august-2026-rcna166543"
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3-flash-preview",
+            "run_date": "2026-08-20",
+            "signals": 5
+          }
+        }
+      },
+      "built": {
+        "mode": "single",
+        "terminal_tool": null,
+        "tool_names": null,
+        "prompt_provenance": null,
+        "system_chars": 0,
+        "user_chars": 486,
+        "input_notes": {
+          "source_name": "gemini_wellness",
+          "category": "wellness",
+          "prompt_chars": 440,
+          "prompt_source": "hardcoded in the step — this lane does NOT read DIM_LLM_PROMPT",
+          "thinking_floor": "the incumbent sends no thinking parameter at all; 3.7 Flash cannot disable thinking, so compare thinking tokens closely",
+          "grounding": "live Google Search — results are not reproducible across days"
+        }
+      },
+      "skipped": "dry-run"
+    }
+  ]
+}

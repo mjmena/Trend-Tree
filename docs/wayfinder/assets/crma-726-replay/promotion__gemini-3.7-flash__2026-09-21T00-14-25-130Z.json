@@ -1,0 +1,171 @@
+{
+  "lane": "promotion",
+  "summary": "Per-candidate promote/reject/dedupe gate. Tightest budget in the fleet — where the budget-gate trap bites first.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-09-21T00:14:25.130Z",
+  "finished_at": "2026-09-21T00:14:48.874Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 2,
+    "rerunIncumbent": false,
+    "caseId": null,
+    "dryRun": true,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "cand-vnx4hp9wmuaam1xi",
+        "auditId": "143f0d4e-6977-4015-8196-d01f73f84604",
+        "label": "Building hidden sculleries and prep kitchens to conceal appliance clutter · REJECT @ 2026-09-20T19:15 · audit 143f0d4e",
+        "incumbentAt": "2026-09-20",
+        "decidedAt": "2026-09-20T19:15:01.454000",
+        "incumbent": {
+          "emission": {
+            "decision": "REJECT",
+            "decision_category": "LOW_QUALITY",
+            "confidence": 0.85,
+            "rationale": "Candidate only has one independent source family (agent_gemini_discovery). I checked Exploding Topics for the keyword 'scullery', but there were no matches. Without independent corroboration, the candidate fails the two-source requirement and must be rejected.",
+            "max_neighbor_sim": null,
+            "considered_neighbors": []
+          },
+          "context": {
+            "distillation_verdict": "REAL_TREND",
+            "overrode_verdict": true,
+            "cluster_size": 2,
+            "source_count": 1
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "input_tokens": 7001,
+            "output_tokens": 120,
+            "cost_estimate": 0.0154
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_decision",
+        "tool_names": [
+          "compare_topics",
+          "query_neighbor_details",
+          "verify_exploding_topics",
+          "propose_decision"
+        ],
+        "prompt_provenance": {
+          "promotion.subagent.system": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2576
+          },
+          "promotion.subagent.decision_rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 3876
+          }
+        },
+        "system_chars": 7553,
+        "user_chars": 584,
+        "input_notes": {
+          "neighbors": 0,
+          "quality_flags": [],
+          "budget_usd": 0.15,
+          "budget_gate_warning": "This lane's budget is measured on the TRUTHFUL cost. Production measures it on the understated one, so a real switch must correct RATES_PER_M in the same slice.",
+          "reconstructed": "candidate row (q_load_pending_candidates filters on PENDING; a historical candidate is not)",
+          "neighbors_excluded_as_anachronistic": 0,
+          "et_rescue": "routed to ET-rescue — single_family ([agent_gemini_discovery]) conf=0.85>=0.5 spec=0.9>=0.5 — eligible for ET corroboration"
+        }
+      },
+      "skipped": "dry-run"
+    },
+    {
+      "case": {
+        "id": "cand-nzauyap4muaam1xi",
+        "auditId": "d850c809-2a55-4e4a-bad4-39e587ff8119",
+        "label": "Using non-invasive vagus nerve stimulation wearables for anxiety relief · MERGE_INTO_EXISTING @ 2026-09-20T19:14 · audit d850c809",
+        "incumbentAt": "2026-09-20",
+        "decidedAt": "2026-09-20T19:14:59.753000",
+        "incumbent": {
+          "emission": {
+            "decision": "MERGE_INTO_EXISTING",
+            "decision_category": "MISSED_DUPLICATE",
+            "confidence": 0.95,
+            "rationale": "The candidate trend focusing on non-invasive vagus nerve stimulation wearables for anxiety relief is functionally identical to the existing trend 'Vagus nerve stimulation wearables for nervous system training' (7458e128). Both track the same consumer behavior of adopting VNS devices for stress and anxiety management. Distillation missed this existing trend, so I am overriding to merge.",
+            "max_neighbor_sim": 0.7905,
+            "considered_neighbors": [
+              {
+                "judgment": "same_topic",
+                "reasoning": "Both track the adoption of non-invasive vagus nerve stimulation wearables for anxiety relief and nervous system regulation.",
+                "similarity": 0.7905,
+                "trend_id": "7458e128-4d0a-40fc-8d6d-876b9f0a241f"
+              }
+            ]
+          },
+          "context": {
+            "distillation_verdict": "REAL_TREND",
+            "overrode_verdict": true,
+            "cluster_size": 3,
+            "source_count": 2
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "input_tokens": 9420,
+            "output_tokens": 253,
+            "cost_estimate": 0.0219
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_decision",
+        "tool_names": [
+          "compare_topics",
+          "query_neighbor_details",
+          "verify_exploding_topics",
+          "propose_decision"
+        ],
+        "prompt_provenance": {
+          "promotion.subagent.system": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2576
+          },
+          "promotion.subagent.decision_rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 3876
+          }
+        },
+        "system_chars": 11016,
+        "user_chars": 584,
+        "input_notes": {
+          "neighbors": 7,
+          "quality_flags": [],
+          "budget_usd": 0.15,
+          "budget_gate_warning": "This lane's budget is measured on the TRUTHFUL cost. Production measures it on the understated one, so a real switch must correct RATES_PER_M in the same slice.",
+          "reconstructed": "candidate row (q_load_pending_candidates filters on PENDING; a historical candidate is not)",
+          "neighbors_excluded_as_anachronistic": 0,
+          "et_rescue": "not ET-rescue (route_normal) — source_families=2 ([agent_gemini_discovery,agent_grok_discovery])"
+        }
+      },
+      "skipped": "dry-run"
+    }
+  ]
+}

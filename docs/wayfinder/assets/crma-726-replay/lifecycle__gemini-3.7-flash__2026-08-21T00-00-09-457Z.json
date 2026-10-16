@@ -1,0 +1,344 @@
+{
+  "lane": "lifecycle",
+  "summary": "Hourly trend-status re-evaluation. Highest-volume LLM lane in the fleet and the only one with a recorded tool trace.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-21T00:00:09.457Z",
+  "finished_at": "2026-08-21T00:00:52.656Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 3,
+    "rerunIncumbent": true,
+    "caseId": "5351c59a-edb5-4f91-afac-de7ffa5607a3",
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "5351c59a-edb5-4f91-afac-de7ffa5607a3",
+        "label": "Grocery tourism: traveling abroad to haul novel CPG products from supermarkets · DECLINING→DECLINING @ 2026-08-20T18:09",
+        "incumbentAt": "2026-08-20",
+        "evaluatedAt": "2026-08-20T18:09:49.152000",
+        "incumbent": {
+          "emission": {
+            "emitted_at": "2026-08-20T22:09:30.474Z",
+            "next_eval_in_hours": 4,
+            "re_enrichment_reason": "",
+            "reasoning": "The trend continues to be DECLINING. Linked signals in the last 7 days (n7=1) remain significantly below the prior week (n7_prior=7), and it has been over 4 days since the newest linked signal. Although there are some vector-similar candidate signals like 'Grocery Store Tourism', they are unlinked. The trajectory is clearly cooling.",
+            "request_re_enrichment": false,
+            "retirement_reason": "",
+            "status": "DECLINING"
+          },
+          "committed": {
+            "prior_status": "DECLINING",
+            "new_status": "DECLINING",
+            "prior_heat": 25.1,
+            "new_heat": 24.8,
+            "heat_base": 27.5,
+            "heat_modifier_pct": -10,
+            "reasoning": "The trend continues to be DECLINING. Linked signals in the last 7 days (n7=1) remain significantly below the prior week (n7_prior=7), and it has been over 4 days since the newest linked signal. Although there are some vector-similar candidate signals like 'Grocery Store Tourism', they are unlinked. The trajectory is clearly cooling."
+          },
+          "tool_calls": [],
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "stop_reason": "STOP",
+            "input_tokens": 13453,
+            "output_tokens": 255,
+            "cost_estimate": 0.03
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_lifecycle_decision",
+        "tool_names": [
+          "query_trend_neighbors",
+          "query_signal_velocity",
+          "query_lifecycle_history",
+          "propose_lifecycle_decision"
+        ],
+        "prompt_provenance": {
+          "lifecycle.subagent.decision_rubric": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 4853
+          },
+          "lifecycle.subagent.system": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5296
+          }
+        },
+        "system_chars": 15218,
+        "user_chars": 246,
+        "input_notes": {
+          "heat_base": 27.6,
+          "recent_signals": 8,
+          "candidate_signals": 20,
+          "neighbors": 30,
+          "replayed_eval_at": "2026-08-20T18:09:49.152000",
+          "prior_state_restored": "status=DECLINING heat=25.1",
+          "history_entries_after_cut_dropped": 1,
+          "answer_leak_cut": "the replayed evaluation and everything after it are hidden: status, heat and history come from BEFORE it, so the model is not shown the incumbent's own answer",
+          "recomputed_now": "heat_base and the signal windows are recomputed against TODAY, so they differ from the incumbent's evaluation"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "request_re_enrichment": false,
+              "status": "DECLINING",
+              "reasoning": "The trend remains DECLINING as linked signal activity continues to cool, with n7=1 compared to n7_prior=7. It has been 4.2 days since the last linked signal, and active publisher breadth remains narrow (1 domain). While vector candidates like 'Shelf Discovery' indicate ongoing thematic interest, formally attributed velocity has dropped sharply without hitting zero linked signals (ruling out DORMANT).",
+              "next_eval_in_hours": 4
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "request_re_enrichment": false,
+          "status": "DECLINING",
+          "reasoning": "The trend remains DECLINING as linked signal activity continues to cool, with n7=1 compared to n7_prior=7. It has been 4.2 days since the last linked signal, and active publisher breadth remains narrow (1 domain). While vector candidates like 'Shelf Discovery' indicate ongoing thematic interest, formally attributed velocity has dropped sharply without hitting zero linked signals (ruling out DORMANT).",
+          "next_eval_in_hours": 4
+        },
+        "final_text": "### Lifecycle Evaluation Summary\n\n- **Trend ID**: `5351c59a-edb5-4f91-afac-de7ffa5607a3`\n- **Topic**: Grocery tourism: traveling abroad to haul novel CPG products from supermarkets\n- **Proposed Status**: `DECLINING`\n- **Next Evaluation**: in 4 hours\n- **Re-enrichment Requested**: `false`\n\n#### Key Rationale:\n- **Velocity Trajectory**: Linked signal arrivals have dropped significantly from $n_7 = 7$ in the prior week to $n_7 = 1$ over the last 7 days ($n_{24} = 0$).\n- **Recency & Breadth**: It has been 4.2 days since the last formally linked signal, with only 1 active publisher domain in the past 21 days.\n- **Decision Path**: Because linked activity has cooled ($n_7 < n_{7\\_prior}$) but has not completely flatlined to zero in the 14-day window (which would trigger `DORMANT`), the trend maintains its default trajectory as `DECLINING`. Strong candidate signals (e.g., \"Grocery Store Tourism\", \"Shelf Discovery\") show peripheral relevance but do not override the linked attribution slowdown.",
+        "accounting": {
+          "input_tokens": 13130,
+          "candidates_tokens": 403,
+          "thoughts_tokens": 793,
+          "total_tokens": 14326,
+          "cost_as_deployed": 0.0113,
+          "cost_with_thinking": 0.0144,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0031
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "request_re_enrichment": false,
+              "next_eval_in_hours": 4,
+              "reasoning": "The trend remains DECLINING as linked signals in the last 7 days (n7=1) continue to significantly trail the prior week (n7_prior=7). It has been over 4 days since the newest formally linked signal. While candidate signals suggest some ongoing interest, linked attribution remains very thin.",
+              "status": "DECLINING",
+              "re_enrichment_reason": ""
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "request_re_enrichment": false,
+          "next_eval_in_hours": 4,
+          "reasoning": "The trend remains DECLINING as linked signals in the last 7 days (n7=1) continue to significantly trail the prior week (n7_prior=7). It has been over 4 days since the newest formally linked signal. While candidate signals suggest some ongoing interest, linked attribution remains very thin.",
+          "status": "DECLINING",
+          "re_enrichment_reason": ""
+        },
+        "final_text": "The trend has been evaluated and the decision has been committed. It remains in a **DECLINING** state, as formally linked attribution has dropped steeply (1 signal in the past 7 days compared to 7 in the prior week) and it has been over 4 days since the last linked signal. The candidate signal flow is present but not yet strong enough in linked evidence to shift the trajectory back to STABLE or GROWING. The next evaluation is scheduled in 4 hours, at which point it may transition to DORMANT if the cooling continues.",
+        "accounting": {
+          "input_tokens": 12874,
+          "candidates_tokens": 230,
+          "thoughts_tokens": 545,
+          "total_tokens": 13649,
+          "cost_as_deployed": 0.0285,
+          "cost_with_thinking": 0.0351,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0066
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 6,
+          "present_count": 6,
+          "coverage_pct": 100,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "emitted_at"
+          ],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 1,
+              "sample_count": 1
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 1,
+              "sample_count": 1
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 6,
+          "present_count": 4,
+          "coverage_pct": 66.7,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "fields_lost": [
+          "retirement_reason",
+          "re_enrichment_reason"
+        ],
+        "fields_gained": [],
+        "coverage_delta_pct": -33.3
+      },
+      "descriptor": null
+    }
+  ]
+}

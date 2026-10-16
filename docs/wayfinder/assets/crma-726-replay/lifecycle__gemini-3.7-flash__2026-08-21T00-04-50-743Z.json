@@ -1,0 +1,346 @@
+{
+  "lane": "lifecycle",
+  "summary": "Hourly trend-status re-evaluation. Highest-volume LLM lane in the fleet and the only one with a recorded tool trace.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-21T00:04:50.743Z",
+  "finished_at": "2026-08-21T00:05:28.299Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 3,
+    "rerunIncumbent": true,
+    "caseId": "e6f1a465-1178-4833-bb0c-9c4cd0387012",
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "e6f1a465-1178-4833-bb0c-9c4cd0387012",
+        "label": "Matcha fragrances for calming, wellness-adjacent skin scents · NEW→STABLE @ 2026-08-20T18:09",
+        "incumbentAt": "2026-08-20",
+        "evaluatedAt": "2026-08-20T18:09:48.785000",
+        "incumbent": {
+          "emission": {
+            "emitted_at": "2026-08-20T22:09:30.423Z",
+            "next_eval_in_hours": 6,
+            "re_enrichment_reason": "",
+            "reasoning": "Trend is now >24h old. With 0 linked signals post-promotion, rubric dictates transitioning from NEW to STABLE (absence of immediate post-promotion links is expected). Strong candidate volume from social sources (X/Twitter) suggests growing organic interest, but awaiting formal attribution.",
+            "request_re_enrichment": false,
+            "retirement_reason": "",
+            "status": "STABLE"
+          },
+          "committed": {
+            "prior_status": "NEW",
+            "new_status": "STABLE",
+            "prior_heat": 10.8,
+            "new_heat": 10.6,
+            "heat_base": 10.6,
+            "heat_modifier_pct": 0,
+            "reasoning": "Trend is now >24h old. With 0 linked signals post-promotion, rubric dictates transitioning from NEW to STABLE (absence of immediate post-promotion links is expected). Strong candidate volume from social sources (X/Twitter) suggests growing organic interest, but awaiting formal attribution."
+          },
+          "tool_calls": [],
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "stop_reason": "STOP",
+            "input_tokens": 11940,
+            "output_tokens": 182,
+            "cost_estimate": 0.0261
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_lifecycle_decision",
+        "tool_names": [
+          "query_trend_neighbors",
+          "query_signal_velocity",
+          "query_lifecycle_history",
+          "propose_lifecycle_decision"
+        ],
+        "prompt_provenance": {
+          "lifecycle.subagent.decision_rubric": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 4853
+          },
+          "lifecycle.subagent.system": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5296
+          }
+        },
+        "system_chars": 14502,
+        "user_chars": 240,
+        "input_notes": {
+          "heat_base": 10.6,
+          "recent_signals": 1,
+          "candidate_signals": 13,
+          "neighbors": 30,
+          "replayed_eval_at": "2026-08-20T18:09:48.785000",
+          "prior_state_restored": "status=NEW heat=10.8",
+          "history_entries_after_cut_dropped": 1,
+          "answer_leak_cut": "the replayed evaluation and everything after it are hidden: status, heat and history come from BEFORE it, so the model is not shown the incumbent's own answer",
+          "recomputed_now": "heat_base and the signal windows are recomputed against TODAY, so they differ from the incumbent's evaluation"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "status": "STABLE",
+              "next_eval_in_hours": 6,
+              "reasoning": "Trend is past the 24h promotion window. With no new formally linked signals since promotion (n7=0, n24=0), the standard baseline transition from NEW is STABLE. Strong vector-similar candidate signals across social/Grok channels suggest ongoing real-world interest ahead of formal attribution.",
+              "request_re_enrichment": false
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "status": "STABLE",
+          "next_eval_in_hours": 6,
+          "reasoning": "Trend is past the 24h promotion window. With no new formally linked signals since promotion (n7=0, n24=0), the standard baseline transition from NEW is STABLE. Strong vector-similar candidate signals across social/Grok channels suggest ongoing real-world interest ahead of formal attribution.",
+          "request_re_enrichment": false
+        },
+        "final_text": "### Lifecycle Evaluation Summary\n\n- **Trend ID:** `e6f1a465-1178-4833-bb0c-9c4cd0387012`\n- **Topic:** Matcha fragrances for calming, wellness-adjacent skin scents\n- **Previous Status:** `NEW`\n- **New Status:** `STABLE`\n- **Next Evaluation In:** 6 hours\n- **Re-enrichment Requested:** False\n\n#### Decision Rationale\nThe trend has passed the initial 24-hour promotion window. As expected for early-stage trends without post-promotion linked signal arrivals ($n_{7} = 0, n_{24} = 0$), the standard transition is from `NEW` to `STABLE`. Notably, several on-topic candidate signals on Grok/social channels indicate active consumer interest that may convert to linked signals upon subsequent attribution cycles.",
+        "accounting": {
+          "input_tokens": 12229,
+          "candidates_tokens": 303,
+          "thoughts_tokens": 987,
+          "total_tokens": 13519,
+          "cost_as_deployed": 0.0103,
+          "cost_with_thinking": 0.014,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0037
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "retirement_reason": "",
+              "next_eval_in_hours": 6,
+              "status": "STABLE",
+              "reasoning": "Trend is now >24 hours old. There are zero linked signals in the last 7 days (no post-promotion links), which is normal for recently promoted trends. Following the rubric, status transitions from NEW to STABLE. A cluster of social candidate signals discussing matcha perfumes is accumulating, showing real-world interest, but formal attribution is needed for heat growth.",
+              "request_re_enrichment": false,
+              "re_enrichment_reason": ""
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "retirement_reason": "",
+          "next_eval_in_hours": 6,
+          "status": "STABLE",
+          "reasoning": "Trend is now >24 hours old. There are zero linked signals in the last 7 days (no post-promotion links), which is normal for recently promoted trends. Following the rubric, status transitions from NEW to STABLE. A cluster of social candidate signals discussing matcha perfumes is accumulating, showing real-world interest, but formal attribution is needed for heat growth.",
+          "request_re_enrichment": false,
+          "re_enrichment_reason": ""
+        },
+        "final_text": "I have evaluated the trend based on the latest metrics and proposed a transition to STABLE. Since the trend has passed the 24-hour mark and has zero new post-promotion linked signals, STABLE is the expected state. I've scheduled the next evaluation in 6 hours and noted the social activity in the reasoning.",
+        "accounting": {
+          "input_tokens": 11981,
+          "candidates_tokens": 203,
+          "thoughts_tokens": 717,
+          "total_tokens": 12901,
+          "cost_as_deployed": 0.0264,
+          "cost_with_thinking": 0.035,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0086
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 6,
+          "present_count": 6,
+          "coverage_pct": 100,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "emitted_at"
+          ],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 1,
+              "sample_count": 1
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 1,
+              "sample_count": 1
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 6,
+          "present_count": 4,
+          "coverage_pct": 66.7,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "fields_lost": [
+          "retirement_reason",
+          "re_enrichment_reason"
+        ],
+        "fields_gained": [],
+        "coverage_delta_pct": -33.3
+      },
+      "descriptor": null
+    }
+  ]
+}

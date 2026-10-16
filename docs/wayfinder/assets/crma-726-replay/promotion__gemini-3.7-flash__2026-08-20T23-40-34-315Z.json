@@ -1,0 +1,1032 @@
+{
+  "lane": "promotion",
+  "summary": "Per-candidate promote/reject/dedupe gate. Tightest budget in the fleet — where the budget-gate trap bites first.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-20T23:40:34.315Z",
+  "finished_at": "2026-08-20T23:41:50.746Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 3,
+    "rerunIncumbent": true,
+    "caseId": "cand-a41h30h7msmzx6ma",
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "cand-a41h30h7msmzx6ma",
+        "label": "Multi-Step Oral Skinification Routines · REJECT @ 2026-08-10T07:15",
+        "incumbentAt": "2026-08-10",
+        "decidedAt": "2026-08-10T07:15:19.752000",
+        "incumbent": {
+          "emission": {
+            "decision": "REJECT",
+            "decision_category": "OVER_REJECT_PROMOTE",
+            "confidence": 0.9,
+            "rationale": "Distillation recommended REAL_TREND for 'Multi-Step Oral Skinification Routines'. However, this candidate relies on only one signal source family, making it an ET-RESCUE candidate. Exploding Topics failed to return any corroborating matches for the concept. Without a second independent source family, the candidate fails the two-source doctrine and must be rejected.",
+            "max_neighbor_sim": 0.5268,
+            "considered_neighbors": []
+          },
+          "context": {
+            "distillation_verdict": "REAL_TREND",
+            "overrode_verdict": true,
+            "cluster_size": 1,
+            "source_count": 1
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "input_tokens": 13252,
+            "output_tokens": 171,
+            "cost_estimate": 0.0286
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_decision",
+        "tool_names": [
+          "compare_topics",
+          "query_neighbor_details",
+          "verify_exploding_topics",
+          "propose_decision"
+        ],
+        "prompt_provenance": {
+          "promotion.subagent.system": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2576
+          },
+          "promotion.subagent.decision_rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 3876
+          }
+        },
+        "system_chars": 9224,
+        "user_chars": 584,
+        "input_notes": {
+          "neighbors": 4,
+          "quality_flags": [],
+          "budget_usd": 0.15,
+          "budget_gate_warning": "This lane's budget is measured on the TRUTHFUL cost. Production measures it on the understated one, so a real switch must correct RATES_PER_M in the same slice.",
+          "reconstructed": "candidate row (q_load_pending_candidates filters on PENDING; a historical candidate is not)",
+          "neighbors_excluded_as_anachronistic": 1,
+          "et_rescue": "forced false — ET rescue routing is a lead-side classification the harness does not replay"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 6,
+        "tool_sequence": [
+          "compare_topics",
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "propose_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "compare_topics",
+            "args": {
+              "my_judgment": "different_topic",
+              "reasoning": "Neighbor focuses on high-tech bio-repair serums combining tooth enamel remineralization and skin cellular repair, whereas candidate focuses on the broader skinification trend of multi-step oral care routines (tongue scrapers, oil pulling, hydroxyapatite, oral serums).",
+              "neighbor_trend_id": "4b147962-1023-4a65-8a85-0f9abaf34d1c"
+            },
+            "output": {
+              "neighbor": {
+                "trend_id": "4b147962-1023-4a65-8a85-0f9abaf34d1c",
+                "topic": "Daily Biological Repair Serum Rituals",
+                "summary": "Consumers are adopting high-tech \"bio-repair serums\" to address structural maintenance like tooth enamel remineralization and cellular skin repair at home. By packaging clinical biology into vanity-friendly daily drops, brands are turning functional therapy into an accessible personal care ritual.",
+                "similarity": 0.5268,
+                "cluster_size": 2,
+                "heat": 7.5,
+                "age_days": 73,
+                "sample_signals": [
+                  {
+                    "title": "Applying tooth serums as a daily oral-beauty ritual",
+                    "domain": "polishedlondon.com",
+                    "timestamp": "2026-06-08T08:07:48"
+                  },
+                  {
+                    "title": "Incorporating exosome serums for regenerative skin repair",
+                    "domain": "vitamagazine.com",
+                    "timestamp": "2026-05-26T00:39:55"
+                  }
+                ]
+              },
+              "recorded_judgment": "different_topic",
+              "note": "judgment recorded in considered_neighbors trail"
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 1,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "oral care skinification"
+            },
+            "output": {
+              "queried": "oral care skinification",
+              "matched": false,
+              "total": 0,
+              "top_keyword": null,
+              "top_absolute_volume": null,
+              "classifications": null,
+              "growth": null,
+              "candidates": [],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 3175
+          },
+          {
+            "turn": 2,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "skinification"
+            },
+            "output": {
+              "queried": "skinification",
+              "matched": false,
+              "total": 0,
+              "top_keyword": null,
+              "top_absolute_volume": null,
+              "classifications": null,
+              "growth": null,
+              "candidates": [],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 2686
+          },
+          {
+            "turn": 2,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "tooth serum"
+            },
+            "output": {
+              "queried": "tooth serum",
+              "matched": true,
+              "total": 1,
+              "top_keyword": "Tooth serum",
+              "top_absolute_volume": 390,
+              "classifications": {
+                "3": "peaked",
+                "6": "peaked",
+                "12": "exploding",
+                "24": "peaked",
+                "60": "peaked",
+                "120": "regular",
+                "180": "regular",
+                "forecast_12": "exploding"
+              },
+              "growth": null,
+              "candidates": [
+                {
+                  "keyword": "Tooth serum",
+                  "path": "tooth-serum",
+                  "absolute_volume": 390,
+                  "categories": [
+                    "beauty",
+                    "makeup-cosmetics",
+                    "personal-care",
+                    "health",
+                    "cpg"
+                  ]
+                }
+              ],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 2952
+          },
+          {
+            "turn": 3,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "hydroxyapatite toothpaste"
+            },
+            "output": {
+              "queried": "hydroxyapatite toothpaste",
+              "matched": true,
+              "total": 5,
+              "top_keyword": "Nano-Hydroxyapatite Toothpaste ",
+              "top_absolute_volume": 135000,
+              "classifications": {
+                "3": "peaked",
+                "6": "exploding",
+                "12": "exploding",
+                "24": "exploding",
+                "60": "regular",
+                "120": "regular",
+                "180": "regular",
+                "forecast_12": "exploding"
+              },
+              "growth": null,
+              "candidates": [
+                {
+                  "keyword": "Nano-Hydroxyapatite Toothpaste ",
+                  "path": "nano-hydroxyapatite-toothpaste",
+                  "absolute_volume": 135000,
+                  "categories": [
+                    "beauty",
+                    "personal-care",
+                    "health",
+                    "cpg"
+                  ]
+                },
+                {
+                  "keyword": "Nano hydroxyapatite toothpaste",
+                  "path": "nano-hydroxyapatite-toothpaste-1-MykKNS55",
+                  "absolute_volume": 90500,
+                  "categories": [
+                    "product",
+                    "personal-care",
+                    "beauty",
+                    "cpg"
+                  ]
+                },
+                {
+                  "keyword": "Boka toothpaste",
+                  "path": "boka-toothpaste",
+                  "absolute_volume": 165000,
+                  "categories": [
+                    "business",
+                    "health",
+                    "ecommerce",
+                    "retail",
+                    "personal-care",
+                    "healthcare"
+                  ]
+                },
+                {
+                  "keyword": "Twice toothpaste",
+                  "path": "twice-toothpaste",
+                  "absolute_volume": 1900,
+                  "categories": [
+                    "business",
+                    "health",
+                    "retail",
+                    "personal-care"
+                  ]
+                },
+                {
+                  "keyword": "Nano Hydroxyapatite",
+                  "path": "nano-hydroxyapatite",
+                  "absolute_volume": 49500,
+                  "categories": [
+                    "health",
+                    "supplements",
+                    "personal-care",
+                    "beauty",
+                    "cpg"
+                  ]
+                }
+              ],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 3366
+          },
+          {
+            "turn": 4,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "oral care routine"
+            },
+            "output": {
+              "queried": "oral care routine",
+              "matched": true,
+              "total": 8,
+              "top_keyword": "Tooth serum",
+              "top_absolute_volume": 390,
+              "classifications": {
+                "3": "peaked",
+                "6": "peaked",
+                "12": "exploding",
+                "24": "peaked",
+                "60": "peaked",
+                "120": "regular",
+                "180": "regular",
+                "forecast_12": "exploding"
+              },
+              "growth": null,
+              "candidates": [
+                {
+                  "keyword": "Tooth serum",
+                  "path": "tooth-serum",
+                  "absolute_volume": 390,
+                  "categories": [
+                    "beauty",
+                    "makeup-cosmetics",
+                    "personal-care",
+                    "health",
+                    "cpg"
+                  ]
+                },
+                {
+                  "keyword": "Tongue scraper",
+                  "path": "tongue-scraper",
+                  "absolute_volume": 301000,
+                  "categories": [
+                    "business",
+                    "health",
+                    "retail",
+                    "personal-care",
+                    "healthcare"
+                  ]
+                },
+                {
+                  "keyword": "DENTIFRICE",
+                  "path": "dentifrice",
+                  "absolute_volume": 40500,
+                  "categories": [
+                    "beauty",
+                    "health",
+                    "personal-care",
+                    "pharma"
+                  ]
+                },
+                {
+                  "keyword": "Whitening mouth wash",
+                  "path": "whitening-mouth-wash",
+                  "absolute_volume": 60,
+                  "categories": [
+                    "health",
+                    "beauty",
+                    "home",
+                    "personal-care",
+                    "cpg"
+                  ]
+                },
+                {
+                  "keyword": "Marvis toothpaste",
+                  "path": "marvis-toothpaste-M6EwczxJ",
+                  "absolute_volume": 165000,
+                  "categories": [
+                    "health",
+                    "lifestyle",
+                    "luxury",
+                    "personal-care"
+                  ]
+                }
+              ],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 3077
+          },
+          {
+            "turn": 5,
+            "name": "propose_decision",
+            "args": {
+              "decision": "REJECT",
+              "rejection_reason": "NO_SECOND_SOURCE",
+              "decision_category": "LOW_QUALITY",
+              "rationale": "Candidate 'Multi-Step Oral Skinification Routines' only has a single signal source family (agent_grok_discovery) and thus requires independent corroboration via Exploding Topics under the ET-rescue protocol. Exploding Topics queries for 'oral care skinification' and 'skinification' returned no matches, while 'tooth serum' fell below the 1000 monthly volume floor (volume: 390). Because ET did not corroborate the specific concept with sufficient volume, the candidate fails the two-source doctrine and must be rejected."
+            },
+            "output": {
+              "accepted": true,
+              "decision": "REJECT",
+              "category": "LOW_QUALITY"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "decision": "REJECT",
+          "rejection_reason": "NO_SECOND_SOURCE",
+          "decision_category": "LOW_QUALITY",
+          "rationale": "Candidate 'Multi-Step Oral Skinification Routines' only has a single signal source family (agent_grok_discovery) and thus requires independent corroboration via Exploding Topics under the ET-rescue protocol. Exploding Topics queries for 'oral care skinification' and 'skinification' returned no matches, while 'tooth serum' fell below the 1000 monthly volume floor (volume: 390). Because ET did not corroborate the specific concept with sufficient volume, the candidate fails the two-source doctrine and must be rejected."
+        },
+        "final_text": "The candidate **\"Multi-Step Oral Skinification Routines\"** (id: `cand-a41h30h7msmzx6ma`) was evaluated under the ET-rescue protocol as it only has a single signal source family (`agent_grok_discovery`).\n\n### Evaluation Summary:\n- **Neighbor Comparison**: Compared against top semantic neighbors (e.g., `4b147962-1023-4a65-8a85-0f9abaf34d1c` - *\"Daily Biological Repair Serum Rituals\"*); none represented a direct duplicate of multi-step oral skinification routines.\n- **Exploding Topics Verification**: Lookups for `\"oral care skinification\"` and `\"skinification\"` yielded no matching topics. Specific related terms like `\"tooth serum\"` only registered 390 monthly volume (below the volume floor of 1,000), while broader ingredient/tool terms (e.g., hydroxyapatite, tongue scrapers) did not capture the candidate's distinct compound skinification routine concept.\n- **Decision**: **REJECT** (`LOW_QUALITY` / `NO_SECOND_SOURCE`) due to failing the two-source family requirement without sufficient independent corroboration from Exploding Topics.",
+        "accounting": {
+          "input_tokens": 34406,
+          "candidates_tokens": 657,
+          "thoughts_tokens": 1668,
+          "total_tokens": 36731,
+          "cost_as_deployed": 0.0282,
+          "cost_with_thinking": 0.0345,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0063
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": false,
+          "reason": "max_iterations",
+          "silent": false
+        },
+        "turns": 6,
+        "tool_sequence": [
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "compare_topics",
+          "verify_exploding_topics",
+          "verify_exploding_topics"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "oral skinification"
+            },
+            "output": {
+              "queried": "oral skinification",
+              "matched": false,
+              "total": 0,
+              "top_keyword": null,
+              "top_absolute_volume": null,
+              "classifications": null,
+              "growth": null,
+              "candidates": [],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 2877
+          },
+          {
+            "turn": 2,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "oral beauty"
+            },
+            "output": {
+              "queried": "oral beauty",
+              "matched": true,
+              "total": 1,
+              "top_keyword": "Floral earrings",
+              "top_absolute_volume": 5400,
+              "classifications": {
+                "3": "regular",
+                "6": "regular",
+                "12": "peaked",
+                "24": "peaked",
+                "60": "peaked",
+                "120": "peaked",
+                "180": "peaked",
+                "forecast_12": "exploding"
+              },
+              "growth": null,
+              "candidates": [
+                {
+                  "keyword": "Floral earrings",
+                  "path": "floral-earrings",
+                  "absolute_volume": 5400,
+                  "categories": [
+                    "product",
+                    "fashion",
+                    "jewelry",
+                    "lifestyle",
+                    "design",
+                    "art",
+                    "retail"
+                  ]
+                }
+              ],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 2954
+          },
+          {
+            "turn": 3,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "hydroxyapatite toothpaste"
+            },
+            "output": {
+              "queried": "hydroxyapatite toothpaste",
+              "matched": true,
+              "total": 5,
+              "top_keyword": "Nano-Hydroxyapatite Toothpaste ",
+              "top_absolute_volume": 135000,
+              "classifications": {
+                "3": "peaked",
+                "6": "exploding",
+                "12": "exploding",
+                "24": "exploding",
+                "60": "regular",
+                "120": "regular",
+                "180": "regular",
+                "forecast_12": "exploding"
+              },
+              "growth": null,
+              "candidates": [
+                {
+                  "keyword": "Nano-Hydroxyapatite Toothpaste ",
+                  "path": "nano-hydroxyapatite-toothpaste",
+                  "absolute_volume": 135000,
+                  "categories": [
+                    "beauty",
+                    "personal-care",
+                    "health",
+                    "cpg"
+                  ]
+                },
+                {
+                  "keyword": "Nano hydroxyapatite toothpaste",
+                  "path": "nano-hydroxyapatite-toothpaste-1-MykKNS55",
+                  "absolute_volume": 90500,
+                  "categories": [
+                    "product",
+                    "personal-care",
+                    "beauty",
+                    "cpg"
+                  ]
+                },
+                {
+                  "keyword": "Boka toothpaste",
+                  "path": "boka-toothpaste",
+                  "absolute_volume": 165000,
+                  "categories": [
+                    "business",
+                    "health",
+                    "ecommerce",
+                    "retail",
+                    "personal-care",
+                    "healthcare"
+                  ]
+                },
+                {
+                  "keyword": "Twice toothpaste",
+                  "path": "twice-toothpaste",
+                  "absolute_volume": 1900,
+                  "categories": [
+                    "business",
+                    "health",
+                    "retail",
+                    "personal-care"
+                  ]
+                },
+                {
+                  "keyword": "Nano Hydroxyapatite",
+                  "path": "nano-hydroxyapatite",
+                  "absolute_volume": 49500,
+                  "categories": [
+                    "health",
+                    "supplements",
+                    "personal-care",
+                    "beauty",
+                    "cpg"
+                  ]
+                }
+              ],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 2905
+          },
+          {
+            "turn": 4,
+            "name": "compare_topics",
+            "args": {
+              "reasoning": "Neighbor is about biological repair serums (including teeth and skin), whereas the candidate is specifically the broader multi-step oral skinification routine (which includes serums but also tongue scraping, oil pulling).",
+              "neighbor_trend_id": "4b147962-1023-4a65-8a85-0f9abaf34d1c",
+              "my_judgment": "hierarchical_distinct"
+            },
+            "output": {
+              "neighbor": {
+                "trend_id": "4b147962-1023-4a65-8a85-0f9abaf34d1c",
+                "topic": "Daily Biological Repair Serum Rituals",
+                "summary": "Consumers are adopting high-tech \"bio-repair serums\" to address structural maintenance like tooth enamel remineralization and cellular skin repair at home. By packaging clinical biology into vanity-friendly daily drops, brands are turning functional therapy into an accessible personal care ritual.",
+                "similarity": 0.5268,
+                "cluster_size": 2,
+                "heat": 7.5,
+                "age_days": 73,
+                "sample_signals": [
+                  {
+                    "title": "Applying tooth serums as a daily oral-beauty ritual",
+                    "domain": "polishedlondon.com",
+                    "timestamp": "2026-06-08T08:07:48"
+                  },
+                  {
+                    "title": "Incorporating exosome serums for regenerative skin repair",
+                    "domain": "vitamagazine.com",
+                    "timestamp": "2026-05-26T00:39:55"
+                  }
+                ]
+              },
+              "recorded_judgment": "hierarchical_distinct",
+              "note": "judgment recorded in considered_neighbors trail"
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 5,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "oral care"
+            },
+            "output": {
+              "queried": "oral care",
+              "matched": true,
+              "total": 37,
+              "top_keyword": "Sugar alcohol",
+              "top_absolute_volume": 40500,
+              "classifications": {
+                "3": "regular",
+                "6": "peaked",
+                "12": "exploding",
+                "24": "exploding",
+                "60": "regular",
+                "120": "regular",
+                "180": "regular",
+                "forecast_12": "exploding"
+              },
+              "growth": null,
+              "candidates": [
+                {
+                  "keyword": "Sugar alcohol",
+                  "path": "sugar-alcohol",
+                  "absolute_volume": 40500,
+                  "categories": [
+                    "health",
+                    "food-beverage",
+                    "nutrition",
+                    "pharma",
+                    "cpg"
+                  ]
+                },
+                {
+                  "keyword": "Tooth serum",
+                  "path": "tooth-serum",
+                  "absolute_volume": 390,
+                  "categories": [
+                    "beauty",
+                    "makeup-cosmetics",
+                    "personal-care",
+                    "health",
+                    "cpg"
+                  ]
+                },
+                {
+                  "keyword": "Hismile",
+                  "path": "hismile-1",
+                  "absolute_volume": 110000,
+                  "categories": [
+                    "business",
+                    "beauty",
+                    "health",
+                    "retail",
+                    "personal-care"
+                  ]
+                },
+                {
+                  "keyword": "Whitening mouth wash",
+                  "path": "whitening-mouth-wash",
+                  "absolute_volume": 60,
+                  "categories": [
+                    "health",
+                    "beauty",
+                    "home",
+                    "personal-care",
+                    "cpg"
+                  ]
+                },
+                {
+                  "keyword": "Tongue scraper",
+                  "path": "tongue-scraper",
+                  "absolute_volume": 301000,
+                  "categories": [
+                    "business",
+                    "health",
+                    "retail",
+                    "personal-care",
+                    "healthcare"
+                  ]
+                }
+              ],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 3506
+          },
+          {
+            "turn": 6,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "oil pulling"
+            },
+            "output": {
+              "queried": "oil pulling",
+              "matched": true,
+              "total": 1,
+              "top_keyword": "Oil pulling",
+              "top_absolute_volume": 90500,
+              "classifications": {
+                "3": "regular",
+                "6": "regular",
+                "12": "peaked",
+                "24": "peaked",
+                "60": "peaked",
+                "120": "peaked",
+                "180": "peaked",
+                "forecast_12": "regular"
+              },
+              "growth": null,
+              "candidates": [
+                {
+                  "keyword": "Oil pulling",
+                  "path": "oil-pulling",
+                  "absolute_volume": 90500,
+                  "categories": [
+                    "health",
+                    "personal-care",
+                    "healthcare",
+                    "nutrition"
+                  ]
+                }
+              ],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 2979
+          }
+        ],
+        "emission": null,
+        "final_text": "",
+        "accounting": {
+          "input_tokens": 30371,
+          "candidates_tokens": 211,
+          "thoughts_tokens": 1023,
+          "total_tokens": 31605,
+          "cost_as_deployed": 0.0633,
+          "cost_with_thinking": 0.0755,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0122
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 10,
+          "present_count": 3,
+          "coverage_pct": 30,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "confidence",
+            "max_neighbor_sim",
+            "considered_neighbors[]"
+          ],
+          "rows": [
+            {
+              "path": "decision",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "decision_category",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "target_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "trend_topic",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rejection_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_until",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rationale",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "et_was_second_source",
+              "type": "boolean",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "et_matched_keyword",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 10,
+          "present_count": 4,
+          "coverage_pct": 40,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "decision",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "decision_category",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "target_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "trend_topic",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rejection_reason",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "defer_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_until",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rationale",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "et_was_second_source",
+              "type": "boolean",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "et_matched_keyword",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "fields_lost": [],
+        "fields_gained": [
+          "rejection_reason"
+        ],
+        "coverage_delta_pct": 10
+      },
+      "descriptor": null
+    }
+  ]
+}

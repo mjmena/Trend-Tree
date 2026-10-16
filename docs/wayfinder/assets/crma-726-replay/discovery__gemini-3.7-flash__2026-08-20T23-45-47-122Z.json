@@ -1,0 +1,72 @@
+{
+  "lane": "discovery",
+  "summary": "The one registry-driven lane: its model comes from DIM_LLM_PROMPT, so moving it is an UPDATE, not a deploy.",
+  "incumbent_model": "gemini-2.5-flash",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 0.3,
+    "output": 2.5
+  },
+  "started_at": "2026-08-20T23:45:47.122Z",
+  "finished_at": "2026-08-20T23:45:54.653Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 1,
+    "rerunIncumbent": false,
+    "caseId": null,
+    "dryRun": true,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "wellness",
+        "label": "discovery.gemini.search v4 · registry model gemini-2.5-flash · vertical \"wellness\"",
+        "incumbentAt": null,
+        "incumbent": {
+          "emission": null,
+          "telemetry": {
+            "model": "gemini-2.5-flash",
+            "registry_driven": true,
+            "prompt_version": 4
+          }
+        }
+      },
+      "built": {
+        "mode": "single",
+        "terminal_tool": null,
+        "tool_names": null,
+        "prompt_provenance": {
+          "discovery.gemini.search": {
+            "version": 4,
+            "registry_model": "gemini-2.5-flash",
+            "chars": 2509
+          }
+        },
+        "system_chars": 0,
+        "user_chars": 16270,
+        "input_notes": {
+          "registry_model": "gemini-2.5-flash",
+          "prompt_version": 4,
+          "active_trends": 136,
+          "examples": 20,
+          "vertical": "wellness",
+          "how_to_switch": "UPDATE MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT SET MODEL='<id>' WHERE PROMPT_KEY='discovery.gemini.search' AND IS_ACTIVE=TRUE",
+          "drift_note": "registry has this lane on gemini-2.5-flash while the hardcoded verticals run gemini-3-flash-preview"
+        }
+      },
+      "skipped": "dry-run"
+    }
+  ]
+}

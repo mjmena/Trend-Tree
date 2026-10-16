@@ -1,0 +1,747 @@
+{
+  "lane": "promotion",
+  "summary": "Per-candidate promote/reject/dedupe gate. Tightest budget in the fleet — where the budget-gate trap bites first.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-20T23:38:35.954Z",
+  "finished_at": "2026-08-20T23:39:32.827Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 3,
+    "rerunIncumbent": true,
+    "caseId": "cand-w1nclmekmt200vmm",
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "cand-w1nclmekmt200vmm",
+        "label": "Using facial tissues infused with targeted skincare actives · REJECT @ 2026-08-20T19:15",
+        "incumbentAt": "2026-08-20",
+        "decidedAt": "2026-08-20T19:15:31.872000",
+        "incumbent": {
+          "emission": {
+            "decision": "REJECT",
+            "decision_category": "LOW_QUALITY",
+            "confidence": 0.8,
+            "rationale": "This candidate only has one independent source family (agent_gemini_discovery) and requires a second source for promotion. An Exploding Topics lookup did not yield any corroborating keywords (it returned 'Under eye patches' and 'Sleep Spray', which are different concepts). Therefore, it fails the two-source doctrine and must be rejected.",
+            "max_neighbor_sim": 0.5662,
+            "considered_neighbors": []
+          },
+          "context": {
+            "distillation_verdict": "REAL_TREND",
+            "overrode_verdict": true,
+            "cluster_size": 2,
+            "source_count": 1
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "input_tokens": 15278,
+            "output_tokens": 160,
+            "cost_estimate": 0.0325
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_decision",
+        "tool_names": [
+          "compare_topics",
+          "query_neighbor_details",
+          "verify_exploding_topics",
+          "propose_decision"
+        ],
+        "prompt_provenance": {
+          "promotion.subagent.system": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2576
+          },
+          "promotion.subagent.decision_rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 3876
+          }
+        },
+        "system_chars": 11306,
+        "user_chars": 584,
+        "input_notes": {
+          "neighbors": 8,
+          "quality_flags": [],
+          "budget_usd": 0.15,
+          "budget_gate_warning": "This lane's budget is measured on the TRUTHFUL cost. Production measures it on the understated one, so a real switch must correct RATES_PER_M in the same slice.",
+          "reconstructed": "candidate row (q_load_pending_candidates filters on PENDING; a historical candidate is not)",
+          "neighbors_excluded_as_anachronistic": 0,
+          "et_rescue": "forced false — ET rescue routing is a lead-side classification the harness does not replay"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 5,
+        "tool_sequence": [
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "propose_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "skincare infused tissue"
+            },
+            "output": {
+              "queried": "skincare infused tissue",
+              "matched": true,
+              "total": 1,
+              "top_keyword": "Under eye patches",
+              "top_absolute_volume": 110000,
+              "classifications": {
+                "3": "regular",
+                "6": "regular",
+                "12": "exploding",
+                "24": "exploding",
+                "60": "exploding",
+                "120": "exploding",
+                "180": "regular",
+                "forecast_12": "peaked"
+              },
+              "growth": null,
+              "candidates": [
+                {
+                  "keyword": "Under eye patches",
+                  "path": "under-eye-patches",
+                  "absolute_volume": 110000,
+                  "categories": [
+                    "business",
+                    "beauty",
+                    "health",
+                    "retail",
+                    "makeup-cosmetics",
+                    "skincare",
+                    "cpg"
+                  ]
+                }
+              ],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 3323
+          },
+          {
+            "turn": 2,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "infused facial tissue"
+            },
+            "output": {
+              "queried": "infused facial tissue",
+              "matched": false,
+              "total": 0,
+              "top_keyword": null,
+              "top_absolute_volume": null,
+              "classifications": null,
+              "growth": null,
+              "candidates": [],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 2944
+          },
+          {
+            "turn": 3,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "skincare tissue"
+            },
+            "output": {
+              "queried": "skincare tissue",
+              "matched": true,
+              "total": 54,
+              "top_keyword": "Growth factor gel",
+              "top_absolute_volume": 260,
+              "classifications": {
+                "3": "exploding",
+                "6": "exploding",
+                "12": "exploding",
+                "24": "exploding",
+                "60": "exploding",
+                "120": "exploding",
+                "180": "exploding",
+                "forecast_12": "exploding"
+              },
+              "growth": null,
+              "candidates": [
+                {
+                  "keyword": "Growth factor gel",
+                  "path": "growth-factor-gel",
+                  "absolute_volume": 260,
+                  "categories": [
+                    "beauty",
+                    "skincare",
+                    "personal-care",
+                    "cpg"
+                  ]
+                },
+                {
+                  "keyword": "Hyaluronic Acid",
+                  "path": "hyaluronic-acid",
+                  "absolute_volume": 550000,
+                  "categories": [
+                    "beauty",
+                    "skincare",
+                    "science",
+                    "health",
+                    "pharma",
+                    "supplements",
+                    "cpg"
+                  ]
+                },
+                {
+                  "keyword": "Collagen drink",
+                  "path": "collagen-drink",
+                  "absolute_volume": 33100,
+                  "categories": [
+                    "nutrition",
+                    "supplements",
+                    "beauty",
+                    "skincare",
+                    "haircare",
+                    "cpg"
+                  ]
+                },
+                {
+                  "keyword": "Topicals",
+                  "path": "topicals",
+                  "absolute_volume": 90500,
+                  "categories": [
+                    "beauty",
+                    "health",
+                    "skincare",
+                    "personal-care"
+                  ]
+                },
+                {
+                  "keyword": "Wonderskin",
+                  "path": "wonderskin",
+                  "absolute_volume": 110000,
+                  "categories": [
+                    "business",
+                    "beauty",
+                    "retail",
+                    "skincare"
+                  ]
+                }
+              ],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 3424
+          },
+          {
+            "turn": 4,
+            "name": "propose_decision",
+            "args": {
+              "decision": "REJECT",
+              "rejection_reason": "NO_SECOND_SOURCE",
+              "rationale": "Candidate 'Using facial tissues infused with targeted skincare actives' has only a single signal source family (agent_gemini_discovery=2). Under ADR-0004 ET-rescue evaluation, lookups in Exploding Topics for active-infused tissues yielded no matching or corroborating concept (only unrelated skincare terms like under-eye patches and growth factor gel). Because it lacks the required independent second source family, the candidate cannot be promoted and is rejected.",
+              "decision_category": "LOW_QUALITY"
+            },
+            "output": {
+              "accepted": true,
+              "decision": "REJECT",
+              "category": "LOW_QUALITY"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "decision": "REJECT",
+          "rejection_reason": "NO_SECOND_SOURCE",
+          "rationale": "Candidate 'Using facial tissues infused with targeted skincare actives' has only a single signal source family (agent_gemini_discovery=2). Under ADR-0004 ET-rescue evaluation, lookups in Exploding Topics for active-infused tissues yielded no matching or corroborating concept (only unrelated skincare terms like under-eye patches and growth factor gel). Because it lacks the required independent second source family, the candidate cannot be promoted and is rejected.",
+          "decision_category": "LOW_QUALITY"
+        },
+        "final_text": "The candidate **\"Using facial tissues infused with targeted skincare actives\"** was evaluated under the ET-Rescue workflow for single-source candidates:\n\n1. **Source Assessment**: The candidate possesses signals from only 1 source family (`agent_gemini_discovery`).\n2. **Exploding Topics Verification**: Queried Exploding Topics catalog for active-infused tissues / skincare tissues; no matching entries corroborated the specific concept (returned matches were unrelated concepts such as under-eye patches and growth factor gel).\n3. **Neighbor Review**: Neighbor pool contains no matching duplicate trends.\n4. **Final Decision**: **REJECT** (`decision_category: LOW_QUALITY`, `rejection_reason: NO_SECOND_SOURCE`) due to failure to meet the two-source doctrine.",
+        "accounting": {
+          "input_tokens": 26987,
+          "candidates_tokens": 362,
+          "thoughts_tokens": 756,
+          "total_tokens": 28105,
+          "cost_as_deployed": 0.0216,
+          "cost_with_thinking": 0.0245,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0029
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 5,
+        "tool_sequence": [
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "propose_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "skincare infused facial tissues"
+            },
+            "output": {
+              "queried": "skincare infused facial tissues",
+              "matched": false,
+              "total": 0,
+              "top_keyword": null,
+              "top_absolute_volume": null,
+              "classifications": null,
+              "growth": null,
+              "candidates": [],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 2739
+          },
+          {
+            "turn": 2,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "infused tissues"
+            },
+            "output": {
+              "queried": "infused tissues",
+              "matched": true,
+              "total": 2,
+              "top_keyword": "Under eye patches",
+              "top_absolute_volume": 110000,
+              "classifications": {
+                "3": "regular",
+                "6": "regular",
+                "12": "exploding",
+                "24": "exploding",
+                "60": "exploding",
+                "120": "exploding",
+                "180": "regular",
+                "forecast_12": "peaked"
+              },
+              "growth": null,
+              "candidates": [
+                {
+                  "keyword": "Under eye patches",
+                  "path": "under-eye-patches",
+                  "absolute_volume": 110000,
+                  "categories": [
+                    "business",
+                    "beauty",
+                    "health",
+                    "retail",
+                    "makeup-cosmetics",
+                    "skincare",
+                    "cpg"
+                  ]
+                },
+                {
+                  "keyword": "Sleep Spray",
+                  "path": "sleep-spray",
+                  "absolute_volume": 22200,
+                  "categories": [
+                    "sleep",
+                    "personal-care",
+                    "supplements"
+                  ]
+                }
+              ],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 2894
+          },
+          {
+            "turn": 3,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "lotion tissue"
+            },
+            "output": {
+              "queried": "lotion tissue",
+              "matched": true,
+              "total": 9,
+              "top_keyword": "Photobiomodulation",
+              "top_absolute_volume": 27100,
+              "classifications": {
+                "3": "peaked",
+                "6": "peaked",
+                "12": "exploding",
+                "24": "exploding",
+                "60": "exploding",
+                "120": "regular",
+                "180": "regular",
+                "forecast_12": "exploding"
+              },
+              "growth": null,
+              "candidates": [
+                {
+                  "keyword": "Photobiomodulation",
+                  "path": "photobiomodulation",
+                  "absolute_volume": 27100,
+                  "categories": [
+                    "health",
+                    "science",
+                    "fitness",
+                    "healthcare",
+                    "pharma"
+                  ]
+                },
+                {
+                  "keyword": "Aquablation therapy",
+                  "path": "aquablation-therapy",
+                  "absolute_volume": 1600,
+                  "categories": [
+                    "health",
+                    "industry",
+                    "science",
+                    "healthcare",
+                    "pharma"
+                  ]
+                },
+                {
+                  "keyword": "Caffeine lotion",
+                  "path": "caffeine-lotion",
+                  "absolute_volume": 1000,
+                  "categories": [
+                    "beauty",
+                    "health",
+                    "skincare",
+                    "personal-care",
+                    "cpg"
+                  ]
+                },
+                {
+                  "keyword": "Kojic acid lotion",
+                  "path": "kojic-acid-lotion",
+                  "absolute_volume": 9900,
+                  "categories": [
+                    "beauty",
+                    "health",
+                    "skincare",
+                    "personal-care",
+                    "cpg"
+                  ]
+                },
+                {
+                  "keyword": "Man moisturizer",
+                  "path": "man-moisturizer",
+                  "absolute_volume": 120,
+                  "categories": [
+                    "business",
+                    "beauty",
+                    "health",
+                    "retail",
+                    "skincare",
+                    "personal-care",
+                    "cpg"
+                  ]
+                }
+              ],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 2884
+          },
+          {
+            "turn": 4,
+            "name": "propose_decision",
+            "args": {
+              "decision_category": "LOW_QUALITY",
+              "rationale": "The candidate describes a trend of facial tissues infused with skincare actives, but it is supported by only a single source family (agent_gemini_discovery). A check of Exploding Topics for related terms (skincare infused facial tissues, infused tissues, lotion tissue) failed to corroborate the concept with any matching keyword. As it lacks a second independent source family, it must be rejected.",
+              "rejection_reason": "NO_SECOND_SOURCE",
+              "decision": "REJECT"
+            },
+            "output": {
+              "accepted": true,
+              "decision": "REJECT",
+              "category": "LOW_QUALITY"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "decision_category": "LOW_QUALITY",
+          "rationale": "The candidate describes a trend of facial tissues infused with skincare actives, but it is supported by only a single source family (agent_gemini_discovery). A check of Exploding Topics for related terms (skincare infused facial tissues, infused tissues, lotion tissue) failed to corroborate the concept with any matching keyword. As it lacks a second independent source family, it must be rejected.",
+          "rejection_reason": "NO_SECOND_SOURCE",
+          "decision": "REJECT"
+        },
+        "final_text": "I have verified the candidate trend. It is supported by only a single source family, making it an ET-rescue candidate. I checked Exploding Topics for corroboration using terms like \"skincare infused facial tissues,\" \"infused tissues,\" and \"lotion tissue,\" but no relevant keywords emerged that match this concept. Without a second independent source family, this candidate fails to clear the threshold for a corroborated trend and is therefore rejected.",
+        "accounting": {
+          "input_tokens": 26907,
+          "candidates_tokens": 274,
+          "thoughts_tokens": 370,
+          "total_tokens": 27551,
+          "cost_as_deployed": 0.057,
+          "cost_with_thinking": 0.0615,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0045
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 10,
+          "present_count": 3,
+          "coverage_pct": 30,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "confidence",
+            "max_neighbor_sim",
+            "considered_neighbors[]"
+          ],
+          "rows": [
+            {
+              "path": "decision",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "decision_category",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "target_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "trend_topic",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rejection_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_until",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rationale",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "et_was_second_source",
+              "type": "boolean",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "et_matched_keyword",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 10,
+          "present_count": 4,
+          "coverage_pct": 40,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "decision",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "decision_category",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "target_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "trend_topic",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rejection_reason",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "defer_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_until",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rationale",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "et_was_second_source",
+              "type": "boolean",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "et_matched_keyword",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "fields_lost": [],
+        "fields_gained": [
+          "rejection_reason"
+        ],
+        "coverage_delta_pct": 10
+      },
+      "descriptor": null
+    }
+  ]
+}

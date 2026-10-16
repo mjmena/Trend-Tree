@@ -1,0 +1,180 @@
+{
+  "lane": "verticals",
+  "summary": "The four Gemini discovery verticals. The only lanes with no thinking parameter — where 3.7 Flash's thinking floor actually bites.",
+  "incumbent_model": "gemini-3-flash-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 0.3,
+    "output": 2.5
+  },
+  "started_at": "2026-08-20T08:47:53.449Z",
+  "finished_at": "2026-08-20T08:48:08.567Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 1,
+    "rerunIncumbent": false,
+    "caseId": "wellness",
+    "dryRun": false,
+    "json": false
+  },
+  "results": [
+    {
+      "case": {
+        "id": "wellness",
+        "label": "wellness (gemini_wellness) · last run 2026-08-20 · pin gemini-3-flash-preview",
+        "incumbentAt": "2026-08-20",
+        "incumbent": {
+          "emission": {
+            "trends": [
+              {
+                "title": "Low-Profile Collegiate Sneakers",
+                "source_url": null
+              },
+              {
+                "title": "Healthspan-Centric Aging",
+                "source_url": null
+              },
+              {
+                "title": "Fitness Studios as Social Hubs",
+                "source_url": null
+              },
+              {
+                "title": "Community-Driven Health Tech",
+                "source_url": null
+              },
+              {
+                "title": "Machine-Washable Vegan Footwear",
+                "source_url": null
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3-flash-preview",
+            "run_date": "2026-08-20",
+            "signals": 5
+          }
+        }
+      },
+      "built": {
+        "mode": "single",
+        "terminal_tool": null,
+        "tool_names": null,
+        "prompt_provenance": null,
+        "system_chars": 0,
+        "user_chars": 486,
+        "input_notes": {
+          "source_name": "gemini_wellness",
+          "category": "wellness",
+          "prompt_chars": 440,
+          "prompt_source": "hardcoded in the step — this lane does NOT read DIM_LLM_PROMPT",
+          "thinking_floor": "the incumbent sends no thinking parameter at all; 3.7 Flash cannot disable thinking, so compare thinking tokens closely",
+          "grounding": "live Google Search — results are not reproducible across days"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 12908,
+        "emission": {
+          "trends": [
+            {
+              "title": "Fitness Studios as Gen Z's New Social 'Third Place'",
+              "description": "Younger consumers are increasingly substituting traditional nightlife and bars with boutique fitness studios and run clubs to form meaningful, face-to-face social connections.",
+              "source_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHJcBWsbVBBeFZwlaTPDi_cr7vrCplHOKF2NCgyNrkqz-q9titG-v7dZKsWPudKqWeK9lUg34j9WIIVf_uBhhymK-fknjWw_yU-kRM7c42TRXtPFmeYkiL_4Wvd6qI6lTLYmekJYW1AnN8wWm0wTcXMEZ-kR0vRa9h8lXsVlHXfQY0hiikVU_xH5G_a6IWYWpSB1SQkMudXDvnaJQ==",
+              "source_name": "Forbes"
+            },
+            {
+              "title": "Convergence of Health and Clinical Beauty",
+              "description": "The personal care sector is seeing a shift where 'health is the new flex,' fusing clinical health claims, transparency, and preventative wellness into everyday beauty routines.",
+              "source_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFMt-ZNjXLdw2nG24C7avokOF15_A1nCjf9GgIvTzpBN2pTpXF5o78Tv0rw5cFR8K9kBtlqzFAUzOCZTd3bAz-xuQMaEN5B1bt0H1HAdsZEWJqy0JaffSLZFXZcRh7qpNomPs7S5cgTJDd5qTo5TlKfO2NEpsRt4g==",
+              "source_name": "AW360 - Advertising Week"
+            },
+            {
+              "title": "Self-Directed Functional Nutrition & Supplementation",
+              "description": "Consumers are actively turning to ingredient transparency, precision nutrition, and targeted supplements to address individual dietary and vitality goals.",
+              "source_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFk1ECFKT6AlyGGSnwedkr13Mvw6i8MmeBVayrF2FSVFhN21gLYdEIWaC7gCKcZJpe1p1KHsMpyd2BYYhzrGsGh9HiabxbXsT9zeo32E_UZsTSMtB0VrF4Vao2JCj3bL8EDmS73PSn21p-C6u8uTFqWjP0T6Ke8ZLFQAgcB5lWR5XVE1rgzsY33Wz4bgJx1iYakhMxQZYyKBbMFwDWWH4qa_-_P6HqXtJB8vSjX5ODAgDMw2SdNgD0n7z-UF4HP6Q==",
+              "source_name": "NIQ"
+            },
+            {
+              "title": "Clinical-Grade K-Beauty Expands Across U.S. Retail",
+              "description": "Demand for clinical hydration cosmetics and advanced K-beauty active formulations continues to soar across mainstream beauty retailers in the United States.",
+              "source_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGrQWAHrPxNjNHk2NrPJ1EqHuMXCnJyCdoJSBopg_oE1UUHfXYSCY_-XJT1XJ33MLIkxzJ6qQ5TMp5J_Fja1BCGGOEynA2xJ94S1dFPH6IiCv5wlGIUGb1vnZ4uL_hjH671RfPFjNev8xrgSN1BnvQUtkPEVB4A1s2NesuryEh2rfGtnGLEes-kyF2xDqiTLdJvo0OiGHXFvLmctto7i9M61SE_4lhR0yiqXIBFSpx546cTr1BZHNgbA34PlrHO5YDSxc-PsOE=",
+              "source_name": "PR Newswire"
+            },
+            {
+              "title": "Skin-First Hybrid Tints with Built-In Sun Protection",
+              "description": "Consumers are favoring multi-tasking hybrid beauty formats that blend lightweight skin-barrier nourishment, hydration, and high-factor daily sun care.",
+              "source_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHfYXTTXctX5OtkCeVmioTNmgdSpMjTwo_HU8p4hrYYDP8gmwaSfJSWQ2G-NJSOodNJJbqW4T27PT1OwEBCJ0-uYp8be6D4hciaHdJYAkcvcNJozLDUPb5XJBrIpgoUj7ZfvEJ3qmiC01LCVLorFUHtI1o=",
+              "source_name": "Grazia"
+            },
+            {
+              "title": "Rise of Targeted Neck and Décolletage Skincare",
+              "description": "Personal care routines are expanding beyond facial care to targeted body zones with active-rich formulas featuring antioxidants, vitamins, and firming actives.",
+              "source_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEwlRoSllwe4z4AXff1MnhuwbnQsYeCUWRlGVolQlbPdq7OPU5YxmdZrHqHxYQwvTxqRrUTAo5LCMtW1WWSnOQzXtVyi1GqTBC1hNmJ7POcXEhzOcvOYxCINZkfvOLRrumXrPquXtETyPY=",
+              "source_name": "RUSSH"
+            },
+            {
+              "title": "Low-Profile and Functional Footwear for Daily Movement",
+              "description": "Footwear brands are focusing on low-profile, versatile sneakers that balance casual style with physical mobility and sustainable construction.",
+              "source_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHougcbg2r5KthwsxzPdTE2ArAHPFq4Mq-AZtcRJi_sirT5wu9U36hEhUuU5r0cAgazcucKAsrDzKpkMNrxUrMaY9H-0QEDKk1OAj5ktWx_vBK5QolL4uu_AObhHVOu5SSaceoCLtObXCO6a21hlFguVUCUa7ZkWjlOjQ3kb-sF9cjC6Cyg",
+              "source_name": "NBC News"
+            },
+            {
+              "title": "Microbiome-Targeted Scalp and Hair Reset Treatments",
+              "description": "Consumers are prioritizing scalp barrier health and microbiome balance through specialized leave-on serums and botanical treatments.",
+              "source_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEwlRoSllwe4z4AXff1MnhuwbnQsYeCUWRlGVolQlbPdq7OPU5YxmdZrHqHxYQwvTxqRrUTAo5LCMtW1WWSnOQzXtVyi1GqTBC1hNmJ7POcXEhzOcvOYxCINZkfvOLRrumXrPquXtETyPY=",
+              "source_name": "RUSSH"
+            },
+            {
+              "title": "AI-Guided Fitness and Wellness Coaching",
+              "description": "Individuals are adopting AI chatbots and smart coaching applications to generate customized workout programming and personalized wellness regimens.",
+              "source_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHTqzQ7QwP-aZIwhs-yoT4ZXHGpEssRQs3j50I2Fw__cQf76MSrp_q-nMolRgPZ_na0Uw2OX_nTUsVj9hQbGlgGfPBMcn7Zfz6621ofR7kTenQDKTx2rTwixgl1rZB6Xk05VJvoplen4Oc_vTRMrfqm_-oJ54_tdxoBx-dRs1zCUcO7",
+              "source_name": "The Guardian"
+            },
+            {
+              "title": "Wearable Biometrics and Continuous Personal Monitoring",
+              "description": "Consumer adoption of smart rings and health wearables continues to expand as users track recovery, sleep staging, and glucose trends in real time.",
+              "source_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFk1ECFKT6AlyGGSnwedkr13Mvw6i8MmeBVayrF2FSVFhN21gLYdEIWaC7gCKcZJpe1p1KHsMpyd2BYYhzrGsGh9HiabxbXsT9zeo32E_UZsTSMtB0VrF4Vao2JCj3bL8EDmS73PSn21p-C6u8uTFqWjP0T6Ke8ZLFQAgcB5lWR5XVE1rgzsY33Wz4bgJx1iYakhMxQZYyKBbMFwDWWH4qa_-_P6HqXtJB8vSjX5ODAgDMw2SdNgD0n7z-UF4HP6Q==",
+              "source_name": "NIQ"
+            }
+          ]
+        },
+        "text": "```json\n[\n  {\n    \"title\": \"Fitness Studios as Gen Z's New Social 'Third Place'\",\n    \"description\": \"Younger consumers are increasingly substituting traditional nightlife and bars with boutique fitness studios and run clubs to form meaningful, face-to-face social connections.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHJcBWsbVBBeFZwlaTPDi_cr7vrCplHOKF2NCgyNrkqz-q9titG-v7dZKsWPudKqWeK9lUg34j9WIIVf_uBhhymK-fknjWw_yU-kRM7c42TRXtPFmeYkiL_4Wvd6qI6lTLYmekJYW1AnN8wWm0wTcXMEZ-kR0vRa9h8lXsVlHXfQY0hiikVU_xH5G_a6IWYWpSB1SQkMudXDvnaJQ==\",\n    \"source_name\": \"Forbes\"\n  },\n  {\n    \"title\": \"Convergence of Health and Clinical Beauty\",\n    \"description\": \"The personal care sector is seeing a shift where 'health is the new flex,' fusing clinical health claims, transparency, and preventative wellness into everyday beauty routines.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFMt-ZNjXLdw2nG24C7avokOF15_A1nCjf9GgIvTzpBN2pTpXF5o78Tv0rw5cFR8K9kBtlqzFAUzOCZTd3bAz-xuQMaEN5B1bt0H1HAdsZEWJqy0JaffSLZFXZcRh7qpNomPs7S5cgTJDd5qTo5TlKfO2NEpsRt4g==\",\n    \"source_name\": \"AW360 - Advertising Week\"\n  },\n  {\n    \"title\": \"Self-Directed Functional Nutrition & Supplementation\",\n    \"description\": \"Consumers are actively turning to ingredient transparency, precision nutrition, and targeted supplements to address individual dietary and vitality goals.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFk1ECFKT6AlyGGSnwedkr13Mvw6i8MmeBVayrF2FSVFhN21gLYdEIWaC7gCKcZJpe1p1KHsMpyd2BYYhzrGsGh9HiabxbXsT9zeo32E_UZsTSMtB0VrF4Vao2JCj3bL8EDmS73PSn21p-C6u8uTFqWjP0T6Ke8ZLFQAgcB5lWR5XVE1rgzsY33Wz4bgJx1iYakhMxQZYyKBbMFwDWWH4qa_-_P6HqXtJB8vSjX5ODAgDMw2SdNgD0n7z-UF4HP6Q==\",\n    \"source_name\": \"NIQ\"\n  },\n  {\n    \"title\": \"Clinical-Grade K-Beauty Expands Across U.S. Retail\",\n    \"description\": \"Demand for clinical hydration cosmetics and advanced K-beauty active formulations continues to soar across mainstream beauty retailers in the United States.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGrQWAHrPxNjNHk2NrPJ1EqHuMXCnJyCdoJSBopg_oE1UUHfXYSCY_-XJT1XJ33MLIkxzJ6qQ5TMp5J_Fja1BCGGOEynA2xJ94S1dFPH6IiCv5wlGIUGb1vnZ4uL_hjH671RfPFjNev8xrgSN1BnvQUtkPEVB4A1s2NesuryEh2rfGtnGLEes-kyF2xDqiTLdJvo0OiGHXFvLmctto7i9M61SE_4lhR0yiqXIBFSpx546cTr1BZHNgbA34PlrHO5YDSxc-PsOE=\",\n    \"source_name\": \"PR Newswire\"\n  },\n  {\n    \"title\": \"Skin-First Hybrid Tints with Built-In Sun Protection\",\n    \"description\": \"Consumers are favoring multi-tasking hybrid beauty formats that blend lightweight skin-barrier nourishment, hydration, and high-factor daily sun care.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHfYXTTXctX5OtkCeVmioTNmgdSpMjTwo_HU8p4hrYYDP8gmwaSfJSWQ2G-NJSOodNJJbqW4T27PT1OwEBCJ0-uYp8be6D4hciaHdJYAkcvcNJozLDUPb5XJBrIpgoUj7ZfvEJ3qmiC01LCVLorFUHtI1o=\",\n    \"source_name\": \"Grazia\"\n  },\n  {\n    \"title\": \"Rise of Targeted Neck and Décolletage Skincare\",\n    \"description\": \"Personal care routines are expanding beyond facial care to targeted body zones with active-rich formulas featuring antioxidants, vitamins, and firming actives.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEwlRoSllwe4z4AXff1MnhuwbnQsYeCUWRlGVolQlbPdq7OPU5YxmdZrHqHxYQwvTxqRrUTAo5LCMtW1WWSnOQzXtVyi1GqTBC1hNmJ7POcXEhzOcvOYxCINZkfvOLRrumXrPquXtETyPY=\",\n    \"source_name\": \"RUSSH\"\n  },\n  {\n    \"title\": \"Low-Profile and Functional Footwear for Daily Movement\",\n    \"description\": \"Footwear brands are focusing on low-profile, versatile sneakers that balance casual style with physical mobility and sustainable construction.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHougcbg2r5KthwsxzPdTE2ArAHPFq4Mq-AZtcRJi_sirT5wu9U36hEhUuU5r0cAgazcucKAsrDzKpkMNrxUrMaY9H-0QEDKk1OAj5ktWx_vBK5QolL4uu_AObhHVOu5SSaceoCLtObXCO6a21hlFguVUCUa7ZkWjlOjQ3kb-sF9cjC6Cyg\",\n    \"source_name\": \"NBC News\"\n  },\n  {\n    \"title\": \"Microbiome-Targeted Scalp and Hair Reset Treatments\",\n    \"description\": \"Consumers are prioritizing scalp barrier health and microbiome balance through specialized leave-on serums and botanical treatments.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEwlRoSllwe4z4AXff1MnhuwbnQsYeCUWRlGVolQlbPdq7OPU5YxmdZrHqHxYQwvTxqRrUTAo5LCMtW1WWSnOQzXtVyi1GqTBC1hNmJ7POcXEhzOcvOYxCINZkfvOLRrumXrPquXtETyPY=\",\n    \"source_name\": \"RUSSH\"\n  },\n  {\n    \"title\": \"AI-Guided Fitness and Wellness Coaching\",\n    \"description\": \"Individuals are adopting AI chatbots and smart coaching applications to generate customized workout programming and personalized wellness regimens.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHTqzQ7QwP-aZIwhs-yoT4ZXHGpEssRQs3j50I2Fw__cQf76MSrp_q-nMolRgPZ_na0Uw2OX_nTUsVj9hQbGlgGfPBMcn7Zfz6621ofR7kTenQDKTx2rTwixgl1rZB6Xk05VJvoplen4Oc_vTRMrfqm_-oJ54_tdxoBx-dRs1zCUcO7\",\n    \"source_name\": \"The Guardian\"\n  },\n  {\n    \"title\": \"Wearable Biometrics and Continuous Personal Monitoring\",\n    \"description\": \"Consumer adoption of smart rings and health wearables continues to expand as users track recovery, sleep staging, and glucose trends in real time.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFk1ECFKT6AlyGGSnwedkr13Mvw6i8MmeBVayrF2FSVFhN21gLYdEIWaC7gCKcZJpe1p1KHsMpyd2BYYhzrGsGh9HiabxbXsT9zeo32E_UZsTSMtB0VrF4Vao2JCj3bL8EDmS73PSn21p-C6u8uTFqWjP0T6Ke8ZLFQAgcB5lWR5XVE1rgzsY33Wz4bgJx1iYakhMxQZYyKBbMFwDWWH4qa_-_P6HqXtJB8vSjX5ODAgDMw2SdNgD0n7z-UF4HP6Q==\",\n    \"source_name\": \"NIQ\"\n  }\n]\n```",
+        "accounting": {
+          "input_tokens": 120,
+          "candidates_tokens": 2325,
+          "thoughts_tokens": 0,
+          "total_tokens": 2445,
+          "cost_as_deployed": 0.0088,
+          "cost_with_thinking": 0.0088,
+          "understated_by": 0,
+          "reconciles": "candidates_includes_thinking",
+          "rate": {
+            "input": 0.75,
+            "output": 3.75,
+            "until": "2026-12-31",
+            "after": {
+              "input": 1.5,
+              "output": 7.5
+            }
+          }
+        }
+      },
+      "incumbentRerun": null,
+      "fields": null
+    }
+  ]
+}

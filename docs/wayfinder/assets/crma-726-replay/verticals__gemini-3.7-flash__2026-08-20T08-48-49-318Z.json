@@ -1,0 +1,190 @@
+{
+  "lane": "verticals",
+  "summary": "The four Gemini discovery verticals. The only lanes with no thinking parameter — where 3.7 Flash's thinking floor actually bites.",
+  "incumbent_model": "gemini-3-flash-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 0.3,
+    "output": 2.5
+  },
+  "started_at": "2026-08-20T08:48:49.318Z",
+  "finished_at": "2026-08-20T08:49:09.335Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 1,
+    "rerunIncumbent": false,
+    "caseId": "wellness",
+    "dryRun": false,
+    "json": false
+  },
+  "results": [
+    {
+      "case": {
+        "id": "wellness",
+        "label": "wellness (gemini_wellness) · last run 2026-08-20 · pin gemini-3-flash-preview",
+        "incumbentAt": "2026-08-20",
+        "incumbent": {
+          "emission": {
+            "trends": [
+              {
+                "title": "Low-Profile Collegiate Sneakers",
+                "source_url": "https://www.nbcnews.com/select/shopping/best-new-products-august-2026-rcna166544"
+              },
+              {
+                "title": "Fitness Studios as Social Hubs",
+                "source_url": "https://www.forbes.com/sites/jefffromm/2026/08/19/gen-zs-new-social-network-may-be-the-fitness-studio/"
+              },
+              {
+                "title": "Community-Driven Health Tech",
+                "source_url": "https://newsroom.heart.org/news/national-cohort-of-founders-brings-community-driven-health-solutions-to-scale"
+              },
+              {
+                "title": "Healthspan-Centric Aging",
+                "source_url": "https://keyt.com/stacker-longevity/2026/08/18/what-healthy-aging-really-looks-like-in-2026/"
+              },
+              {
+                "title": "Machine-Washable Vegan Footwear",
+                "source_url": "https://www.nbcnews.com/select/shopping/best-new-products-august-2026-rcna166543"
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3-flash-preview",
+            "run_date": "2026-08-20",
+            "signals": 5
+          }
+        }
+      },
+      "built": {
+        "mode": "single",
+        "terminal_tool": null,
+        "tool_names": null,
+        "prompt_provenance": null,
+        "system_chars": 0,
+        "user_chars": 486,
+        "input_notes": {
+          "source_name": "gemini_wellness",
+          "category": "wellness",
+          "prompt_chars": 440,
+          "prompt_source": "hardcoded in the step — this lane does NOT read DIM_LLM_PROMPT",
+          "thinking_floor": "the incumbent sends no thinking parameter at all; 3.7 Flash cannot disable thinking, so compare thinking tokens closely",
+          "grounding": "live Google Search — results are not reproducible across days"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 9759,
+        "emission": {
+          "trends": [
+            {
+              "title": "Results-Driven Nutrition and Protein Optimization",
+              "description": "Consumers are moving away from passive dieting toward self-directed, active macronutrient optimization, demanding personalized functional foods that clearly demonstrate measurable health outcomes [1.1.4].",
+              "source_url": "https://nielseniq.com/global/en/insights/analysis/2026/health-wellness-winning-the-self-directed-results-driven-consumer/",
+              "source_name": "NIQ",
+              "url_live": false
+            },
+            {
+              "title": "Hyrox and Functional Fitness Competitions",
+              "description": "High-intensity functional endurance races like Hyrox are experiencing massive participation spikes as gym-goers look for quantifiable athletic goals rather than traditional gym routines.",
+              "source_url": "https://www.theguardian.com/lifeandstyle/article/2024/aug/07/wellness-trends-2024-hyrox-parasite-cleanse",
+              "source_name": "The Guardian",
+              "url_live": false
+            },
+            {
+              "title": "Metabolic Beauty and Cellular Longevity",
+              "description": "Personal care and skincare formulations are shifting focus from cosmetic surface enhancement to cellular renewal, microbiome balance, and inner metabolic vitality.",
+              "source_url": "https://aakpersonalcare.com/blog/personal-care-trends-2026",
+              "source_name": "AAK Personal Care",
+              "url_live": false
+            },
+            {
+              "title": "The Over-Optimization Backlash and Somatic Care",
+              "description": "Fatigued by excessive biometric tracking and biohacking pressure, consumers are pivoting toward nervous system regulation, emotional repair, and sensory-driven recovery practices.",
+              "source_url": "https://www.globalwellnesssummit.com/trend/the-future-of-wellness-2026-trends/",
+              "source_name": "Global Wellness Summit",
+              "url_live": false
+            },
+            {
+              "title": "AI-Powered Adaptive Personal Care Devices",
+              "description": "Smart grooming and beauty tools equipped with real-time biometric sensors and machine learning algorithms are tailoring skin and body routines dynamically to daily habits.",
+              "source_url": "https://www.philips.com/a-w/about/news/archive/standard/news/articles/2026/six-personal-care-trends-to-watch-in-2026.html",
+              "source_name": "Philips",
+              "url_live": true
+            },
+            {
+              "title": "Peptides and Targeted Regenerative Health",
+              "description": "Driven by the explosion of metabolic health awareness, peptide therapies for muscle repair, immunity, and cellular anti-aging are gaining significant mainstream consumer traction.",
+              "source_url": "https://www.prenuvo.com/blog/health-trends-2026",
+              "source_name": "Prenuvo",
+              "url_live": false
+            },
+            {
+              "title": "Muscle Mass as a Primary Metabolic Metric",
+              "description": "Consumers are prioritizing skeletal muscle maintenance and strength training over pure cardio, viewing muscle mass as a fundamental biomarker for metabolic resilience and long-term vitality.",
+              "source_url": "https://www.prenuvo.com/blog/health-trends-2026",
+              "source_name": "Prenuvo",
+              "url_live": false
+            },
+            {
+              "title": "At-Home Recovery Tech Expansion",
+              "description": "Active recovery modalities such as dynamic compression boots, red-light therapy panels, and targeted infrared devices are becoming standard consumer staples in home fitness routines.",
+              "source_url": "https://www.youtube.com/watch?v=T8NasKD36Ag",
+              "source_name": "Ecommerce Trend Watch",
+              "url_live": true
+            },
+            {
+              "title": "Intentional Rest and Sleep Tourism",
+              "description": "Consumers are prioritizing nervous system resets through dedicated 'sleep weekends', sensory deprivation, and evening supplement regimens designed to restore circadian balance.",
+              "source_url": "https://www.venbrook.com/insights/2026-wellbeing-trends-shaping-health-and-wellness/",
+              "source_name": "Venbrook Wellbeing Insights",
+              "url_live": false
+            },
+            {
+              "title": "Rise of Preventative Full-Body Health Memberships",
+              "description": "Proactive consumers are increasingly subscribing to comprehensive annual diagnostic testing and biomarker tracking services to detect health risks before symptoms arise.",
+              "source_url": "https://www.prenuvo.com/blog/health-trends-2026",
+              "source_name": "Prenuvo",
+              "url_live": false
+            }
+          ]
+        },
+        "text": "[\n  {\n    \"title\": \"Results-Driven Nutrition and Protein Optimization\",\n    \"description\": \"Consumers are moving away from passive dieting toward self-directed, active macronutrient optimization, demanding personalized functional foods that clearly demonstrate measurable health outcomes [1.1.4].\",\n    \"source_url\": \"https://nielseniq.com/global/en/insights/analysis/2026/health-wellness-winning-the-self-directed-results-driven-consumer/\",\n    \"source_name\": \"NIQ\"\n  },\n  {\n    \"title\": \"Hyrox and Functional Fitness Competitions\",\n    \"description\": \"High-intensity functional endurance races like Hyrox are experiencing massive participation spikes as gym-goers look for quantifiable athletic goals rather than traditional gym routines.\",\n    \"source_url\": \"https://www.theguardian.com/lifeandstyle/article/2024/aug/07/wellness-trends-2024-hyrox-parasite-cleanse\",\n    \"source_name\": \"The Guardian\"\n  },\n  {\n    \"title\": \"Metabolic Beauty and Cellular Longevity\",\n    \"description\": \"Personal care and skincare formulations are shifting focus from cosmetic surface enhancement to cellular renewal, microbiome balance, and inner metabolic vitality.\",\n    \"source_url\": \"https://www.aakpersonalcare.com/blog/personal-care-trends-2026\",\n    \"source_name\": \"AAK Personal Care\"\n  },\n  {\n    \"title\": \"The Over-Optimization Backlash and Somatic Care\",\n    \"description\": \"Fatigued by excessive biometric tracking and biohacking pressure, consumers are pivoting toward nervous system regulation, emotional repair, and sensory-driven recovery practices.\",\n    \"source_url\": \"https://globalwellnesssummit.com/trend/the-future-of-wellness-2026-trends/\",\n    \"source_name\": \"Global Wellness Summit\"\n  },\n  {\n    \"title\": \"AI-Powered Adaptive Personal Care Devices\",\n    \"description\": \"Smart grooming and beauty tools equipped with real-time biometric sensors and machine learning algorithms are tailoring skin and body routines dynamically to daily habits.\",\n    \"source_url\": \"https://www.philips.com/a-w/about/news/archive/standard/news/articles/2026/six-personal-care-trends-to-watch-in-2026.html\",\n    \"source_name\": \"Philips\"\n  },\n  {\n    \"title\": \"Peptides and Targeted Regenerative Health\",\n    \"description\": \"Driven by the explosion of metabolic health awareness, peptide therapies for muscle repair, immunity, and cellular anti-aging are gaining significant mainstream consumer traction.\",\n    \"source_url\": \"https://www.prenuvo.com/blog/health-trends-2026\",\n    \"source_name\": \"Prenuvo\"\n  },\n  {\n    \"title\": \"Muscle Mass as a Primary Metabolic Metric\",\n    \"description\": \"Consumers are prioritizing skeletal muscle maintenance and strength training over pure cardio, viewing muscle mass as a fundamental biomarker for metabolic resilience and long-term vitality.\",\n    \"source_url\": \"https://www.prenuvo.com/blog/health-trends-2026\",\n    \"source_name\": \"Prenuvo\"\n  },\n  {\n    \"title\": \"At-Home Recovery Tech Expansion\",\n    \"description\": \"Active recovery modalities such as dynamic compression boots, red-light therapy panels, and targeted infrared devices are becoming standard consumer staples in home fitness routines.\",\n    \"source_url\": \"https://www.youtube.com/watch?v=T8NasKD36Ag\",\n    \"source_name\": \"Ecommerce Trend Watch\"\n  },\n  {\n    \"title\": \"Intentional Rest and Sleep Tourism\",\n    \"description\": \"Consumers are prioritizing nervous system resets through dedicated 'sleep weekends', sensory deprivation, and evening supplement regimens designed to restore circadian balance.\",\n    \"source_url\": \"https://www.venbrook.com/insights/2026-wellbeing-trends-shaping-health-and-wellness/\",\n    \"source_name\": \"Venbrook Wellbeing Insights\"\n  },\n  {\n    \"title\": \"Rise of Preventative Full-Body Health Memberships\",\n    \"description\": \"Proactive consumers are increasingly subscribing to comprehensive annual diagnostic testing and biomarker tracking services to detect health risks before symptoms arise.\",\n    \"source_url\": \"https://www.prenuvo.com/blog/health-trends-2026\",\n    \"source_name\": \"Prenuvo\"\n  }\n]",
+        "accounting": {
+          "input_tokens": 120,
+          "candidates_tokens": 1105,
+          "thoughts_tokens": 0,
+          "total_tokens": 1225,
+          "cost_as_deployed": 0.0042,
+          "cost_with_thinking": 0.0042,
+          "understated_by": 0,
+          "reconciles": "n/a_no_thinking_tokens",
+          "rate": {
+            "input": 0.75,
+            "output": 3.75,
+            "until": "2026-12-31",
+            "after": {
+              "input": 1.5,
+              "output": 7.5
+            }
+          }
+        }
+      },
+      "incumbentRerun": null,
+      "fields": null
+    }
+  ]
+}

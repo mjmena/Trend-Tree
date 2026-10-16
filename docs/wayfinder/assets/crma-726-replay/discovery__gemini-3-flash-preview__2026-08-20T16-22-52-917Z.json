@@ -1,0 +1,1596 @@
+{
+  "lane": "discovery",
+  "summary": "The one registry-driven lane: its model comes from DIM_LLM_PROMPT, so moving it is an UPDATE, not a deploy.",
+  "incumbent_model": "gemini-2.5-flash",
+  "candidate_model": "gemini-3-flash-preview",
+  "candidate_rates": {
+    "input": 0.3,
+    "output": 2.5
+  },
+  "incumbent_rates": {
+    "input": 0.3,
+    "output": 2.5
+  },
+  "started_at": "2026-08-20T16:22:52.917Z",
+  "finished_at": "2026-08-20T16:31:54.357Z",
+  "options": {
+    "model": "gemini-3-flash-preview",
+    "limit": 6,
+    "rerunIncumbent": true,
+    "caseId": null,
+    "dryRun": false,
+    "json": true,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "wellness",
+        "label": "discovery.gemini.search v4 · registry model gemini-2.5-flash · vertical \"wellness\"",
+        "incumbentAt": null,
+        "incumbent": {
+          "emission": null,
+          "telemetry": {
+            "model": "gemini-2.5-flash",
+            "registry_driven": true,
+            "prompt_version": 4
+          }
+        }
+      },
+      "built": {
+        "mode": "single",
+        "terminal_tool": null,
+        "tool_names": null,
+        "prompt_provenance": {
+          "discovery.gemini.search": {
+            "version": 4,
+            "registry_model": "gemini-2.5-flash",
+            "chars": 2509
+          }
+        },
+        "system_chars": 0,
+        "user_chars": 16148,
+        "input_notes": {
+          "registry_model": "gemini-2.5-flash",
+          "prompt_version": 4,
+          "active_trends": 132,
+          "examples": 20,
+          "vertical": "wellness",
+          "how_to_switch": "UPDATE MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT SET MODEL='<id>' WHERE PROMPT_KEY='discovery.gemini.search' AND IS_ACTIVE=TRUE",
+          "drift_note": "registry has this lane on gemini-2.5-flash while the hardcoded verticals run gemini-3-flash-preview"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3-flash-preview",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 29771,
+        "emission": {
+          "proposals": [
+            {
+              "topic": "Practicing 'Somatic Shaking' for nervous system regulation",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE-7rP0g58B_9Ny2kzDRdMVS_zAiTmPbqPUavFE0zXZcvlh0v3K13GvxLpwPCAyLhPzOThITmqSZoz6sP7O_vglqdsq4G7raA5kmflIQisM6q_QPkqGx0KtMVWpWXaoB2Pm9pPNfDgGWPINvt03glFw3OEyixwOF75MNUnJm3TIbYHDoINlXlFqnqodH5ceWO8ycgQgAIocqxEk2Y2EUsVgc4JFZ5oSWHDB1FdVTVAbD_vMu8_ABt89zl3HTJasQGYK0mSEqQ==",
+              "why_now": "Mainstream interest in 'trauma release' has spiked this month, with consumers adopting primal, free-flowing shaking movements to discharge built-up cortisol and reset the vagus nerve. This behavior is moving from niche clinical therapy into daily home routines as a rapid stress-relief hack.",
+              "vertical": "wellness",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://facebook.com/Cloecyportal/posts/when-the-body-feels-safe-it-has-more-capacity-for-change-somatic-movement-helps-/1712416057556850",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Chloe",
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": "title_irrelevant"
+              }
+            },
+            {
+              "topic": "Switching to hydroxyapatite toothpaste for fluoride-free remineralization",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQERbLYfILEfnXD9rj-_lSNP6j7R3Z_fWNaaOmxI3Qer1Emjy7s1dyRMjRIOfGvfnJHo1EROI1hTCdUZ5V4VC_ttQz_aDnp8FtGY0Z_GB21XHkr6NyQvQIaiOanXPZCxh8ItDvqgNZaYFvfSmGXjWS0ztKssb5UOOelwHwvIPha_S6vxT4Rm8kKoD1xPrrNimzS48f7wBF0evQEFJozw",
+              "why_now": "As of August 2026, consumers are increasingly abandoning traditional fluoride toothpastes in favor of hydroxyapatite-based formulas that mimic natural tooth enamel. This shift is driven by new clinical validations of its remineralizing efficacy and a growing demand for bio-compatible, non-toxic oral care.",
+              "vertical": "wellness",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://newhope.com/natural-product-trends/natural-grocers-releases-predictions-for-2024-top-trends",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Natural Grocers releases predictions for 2024 top trends",
+                "published_date": "2023-12-11T06:00:00.000Z",
+                "days_since_published": 983,
+                "drop_reason": "stale_983d"
+              }
+            },
+            {
+              "topic": "Consuming bovine colostrum for 'liquid gold' gut and immune support",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEU-LnnaAMPIfnel4oqJlQKQ66G9u5EZfZaE6H0ikm2b5Dm2XRfi_vPRL2_iX_LU6meavnwFvrQ7QUNCDqWaK0_rRWWEmQHAuz8PKiklDWlADLvDlNrd775fq2mi4aG5n04PwuFaWcCgAnsn6aYlGpd8QvVso-CsE5IIWVB7BBlUhmCDxoGpg0W7S0GZyM4Cv2Q8PZPwfMHVmlQ7lrpptdmvkqjqFXYJ8LakwhGTLTN0znfURLBD2Y7Fj2FUYO2BZCHHeY=",
+              "why_now": "Bovine colostrum has transitioned from an athlete-only supplement to a mainstream wellness staple this summer, with the market projected to nearly double due to its high concentration of antibodies and growth factors. Consumers are now adding the powdered 'first milk' to smoothies and coffee to repair gut lining and boost systemic immunity.",
+              "vertical": "wellness",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://facebook.com/IndiaToday/videos/move-over-proteinpowders-colostrum-supplements-are-the-latest-wellness-crazemark/2073017523570277",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Move over #proteinpowders. #Colostrum supplements are the latest wellness craze.\n\nMarketed as &quot;#liquidgold,&quot; colostrum &#x2014; the first milk produced after a cow gives birth &#x2014; is being promoted for immunity, gut health and recovery. Backed by celebrity endorsements and influencer ",
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Adopting ectoin-infused topicals for 'extremolyte' barrier protection",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE6DH7DsHuuIl3WKB7Rx1BS5x5rbopBbT7PXFq6oaIb_J7IKNB_mMHkhswpBd3b9kGR969wLg47lFxNSM0j0lVofuhst1p5tiVsESO8bUrtmUjubLHU9dbtRPZ36Y4E7pmZ0fZ9rjCMrt6pKh1rSSqU",
+              "why_now": "Ectoin has emerged this quarter as the primary successor to hyaluronic acid, with consumers seeking out its unique ability to protect skin cells from extreme environmental stress like UV and pollution. Its surge is driven by its multi-tasking profile that hydrates while simultaneously reducing inflammation and redness.",
+              "vertical": "wellness",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://tatcha.com/blogs/skincare/ectoin-skincare-benefits",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Ectoin Heals, Hydrates, and Soothes The Skin — Here’s How to Use It",
+                "published_date": "2026-03-04T17:12:30.000Z",
+                "days_since_published": 169,
+                "drop_reason": "stale_169d"
+              }
+            },
+            {
+              "topic": "Wearing transcutaneous vagus nerve stimulation (tVNS) devices",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE9CAsuCm5xhR60pjUkiy56ZmaA8Jy_85AoZXPIrRuJdKCvBsem2PGy80ZSxVqUySCIVVIoDJ4j4gWu7yT4WBQYXohxjYyez7tApv4FvjigGFgCC0ilpT3pWH2umYgrlylCb4JCWP_u7RJ_5wGVLbHfBFZ-Uw8tB1e0AYKFGHVR_gTQnuMGAx7aH5SvsDE9ZtPrrp8hKxPE-YW30ww771zGPB_ERBfJf9jhIIVdMQA=",
+              "why_now": "New clinical reports published in July 2026 have catalyzed a surge in consumer adoption of wearable ear-based VNS devices. Shoppers are moving beyond manual breathing exercises to 'electroceutical' wearables that use targeted electrical signals to actively manage treatment-resistant stress and anxiety.",
+              "vertical": "wellness",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://psychiatrist.com/jcp/vagus-nerve-stimulation-suicidal-ideation-treatment-resistant-major-depression-recover",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Impact of Vagus Nerve Stimulation on Suicidal Ideation in Markedly Treatment-Resistant Major Depression: A RECOVER Study Report",
+                "published_date": "2026-07-08T00:00:00.000Z",
+                "days_since_published": 44,
+                "drop_reason": "stale_44d"
+              }
+            }
+          ]
+        },
+        "text": "[\n  {\n    \"topic\": \"Practicing 'Somatic Shaking' for nervous system regulation\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE-7rP0g58B_9Ny2kzDRdMVS_zAiTmPbqPUavFE0zXZcvlh0v3K13GvxLpwPCAyLhPzOThITmqSZoz6sP7O_vglqdsq4G7raA5kmflIQisM6q_QPkqGx0KtMVWpWXaoB2Pm9pPNfDgGWPINvt03glFw3OEyixwOF75MNUnJm3TIbYHDoINlXlFqnqodH5ceWO8ycgQgAIocqxEk2Y2EUsVgc4JFZ5oSWHDB1FdVTVAbD_vMu8_ABt89zl3HTJasQGYK0mSEqQ==\",\n    \"why_now\": \"Mainstream interest in 'trauma release' has spiked this month, with consumers adopting primal, free-flowing shaking movements to discharge built-up cortisol and reset the vagus nerve. This behavior is moving from niche clinical therapy into daily home routines as a rapid stress-relief hack.\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Switching to hydroxyapatite toothpaste for fluoride-free remineralization\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQERbLYfILEfnXD9rj-_lSNP6j7R3Z_fWNaaOmxI3Qer1Emjy7s1dyRMjRIOfGvfnJHo1EROI1hTCdUZ5V4VC_ttQz_aDnp8FtGY0Z_GB21XHkr6NyQvQIaiOanXPZCxh8ItDvqgNZaYFvfSmGXjWS0ztKssb5UOOelwHwvIPha_S6vxT4Rm8kKoD1xPrrNimzS48f7wBF0evQEFJozw\",\n    \"why_now\": \"As of August 2026, consumers are increasingly abandoning traditional fluoride toothpastes in favor of hydroxyapatite-based formulas that mimic natural tooth enamel. This shift is driven by new clinical validations of its remineralizing efficacy and a growing demand for bio-compatible, non-toxic oral care.\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Consuming bovine colostrum for 'liquid gold' gut and immune support\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEU-LnnaAMPIfnel4oqJlQKQ66G9u5EZfZaE6H0ikm2b5Dm2XRfi_vPRL2_iX_LU6meavnwFvrQ7QUNCDqWaK0_rRWWEmQHAuz8PKiklDWlADLvDlNrd775fq2mi4aG5n04PwuFaWcCgAnsn6aYlGpd8QvVso-CsE5IIWVB7BBlUhmCDxoGpg0W7S0GZyM4Cv2Q8PZPwfMHVmlQ7lrpptdmvkqjqFXYJ8LakwhGTLTN0znfURLBD2Y7Fj2FUYO2BZCHHeY=\",\n    \"why_now\": \"Bovine colostrum has transitioned from an athlete-only supplement to a mainstream wellness staple this summer, with the market projected to nearly double due to its high concentration of antibodies and growth factors. Consumers are now adding the powdered 'first milk' to smoothies and coffee to repair gut lining and boost systemic immunity.\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Adopting ectoin-infused topicals for 'extremolyte' barrier protection\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE6DH7DsHuuIl3WKB7Rx1BS5x5rbopBbT7PXFq6oaIb_J7IKNB_mMHkhswpBd3b9kGR969wLg47lFxNSM0j0lVofuhst1p5tiVsESO8bUrtmUjubLHU9dbtRPZ36Y4E7pmZ0fZ9rjCMrt6pKh1rSSqU\",\n    \"why_now\": \"Ectoin has emerged this quarter as the primary successor to hyaluronic acid, with consumers seeking out its unique ability to protect skin cells from extreme environmental stress like UV and pollution. Its surge is driven by its multi-tasking profile that hydrates while simultaneously reducing inflammation and redness.\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Wearing transcutaneous vagus nerve stimulation (tVNS) devices\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE9CAsuCm5xhR60pjUkiy56ZmaA8Jy_85AoZXPIrRuJdKCvBsem2PGy80ZSxVqUySCIVVIoDJ4j4gWu7yT4WBQYXohxjYyez7tApv4FvjigGFgCC0ilpT3pWH2umYgrlylCb4JCWP_u7RJ_5wGVLbHfBFZ-Uw8tB1e0AYKFGHVR_gTQnuMGAx7aH5SvsDE9ZtPrrp8hKxPE-YW30ww771zGPB_ERBfJf9jhIIVdMQA=\",\n    \"why_now\": \"New clinical reports published in July 2026 have catalyzed a surge in consumer adoption of wearable ear-based VNS devices. Shoppers are moving beyond manual breathing exercises to 'electroceutical' wearables that use targeted electrical signals to actively manage treatment-resistant stress and anxiety.\",\n    \"vertical\": \"wellness\"\n  }\n]",
+        "accounting": {
+          "input_tokens": 5609,
+          "candidates_tokens": 1449,
+          "thoughts_tokens": 3537,
+          "total_tokens": 10595,
+          "cost_as_deployed": 0.0053,
+          "cost_with_thinking": 0.0141,
+          "understated_by": 0.0088,
+          "reconciles": "candidates_excludes_thinking",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-2.5-flash",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 28192,
+        "emission": {
+          "proposals": [
+            {
+              "topic": "Adopting Neurofeedback for Cognitive Training",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGKyovuIKi8SCvy816SVDLMr0raUXqMfowHU7Gfu-dm_qucv1ewWixEhUIIbKdePc-21tHLZ_RhOxjdIWMKme0H0fnfZlVy60r2aqWMfbf4KOoFsBqgFQw4CR4l0NJYMZVTlFnZ9_HZeP-PqVCwg2mDDRxrm-DGI6oXdh165X-aEs6g6DoerE8BLRIxgg==",
+              "why_now": "The integration of advanced technology with holistic ancestral wisdom is leading consumers to use neurofeedback and brain-computer interfaces to train their minds for enhanced focus and relaxation, often through gamified meditation practices.",
+              "vertical": "wellness",
+              "deep_link": true,
+              "verify": {
+                "drop_reason": "no_canonical"
+              }
+            },
+            {
+              "topic": "Prioritizing Midlife Lifestyle for Dementia Prevention",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFIwCiPaEgNnYP7PfmzoRysPqD8xErJKgWVWV-bTfRChvh5sKUgpkNIfk1aFyUxF9Wmzns9ETuDmhjTckTb81EEcumdi3AyXKUvAzEf5QzhbQNOtms35WXgoTOQaZ80yi73jF_vg4kncmC6W-90UNou0Rh3L04RAuBLhgAwq-lB3aYQgQrmofR_ffN2JHQ4DXy8uORNY76IJLFVKcAJwFKAzI3JsYH-qyZtMHhTa5q6xB2syP55B9Nx",
+              "why_now": "Recent studies highlight the significant impact of avoiding midlife risk factors like high blood pressure, Type 2 diabetes, and smoking, prompting consumers to adopt long-term lifestyle changes specifically for dementia prevention.",
+              "vertical": "wellness",
+              "deep_link": true,
+              "verify": {
+                "drop_reason": "no_canonical"
+              }
+            },
+            {
+              "topic": "Cultivating a Worry-Reduction Mental Discipline",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEQ0ICiesQKlq3em-L4IX4FkjGFFLyspEf5-5je-s26Yz2Z7EBpHaTq8ToyAjkAG4JW_LkV7_TDPEmLM-EbygfZglYGwmsup3a3vfNf6lVEaICfYGuwLERgzElGQYLAcn0cFW9WXv2Nc2YAx6RjSDRxNd-gtOWP5Q==",
+              "why_now": "Public figures are promoting the active practice of 'getting out of the habit of worrying' as a simple yet powerful wellness tool for mental clarity and stress reduction, beyond traditional meditation.",
+              "vertical": "wellness",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://latimes.com/live-well/longevity/story/kate-walsh",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Kate Walsh’s Wellness Routine for Aging Well Is Surprisingly Simple",
+                "published_date": "2026-08-19T23:18:54.792Z",
+                "days_since_published": 1,
+                "drop_reason": "title_irrelevant"
+              }
+            }
+          ]
+        },
+        "text": "```json\n[\n  {\n    \"topic\": \"Adopting Neurofeedback for Cognitive Training\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGKyovuIKi8SCvy816SVDLMr0raUXqMfowHU7Gfu-dm_qucv1ewWixEhUIIbKdePc-21tHLZ_RhOxjdIWMKme0H0fnfZlVy60r2aqWMfbf4KOoFsBqgFQw4CR4l0NJYMZVTlFnZ9_HZeP-PqVCwg2mDDRxrm-DGI6oXdh165X-aEs6g6DoerE8BLRIxgg==\",\n    \"why_now\": \"The integration of advanced technology with holistic ancestral wisdom is leading consumers to use neurofeedback and brain-computer interfaces to train their minds for enhanced focus and relaxation, often through gamified meditation practices.\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Prioritizing Midlife Lifestyle for Dementia Prevention\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFIwCiPaEgNnYP7PfmzoRysPqD8xErJKgWVWV-bTfRChvh5sKUgpkNIfk1aFyUxF9Wmzns9ETuDmhjTckTb81EEcumdi3AyXKUvAzEf5QzhbQNOtms35WXgoTOQaZ80yi73jF_vg4kncmC6W-90UNou0Rh3L04RAuBLhgAwq-lB3aYQgQrmofR_ffN2JHQ4DXy8uORNY76IJLFVKcAJwFKAzI3JsYH-qyZtMHhTa5q6xB2syP55B9Nx\",\n    \"why_now\": \"Recent studies highlight the significant impact of avoiding midlife risk factors like high blood pressure, Type 2 diabetes, and smoking, prompting consumers to adopt long-term lifestyle changes specifically for dementia prevention.\",\n    \"vertical\": \"wellness\"\n  },\n  {\n    \"topic\": \"Cultivating a Worry-Reduction Mental Discipline\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEQ0ICiesQKlq3em-L4IX4FkjGFFLyspEf5-5je-s26Yz2Z7EBpHaTq8ToyAjkAG4JW_LkV7_TDPEmLM-EbygfZglYGwmsup3a3vfNf6lVEaICfYGuwLERgzElGQYLAcn0cFW9WXv2Nc2YAx6RjSDRxNd-gtOWP5Q==\",\n    \"why_now\": \"Public figures are promoting the active practice of 'getting out of the habit of worrying' as a simple yet powerful wellness tool for mental clarity and stress reduction, beyond traditional meditation.\",\n    \"vertical\": \"wellness\"\n  }\n]\n```",
+        "accounting": {
+          "input_tokens": 3779,
+          "candidates_tokens": 837,
+          "thoughts_tokens": 5526,
+          "total_tokens": 14366,
+          "cost_as_deployed": 0.0032,
+          "cost_with_thinking": 0.017,
+          "understated_by": 0.0138,
+          "reconciles": "indeterminate",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "fields": null,
+      "descriptor": null
+    },
+    {
+      "case": {
+        "id": "food_beverage",
+        "label": "discovery.gemini.search v4 · registry model gemini-2.5-flash · vertical \"food_beverage\"",
+        "incumbentAt": null,
+        "incumbent": {
+          "emission": null,
+          "telemetry": {
+            "model": "gemini-2.5-flash",
+            "registry_driven": true,
+            "prompt_version": 4
+          }
+        }
+      },
+      "built": {
+        "mode": "single",
+        "terminal_tool": null,
+        "tool_names": null,
+        "prompt_provenance": {
+          "discovery.gemini.search": {
+            "version": 4,
+            "registry_model": "gemini-2.5-flash",
+            "chars": 2509
+          }
+        },
+        "system_chars": 0,
+        "user_chars": 16183,
+        "input_notes": {
+          "registry_model": "gemini-2.5-flash",
+          "prompt_version": 4,
+          "active_trends": 132,
+          "examples": 20,
+          "vertical": "food_beverage",
+          "how_to_switch": "UPDATE MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT SET MODEL='<id>' WHERE PROMPT_KEY='discovery.gemini.search' AND IS_ACTIVE=TRUE",
+          "drift_note": "registry has this lane on gemini-2.5-flash while the hardcoded verticals run gemini-3-flash-preview"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3-flash-preview",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 45960,
+        "emission": {
+          "proposals": [
+            {
+              "topic": "Kataifi-Core Confections / The Dubai Bar Craze",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGHBXipIjiR2iYIuLW_xByQWxCq-aiGMwdTImtbqaA7bsOHGkFcQ0UBQZQPouP3dX6k8KybDw2dLQzd3ct6pjSL1DR2iQNStYApwJfRYKsiiQONkh_D-p3esayi8oqMow==",
+              "why_now": "The viral pistachio-kunafa chocolate bar has transitioned from a social media curiosity to a mainstream retail staple in August 2026, with consumers aggressively seeking the specific 'crunch-and-cream' texture in DIY kits and limited-edition commercial launches.",
+              "vertical": "food_beverage",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://youtube.com/shorts/9OfqwetqeBU",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": null,
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Lipid-Loading Rituals / The EVOO Shot",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHPJpce4W9bAz2Ac04weXGCKnuF0qo0aDmq4x9rpwzUDz9fNTXlDRAQ6zJxFh0V_0GDqw6TUV_Iera0JAIqJi-5J1mqTmAnIF144e5cD98fETHGDicuMLeuITM6qSQOj9mSWVQ-ngNpg5w_7U5unP6mvu2fYWjScYdmZdYcgZilCDX5YZxUmvWpG0KyuCrCUhyT7g==",
+              "why_now": "Celebrity-endorsed 'lipid-loading' has spiked in mainstream fitness news this week, as consumers adopt a daily ritual of drinking high-polyphenol extra virgin olive oil shots for purported metabolic and skin-glow benefits.",
+              "vertical": "food_beverage",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://mensfitness.com/nutrition/what-happens-if-you-drink-a-shot-of-olive-oil-every-day",
+                "http_status": 403,
+                "status_class": "denied",
+                "unverified": true,
+                "article_title": null,
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Balsamic-Based Botanicals / Shrub-Style Sodas",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQF9KItFa8rBPMqS3I3pCPsGTEFXccm7bNKlJlm7CWj4eSivTRcyQEKnky2MBhGyPLmkGTaO9TP1EpbcQo-BudGZAZsnhS4Ck6CusrQFtXC0cajAUwU3UIKHrG881x3B-yQw4cE_MepLhM6hPHT4ERQGDn7Bq8qK6i3IjOCYZGs5Mcgmkp_NhvxiScWuMSeJfUFN4hv0T4lax8Gix4POfZEkfROQyyTNWpH75ZagrURBDbCotpIT-kPPE_t2jidywj5xYg==",
+              "why_now": "Consumers are increasingly DIY-ing sophisticated non-alcoholic beverages by mixing fruit-infused white balsamic vinegars with sparkling water to achieve a tart, complex flavor profile that serves as a low-sugar alternative to traditional sodas.",
+              "vertical": "food_beverage",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://facebook.com/onvmarket/videos/the-prettiest-drink-youll-make-all-week-and-it-starts-with-a-bottle-of-balsamic-/2272903906792121",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "The prettiest drink you&#039;ll make all week, and it starts with a bottle of balsamic. &#x1f353;&#x1f95d;\n\nOur Strawberry Kiwi Balsamic Vinegar is jammy, tart, and tropical, and it turns plain sparkling water into a refresher that tastes like it came from a juice bar. Muddle in a little fresh fruit",
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Aerated Honey Condiments / The Whipped Honey Hack",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEkyt9Tx3aKYmcrV6F2E-8yInXQ0uk4Hf421QcETDAKecZMK8eyLsx4NH5o0IhH1oy8IOS1QptQ9j-b-WlMNVen2_k6s-QBzYb474UbkL9Mnk3kr992wKdJ92BoVwu-CA==",
+              "why_now": "The 'whipped honey' technique is trending as a sensorial upgrade for home baristas and bakers in mid-August 2026, with consumers using high-speed aeration to transform standard liquid honey into a fluffy, white, spreadable condiment.",
+              "vertical": "food_beverage",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://youtube.com/shorts/DgYnYtU00As",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": null,
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            }
+          ]
+        },
+        "text": "[\n  {\n    \"topic\": \"Kataifi-Core Confections / The Dubai Bar Craze\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGHBXipIjiR2iYIuLW_xByQWxCq-aiGMwdTImtbqaA7bsOHGkFcQ0UBQZQPouP3dX6k8KybDw2dLQzd3ct6pjSL1DR2iQNStYApwJfRYKsiiQONkh_D-p3esayi8oqMow==\",\n    \"why_now\": \"The viral pistachio-kunafa chocolate bar has transitioned from a social media curiosity to a mainstream retail staple in August 2026, with consumers aggressively seeking the specific 'crunch-and-cream' texture in DIY kits and limited-edition commercial launches.\",\n    \"vertical\": \"food_beverage\"\n  },\n  {\n    \"topic\": \"Lipid-Loading Rituals / The EVOO Shot\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHPJpce4W9bAz2Ac04weXGCKnuF0qo0aDmq4x9rpwzUDz9fNTXlDRAQ6zJxFh0V_0GDqw6TUV_Iera0JAIqJi-5J1mqTmAnIF144e5cD98fETHGDicuMLeuITM6qSQOj9mSWVQ-ngNpg5w_7U5unP6mvu2fYWjScYdmZdYcgZilCDX5YZxUmvWpG0KyuCrCUhyT7g==\",\n    \"why_now\": \"Celebrity-endorsed 'lipid-loading' has spiked in mainstream fitness news this week, as consumers adopt a daily ritual of drinking high-polyphenol extra virgin olive oil shots for purported metabolic and skin-glow benefits.\",\n    \"vertical\": \"food_beverage\"\n  },\n  {\n    \"topic\": \"Balsamic-Based Botanicals / Shrub-Style Sodas\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQF9KItFa8rBPMqS3I3pCPsGTEFXccm7bNKlJlm7CWj4eSivTRcyQEKnky2MBhGyPLmkGTaO9TP1EpbcQo-BudGZAZsnhS4Ck6CusrQFtXC0cajAUwU3UIKHrG881x3B-yQw4cE_MepLhM6hPHT4ERQGDn7Bq8qK6i3IjOCYZGs5Mcgmkp_NhvxiScWuMSeJfUFN4hv0T4lax8Gix4POfZEkfROQyyTNWpH75ZagrURBDbCotpIT-kPPE_t2jidywj5xYg==\",\n    \"why_now\": \"Consumers are increasingly DIY-ing sophisticated non-alcoholic beverages by mixing fruit-infused white balsamic vinegars with sparkling water to achieve a tart, complex flavor profile that serves as a low-sugar alternative to traditional sodas.\",\n    \"vertical\": \"food_beverage\"\n  },\n  {\n    \"topic\": \"Aerated Honey Condiments / The Whipped Honey Hack\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEkyt9Tx3aKYmcrV6F2E-8yInXQ0uk4Hf421QcETDAKecZMK8eyLsx4NH5o0IhH1oy8IOS1QptQ9j-b-WlMNVen2_k6s-QBzYb474UbkL9Mnk3kr992wKdJ92BoVwu-CA==\",\n    \"why_now\": \"The 'whipped honey' technique is trending as a sensorial upgrade for home baristas and bakers in mid-August 2026, with consumers using high-speed aeration to transform standard liquid honey into a fluffy, white, spreadable condiment.\",\n    \"vertical\": \"food_beverage\"\n  }\n]",
+        "accounting": {
+          "input_tokens": 5280,
+          "candidates_tokens": 1003,
+          "thoughts_tokens": 8229,
+          "total_tokens": 14512,
+          "cost_as_deployed": 0.0041,
+          "cost_with_thinking": 0.0247,
+          "understated_by": 0.0206,
+          "reconciles": "candidates_excludes_thinking",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-2.5-flash",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 38604,
+        "emission": {
+          "proposals": [
+            {
+              "topic": "Integrating culinary and functional mushrooms into daily meals and beverages",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE9JURoyjII5RyH4gfL_uIelfLgFV7f2BuIDd-dK-FLwM4u19gYy_MbMIJksR_azmxhc4ZY4VXJqIBaVA_3_-LxYlGXdEt3hNTYYNLU7_RyXkUVKF1eZ_2uXsP0UASFV4wiIcEjSHh58jYSE4oDfzqrv-_xwSTgP9Csz_xNj6EPlO49F2KR4f61",
+              "why_now": "Recent product innovations highlighted at Expo West 2026 show mushrooms moving beyond niche supplements into diverse food and beverage formats, driven by both flavor and wellness benefits.",
+              "vertical": "food_beverage",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://nielseniq.com/global/en/insights/analysis/2026/expo-west-2026-trends",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Expo West 2026: A New Era of Functional, Clean, and Metabolic Nutrition",
+                "published_date": "2026-03-09T16:35:17.000Z",
+                "days_since_published": 164,
+                "drop_reason": "stale_164d"
+              }
+            },
+            {
+              "topic": "Adopting dates as a whole-food, minimally processed sweetener",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE9JURoyjII5RyH4gfL_uIelfLgFV7f2BuIDd-dK-FLwM4u19gYy_MbMIJksR_azmxhc4ZY4VXJqIBaVA_3_-LxYlGXdEt3hNTYYNLU7_RyXkUVKF1eZ_2uXsP0UASFV4wiIcEjSHh58jYSE4oDfzqrv-_xwSTgP9Csz_xNj6EPlO49F2KR4f61",
+              "why_now": "Dates are gaining significant traction as a versatile, minimally processed alternative to refined sugars, appearing across various food and beverage categories at recent industry expos.",
+              "vertical": "food_beverage",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://nielseniq.com/global/en/insights/analysis/2026/expo-west-2026-trends",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Expo West 2026: A New Era of Functional, Clean, and Metabolic Nutrition",
+                "published_date": "2026-03-09T16:35:17.000Z",
+                "days_since_published": 164,
+                "drop_reason": "stale_164d"
+              }
+            },
+            {
+              "topic": "Seeking enhanced protein delivery in hybrid and high-clarity beverage formats",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE9JURoyjII5RyH4gfL_uIelfLgFV7f2BuIDd-dK-FLwM4u19gYy_MbMIJksR_azmxhc4ZY4VXJqIBaVA_3_-LxYlGXdEt3hNTYYNLU7_RyXkUVKF1eZ_2uXsP0UASFV4wiIcEjSHh58jYSE4oDfzqrv-_xwSTgP9Csz_xNj6EPlO49F2KR4f61",
+              "why_now": "Ingredient suppliers are innovating with new protein formulations, including high-clarity shakes and hybrid beverages with digestive support, to meet consumer demand for satiety and taste, partly driven by GLP-1 medication users.",
+              "vertical": "food_beverage",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://nielseniq.com/global/en/insights/analysis/2026/expo-west-2026-trends",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Expo West 2026: A New Era of Functional, Clean, and Metabolic Nutrition",
+                "published_date": "2026-03-09T16:35:17.000Z",
+                "days_since_published": 164,
+                "drop_reason": "stale_164d"
+              }
+            },
+            {
+              "topic": "Gen Z prioritizing discovery of new global cuisines in restaurant dining",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEz8kA1wea0pwaqgQ7yZ7U7w7xzf0e8SsIoLCRKEHLb2dvY5agfdVZg_fd8QlkDydbyYQQ4kZ8VkF3JRa1-sp5old3ML16Hm6TfdH3Nih478PS-ffSWLq4ZNAHqMA4Z6TYcB4SNoX6Rzfhdv-qFwCCoxfiB59qXu1caqIWNimgP2Gw6hkw52D00QKF0-3exMoLhSp_jENW8j8X5FDVQn18DwoYec76X8fxin6xb6IHtPABsgtOxj_U=",
+              "why_now": "A recent YouGov report highlights that a significant majority of Gen Z consumers are actively seeking out new and diverse food experiences and cuisines when dining out in 2026.",
+              "vertical": "food_beverage",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://yougov.com/en-gb/articles/55399-how-gen-z-consumers-eat-out-in-2026-attitudes-restaurant-types-and-discovery-drivers",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "How Gen Z consumers eat out in 2026: Attitudes, restaurant types and discovery drivers",
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Elevating tinned fish as a convenient, nutrient-dense pantry staple",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEoF9O0RRi3zTNksPeaHZVwDvUCItLVfmOW-1bhKR3JJOmZX2VLyuB48EdE8BVVKkl5wMwBnJFajJAcV4bbcS7f7QG4poeqhMvxhTUl-sCYjpxuO4FCScM0gPUDCFSPC-H0KA==",
+              "why_now": "Tinned fish, particularly sardines, are gaining popularity as a health-conscious and convenient meal option, valued for their rich flavor, omega-3s, and protein content.",
+              "vertical": "food_beverage",
+              "deep_link": true,
+              "verify": {
+                "drop_reason": "no_canonical"
+              }
+            },
+            {
+              "topic": "Adopting hojicha lattes as a distinct roasted green tea beverage",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEoF9O0RRi3zTNksPeaHZVwDvUCItLVfmOW-1bhKR3JJOmZX2VLyuB48EdE8BVVKkl5wMwBnJFajJAcV4bbcS7f7QG4poeqhMvxhTUl-sCYjpxuO4FCScM0gPUDCFSPC-H0KA==",
+              "why_now": "Hojicha lattes, a tea latte made from Japanese roasted green tea, are emerging as a trending beverage, indicating a growing consumer interest in diverse tea-based drinks.",
+              "vertical": "food_beverage",
+              "deep_link": true,
+              "verify": {
+                "drop_reason": "no_canonical"
+              }
+            },
+            {
+              "topic": "Demanding clean-label and technologically advanced plant-based meat alternatives",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFjzdPNDSgpz0UTDKUonm2bsgQ6RMAoVm61zATYULRtvbgr2wrk32iewh0fFY68mbwy2mfV0xZczboxrCfHC3cyBqGXRniAmsfJpql6WYi3_d5SFjVL8rac8w==",
+              "why_now": "The plant-based meat category is evolving, with consumers now seeking alternatives that feature clean-label formulations and leverage emerging protein technologies to address concerns about processing and ingredients.",
+              "vertical": "food_beverage",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://preparedfoods.com/",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Prepared Foods",
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": "title_irrelevant"
+              }
+            },
+            {
+              "topic": "Integrating protein into hot beverages and savory soup formats",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGNH9hmPGUCb3DwSv-boxwalp8nIAh6c30g4EZbuuoluMmpiUY7BGst-jncdWQN5qRtt8RF9H2ljUa1KFO2YvtWGPRE_2eVuOkHDWZyBJy1tJsQ1dJjTStlcWHfVjnNio81zH5ELxRLd8VxUhXJyj6YaUg9eNXUyX3Nh3vxexaHzNAk48altKtXGy4bsGKYYWdiHTGIAPYpW7EDgDvwm8CVqRpk0xDuGxM=",
+              "why_now": "Innova Market Insights data for August 2026 shows emerging growth in food and beverage launches incorporating protein into novel formats like soups and hot drinks, reflecting ongoing consumer demand for convenient protein sources.",
+              "vertical": "food_beverage",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://foodingredientsfirst.com/product-innovation/tomorrows-flavor-trends-adventure-comfort-health.html",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Tomorrow’s flavor trends: Adventure, comfort &amp; health",
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": "title_irrelevant"
+              }
+            }
+          ]
+        },
+        "text": "```json\n[\n  {\n    \"topic\": \"Integrating culinary and functional mushrooms into daily meals and beverages\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE9JURoyjII5RyH4gfL_uIelfLgFV7f2BuIDd-dK-FLwM4u19gYy_MbMIJksR_azmxhc4ZY4VXJqIBaVA_3_-LxYlGXdEt3hNTYYNLU7_RyXkUVKF1eZ_2uXsP0UASFV4wiIcEjSHh58jYSE4oDfzqrv-_xwSTgP9Csz_xNj6EPlO49F2KR4f61\",\n    \"why_now\": \"Recent product innovations highlighted at Expo West 2026 show mushrooms moving beyond niche supplements into diverse food and beverage formats, driven by both flavor and wellness benefits.\",\n    \"vertical\": \"food_beverage\"\n  },\n  {\n    \"topic\": \"Adopting dates as a whole-food, minimally processed sweetener\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE9JURoyjII5RyH4gfL_uIelfLgFV7f2BuIDd-dK-FLwM4u19gYy_MbMIJksR_azmxhc4ZY4VXJqIBaVA_3_-LxYlGXdEt3hNTYYNLU7_RyXkUVKF1eZ_2uXsP0UASFV4wiIcEjSHh58jYSE4oDfzqrv-_xwSTgP9Csz_xNj6EPlO49F2KR4f61\",\n    \"why_now\": \"Dates are gaining significant traction as a versatile, minimally processed alternative to refined sugars, appearing across various food and beverage categories at recent industry expos.\",\n    \"vertical\": \"food_beverage\"\n  },\n  {\n    \"topic\": \"Seeking enhanced protein delivery in hybrid and high-clarity beverage formats\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQE9JURoyjII5RyH4gfL_uIelfLgFV7f2BuIDd-dK-FLwM4u19gYy_MbMIJksR_azmxhc4ZY4VXJqIBaVA_3_-LxYlGXdEt3hNTYYNLU7_RyXkUVKF1eZ_2uXsP0UASFV4wiIcEjSHh58jYSE4oDfzqrv-_xwSTgP9Csz_xNj6EPlO49F2KR4f61\",\n    \"why_now\": \"Ingredient suppliers are innovating with new protein formulations, including high-clarity shakes and hybrid beverages with digestive support, to meet consumer demand for satiety and taste, partly driven by GLP-1 medication users.\",\n    \"vertical\": \"food_beverage\"\n  },\n  {\n    \"topic\": \"Gen Z prioritizing discovery of new global cuisines in restaurant dining\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEz8kA1wea0pwaqgQ7yZ7U7w7xzf0e8SsIoLCRKEHLb2dvY5agfdVZg_fd8QlkDydbyYQQ4kZ8VkF3JRa1-sp5old3ML16Hm6TfdH3Nih478PS-ffSWLq4ZNAHqMA4Z6TYcB4SNoX6Rzfhdv-qFwCCoxfiB59qXu1caqIWNimgP2Gw6hkw52D00QKF0-3exMoLhSp_jENW8j8X5FDVQn18DwoYec76X8fxin6xb6IHtPABsgtOxj_U=\",\n    \"why_now\": \"A recent YouGov report highlights that a significant majority of Gen Z consumers are actively seeking out new and diverse food experiences and cuisines when dining out in 2026.\",\n    \"vertical\": \"food_beverage\"\n  },\n  {\n    \"topic\": \"Elevating tinned fish as a convenient, nutrient-dense pantry staple\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEoF9O0RRi3zTNksPeaHZVwDvUCItLVfmOW-1bhKR3JJOmZX2VLyuB48EdE8BVVKkl5wMwBnJFajJAcV4bbcS7f7QG4poeqhMvxhTUl-sCYjpxuO4FCScM0gPUDCFSPC-H0KA==\",\n    \"why_now\": \"Tinned fish, particularly sardines, are gaining popularity as a health-conscious and convenient meal option, valued for their rich flavor, omega-3s, and protein content.\",\n    \"vertical\": \"food_beverage\"\n  },\n  {\n    \"topic\": \"Adopting hojicha lattes as a distinct roasted green tea beverage\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEoF9O0RRi3zTNksPeaHZVwDvUCItLVfmOW-1bhKR3JJOmZX2VLyuB48EdE8BVVKkl5wMwBnJFajJAcV4bbcS7f7QG4poeqhMvxhTUl-sCYjpxuO4FCScM0gPUDCFSPC-H0KA==\",\n    \"why_now\": \"Hojicha lattes, a tea latte made from Japanese roasted green tea, are emerging as a trending beverage, indicating a growing consumer interest in diverse tea-based drinks.\",\n    \"vertical\": \"food_beverage\"\n  },\n  {\n    \"topic\": \"Demanding clean-label and technologically advanced plant-based meat alternatives\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFjzdPNDSgpz0UTDKUonm2bsgQ6RMAoVm61zATYULRtvbgr2wrk32iewh0fFY68mbwy2mfV0xZczboxrCfHC3cyBqGXRniAmsfJpql6WYi3_d5SFjVL8rac8w==\",\n    \"why_now\": \"The plant-based meat category is evolving, with consumers now seeking alternatives that feature clean-label formulations and leverage emerging protein technologies to address concerns about processing and ingredients.\",\n    \"vertical\": \"food_beverage\"\n  },\n  {\n    \"topic\": \"Integrating protein into hot beverages and savory soup formats\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGNH9hmPGUCb3DwSv-boxwalp8nIAh6c30g4EZbuuoluMmpiUY7BGst-jncdWQN5qRtt8RF9H2ljUa1KFO2YvtWGPRE_2eVuOkHDWZyBJy1tJsQ1dJjTStlcWHfVjnNio81zH5ELxRLd8VxUhXJyj6YaUg9eNXUyX3Nh3vxexaHzNAk48altKtXGy4bsGKYYWdiHTGIAPYpW7EDgDvwm8CVqRpk0xDuGxM=\",\n    \"why_now\": \"Innova Market Insights data for August 2026 shows emerging growth in food and beverage launches incorporating protein into novel formats like soups and hot drinks, reflecting ongoing consumer demand for convenient protein sources.\",\n    \"vertical\": \"food_beverage\"\n  }\n]\n```",
+        "accounting": {
+          "input_tokens": 3800,
+          "candidates_tokens": 2019,
+          "thoughts_tokens": 6986,
+          "total_tokens": 17316,
+          "cost_as_deployed": 0.0062,
+          "cost_with_thinking": 0.0237,
+          "understated_by": 0.0175,
+          "reconciles": "indeterminate",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "fields": null,
+      "descriptor": null
+    },
+    {
+      "case": {
+        "id": "beauty_personal_care",
+        "label": "discovery.gemini.search v4 · registry model gemini-2.5-flash · vertical \"beauty_personal_care\"",
+        "incumbentAt": null,
+        "incumbent": {
+          "emission": null,
+          "telemetry": {
+            "model": "gemini-2.5-flash",
+            "registry_driven": true,
+            "prompt_version": 4
+          }
+        }
+      },
+      "built": {
+        "mode": "single",
+        "terminal_tool": null,
+        "tool_names": null,
+        "prompt_provenance": {
+          "discovery.gemini.search": {
+            "version": 4,
+            "registry_model": "gemini-2.5-flash",
+            "chars": 2509
+          }
+        },
+        "system_chars": 0,
+        "user_chars": 16232,
+        "input_notes": {
+          "registry_model": "gemini-2.5-flash",
+          "prompt_version": 4,
+          "active_trends": 132,
+          "examples": 20,
+          "vertical": "beauty_personal_care",
+          "how_to_switch": "UPDATE MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT SET MODEL='<id>' WHERE PROMPT_KEY='discovery.gemini.search' AND IS_ACTIVE=TRUE",
+          "drift_note": "registry has this lane on gemini-2.5-flash while the hardcoded verticals run gemini-3-flash-preview"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3-flash-preview",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 74071,
+        "emission": {
+          "proposals": [
+            {
+              "topic": "Booking Japanese Head Spa Rituals",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFbJNrHa8ekWOED0Ct09cbmUOcWClpP6R40lAIB8SbvdDozuSmJS_s1Lt8mk88qcwXifvdhyQgXiUdRWPn8jZsCn1CNzYB0PlLfStqUwGDqHj22ZLUHMNUBDQRbYhFXhD4v7MtvsrDdMp1f13z7HN7tMJeddnPW7pkm87VYZEW_uLuRu4GaXsypNBL6qd0=",
+              "why_now": "Consumers are increasingly seeking out specialized Japanese head spas for multi-step 'scalp facials' that combine microscopic analysis with deep steam cleaning and pressure-point massage, driven by viral social media 'satisfaction' videos.",
+              "vertical": "beauty_personal_care",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://ctvnews.ca/london/article/why-japanese-head-spas-are-all-over-social-media",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Why Japanese head spas are all over social media",
+                "published_date": "2026-08-12T14:18:07.407Z",
+                "days_since_published": 8,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Adopting 'Tanmaxxing' UV-Loading Behaviors",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHYSRBIRZldsXx3esMMM-8ucowczL7Vr2HBhNZ_uFtHy8uE8VYwl2qfnmTu6OJPtnSB2wIoM0oovkRZrY6CJjJUO8zN9NtMgaZkzyQpbIKzFssMq_s4E5yoRqWVgl_VIakkmu7OsJKvdz7UD_E=",
+              "why_now": "A controversial viral movement known as 'tanmaxxing' has spiked in August 2026, with consumers aggressively seeking maximum UV exposure for aesthetic results, prompting a significant backlash and safety warnings from the dermatology community.",
+              "vertical": "beauty_personal_care",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://mamamia.com.au/beauty-empties-august-2026",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Mamamia",
+                "published_date": "2026-08-19T05:12:36.158Z",
+                "days_since_published": 1,
+                "drop_reason": "title_irrelevant"
+              }
+            },
+            {
+              "topic": "Adopting Mung Bean-Infused Barrier Care",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGKxZtNLV2ZWtP2MdTNdJOW72-P6pTkeN2Ia_z9q3QKfYy-wlRk0c8uNVtSMkCojK7Nz6liHlJpxHwjzGL8EODTXwVWMLLSuXx-yWD3V90y19oKdRnniQ4pe1QGCp5q73FMBPVDXlPxMzfxa6PzOKsZ--OPKyheUVY0EDT3JOC4JsteaPy0a0qqwhBMiUzqMviJKOYdWvQh_A==",
+              "why_now": "Mung bean has emerged as a breakout hero ingredient in August 2026, with facial skincare containing the legume growing by over 10% as consumers seek out its traditional anti-inflammatory and 'cooling' properties for sensitive skin.",
+              "vertical": "beauty_personal_care",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://nielseniq.com/global/en/insights/commentary/2026/cosmoprof-miami-2026-top-5-beauty-trends",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Cosmoprof 2026: Key Trends to Watch",
+                "published_date": "2026-02-24T17:04:33.000Z",
+                "days_since_published": 177,
+                "drop_reason": "stale_177d"
+              }
+            },
+            {
+              "topic": "Using Active-Infused Beauty Tissues",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQF6BK0c-Gv6psKtk3ngGbuDT2cNHomShxJ05qXKzv_fgotOVFa6dkkiqx_ErY6G0XeBqbm6hdRVSvXfbAFkiUjHeN8pP28vvyF6Qp8JZU6_jo8x74eJ1pgH7beVzQx2fmw8Mm-_ZE4rs1se5jtHe3O8mjU0hY3EwFV_Zo8i5khroRv7k8-GRjyRitX2INPo14PYMg==",
+              "why_now": "Mainstream personal care brands like Kleenex are pivoting into the beauty space this month with 'skin-specific' tissue innovations designed to deliver skincare benefits through daily-use paper products.",
+              "vertical": "beauty_personal_care",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://globalcosmeticsnews.com/global-cosmetics-news-weekly-review-week-33-august-2026",
+                "http_status": 403,
+                "status_class": "denied",
+                "unverified": true,
+                "article_title": null,
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Adopting Infrared Blowout Styling Tools",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFo-ucolYDpuU8L6s29geE-bidXOdeMNcDXyZ6AZUKmcO1QUMO20nt4g0_UU-PA8lGoBGot3Bap4Rg6tTI8xKPWsKctOpzZXqVNhO9leb-UEF-V2QwSZOZ_J3D74jQ3j-2njw1_WqiNtQvU9-kakFUaqskLa6vzsHefe6vr0IOuQb670WlKg87NIZ2R",
+              "why_now": "New hair tool launches in August 2026 are utilizing FAR Infrared wavelengths to penetrate and dry hair from the inside out, offering a less damaging alternative to traditional surface-level heat styling.",
+              "vertical": "beauty_personal_care",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://candybeauty.store/the-best-beauty-launches-of-august-2026-pdrn-exosomes-more",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Candy Beauty Skin Care | 纯美美容院 - Facial, Eyelash, Permanent Makeup NYC",
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": "title_irrelevant"
+              }
+            },
+            {
+              "topic": "Using Chrome Mousse for Prismatic Eye Looks",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG2hD1BtzXkA4De8uL619PB1wmRKtmFMyejNN9Chxfh2GJhrEMece7SRd79AH-19SBZx1vw1O6w59HsUlXIsPksvLWns9gj5_a_ekHuMyFAI5CH5NkJXq6YZQQQqb9R9MRS",
+              "why_now": "Consumers are shifting away from traditional matte palettes toward 'chrome mousse' and eyeshadow foils that provide high-shine, multi-tonal prismatic finishes, driven by a wave of new affordable drugstore launches this month.",
+              "vertical": "beauty_personal_care",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://youtube.com/watch?v=QVj2cllx5u0",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": null,
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            }
+          ]
+        },
+        "text": "[\n  {\n    \"topic\": \"Booking Japanese Head Spa Rituals\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFbJNrHa8ekWOED0Ct09cbmUOcWClpP6R40lAIB8SbvdDozuSmJS_s1Lt8mk88qcwXifvdhyQgXiUdRWPn8jZsCn1CNzYB0PlLfStqUwGDqHj22ZLUHMNUBDQRbYhFXhD4v7MtvsrDdMp1f13z7HN7tMJeddnPW7pkm87VYZEW_uLuRu4GaXsypNBL6qd0=\",\n    \"why_now\": \"Consumers are increasingly seeking out specialized Japanese head spas for multi-step 'scalp facials' that combine microscopic analysis with deep steam cleaning and pressure-point massage, driven by viral social media 'satisfaction' videos.\",\n    \"vertical\": \"beauty_personal_care\"\n  },\n  {\n    \"topic\": \"Adopting 'Tanmaxxing' UV-Loading Behaviors\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHYSRBIRZldsXx3esMMM-8ucowczL7Vr2HBhNZ_uFtHy8uE8VYwl2qfnmTu6OJPtnSB2wIoM0oovkRZrY6CJjJUO8zN9NtMgaZkzyQpbIKzFssMq_s4E5yoRqWVgl_VIakkmu7OsJKvdz7UD_E=\",\n    \"why_now\": \"A controversial viral movement known as 'tanmaxxing' has spiked in August 2026, with consumers aggressively seeking maximum UV exposure for aesthetic results, prompting a significant backlash and safety warnings from the dermatology community.\",\n    \"vertical\": \"beauty_personal_care\"\n  },\n  {\n    \"topic\": \"Adopting Mung Bean-Infused Barrier Care\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGKxZtNLV2ZWtP2MdTNdJOW72-P6pTkeN2Ia_z9q3QKfYy-wlRk0c8uNVtSMkCojK7Nz6liHlJpxHwjzGL8EODTXwVWMLLSuXx-yWD3V90y19oKdRnniQ4pe1QGCp5q73FMBPVDXlPxMzfxa6PzOKsZ--OPKyheUVY0EDT3JOC4JsteaPy0a0qqwhBMiUzqMviJKOYdWvQh_A==\",\n    \"why_now\": \"Mung bean has emerged as a breakout hero ingredient in August 2026, with facial skincare containing the legume growing by over 10% as consumers seek out its traditional anti-inflammatory and 'cooling' properties for sensitive skin.\",\n    \"vertical\": \"beauty_personal_care\"\n  },\n  {\n    \"topic\": \"Using Active-Infused Beauty Tissues\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQF6BK0c-Gv6psKtk3ngGbuDT2cNHomShxJ05qXKzv_fgotOVFa6dkkiqx_ErY6G0XeBqbm6hdRVSvXfbAFkiUjHeN8pP28vvyF6Qp8JZU6_jo8x74eJ1pgH7beVzQx2fmw8Mm-_ZE4rs1se5jtHe3O8mjU0hY3EwFV_Zo8i5khroRv7k8-GRjyRitX2INPo14PYMg==\",\n    \"why_now\": \"Mainstream personal care brands like Kleenex are pivoting into the beauty space this month with 'skin-specific' tissue innovations designed to deliver skincare benefits through daily-use paper products.\",\n    \"vertical\": \"beauty_personal_care\"\n  },\n  {\n    \"topic\": \"Adopting Infrared Blowout Styling Tools\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFo-ucolYDpuU8L6s29geE-bidXOdeMNcDXyZ6AZUKmcO1QUMO20nt4g0_UU-PA8lGoBGot3Bap4Rg6tTI8xKPWsKctOpzZXqVNhO9leb-UEF-V2QwSZOZ_J3D74jQ3j-2njw1_WqiNtQvU9-kakFUaqskLa6vzsHefe6vr0IOuQb670WlKg87NIZ2R\",\n    \"why_now\": \"New hair tool launches in August 2026 are utilizing FAR Infrared wavelengths to penetrate and dry hair from the inside out, offering a less damaging alternative to traditional surface-level heat styling.\",\n    \"vertical\": \"beauty_personal_care\"\n  },\n  {\n    \"topic\": \"Using Chrome Mousse for Prismatic Eye Looks\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG2hD1BtzXkA4De8uL619PB1wmRKtmFMyejNN9Chxfh2GJhrEMece7SRd79AH-19SBZx1vw1O6w59HsUlXIsPksvLWns9gj5_a_ekHuMyFAI5CH5NkJXq6YZQQQqb9R9MRS\",\n    \"why_now\": \"Consumers are shifting away from traditional matte palettes toward 'chrome mousse' and eyeshadow foils that provide high-shine, multi-tonal prismatic finishes, driven by a wave of new affordable drugstore launches this month.\",\n    \"vertical\": \"beauty_personal_care\"\n  }\n]",
+        "accounting": {
+          "input_tokens": 12474,
+          "candidates_tokens": 1435,
+          "thoughts_tokens": 13513,
+          "total_tokens": 27422,
+          "cost_as_deployed": 0.0073,
+          "cost_with_thinking": 0.0411,
+          "understated_by": 0.0338,
+          "reconciles": "candidates_excludes_thinking",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-2.5-flash",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 42767,
+        "emission": {
+          "proposals": [
+            {
+              "topic": "Quiet Ambient Home Scenting",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG4Fd9ZQ3AXEqsXEsWf37Bh8-29lUIxeOOouxmFMEvT9BCWMl1VkDhXNQIG7xNxZxxJq_wpGvfAJNToN-c7sHJftK96PjhRrwXF0Wk-tZz25Hfu6ssHXvDLvG4I54qS0ztqZA_Y0tvUvJO4bwmxIAbZMGdgBfAh93E_jg1UHz8_J5a6kj6VcbfnHp7lygCZ",
+              "why_now": "Consumers are embracing 'quiet luxury' in home fragrance, seeking gentle, ambient scenting that creates a subtle, inviting atmosphere rather than strong, overt sprays. This trend emphasizes a single, soft signature scent for the entire home, often through waterless diffusers.",
+              "vertical": "beauty_personal_care",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://sosahomeandbody.com/it/blogs/founder-diaries/home-fragrance-trends-for-2027",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Home Fragrance Trends for 2026\n &ndash; SOSA home &amp; body",
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Eyeliner Stickers for Rapid Application",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQH-kj-X3Kp-ztXyxYlbnPoTlJwoD4L8aaZEGWW6Tf4GfDBk8RZOEqugMvxcalBpCtgPkYg4nbIjH4LMc1Luxxd6991eVtC1OWtIikBVkwvMNHsPdq2Fomh4ABjZyabjRmmHFkjEL4sDBanJAydEzyeA8kJbHkrX6NsE4kc9kNfCa18gvKjqvbBLoDQvF-WoHv0Y7pRrnsf9uRU=",
+              "why_now": "Eyeliner stickers are experiencing a significant surge in popularity, driven by their rapid transition from TikTok Shop visibility to widespread Google search interest. Consumers are adopting these as a quick and easy styling hack for precise makeup application.",
+              "vertical": "beauty_personal_care",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://trendalytics.co/insights/august-2026-consumer-trend-report-fashion-beauty-intelligence",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "August 2026 Consumer Trend Report: Fashion &amp; Beauty Intelligence",
+                "published_date": "2026-08-18T06:59:51.515Z",
+                "days_since_published": 2,
+                "drop_reason": "title_irrelevant"
+              }
+            },
+            {
+              "topic": "Grown-Up Gourmand Fragrances",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFyy2JerZyelpOh792kKIcIWvNZ6qb4XHiMh1Oj4ZcHA1lA5O4dsvrg01R8LpZcv1tfQz3J4xytaRpbFlfpt6R2nGtoBHsNXCXH5xZBcduomHsVkGUf7ph7qKIZoOE9l_iFRCiEB2kpgPWvoCyd5z3BmpgpqglVYw==",
+              "why_now": "Consumers are seeking sophisticated gourmand fragrances that move beyond traditionally sweet notes, opting for refined combinations like pistachio, cherry, and coconut milk paired with woods, tea, or musks. This shift reflects a desire for more elegant and complex scent profiles.",
+              "vertical": "beauty_personal_care",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://livethatglow.com/gourmand-fragrances-growing-up",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Gourmand Fragrances Are Finally Growing Up – Here’s How to Wear the Trend",
+                "published_date": "2026-07-21T08:00:31.000Z",
+                "days_since_published": 30,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Hair Regrowth Serums with Exosome Delivery",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQF0l8LkmLybJVSadncMchw9gbhaS4A906YcU0ERAS1Cf1QCLPS1vrpsAqDBr6FYXqNOMyi3brEwF6xptWH4ZAmuF11Dsg6n9LGh8XiHlJfjRzZJ49Ea1rRNLJM4fXQa5Dnig_aCPf8rxkXkT77j0z_yOQM5Lk4jv43uIJlW1jinldXJTOel9CVjIO52o9Ux8BhU6ps0tlMCCVr-yeAtf0HJ_dYHyEATW3gtFOSgzHw3LziL9aTtQI7IAi0DFVEezL5y91FCLFhytSc=",
+              "why_now": "The beauty industry is seeing a rise in hair regrowth serums utilizing advanced delivery systems like Ashwagandha exosomes, which deliver living plant matter directly to the follicle. This innovation, alongside ingredients like peppermint oil outperforming traditional solutions, is driving consumer interest in highly effective, science-backed hair loss treatments.",
+              "vertical": "beauty_personal_care",
+              "deep_link": true,
+              "verify": {
+                "drop_reason": "no_canonical"
+              }
+            },
+            {
+              "topic": "Hot/Cold Facial Sculpting Devices",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEXdg_YOQ23D4k9E6zRXBIh7sYJysvwAHUsqEQQ4R9O99mu8jNm8iQ6mTJI-4t8TAjBvAOT8tS4LDRA_ciJ4gL53ipJ2FPCgidEU-krFcLZYTFTgR1ItUkreVde3fspDLYrUPQdLKjF919eR_xJ2iejFDTd_57wkbnN",
+              "why_now": "Consumers are adopting high-tech facial sculpting devices, often shaped like gua sha tools, that offer both hot and cold temperature settings. These multifunctional tools provide rapid de-puffing, contouring, and soothing benefits for a more sculpted appearance.",
+              "vertical": "beauty_personal_care",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://today.com/shop/trend-report-august-2026-rcna590999",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "August Trend Report: $4 Scrub Daddy Dusters, Built-In Bra Tanks, More",
+                "published_date": "2026-08-13T16:37:50.186Z",
+                "days_since_published": 7,
+                "drop_reason": "title_irrelevant"
+              }
+            },
+            {
+              "topic": "Ghost Lashes Aesthetic",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQH5JIv52Usd-qkx8AF_UBkVgT6L5smvInINijdKz9-R4q8xVy27lRRP_psEPK6ZABtryITPZ9frfgdnXiYFqyW50PtDHm58a052Ek3yb7h3nyDzbN5bnJn59yw_9mMzN5BGWqUpVAB5S71SPZLPkueVhOS4OkEX7xWLfYXZJBS8TNGv",
+              "why_now": "A 'barely-there' lash trend, dubbed 'ghost lashes,' is gaining traction, with consumers skipping mascara or opting for sheer tints to achieve a softer, more natural, and minimalist eye look. This reflects a broader shift towards enhancing natural features rather than heavy makeup application.",
+              "vertical": "beauty_personal_care",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://uklash.com/blogs/news/no-mascara-trend-natural-lashes-guide",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": null,
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Targeted Neck & Decolletage Elixirs",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFouYfpG25CoxWQruuisAJFpRNEYaY_7L8vJOOZHbmiPWpr00EcYUuumqbve_LxbzYVKErbHOO6oAd2CS_cHwZkRyHFKG5VtrW13MuT4LGwHB4Ipwqm05WJo1pLVhxD0ayU-uBv6nrh9l7mklDfqSI=",
+              "why_now": "Consumers are expanding their anti-aging routines to include dedicated elixirs for the neck and decolletage, formulated with advanced longevity ingredients like Vitamin C, pentavitin, and exosomes. This signals a focus on treating these often-neglected areas with the same precision as facial skincare.",
+              "vertical": "beauty_personal_care",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://russh.com/august-beauty-favourites-2026",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "RUSSH loves: August Beauty favourites - RUSSH",
+                "published_date": "2026-08-19T04:15:23.000Z",
+                "days_since_published": 2,
+                "drop_reason": "title_irrelevant"
+              }
+            },
+            {
+              "topic": "Consumer Demand for Clinically Validated Beauty",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG3HnlAq3B5uBVfbbnCDS0cE5QV8rtKbkSv07JqB88Vc2-IryiQQ9r5NcuPU5s9LMmrryneeXZOFSTOkdmuav7IPdcuGalo130kvvIgamqb0m4a3z-NEtuj-hfXAIfzDhPHZdrjl6FJl7f-OVReM_D68IgUr1Xl7Z-K-gUVNC07_EyGV1YB3XXKycxxYApdArakHmOYT4QiPxTJkh49_rGwJjwyUTOb8UwL9_eo1-ip_emZgGV8kRpH7PxNsJYsBBC4IrhIewlQEQ==",
+              "why_now": "A fundamental shift is occurring where consumers are increasingly demanding and willing to pay a premium for beauty products with scientifically proven efficacy and clinical validation. This drives brands to provide more than just ingredient lists, focusing on demonstrable results and transparent scientific backing.",
+              "vertical": "beauty_personal_care",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://sofw.com/en/news/latest-news/general/6068-from-composition-to-causation-why-science-led-beauty-is-reshaping-the-ingredients-industry",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "From Composition to Causation: Why Science-Led Beauty is Reshaping the Ingredients Industry",
+                "published_date": "2026-08-20T16:27:47.000Z",
+                "days_since_published": 0,
+                "drop_reason": null
+              }
+            }
+          ]
+        },
+        "text": "```json\n[\n  {\n    \"topic\": \"Quiet Ambient Home Scenting\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG4Fd9ZQ3AXEqsXEsWf37Bh8-29lUIxeOOouxmFMEvT9BCWMl1VkDhXNQIG7xNxZxxJq_wpGvfAJNToN-c7sHJftK96PjhRrwXF0Wk-tZz25Hfu6ssHXvDLvG4I54qS0ztqZA_Y0tvUvJO4bwmxIAbZMGdgBfAh93E_jg1UHz8_J5a6kj6VcbfnHp7lygCZ\",\n    \"why_now\": \"Consumers are embracing 'quiet luxury' in home fragrance, seeking gentle, ambient scenting that creates a subtle, inviting atmosphere rather than strong, overt sprays. This trend emphasizes a single, soft signature scent for the entire home, often through waterless diffusers.\",\n    \"vertical\": \"beauty_personal_care\"\n  },\n  {\n    \"topic\": \"Eyeliner Stickers for Rapid Application\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQH-kj-X3Kp-ztXyxYlbnPoTlJwoD4L8aaZEGWW6Tf4GfDBk8RZOEqugMvxcalBpCtgPkYg4nbIjH4LMc1Luxxd6991eVtC1OWtIikBVkwvMNHsPdq2Fomh4ABjZyabjRmmHFkjEL4sDBanJAydEzyeA8kJbHkrX6NsE4kc9kNfCa18gvKjqvbBLoDQvF-WoHv0Y7pRrnsf9uRU=\",\n    \"why_now\": \"Eyeliner stickers are experiencing a significant surge in popularity, driven by their rapid transition from TikTok Shop visibility to widespread Google search interest. Consumers are adopting these as a quick and easy styling hack for precise makeup application.\",\n    \"vertical\": \"beauty_personal_care\"\n  },\n  {\n    \"topic\": \"Grown-Up Gourmand Fragrances\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFyy2JerZyelpOh792kKIcIWvNZ6qb4XHiMh1Oj4ZcHA1lA5O4dsvrg01R8LpZcv1tfQz3J4xytaRpbFlfpt6R2nGtoBHsNXCXH5xZBcduomHsVkGUf7ph7qKIZoOE9l_iFRCiEB2kpgPWvoCyd5z3BmpgpqglVYw==\",\n    \"why_now\": \"Consumers are seeking sophisticated gourmand fragrances that move beyond traditionally sweet notes, opting for refined combinations like pistachio, cherry, and coconut milk paired with woods, tea, or musks. This shift reflects a desire for more elegant and complex scent profiles.\",\n    \"vertical\": \"beauty_personal_care\"\n  },\n  {\n    \"topic\": \"Hair Regrowth Serums with Exosome Delivery\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQF0l8LkmLybJVSadncMchw9gbhaS4A906YcU0ERAS1Cf1QCLPS1vrpsAqDBr6FYXqNOMyi3brEwF6xptWH4ZAmuF11Dsg6n9LGh8XiHlJfjRzZJ49Ea1rRNLJM4fXQa5Dnig_aCPf8rxkXkT77j0z_yOQM5Lk4jv43uIJlW1jinldXJTOel9CVjIO52o9Ux8BhU6ps0tlMCCVr-yeAtf0HJ_dYHyEATW3gtFOSgzHw3LziL9aTtQI7IAi0DFVEezL5y91FCLFhytSc=\",\n    \"why_now\": \"The beauty industry is seeing a rise in hair regrowth serums utilizing advanced delivery systems like Ashwagandha exosomes, which deliver living plant matter directly to the follicle. This innovation, alongside ingredients like peppermint oil outperforming traditional solutions, is driving consumer interest in highly effective, science-backed hair loss treatments.\",\n    \"vertical\": \"beauty_personal_care\"\n  },\n  {\n    \"topic\": \"Hot/Cold Facial Sculpting Devices\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEXdg_YOQ23D4k9E6zRXBIh7sYJysvwAHUsqEQQ4R9O99mu8jNm8iQ6mTJI-4t8TAjBvAOT8tS4LDRA_ciJ4gL53ipJ2FPCgidEU-krFcLZYTFTgR1ItUkreVde3fspDLYrUPQdLKjF919eR_xJ2iejFDTd_57wkbnN\",\n    \"why_now\": \"Consumers are adopting high-tech facial sculpting devices, often shaped like gua sha tools, that offer both hot and cold temperature settings. These multifunctional tools provide rapid de-puffing, contouring, and soothing benefits for a more sculpted appearance.\",\n    \"vertical\": \"beauty_personal_care\"\n  },\n  {\n    \"topic\": \"Ghost Lashes Aesthetic\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQH5JIv52Usd-qkx8AF_UBkVgT6L5smvInINijdKz9-R4q8xVy27lRRP_psEPK6ZABtryITPZ9frfgdnXiYFqyW50PtDHm58a052Ek3yb7h3nyDzbN5bnJn59yw_9mMzN5BGWqUpVAB5S71SPZLPkueVhOS4OkEX7xWLfYXZJBS8TNGv\",\n    \"why_now\": \"A 'barely-there' lash trend, dubbed 'ghost lashes,' is gaining traction, with consumers skipping mascara or opting for sheer tints to achieve a softer, more natural, and minimalist eye look. This reflects a broader shift towards enhancing natural features rather than heavy makeup application.\",\n    \"vertical\": \"beauty_personal_care\"\n  },\n  {\n    \"topic\": \"Targeted Neck & Decolletage Elixirs\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFouYfpG25CoxWQruuisAJFpRNEYaY_7L8vJOOZHbmiPWpr00EcYUuumqbve_LxbzYVKErbHOO6oAd2CS_cHwZkRyHFKG5VtrW13MuT4LGwHB4Ipwqm05WJo1pLVhxD0ayU-uBv6nrh9l7mklDfqSI=\",\n    \"why_now\": \"Consumers are expanding their anti-aging routines to include dedicated elixirs for the neck and decolletage, formulated with advanced longevity ingredients like Vitamin C, pentavitin, and exosomes. This signals a focus on treating these often-neglected areas with the same precision as facial skincare.\",\n    \"vertical\": \"beauty_personal_care\"\n  },\n  {\n    \"topic\": \"Consumer Demand for Clinically Validated Beauty\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG3HnlAq3B5uBVfbbnCDS0cE5QV8rtKbkSv07JqB88Vc2-IryiQQ9r5NcuPU5s9LMmrryneeXZOFSTOkdmuav7IPdcuGalo130kvvIgamqb0m4a3z-NEtuj-hfXAIfzDhPHZdrjl6FJl7f-OVReM_D68IgUr1Xl7Z-K-gUVNC07_EyGV1YB3XXKycxxYApdArakHmOYT4QiPxTJkh49_rGwJjwyUTOb8UwL9_eo1-ip_emZgGV8kRpH7PxNsJYsBBC4IrhIewlQEQ==\",\n    \"why_now\": \"A fundamental shift is occurring where consumers are increasingly demanding and willing to pay a premium for beauty products with scientifically proven efficacy and clinical validation. This drives brands to provide more than just ingredient lists, focusing on demonstrable results and transparent scientific backing.\",\n    \"vertical\": \"beauty_personal_care\"\n  }\n]```",
+        "accounting": {
+          "input_tokens": 3807,
+          "candidates_tokens": 2619,
+          "thoughts_tokens": 6713,
+          "total_tokens": 18240,
+          "cost_as_deployed": 0.0077,
+          "cost_with_thinking": 0.0245,
+          "understated_by": 0.0168,
+          "reconciles": "indeterminate",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "fields": null,
+      "descriptor": null
+    },
+    {
+      "case": {
+        "id": "fashion_apparel",
+        "label": "discovery.gemini.search v4 · registry model gemini-2.5-flash · vertical \"fashion_apparel\"",
+        "incumbentAt": null,
+        "incumbent": {
+          "emission": null,
+          "telemetry": {
+            "model": "gemini-2.5-flash",
+            "registry_driven": true,
+            "prompt_version": 4
+          }
+        }
+      },
+      "built": {
+        "mode": "single",
+        "terminal_tool": null,
+        "tool_names": null,
+        "prompt_provenance": {
+          "discovery.gemini.search": {
+            "version": 4,
+            "registry_model": "gemini-2.5-flash",
+            "chars": 2509
+          }
+        },
+        "system_chars": 0,
+        "user_chars": 16197,
+        "input_notes": {
+          "registry_model": "gemini-2.5-flash",
+          "prompt_version": 4,
+          "active_trends": 132,
+          "examples": 20,
+          "vertical": "fashion_apparel",
+          "how_to_switch": "UPDATE MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT SET MODEL='<id>' WHERE PROMPT_KEY='discovery.gemini.search' AND IS_ACTIVE=TRUE",
+          "drift_note": "registry has this lane on gemini-2.5-flash while the hardcoded verticals run gemini-3-flash-preview"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3-flash-preview",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 19105,
+        "emission": {
+          "proposals": [
+            {
+              "topic": "Barn Jacket Adoption / The Waxed Utility Pivot",
+              "evidence_url": "https://www.vogue.com/article/barn-jackets-trend-fall-2026",
+              "why_now": "Consumers are pivoting from polished blazers to rugged, corduroy-collared 'grandpa' barn jackets as the primary transitional layer for Fall 2026, driven by a desire for functional, heritage-inspired outerwear.",
+              "vertical": "fashion_apparel",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://vogue.com/article/barn-jackets-trend-fall-2026",
+                "http_status": 404,
+                "drop_reason": "dead_404"
+              }
+            },
+            {
+              "topic": "Capri Pant Resurgence / The Pedal-Pusher Swap",
+              "evidence_url": "https://www.whowhatwear.com/fashion/capri-pants-trend-august-2026",
+              "why_now": "As a direct reaction to years of oversized 'balloon' silhouettes, consumers are adopting slim-fit, mid-calf capri pants styled with pointed-toe heels for a late-summer 'New Look' aesthetic.",
+              "vertical": "fashion_apparel",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://whowhatwear.com/fashion/capri-pants-trend-august-2026",
+                "http_status": 404,
+                "drop_reason": "dead_404"
+              }
+            },
+            {
+              "topic": "Sneaker Charm Personalization / Lace Jewelry Adornment",
+              "evidence_url": "https://www.highsnobiety.com/p/sneaker-charms-jewelry-trend-2026",
+              "why_now": "The 'Jane Birkin' bag-charm trend has migrated to footwear, with consumers now threading pearls, metallic trinkets, and colorful beads directly onto sneaker laces to customize mass-market kicks.",
+              "vertical": "fashion_apparel",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://highsnobiety.com/p/sneaker-charms-jewelry-trend-2026",
+                "http_status": 404,
+                "drop_reason": "dead_404"
+              }
+            },
+            {
+              "topic": "Suede Hobo Bag Integration / The Tactile Boho Shift",
+              "evidence_url": "https://www.harpersbazaar.com/fashion/trends/a61829304/suede-handbags-trend-august-2026",
+              "why_now": "Following the 'Boho-Chic' revival on 2026 runways, shoppers are swapping structured leather bags for oversized, slouchy suede hobo bags in earthy tones like olive and chocolate.",
+              "vertical": "fashion_apparel",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://harpersbazaar.com/fashion/trends/a61829304/suede-handbags-trend-august-2026",
+                "http_status": 404,
+                "drop_reason": "dead_404"
+              }
+            },
+            {
+              "topic": "Leopard Denim Normalization / The Wild Neutral",
+              "evidence_url": "https://www.elle.com/fashion/a61928374/leopard-print-denim-trend-2026",
+              "why_now": "Leopard print is being rebranded as a 'neutral' staple for the upcoming season, with search interest spiking specifically for leopard-patterned straight-leg jeans and denim midi skirts.",
+              "vertical": "fashion_apparel",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://elle.com/fashion/a61928374/leopard-print-denim-trend-2026",
+                "http_status": 404,
+                "drop_reason": "dead_404"
+              }
+            },
+            {
+              "topic": "Jersey Jewelry Adoption / Fabric-Wrapped Statement Accessories",
+              "evidence_url": "https://fashionista.com/2026/08/jersey-fabric-jewelry-trend",
+              "why_now": "Consumers are moving away from heavy metals toward 'soft' statement jewelry, specifically chunky necklaces and bangles wrapped in colorful jersey or silk fabrics for a more comfortable, tactile accessory.",
+              "vertical": "fashion_apparel",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://fashionista.com/2026/08/jersey-fabric-jewelry-trend",
+                "http_status": 403,
+                "status_class": "denied",
+                "unverified": true,
+                "article_title": null,
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            }
+          ]
+        },
+        "text": "[\n  {\n    \"topic\": \"Barn Jacket Adoption / The Waxed Utility Pivot\",\n    \"evidence_url\": \"https://www.vogue.com/article/barn-jackets-trend-fall-2026\",\n    \"why_now\": \"Consumers are pivoting from polished blazers to rugged, corduroy-collared 'grandpa' barn jackets as the primary transitional layer for Fall 2026, driven by a desire for functional, heritage-inspired outerwear.\",\n    \"vertical\": \"fashion_apparel\"\n  },\n  {\n    \"topic\": \"Capri Pant Resurgence / The Pedal-Pusher Swap\",\n    \"evidence_url\": \"https://www.whowhatwear.com/fashion/capri-pants-trend-august-2026\",\n    \"why_now\": \"As a direct reaction to years of oversized 'balloon' silhouettes, consumers are adopting slim-fit, mid-calf capri pants styled with pointed-toe heels for a late-summer 'New Look' aesthetic.\",\n    \"vertical\": \"fashion_apparel\"\n  },\n  {\n    \"topic\": \"Sneaker Charm Personalization / Lace Jewelry Adornment\",\n    \"evidence_url\": \"https://www.highsnobiety.com/p/sneaker-charms-jewelry-trend-2026\",\n    \"why_now\": \"The 'Jane Birkin' bag-charm trend has migrated to footwear, with consumers now threading pearls, metallic trinkets, and colorful beads directly onto sneaker laces to customize mass-market kicks.\",\n    \"vertical\": \"fashion_apparel\"\n  },\n  {\n    \"topic\": \"Suede Hobo Bag Integration / The Tactile Boho Shift\",\n    \"evidence_url\": \"https://www.harpersbazaar.com/fashion/trends/a61829304/suede-handbags-trend-august-2026\",\n    \"why_now\": \"Following the 'Boho-Chic' revival on 2026 runways, shoppers are swapping structured leather bags for oversized, slouchy suede hobo bags in earthy tones like olive and chocolate.\",\n    \"vertical\": \"fashion_apparel\"\n  },\n  {\n    \"topic\": \"Leopard Denim Normalization / The Wild Neutral\",\n    \"evidence_url\": \"https://www.elle.com/fashion/a61928374/leopard-print-denim-trend-2026\",\n    \"why_now\": \"Leopard print is being rebranded as a 'neutral' staple for the upcoming season, with search interest spiking specifically for leopard-patterned straight-leg jeans and denim midi skirts.\",\n    \"vertical\": \"fashion_apparel\"\n  },\n  {\n    \"topic\": \"Jersey Jewelry Adoption / Fabric-Wrapped Statement Accessories\",\n    \"evidence_url\": \"https://fashionista.com/2026/08/jersey-fabric-jewelry-trend\",\n    \"why_now\": \"Consumers are moving away from heavy metals toward 'soft' statement jewelry, specifically chunky necklaces and bangles wrapped in colorful jersey or silk fabrics for a more comfortable, tactile accessory.\",\n    \"vertical\": \"fashion_apparel\"\n  }\n]",
+        "accounting": {
+          "input_tokens": 3800,
+          "candidates_tokens": 725,
+          "thoughts_tokens": 2881,
+          "total_tokens": 7406,
+          "cost_as_deployed": 0.003,
+          "cost_with_thinking": 0.0102,
+          "understated_by": 0.0072,
+          "reconciles": "candidates_excludes_thinking",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-2.5-flash",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 50292,
+        "emission": {
+          "proposals": [
+            {
+              "topic": "Adopting versatile active dresses for multi-occasion wear",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQElYbpzCYCVUIWjZS3Rcs0Euv5yeLgkcdcuI9-sAPrfy-pNoAYLfY808HrBtPRh6MhsX-QLoTVC1vjZzvU1uiEpH1sDdR-EZD67AR4nfmbuB005EsNvyvGJuvzrS5jN1UzkiWG7TFJsaQXdcDRR9dK5JQkQlE_qvx6PEVVe8Wv6IWCSPbVi9JeBjWmDIm29XHfJUzQt02WgDfkIcBR3puGGlDQzoTH2hpTqQRfhEkK2Vud_zfB2LXXNc1m8OnXHO31pVmLiGXdNJ3wxfy9F",
+              "why_now": "Recent social media posts from early August 2026 indicate a surge in popularity for active dresses, valued for their comfort, style, and seamless transition across various activities and casual settings.",
+              "vertical": "fashion_apparel",
+              "deep_link": true,
+              "verify": {
+                "drop_reason": "no_canonical"
+              }
+            },
+            {
+              "topic": "Embracing non-flattering silhouettes for expressive styling",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEAnZLltFpP7patfG0wfvzJyqrUn-IcqONMIBOnva0I6V-lTb_jRQvdr0s0tJzbx2FSpmHm4B8cJFPjFQBpG5-8paRj5B1czX_yLaUWXWPT_M_HC_2K7Dc6XBn8vI-T4A6_FT5saHE=",
+              "why_now": "Fashion predictions for Fall 2026, discussed in early August 2026, highlight a deliberate shift in consumer preference towards clothing shapes that prioritize artistic expression and comfort over traditional flattering aesthetics.",
+              "vertical": "fashion_apparel",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://youtube.com/watch?v=fGzq3GK0mGg",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": null,
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Adopting 'Psychedelic Boho' aesthetic for autumn fashion",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHzF-zF2B1YXHYJZrA0I1HNannGvQXm8wHlD9GLUg1Ro3s9ROJW6ii9mTbIJ-P9TViyipo2PHG7hX7_4daiSJXqo3zmMfNh8dpKaNM96McmVqsTnPHtLSOWTY1MtDUHCM8XM2agNH_HqgMU1GlKJBeB22BfyetduavfpWIM2ff_QZ4Enr6eaco=",
+              "why_now": "Luxury trend forecasts for Autumn 2026, published in late August 2026, identify 'Psychedelic Boho' as a key emerging aesthetic, blending bohemian romance with a rock-star edge and vibrant patterns.",
+              "vertical": "fashion_apparel",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://whowhatwear.com/fashion/luxury/luxury-fashion-trends-autumn-2026",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Glossy Leather and Psychedelic Boho: 5 Luxury Trends Defining Autumn 2026",
+                "published_date": "2026-08-20T02:00:00.000Z",
+                "days_since_published": 1,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Integrating glossy leather finishes into autumn wardrobes",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHzF-zF2B1YXHYJZrA0I1HNannGvQXm8wHlD9GLUg1Ro3s9ROJW6ii9mTbIJ-P9TViyipo2PHG7hX7_4daiSJXqo3zmMfNh8dpKaNM96McmVqsTnPHtLSOWTY1MtDUHCM8XM2agNH_HqgMU1GlKJBeB22BfyetduavfpWIM2ff_QZ4Enr6eaco=",
+              "why_now": "Autumn 2026 style predictions, released in late August 2026, highlight glossy leather as a prominent material trend, signaling consumer interest in elevated textures for outerwear and accessories.",
+              "vertical": "fashion_apparel",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://whowhatwear.com/fashion/luxury/luxury-fashion-trends-autumn-2026",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Glossy Leather and Psychedelic Boho: 5 Luxury Trends Defining Autumn 2026",
+                "published_date": "2026-08-20T02:00:00.000Z",
+                "days_since_published": 1,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Favoring elongated East-West tote bags",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG4IOA3EX9Nr1LWcf9I9OhyKHbA2B8mRoDd3qTNwLTPG4K5cjt1qYRssJPV3gF3pZuqxlY79WIu3VBgKDJ8AGRig50APEq3E4EgGtatZMBhlcO3cpBGZnD4s4yG2uau4JMEncck42U9UDHKAHev2c2aBC5sQ_0=",
+              "why_now": "Major bag trend reports for 2026, published in mid-August, show a significant shift towards long, horizontally oriented tote bags, offering a fresh, fashion-forward alternative to traditional carryalls.",
+              "vertical": "fashion_apparel",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://whowhatwear.com/fashion/trends/bag-trends-2026",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "These Are the 5 Biggest Bag Trends of 2026, Period",
+                "published_date": "2026-08-11T07:00:00.000Z",
+                "days_since_published": 9,
+                "drop_reason": "title_irrelevant"
+              }
+            },
+            {
+              "topic": "Extending clothing wear between washes with garment refresh sprays",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGnwONvOddhfDwxEjc7KEw4lTsmFoIDgYodDh0eF_D1biwCFTYmfeYoyQPnz-8GsiZtRiYacp6SabjTxhpqM6VPMSeUNZehWq3E_Um51d24sxTbCr82V2g-xEZKlnRD9tT1AeOiKG9txJdaoLjNkbkeydRCT8JSQu0=",
+              "why_now": "August 2026 fashion news highlights new product launches like 'dry shampoo for clothes,' indicating a consumer desire for convenient solutions to extend the wear of garments and reduce laundry frequency.",
+              "vertical": "fashion_apparel",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://thezoereport.com/fashion/august-2026-fashion-news",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "August’s Fashion News Is Coming In Hot",
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": "title_irrelevant"
+              }
+            },
+            {
+              "topic": "Incorporating polished turtleneck knits into transitional layering",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQElxt6QwbA7ZXDa9EPD4Ftse4skMsBZOPP7lECzusaZfqkXVxqDwkxPp2apHn2tMGdTUnkICtInnZLO3ZKB-RvDjooVKuveOltOa2-F0WqM6OAKH7xNAE4Bdxn2DJgbsf8n1VdR0IM46MyFJ18ax_FVbawuNeS_J_mgfFK_OXckpbqE3KlNDw6UkAhX2nFhJHUWyQ==",
+              "why_now": "Autumn 2026 knitwear trend reports from late August emphasize the resurgence of polished turtlenecks as a chic and functional layering piece, driven by their versatility and sophisticated appeal for cooler weather.",
+              "vertical": "fashion_apparel",
+              "deep_link": true,
+              "verify": {
+                "drop_reason": "no_canonical"
+              }
+            },
+            {
+              "topic": "Adorning occasion wear with fine fringe detailing",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEUz-9_OsMEpEkyPnbAeygSdwapR9ZPWIveW9Ah16guUQhjhMyYIn-UPsu9PdUEPu20BlpBm6-8Sfuz9QEw6oyHIQgzdy45ktstNJCer7tQO-l3oBaugum5f9F81nzJkrT9DhVFZbaJuTvKmrdrbKU3JD8wZFc1_kuEIUrj6QxMqrUuc11D7Mj-8tkF1mP5FnQ==",
+              "why_now": "Recent red-carpet appearances and fashion campaign showcases in mid-August 2026 feature fine fringe detailing on luxury gowns, signaling its emergence as a key embellishment for formal and celebratory apparel.",
+              "vertical": "fashion_apparel",
+              "deep_link": true,
+              "verify": {
+                "drop_reason": "no_canonical"
+              }
+            }
+          ]
+        },
+        "text": "```json\n[\n  {\n    \"topic\": \"Adopting versatile active dresses for multi-occasion wear\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQElYbpzCYCVUIWjZS3Rcs0Euv5yeLgkcdcuI9-sAPrfy-pNoAYLfY808HrBtPRh6MhsX-QLoTVC1vjZzvU1uiEpH1sDdR-EZD67AR4nfmbuB005EsNvyvGJuvzrS5jN1UzkiWG7TFJsaQXdcDRR9dK5JQkQlE_qvx6PEVVe8Wv6IWCSPbVi9JeBjWmDIm29XHfJUzQt02WgDfkIcBR3puGGlDQzoTH2hpTqQRfhEkK2Vud_zfB2LXXNc1m8OnXHO31pVmLiGXdNJ3wxfy9F\",\n    \"why_now\": \"Recent social media posts from early August 2026 indicate a surge in popularity for active dresses, valued for their comfort, style, and seamless transition across various activities and casual settings.\",\n    \"vertical\": \"fashion_apparel\"\n  },\n  {\n    \"topic\": \"Embracing non-flattering silhouettes for expressive styling\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEAnZLltFpP7patfG0wfvzJyqrUn-IcqONMIBOnva0I6V-lTb_jRQvdr0s0tJzbx2FSpmHm4B8cJFPjFQBpG5-8paRj5B1czX_yLaUWXWPT_M_HC_2K7Dc6XBn8vI-T4A6_FT5saHE=\",\n    \"why_now\": \"Fashion predictions for Fall 2026, discussed in early August 2026, highlight a deliberate shift in consumer preference towards clothing shapes that prioritize artistic expression and comfort over traditional flattering aesthetics.\",\n    \"vertical\": \"fashion_apparel\"\n  },\n  {\n    \"topic\": \"Adopting 'Psychedelic Boho' aesthetic for autumn fashion\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHzF-zF2B1YXHYJZrA0I1HNannGvQXm8wHlD9GLUg1Ro3s9ROJW6ii9mTbIJ-P9TViyipo2PHG7hX7_4daiSJXqo3zmMfNh8dpKaNM96McmVqsTnPHtLSOWTY1MtDUHCM8XM2agNH_HqgMU1GlKJBeB22BfyetduavfpWIM2ff_QZ4Enr6eaco=\",\n    \"why_now\": \"Luxury trend forecasts for Autumn 2026, published in late August 2026, identify 'Psychedelic Boho' as a key emerging aesthetic, blending bohemian romance with a rock-star edge and vibrant patterns.\",\n    \"vertical\": \"fashion_apparel\"\n  },\n  {\n    \"topic\": \"Integrating glossy leather finishes into autumn wardrobes\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHzF-zF2B1YXHYJZrA0I1HNannGvQXm8wHlD9GLUg1Ro3s9ROJW6ii9mTbIJ-P9TViyipo2PHG7hX7_4daiSJXqo3zmMfNh8dpKaNM96McmVqsTnPHtLSOWTY1MtDUHCM8XM2agNH_HqgMU1GlKJBeB22BfyetduavfpWIM2ff_QZ4Enr6eaco=\",\n    \"why_now\": \"Autumn 2026 style predictions, released in late August 2026, highlight glossy leather as a prominent material trend, signaling consumer interest in elevated textures for outerwear and accessories.\",\n    \"vertical\": \"fashion_apparel\"\n  },\n  {\n    \"topic\": \"Favoring elongated East-West tote bags\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG4IOA3EX9Nr1LWcf9I9OhyKHbA2B8mRoDd3qTNwLTPG4K5cjt1qYRssJPV3gF3pZuqxlY79WIu3VBgKDJ8AGRig50APEq3E4EgGtatZMBhlcO3cpBGZnD4s4yG2uau4JMEncck42U9UDHKAHev2c2aBC5sQ_0=\",\n    \"why_now\": \"Major bag trend reports for 2026, published in mid-August, show a significant shift towards long, horizontally oriented tote bags, offering a fresh, fashion-forward alternative to traditional carryalls.\",\n    \"vertical\": \"fashion_apparel\"\n  },\n  {\n    \"topic\": \"Extending clothing wear between washes with garment refresh sprays\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGnwONvOddhfDwxEjc7KEw4lTsmFoIDgYodDh0eF_D1biwCFTYmfeYoyQPnz-8GsiZtRiYacp6SabjTxhpqM6VPMSeUNZehWq3E_Um51d24sxTbCr82V2g-xEZKlnRD9tT1AeOiKG9txJdaoLjNkbkeydRCT8JSQu0=\",\n    \"why_now\": \"August 2026 fashion news highlights new product launches like 'dry shampoo for clothes,' indicating a consumer desire for convenient solutions to extend the wear of garments and reduce laundry frequency.\",\n    \"vertical\": \"fashion_apparel\"\n  },\n  {\n    \"topic\": \"Incorporating polished turtleneck knits into transitional layering\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQElxt6QwbA7ZXDa9EPD4Ftse4skMsBZOPP7lECzusaZfqkXVxqDwkxPp2apHn2tMGdTUnkICtInnZLO3ZKB-RvDjooVKuveOltOa2-F0WqM6OAKH7xNAE4Bdxn2DJgbsf8n1VdR0IM46MyFJ18ax_FVbawuNeS_J_mgfFK_OXckpbqE3KlNDw6UkAhX2nFhJHUWyQ==\",\n    \"why_now\": \"Autumn 2026 knitwear trend reports from late August emphasize the resurgence of polished turtlenecks as a chic and functional layering piece, driven by their versatility and sophisticated appeal for cooler weather.\",\n    \"vertical\": \"fashion_apparel\"\n  },\n  {\n    \"topic\": \"Adorning occasion wear with fine fringe detailing\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEUz-9_OsMEpEkyPnbAeygSdwapR9ZPWIveW9Ah16guUQhjhMyYIn-UPsu9PdUEPu20BlpBm6-8Sfuz9QEw6oyHIQgzdy45ktstNJCer7tQO-l3oBaugum5f9F81nzJkrT9DhVFZbaJuTvKmrdrbKU3JD8wZFc1_kuEIUrj6QxMqrUuc11D7Mj-8tkF1mP5FnQ==\",\n    \"why_now\": \"Recent red-carpet appearances and fashion campaign showcases in mid-August 2026 feature fine fringe detailing on luxury gowns, signaling its emergence as a key embellishment for formal and celebratory apparel.\",\n    \"vertical\": \"fashion_apparel\"\n  }\n]\n```",
+        "accounting": {
+          "input_tokens": 3800,
+          "candidates_tokens": 2107,
+          "thoughts_tokens": 8918,
+          "total_tokens": 26521,
+          "cost_as_deployed": 0.0064,
+          "cost_with_thinking": 0.0287,
+          "understated_by": 0.0223,
+          "reconciles": "indeterminate",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "fields": null,
+      "descriptor": null
+    },
+    {
+      "case": {
+        "id": "home_lifestyle",
+        "label": "discovery.gemini.search v4 · registry model gemini-2.5-flash · vertical \"home_lifestyle\"",
+        "incumbentAt": null,
+        "incumbent": {
+          "emission": null,
+          "telemetry": {
+            "model": "gemini-2.5-flash",
+            "registry_driven": true,
+            "prompt_version": 4
+          }
+        }
+      },
+      "built": {
+        "mode": "single",
+        "terminal_tool": null,
+        "tool_names": null,
+        "prompt_provenance": {
+          "discovery.gemini.search": {
+            "version": 4,
+            "registry_model": "gemini-2.5-flash",
+            "chars": 2509
+          }
+        },
+        "system_chars": 0,
+        "user_chars": 16190,
+        "input_notes": {
+          "registry_model": "gemini-2.5-flash",
+          "prompt_version": 4,
+          "active_trends": 132,
+          "examples": 20,
+          "vertical": "home_lifestyle",
+          "how_to_switch": "UPDATE MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT SET MODEL='<id>' WHERE PROMPT_KEY='discovery.gemini.search' AND IS_ACTIVE=TRUE",
+          "drift_note": "registry has this lane on gemini-2.5-flash while the hardcoded verticals run gemini-3-flash-preview"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3-flash-preview",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 37810,
+        "emission": {
+          "proposals": [
+            {
+              "topic": "Adopting color drenching for monochromatic immersion",
+              "evidence_url": "https://www.stonegableblog.com/home-decor-trends-that-are-out-of-style/",
+              "why_now": "As of August 2026, all-white and all-gray minimalist rooms have officially fallen out of favor, replaced by 'color drenching'—the practice of painting walls, trim, and ceilings in a single saturated hue to create cohesive, moody environments.",
+              "vertical": "home_lifestyle",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://stonegableblog.com/home-decor-trends-that-are-out-of-style",
+                "http_status": 404,
+                "drop_reason": "dead_404"
+              }
+            },
+            {
+              "topic": "Installing acoustic art for sound-dampening decor",
+              "evidence_url": "https://www.technologydesigner.com/2026/08/06/5-stunning-home-theater-design-trends-for-your-space/",
+              "why_now": "Homeowners are increasingly combatting 'noise fatigue' in open-concept spaces by integrating printed acoustic art panels that function as gallery-grade decor while absorbing excess sound reflections.",
+              "vertical": "home_lifestyle",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://technologydesigner.com/2026/08/06/5-stunning-home-theater-design-trends-for-your-space",
+                "http_status": 404,
+                "drop_reason": "dead_404"
+              }
+            },
+            {
+              "topic": "Installing bio-adaptive circadian lighting systems",
+              "evidence_url": "https://www.kq2.com/news/can-your-home-help-you-feel-better-inside-the-wellness-home-trend/article_3bfc0494-c637-4be0-997a-71b9c354930a.html",
+              "why_now": "Wellness-integrated real estate is spiking in August 2026, with consumers shifting from manual smart bulbs to automated systems that sync home color temperatures with natural sunlight to improve sleep and hormonal health.",
+              "vertical": "home_lifestyle",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://kq2.com/stacker-home-garden/2026/08/05/can-your-home-help-you-feel-better-inside-the-wellness-home-trend",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": null,
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Adopting dermal-first shower filtration for beauty recovery",
+              "evidence_url": "https://www.nbcnews.com/select/shopping/best-filtered-showerheads-ncna1274531",
+              "why_now": "A mid-August 2026 surge in 'water-first' beauty routines has led consumers to install multi-stage shower filters to remove skin-irritating minerals and chlorine that compromise the skin barrier and hair health.",
+              "vertical": "home_lifestyle",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://nbcnews.com/select/shopping/best-filtered-showerheads-ncna1274531",
+                "http_status": 404,
+                "drop_reason": "dead_404"
+              }
+            }
+          ]
+        },
+        "text": "[\n  {\n    \"topic\": \"Adopting color drenching for monochromatic immersion\",\n    \"evidence_url\": \"https://www.stonegableblog.com/home-decor-trends-that-are-out-of-style/\",\n    \"why_now\": \"As of August 2026, all-white and all-gray minimalist rooms have officially fallen out of favor, replaced by 'color drenching'—the practice of painting walls, trim, and ceilings in a single saturated hue to create cohesive, moody environments.\",\n    \"vertical\": \"home_lifestyle\"\n  },\n  {\n    \"topic\": \"Installing acoustic art for sound-dampening decor\",\n    \"evidence_url\": \"https://www.technologydesigner.com/2026/08/06/5-stunning-home-theater-design-trends-for-your-space/\",\n    \"why_now\": \"Homeowners are increasingly combatting 'noise fatigue' in open-concept spaces by integrating printed acoustic art panels that function as gallery-grade decor while absorbing excess sound reflections.\",\n    \"vertical\": \"home_lifestyle\"\n  },\n  {\n    \"topic\": \"Installing bio-adaptive circadian lighting systems\",\n    \"evidence_url\": \"https://www.kq2.com/news/can-your-home-help-you-feel-better-inside-the-wellness-home-trend/article_3bfc0494-c637-4be0-997a-71b9c354930a.html\",\n    \"why_now\": \"Wellness-integrated real estate is spiking in August 2026, with consumers shifting from manual smart bulbs to automated systems that sync home color temperatures with natural sunlight to improve sleep and hormonal health.\",\n    \"vertical\": \"home_lifestyle\"\n  },\n  {\n    \"topic\": \"Adopting dermal-first shower filtration for beauty recovery\",\n    \"evidence_url\": \"https://www.nbcnews.com/select/shopping/best-filtered-showerheads-ncna1274531\",\n    \"why_now\": \"A mid-August 2026 surge in 'water-first' beauty routines has led consumers to install multi-stage shower filters to remove skin-irritating minerals and chlorine that compromise the skin barrier and hair health.\",\n    \"vertical\": \"home_lifestyle\"\n  }\n]",
+        "accounting": {
+          "input_tokens": 6473,
+          "candidates_tokens": 540,
+          "thoughts_tokens": 6313,
+          "total_tokens": 13326,
+          "cost_as_deployed": 0.0033,
+          "cost_with_thinking": 0.0191,
+          "understated_by": 0.0158,
+          "reconciles": "candidates_excludes_thinking",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-2.5-flash",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 36075,
+        "emission": {
+          "proposals": [
+            {
+              "topic": "Adopting Warm Minimalism in Home Decor",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEeMehwE-kl6EnvSratOtyqMjknv42fqnXFk2g9HBFTXxzQg7x6JtrJ-pwtqaZo0UFzevtJOcAzrpVt6XYtpmhPl8a-PgPsGNzDxyjcmFd3JFGSWtVU9aAUgDRzfmPJuCI=",
+              "why_now": "Consumers are moving away from stark, cool minimalist aesthetics, embracing warmer neutrals, natural wood tones, and tactile fabrics to create cozier, more inviting home environments. This shift reflects a desire for personality and comfort without fully committing to maximalism.",
+              "vertical": "home_lifestyle",
+              "deep_link": true,
+              "verify": {
+                "drop_reason": "no_canonical"
+              }
+            },
+            {
+              "topic": "Prioritizing Proactive Exterior Home Renovations",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHZ4Mt67zW1r-neEoPFkOZNwTwC8lfLD05v3D-jjd6s_yMhzFlwVGkgldKwWDskokYSMSkT0aUfaKDCUECaFi4D543axgjbasluXJlCjI0kpdzgTsSQ2FBj-oTLmr_4oSXmGYIFxTHmasBCEAi3j93TbFORXS3S679YZPwyVGkSAENV9_Mr8TgEM4GXKDoVc2jUYrJnrWnXd3Xn3rIb6XKRcTHmJJEOVmfn8Lh3CGBBceXrv4XfahvQXtEoP3o_g9KiQwe5dtaEihzFPzrmWzaDU679C581j5jMALW2AjsvZ8NHqpy5ouIR",
+              "why_now": "Homeowners are increasingly viewing exterior projects like roofing, siding, and windows as essential long-term property care rather than reactive fixes, driven by changing construction costs, unpredictable weather patterns, and a desire to protect their investments.",
+              "vertical": "home_lifestyle",
+              "deep_link": true,
+              "verify": {
+                "drop_reason": "no_canonical"
+              }
+            },
+            {
+              "topic": "Adopting Personalized & Approachable Smart Home Systems",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFf9AhyEHEwjZYEwI8ULfpU5k2COH_tioH1Bz_ElF6lAem0kr2ryjPqsUQkN43vcj1FrT2FcoTZ7iUajC-UrVKjE-dzgXvcAdSOF8eLJn5ITT1x8rQ0Re16pFAiSO7M9DkWpzUpf95iENEwxMl61rW2xuPdRmsy5ZIn-266BqiXcXXmPjVeGvrslWPJrUI=",
+              "why_now": "The smart home market is evolving with new product releases and a focus on user-friendly interfaces, making advanced home automation more accessible and tailored to individual household needs, rather than requiring technical expertise.",
+              "vertical": "home_lifestyle",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://9to5mac.com/2026/08/15/apple-home-product-roadmap-tv-homepod-smart-display",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Apple has a huge product roadmap for the smart home: Here’s what’s coming - 9to5Mac",
+                "published_date": "2026-08-15T16:08:09.000Z",
+                "days_since_published": 5,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Purchasing Upcycled & Artisan Home Decor",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEN9gi7z6pcyd87iLhT_PQk1IOeBCxfaLGNIO1Z4_XRV9iY1f2mdbeR_4dDZGcjW99yh-FPzU0yj5viewvAxQfYp9ZzD3DpdeGrSzT8S1DVGr2P86Uy3PuI448RA9zEUh0hMH6XL0HinjPChTOnEV3i6IUWCKs4FeXoxykmsi0_nX3J",
+              "why_now": "Consumers are increasingly seeking out eco-friendly home decor options, prioritizing handcrafted products, upcycled materials, and sustainably sourced items that offer unique aesthetics and align with growing environmental consciousness.",
+              "vertical": "home_lifestyle",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://fourthwall.com/blog/15-sustainable-eco-friendly-products-to-sell",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "25 Eco-Friendly Products to Sell in 2026: Bestsellers",
+                "published_date": "2026-02-25T00:00:00.000Z",
+                "days_since_published": 177,
+                "drop_reason": "stale_177d"
+              }
+            }
+          ]
+        },
+        "text": "```json\n[\n  {\n    \"topic\": \"Adopting Warm Minimalism in Home Decor\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEeMehwE-kl6EnvSratOtyqMjknv42fqnXFk2g9HBFTXxzQg7x6JtrJ-pwtqaZo0UFzevtJOcAzrpVt6XYtpmhPl8a-PgPsGNzDxyjcmFd3JFGSWtVU9aAUgDRzfmPJuCI=\",\n    \"why_now\": \"Consumers are moving away from stark, cool minimalist aesthetics, embracing warmer neutrals, natural wood tones, and tactile fabrics to create cozier, more inviting home environments. This shift reflects a desire for personality and comfort without fully committing to maximalism.\",\n    \"vertical\": \"home_lifestyle\"\n  },\n  {\n    \"topic\": \"Prioritizing Proactive Exterior Home Renovations\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHZ4Mt67zW1r-neEoPFkOZNwTwC8lfLD05v3D-jjd6s_yMhzFlwVGkgldKwWDskokYSMSkT0aUfaKDCUECaFi4D543axgjbasluXJlCjI0kpdzgTsSQ2FBj-oTLmr_4oSXmGYIFxTHmasBCEAi3j93TbFORXS3S679YZPwyVGkSAENV9_Mr8TgEM4GXKDoVc2jUYrJnrWnXd3Xn3rIb6XKRcTHmJJEOVmfn8Lh3CGBBceXrv4XfahvQXtEoP3o_g9KiQwe5dtaEihzFPzrmWzaDU679C581j5jMALW2AjsvZ8NHqpy5ouIR\",\n    \"why_now\": \"Homeowners are increasingly viewing exterior projects like roofing, siding, and windows as essential long-term property care rather than reactive fixes, driven by changing construction costs, unpredictable weather patterns, and a desire to protect their investments.\",\n    \"vertical\": \"home_lifestyle\"\n  },\n  {\n    \"topic\": \"Adopting Personalized & Approachable Smart Home Systems\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFf9AhyEHEwjZYEwI8ULfpU5k2COH_tioH1Bz_ElF6lAem0kr2ryjPqsUQkN43vcj1FrT2FcoTZ7iUajC-UrVKjE-dzgXvcAdSOF8eLJn5ITT1x8rQ0Re16pFAiSO7M9DkWpzUpf95iENEwxMl61rW2xuPdRmsy5ZIn-266BqiXcXXmPjVeGvrslWPJrUI=\",\n    \"why_now\": \"The smart home market is evolving with new product releases and a focus on user-friendly interfaces, making advanced home automation more accessible and tailored to individual household needs, rather than requiring technical expertise.\",\n    \"vertical\": \"home_lifestyle\"\n  },\n  {\n    \"topic\": \"Purchasing Upcycled & Artisan Home Decor\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEN9gi7z6pcyd87iLhT_PQk1IOeBCxfaLGNIO1Z4_XRV9iY1f2mdbeR_4dDZGcjW99yh-FPzU0yj5viewvAxQfYp9ZzD3DpdeGrSzT8S1DVGr2P86Uy3PuI448RA9zEUh0hMH6XL0HinjPChTOnEV3i6IUWCKs4FeXoxykmsi0_nX3J\",\n    \"why_now\": \"Consumers are increasingly seeking out eco-friendly home decor options, prioritizing handcrafted products, upcycled materials, and sustainably sourced items that offer unique aesthetics and align with growing environmental consciousness.\",\n    \"vertical\": \"home_lifestyle\"\n  }\n]\n```",
+        "accounting": {
+          "input_tokens": 3793,
+          "candidates_tokens": 1166,
+          "thoughts_tokens": 6060,
+          "total_tokens": 15396,
+          "cost_as_deployed": 0.0041,
+          "cost_with_thinking": 0.0192,
+          "understated_by": 0.0151,
+          "reconciles": "indeterminate",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "fields": null,
+      "descriptor": null
+    },
+    {
+      "case": {
+        "id": "commerce_retail",
+        "label": "discovery.gemini.search v4 · registry model gemini-2.5-flash · vertical \"commerce_retail\"",
+        "incumbentAt": null,
+        "incumbent": {
+          "emission": null,
+          "telemetry": {
+            "model": "gemini-2.5-flash",
+            "registry_driven": true,
+            "prompt_version": 4
+          }
+        }
+      },
+      "built": {
+        "mode": "single",
+        "terminal_tool": null,
+        "tool_names": null,
+        "prompt_provenance": {
+          "discovery.gemini.search": {
+            "version": 4,
+            "registry_model": "gemini-2.5-flash",
+            "chars": 2509
+          }
+        },
+        "system_chars": 0,
+        "user_chars": 16197,
+        "input_notes": {
+          "registry_model": "gemini-2.5-flash",
+          "prompt_version": 4,
+          "active_trends": 132,
+          "examples": 20,
+          "vertical": "commerce_retail",
+          "how_to_switch": "UPDATE MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT SET MODEL='<id>' WHERE PROMPT_KEY='discovery.gemini.search' AND IS_ACTIVE=TRUE",
+          "drift_note": "registry has this lane on gemini-2.5-flash while the hardcoded verticals run gemini-3-flash-preview"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3-flash-preview",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 35402,
+        "emission": {
+          "proposals": [
+            {
+              "topic": "Adopting maximalist bag charms and personalized trinkets (\"Birkin-fying\")",
+              "evidence_url": "https://www.glossy.co/fashion/how-bag-charms-became-the-latest-luxury-flex/",
+              "why_now": "Inspired by Jane Birkin’s famously cluttered handbags, consumers are rejecting 'quiet luxury' in favor of 'bag maximalism,' using charms, ribbons, and vintage trinkets to personalize mass-market and luxury bags alike.",
+              "vertical": "commerce_retail",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://glossy.co/fashion/how-bag-charms-became-the-latest-luxury-flex",
+                "http_status": 404,
+                "drop_reason": "dead_404"
+              }
+            },
+            {
+              "topic": "Booking in-store personal color analysis for \"fail-proof\" shopping",
+              "evidence_url": "https://www.theguardian.com/fashion/article/2024/may/18/color-analysis-tiktok-trend-retail",
+              "why_now": "Driven by viral TikTok filters, retailers are now offering professional in-person color consultations to help shoppers identify their 'season' and reduce the cost and waste of purchasing unflattering garments.",
+              "vertical": "commerce_retail",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://theguardian.com/fashion/article/2024/may/18/color-analysis-tiktok-trend-retail",
+                "http_status": 404,
+                "drop_reason": "dead_404"
+              }
+            },
+            {
+              "topic": "Purchasing UPF-rated apparel for everyday non-athletic sun protection",
+              "evidence_url": "https://www.wsj.com/lifestyle/fashion/sun-protective-clothing-upf-fashion-b789966b",
+              "why_now": "As extreme heatwaves become more frequent, consumers are shifting from topical SPF to 'wearable sunblock,' with mainstream retailers expanding UPF-rated fabrics into stylish, everyday streetwear and office attire.",
+              "vertical": "commerce_retail",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://wsj.com/lifestyle/fashion/sun-protective-clothing-upf-fashion-b789966b",
+                "http_status": 401,
+                "status_class": "denied",
+                "unverified": true,
+                "article_title": null,
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Buying lab-grown diamonds for everyday fashion and non-bridal jewelry",
+              "evidence_url": "https://www.forbes.com/sites/pamdanziger/2024/05/12/lab-grown-diamonds-are-forever-changing-the-jewelry-market/",
+              "why_now": "Price parity with high-end costume jewelry is driving a spike in lab-grown diamond sales for 'self-purchase' items like earrings and tennis bracelets, moving the category beyond the traditional engagement ring market.",
+              "vertical": "commerce_retail",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://forbes.com/sites/pamdanziger/2024/05/12/lab-grown-diamonds-are-forever-changing-the-jewelry-market",
+                "http_status": 403,
+                "status_class": "denied",
+                "unverified": true,
+                "article_title": null,
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Adopting premium \"sipping-grade\" olive oil for daily wellness shots",
+              "evidence_url": "https://www.nytimes.com/2024/05/15/style/olive-oil-health-benefits.html",
+              "why_now": "Consumers are treating high-polyphenol olive oil as a functional supplement rather than a cooking ingredient, leading to a surge in 'sipping-grade' retail launches designed for direct morning consumption.",
+              "vertical": "commerce_retail",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://nytimes.com/2024/05/15/style/olive-oil-health-benefits.html",
+                "http_status": 403,
+                "status_class": "denied",
+                "unverified": true,
+                "article_title": null,
+                "published_date": null,
+                "days_since_published": null,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Adopting \"dumbphones\" and minimalist handsets for digital detoxing",
+              "evidence_url": "https://www.bbc.com/worklife/article/20240514-dumbphone-trend-gen-z-digital-detox",
+              "why_now": "A growing 'screen fatigue' movement among Gen Z is driving a retail spike in basic feature phones and e-ink handsets as secondary devices to facilitate intentional disconnection from social media.",
+              "vertical": "commerce_retail",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://bbc.com/worklife/article/20240514-dumbphone-trend-gen-z-digital-detox",
+                "http_status": 404,
+                "drop_reason": "dead_404"
+              }
+            },
+            {
+              "topic": "Adopting playful fruit-shaped jewelry and kitschy summer accessories",
+              "evidence_url": "https://www.theguardian.com/fashion/article/2024/may/15/fruit-jewellery-fashion-trend",
+              "why_now": "The 'Tomato Girl' and 'Fruit Girl' aesthetics have moved into high-street retail, with consumers aggressively buying hyper-realistic fruit-themed jewelry as a whimsical counter-trend to minimalist styling.",
+              "vertical": "commerce_retail",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://theguardian.com/fashion/article/2024/may/15/fruit-jewellery-fashion-trend",
+                "http_status": 404,
+                "drop_reason": "dead_404"
+              }
+            }
+          ]
+        },
+        "text": "```json\n[\n  {\n    \"topic\": \"Adopting maximalist bag charms and personalized trinkets (\\\"Birkin-fying\\\")\",\n    \"evidence_url\": \"https://www.glossy.co/fashion/how-bag-charms-became-the-latest-luxury-flex/\",\n    \"why_now\": \"Inspired by Jane Birkin’s famously cluttered handbags, consumers are rejecting 'quiet luxury' in favor of 'bag maximalism,' using charms, ribbons, and vintage trinkets to personalize mass-market and luxury bags alike.\",\n    \"vertical\": \"commerce_retail\"\n  },\n  {\n    \"topic\": \"Booking in-store personal color analysis for \\\"fail-proof\\\" shopping\",\n    \"evidence_url\": \"https://www.theguardian.com/fashion/article/2024/may/18/color-analysis-tiktok-trend-retail\",\n    \"why_now\": \"Driven by viral TikTok filters, retailers are now offering professional in-person color consultations to help shoppers identify their 'season' and reduce the cost and waste of purchasing unflattering garments.\",\n    \"vertical\": \"commerce_retail\"\n  },\n  {\n    \"topic\": \"Purchasing UPF-rated apparel for everyday non-athletic sun protection\",\n    \"evidence_url\": \"https://www.wsj.com/lifestyle/fashion/sun-protective-clothing-upf-fashion-b789966b\",\n    \"why_now\": \"As extreme heatwaves become more frequent, consumers are shifting from topical SPF to 'wearable sunblock,' with mainstream retailers expanding UPF-rated fabrics into stylish, everyday streetwear and office attire.\",\n    \"vertical\": \"commerce_retail\"\n  },\n  {\n    \"topic\": \"Buying lab-grown diamonds for everyday fashion and non-bridal jewelry\",\n    \"evidence_url\": \"https://www.forbes.com/sites/pamdanziger/2024/05/12/lab-grown-diamonds-are-forever-changing-the-jewelry-market/\",\n    \"why_now\": \"Price parity with high-end costume jewelry is driving a spike in lab-grown diamond sales for 'self-purchase' items like earrings and tennis bracelets, moving the category beyond the traditional engagement ring market.\",\n    \"vertical\": \"commerce_retail\"\n  },\n  {\n    \"topic\": \"Adopting premium \\\"sipping-grade\\\" olive oil for daily wellness shots\",\n    \"evidence_url\": \"https://www.nytimes.com/2024/05/15/style/olive-oil-health-benefits.html\",\n    \"why_now\": \"Consumers are treating high-polyphenol olive oil as a functional supplement rather than a cooking ingredient, leading to a surge in 'sipping-grade' retail launches designed for direct morning consumption.\",\n    \"vertical\": \"commerce_retail\"\n  },\n  {\n    \"topic\": \"Adopting \\\"dumbphones\\\" and minimalist handsets for digital detoxing\",\n    \"evidence_url\": \"https://www.bbc.com/worklife/article/20240514-dumbphone-trend-gen-z-digital-detox\",\n    \"why_now\": \"A growing 'screen fatigue' movement among Gen Z is driving a retail spike in basic feature phones and e-ink handsets as secondary devices to facilitate intentional disconnection from social media.\",\n    \"vertical\": \"commerce_retail\"\n  },\n  {\n    \"topic\": \"Adopting playful fruit-shaped jewelry and kitschy summer accessories\",\n    \"evidence_url\": \"https://www.theguardian.com/fashion/article/2024/may/15/fruit-jewellery-fashion-trend\",\n    \"why_now\": \"The 'Tomato Girl' and 'Fruit Girl' aesthetics have moved into high-street retail, with consumers aggressively buying hyper-realistic fruit-themed jewelry as a whimsical counter-trend to minimalist styling.\",\n    \"vertical\": \"commerce_retail\"\n  }\n]\n```",
+        "accounting": {
+          "input_tokens": 3793,
+          "candidates_tokens": 893,
+          "thoughts_tokens": 6241,
+          "total_tokens": 10927,
+          "cost_as_deployed": 0.0034,
+          "cost_with_thinking": 0.019,
+          "understated_by": 0.0156,
+          "reconciles": "candidates_excludes_thinking",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-2.5-flash",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 26757,
+        "emission": {
+          "proposals": [
+            {
+              "topic": "Prioritizing Purpose-Driven Purchases over Promotions",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG_S6y3zVqEesDM4RcOBeVNIlQkRi5Wq2mnWH-1TwNwlnOyzCCApQ-fEjUITE3vdtaKdSkxqIWF7-IA0Vzcnq29BwaJ9yU-586leYZuX2gTNIDkW2oz0hDiHwLT_BNbUukXRPuYpFMTAK3mQoNbUs1BnM0LadZzGMYEuuaSryqIGhiyf2leGndzO9vzj9m-Qo_N3FApXrHBLICweH5t4saZSm2tdhsgPglOC70UG2tuNZbfaorRMzfh9ggOlO-k",
+              "why_now": "Consumers are becoming more deliberate with their spending due to economic pressures, shifting from impulse buying driven by broad discounts to prioritizing purchases based on genuine need, clear value, convenience, or health benefits.",
+              "vertical": "commerce_retail",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://markets.businessinsider.com/news/stocks/back-to-school-signals-a-new-reality-shoppers-need-more-than-promotions-1036465766",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Back-to-School Signals a New Reality: Shoppers Need More Than Promotions",
+                "published_date": "2026-08-19T14:13:07.000Z",
+                "days_since_published": 1,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Adopting Rapid Beauty Styling Hacks",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHseKQwHhhG1E0RFfEg1pDO6l0uk-ay4fxUhoHN2jiKYZI3s0j9-_91a2KwFc6C6UERS51gkQuxIS2K5c_KPP5ZVPIfSsOY2DpKlFMUK8DRSgcBzHeYhxKourNbWbj1JQtN4c6ck8Qdkm9-BvJZQp8U1pwX",
+              "why_now": "The influence of social media platforms like TikTok is driving a surge in demand for quick, easy, and visually impactful beauty solutions, enabling consumers to achieve trending looks with minimal time and effort.",
+              "vertical": "commerce_retail",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://blog.trendalytics.co/consumer-trends-august-2026",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "August 2026 Consumer Trend Report: Fashion &amp; Beauty Intelligence | Trendalytics",
+                "published_date": "2026-08-14T21:28:17.000Z",
+                "days_since_published": 6,
+                "drop_reason": null
+              }
+            },
+            {
+              "topic": "Hybrid Grocery Value Seeking (Private Label & Price Comparison)",
+              "evidence_url": "https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGIjA8XXayp7-g_LnuCN7jk97_ED4n6uXiPTPqHoZ1ZpeZRM_dOLgf7Tfhc-qtloxApTNuOpV_Fshap1UtL_jmwrOWsFxRYgZcOQSGF_HVr-JGsMaLwznJy9Ec7R_YZGK5USr9kr6jqo3YoNPCI74Yr94rH6lp2xWkzZAPINNmlSqkzwIlbrs9Rt8Qy72OVL7-WIz5tK-TsOh8=",
+              "why_now": "Persistent inflation and economic uncertainty are compelling consumers to actively manage their grocery budgets by opting for private-label alternatives and meticulously comparing prices across brands before making purchasing decisions.",
+              "vertical": "commerce_retail",
+              "deep_link": true,
+              "verify": {
+                "canonical": "https://pymnts.com/economy/2026/retail-spending-pause-shows-consumers-picking-their-spots",
+                "http_status": 200,
+                "status_class": "ok",
+                "unverified": false,
+                "article_title": "Retail Spending Pause Shows Consumers Picking Their Spots | PYMNTS.com",
+                "published_date": "2026-08-14T15:20:06.000Z",
+                "days_since_published": 6,
+                "drop_reason": "title_irrelevant"
+              }
+            }
+          ]
+        },
+        "text": "```json\n[\n  {\n    \"topic\": \"Prioritizing Purpose-Driven Purchases over Promotions\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQG_S6y3zVqEesDM4RcOBeVNIlQkRi5Wq2mnWH-1TwNwlnOyzCCApQ-fEjUITE3vdtaKdSkxqIWF7-IA0Vzcnq29BwaJ9yU-586leYZuX2gTNIDkW2oz0hDiHwLT_BNbUukXRPuYpFMTAK3mQoNbUs1BnM0LadZzGMYEuuaSryqIGhiyf2leGndzO9vzj9m-Qo_N3FApXrHBLICweH5t4saZSm2tdhsgPglOC70UG2tuNZbfaorRMzfh9ggOlO-k\",\n    \"why_now\": \"Consumers are becoming more deliberate with their spending due to economic pressures, shifting from impulse buying driven by broad discounts to prioritizing purchases based on genuine need, clear value, convenience, or health benefits.\",\n    \"vertical\": \"commerce_retail\"\n  },\n  {\n    \"topic\": \"Adopting Rapid Beauty Styling Hacks\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHseKQwHhhG1E0RFfEg1pDO6l0uk-ay4fxUhoHN2jiKYZI3s0j9-_91a2KwFc6C6UERS51gkQuxIS2K5c_KPP5ZVPIfSsOY2DpKlFMUK8DRSgcBzHeYhxKourNbWbj1JQtN4c6ck8Qdkm9-BvJZQp8U1pwX\",\n    \"why_now\": \"The influence of social media platforms like TikTok is driving a surge in demand for quick, easy, and visually impactful beauty solutions, enabling consumers to achieve trending looks with minimal time and effort.\",\n    \"vertical\": \"commerce_retail\"\n  },\n  {\n    \"topic\": \"Hybrid Grocery Value Seeking (Private Label & Price Comparison)\",\n    \"evidence_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGIjA8XXayp7-g_LnuCN7jk97_ED4n6uXiPTPqHoZ1ZpeZRM_dOLgf7Tfhc-qtloxApTNuOpV_Fshap1UtL_jmwrOWsFxRYgZcOQSGF_HVr-JGsMaLwznJy9Ec7R_YZGK5USr9kr6jqo3YoNPCI74Yr94rH6lp2xWkzZAPINNmlSqkzwIlbrs9Rt8Qy72OVL7-WIz5tK-TsOh8=\",\n    \"why_now\": \"Persistent inflation and economic uncertainty are compelling consumers to actively manage their grocery budgets by opting for private-label alternatives and meticulously comparing prices across brands before making purchasing decisions.\",\n    \"vertical\": \"commerce_retail\"\n  }\n]\n```",
+        "accounting": {
+          "input_tokens": 3793,
+          "candidates_tokens": 858,
+          "thoughts_tokens": 5011,
+          "total_tokens": 14014,
+          "cost_as_deployed": 0.0033,
+          "cost_with_thinking": 0.0158,
+          "understated_by": 0.0125,
+          "reconciles": "indeterminate",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "fields": null,
+      "descriptor": null
+    }
+  ]
+}

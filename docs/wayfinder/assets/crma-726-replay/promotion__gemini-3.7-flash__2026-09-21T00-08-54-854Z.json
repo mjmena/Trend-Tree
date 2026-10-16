@@ -1,0 +1,374 @@
+{
+  "lane": "promotion",
+  "summary": "Per-candidate promote/reject/dedupe gate. Tightest budget in the fleet — where the budget-gate trap bites first.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-09-21T00:08:54.854Z",
+  "finished_at": "2026-09-21T00:09:16.647Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 3,
+    "rerunIncumbent": false,
+    "caseId": "f5895c12-1087-4b6b-bd43-e6bd36211462",
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "cand-kvggp06bmrgg2o4j",
+        "auditId": "f5895c12-1087-4b6b-bd43-e6bd36211462",
+        "label": "Tweens adopting multi-step adult skincare with harsh actives · DEFER @ 2026-07-11T10:15 · audit f5895c12",
+        "incumbentAt": "2026-07-11",
+        "decidedAt": "2026-07-11T10:15:30.643000",
+        "incumbent": {
+          "emission": {
+            "decision": "DEFER",
+            "decision_category": "AMBIGUOUS_TOPIC_JUDGMENT",
+            "confidence": 0.95,
+            "rationale": "agent did not call propose_decision",
+            "max_neighbor_sim": null,
+            "considered_neighbors": []
+          },
+          "context": {
+            "distillation_verdict": "REAL_TREND",
+            "overrode_verdict": false,
+            "cluster_size": 2,
+            "source_count": 1
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "input_tokens": 25045,
+            "output_tokens": 133,
+            "cost_estimate": 0.0517
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_decision",
+        "tool_names": [
+          "compare_topics",
+          "query_neighbor_details",
+          "verify_exploding_topics",
+          "propose_decision"
+        ],
+        "prompt_provenance": {
+          "promotion.subagent.system": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2576
+          },
+          "promotion.subagent.decision_rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 3876
+          }
+        },
+        "system_chars": 7649,
+        "user_chars": 584,
+        "input_notes": {
+          "neighbors": 0,
+          "quality_flags": [],
+          "budget_usd": 0.15,
+          "budget_gate_warning": "This lane's budget is measured on the TRUTHFUL cost. Production measures it on the understated one, so a real switch must correct RATES_PER_M in the same slice.",
+          "reconstructed": "candidate row (q_load_pending_candidates filters on PENDING; a historical candidate is not)",
+          "neighbors_excluded_as_anachronistic": 0,
+          "et_rescue": "routed to ET-rescue — single_family ([agent_gemini_discovery]) conf=0.95>=0.5 spec=0.9>=0.5 — eligible for ET corroboration"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 3,
+        "tool_sequence": [
+          "verify_exploding_topics",
+          "propose_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "Sephora kids"
+            },
+            "output": {
+              "error": "Exploding Topics API key not configured (EXPLODING_TOPICS_API_KEY unset). Cannot verify — treat the candidate as un-corroborated."
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 2,
+            "name": "propose_decision",
+            "args": {
+              "rationale": "Candidate cand-kvggp06bmrgg2o4j only possesses a single signal source family (agent_gemini_discovery=1). Under the two-source doctrine for ET-rescue candidates, external corroboration from Exploding Topics was required to supply the missing second source family. Exploding Topics corroboration was un-corroborated / unavailable, meaning the candidate remains supported by only one source family and cannot be promoted.",
+              "rejection_reason": "NO_SECOND_SOURCE",
+              "decision": "REJECT",
+              "decision_category": "CONFIRM_REJECT"
+            },
+            "output": {
+              "accepted": true,
+              "decision": "REJECT",
+              "category": "CONFIRM_REJECT"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "rationale": "Candidate cand-kvggp06bmrgg2o4j only possesses a single signal source family (agent_gemini_discovery=1). Under the two-source doctrine for ET-rescue candidates, external corroboration from Exploding Topics was required to supply the missing second source family. Exploding Topics corroboration was un-corroborated / unavailable, meaning the candidate remains supported by only one source family and cannot be promoted.",
+          "rejection_reason": "NO_SECOND_SOURCE",
+          "decision": "REJECT",
+          "decision_category": "CONFIRM_REJECT"
+        },
+        "final_text": "The candidate trend **cand-kvggp06bmrgg2o4j** (\"Tweens adopting multi-step adult skincare with harsh actives\") has been rejected under the two-source doctrine:\n\n- **Source Family Count:** 1 (`agent_gemini_discovery`)\n- **ET Rescue Status:** Exploding Topics search was un-corroborated, meaning a second independent source family could not be supplied.\n- **Decision:** `REJECT`\n- **Decision Category:** `CONFIRM_REJECT`\n- **Rejection Reason:** `NO_SECOND_SOURCE`",
+        "accounting": {
+          "input_tokens": 11140,
+          "candidates_tokens": 287,
+          "thoughts_tokens": 737,
+          "total_tokens": 12164,
+          "cost_as_deployed": 0.0095,
+          "cost_with_thinking": 0.0122,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0027
+        }
+      },
+      "incumbentRerun": null,
+      "fields": {
+        "incumbent": {
+          "declared_count": 10,
+          "present_count": 3,
+          "coverage_pct": 30,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "confidence",
+            "max_neighbor_sim",
+            "considered_neighbors[]"
+          ],
+          "rows": [
+            {
+              "path": "decision",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "decision_category",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "target_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "trend_topic",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rejection_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_until",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rationale",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "et_was_second_source",
+              "type": "boolean",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "et_matched_keyword",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 10,
+          "present_count": 4,
+          "coverage_pct": 40,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "decision",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "decision_category",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "target_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "trend_topic",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rejection_reason",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "defer_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_until",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rationale",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "et_was_second_source",
+              "type": "boolean",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "et_matched_keyword",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "fields_lost": [],
+        "fields_gained": [
+          "rejection_reason"
+        ],
+        "coverage_delta_pct": 10
+      },
+      "descriptor": null
+    }
+  ]
+}

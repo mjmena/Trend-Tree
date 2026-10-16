@@ -1,0 +1,3308 @@
+{
+  "lane": "distillation",
+  "summary": "Shared cluster reasoner behind both distillation and distillation-revisit. Decides what counts as a trend at all.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-20T22:45:08.490Z",
+  "finished_at": "2026-08-20T22:48:14.151Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 5,
+    "rerunIncumbent": true,
+    "caseId": null,
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "cand-4xwhw6bumt069l3u",
+        "label": "Booking summer mountain vacations to escape coastal heat · REAL_TREND · 3 signals @ 2026-08-19T10:13",
+        "incumbentAt": "2026-08-19",
+        "signalIds": [
+          "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHMtMjAyNj8=&uuid=b26a8350-9bc0-11f1-b1ce-592f6af4337c&vid=",
+          "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHM/&uuid=1e866837-9b9f-11f1-ab45-f6b968a1df93&vid=",
+          "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHM/&uuid=9618ebf3-9b7d-11f1-b775-f6b968a1df93&vid="
+        ],
+        "incumbent": {
+          "emission": {
+            "candidates": [
+              {
+                "topic": "Booking summer mountain vacations to escape coastal heat",
+                "query": null,
+                "verdict": "REAL_TREND",
+                "confidence": 0.9,
+                "specificity_score": 0.8,
+                "reasoning": "Travelers are shifting their summer vacation plans away from traditionally hot coastal areas towards alpine and mountain regions to escape extreme heat, expanding mountain tourism into a year-round proposition."
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "cluster_size": 3
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_trend_candidate",
+        "tool_names": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "query_trend_metrics",
+          "validate_dedupe_pair",
+          "validate_url_canonical",
+          "discover_external_tools",
+          "dispatch_subagent",
+          "propose_trend_candidate"
+        ],
+        "prompt_provenance": {
+          "distillation.lead.system": {
+            "version": 7,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5803
+          }
+        },
+        "system_chars": 5805,
+        "user_chars": 509,
+        "input_notes": {
+          "signals_in_pool": 3,
+          "neighbors": 200,
+          "cluster_hint": "single synthetic community — the real Louvain hint is not persisted",
+          "few_shot_examples": "none passed (production renders these from q_load_examples)",
+          "subagent": "unconfigured on purpose — replay must not fan out real work",
+          "dead_code_note": "distillation-p_mkCBBqb/run_lead_agent is NOT deployed; its pin is not live"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 4,
+        "tool_sequence": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "propose_trend_candidate"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "query_signals_window",
+            "args": {
+              "limit": 50
+            },
+            "output": {
+              "signals": [
+                {
+                  "signal_id": "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHMtMjAyNj8=&uuid=b26a8350-9bc0-11f1-b1ce-592f6af4337c&vid=",
+                  "title": "Altitude Shift",
+                  "source": "gemini_travel",
+                  "domain": null,
+                  "detected_at": "2026-08-19T11:25:34",
+                  "snippet": "Travelers are seeking out alpine and mountain destinations year-round to find stillness and reconnect with nature away from coastal crowds.",
+                  "url": null,
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHM/&uuid=1e866837-9b9f-11f1-ab45-f6b968a1df93&vid=",
+                  "title": "Altitude Shift",
+                  "source": "gemini_travel",
+                  "domain": null,
+                  "detected_at": "2026-08-19T07:25:13",
+                  "snippet": "Travelers are increasingly seeking year-round alpine escapes, moving beyond winter skiing to find stillness and nature in mountain regions during all seasons.",
+                  "url": null,
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHM/&uuid=9618ebf3-9b7d-11f1-b775-f6b968a1df93&vid=",
+                  "title": "Altitude Shift",
+                  "source": "gemini_travel",
+                  "domain": null,
+                  "detected_at": "2026-08-19T03:25:11",
+                  "snippet": "Mountain destinations are seeing a surge in year-round popularity as travelers seek 'coolcationing' escapes from rising summer temperatures. Alpine regions are rebranding as wellness and stillness retreats beyond the traditional ski season.",
+                  "url": null,
+                  "cluster_id": 0
+                }
+              ],
+              "total_in_pool": 3,
+              "returned": 3
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 2,
+            "name": "query_trend_neighbors",
+            "args": {
+              "k": 5,
+              "topic": "year-round mountain retreats alpine wellness coolcationing"
+            },
+            "output": {
+              "neighbors": [
+                {
+                  "trend_id": "f4290695-a53c-4654-b351-6de85dc0c877",
+                  "trend_topic": "Curated Wellness Voyages",
+                  "total_cluster_size": 14,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 44.8,
+                  "similarity_score": 0.1111111111111111
+                },
+                {
+                  "trend_id": "4273f666-0f1b-45e1-bf4c-3fde657a9214",
+                  "trend_topic": "Clinical Intimate Wellness",
+                  "total_cluster_size": 13,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 24,
+                  "similarity_score": 0.1111111111111111
+                },
+                {
+                  "trend_id": "32eb2255-9c0b-400d-a79b-e10e2cfb3069",
+                  "trend_topic": "Social Wellness Clubs",
+                  "total_cluster_size": 1,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 8.6,
+                  "similarity_score": 0.1111111111111111
+                },
+                {
+                  "trend_id": "2a6407d6-d06f-4e10-acce-0839cb2d3540",
+                  "trend_topic": "Starbucks Zero-Sugar Energy Refreshers",
+                  "total_cluster_size": 269,
+                  "velocity_direction": "GROWING",
+                  "trend_heat_index": 99.7,
+                  "similarity_score": 0
+                },
+                {
+                  "trend_id": "a6f1db2a-4887-4307-a188-f0256ef000fc",
+                  "trend_topic": "Zebra-Striped Drinking",
+                  "total_cluster_size": 9,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 86.9,
+                  "similarity_score": 0
+                }
+              ]
+            },
+            "error": null,
+            "duration_ms": 1
+          },
+          {
+            "turn": 3,
+            "name": "propose_trend_candidate",
+            "args": {
+              "reasoning": "Consumers are shifting travel patterns toward off-season and year-round alpine and mountain destinations ('coolcationing') as a response to summer heatwaves and crowded coastal resorts, prioritizing stillness, mountain wellness retreats, and nature immersion beyond traditional ski seasons. Atomic query: coolcationing",
+              "topic": "Alpine coolcationing — year-round mountain retreats for heat avoidance and wellness",
+              "evidence_added": [
+                "3 signals from Skyscanner travel trends showing year-round alpine wellness and coolcationing demand to escape coastal heat and overtourism."
+              ],
+              "confidence": 0.86,
+              "supporting_signal_ids": [
+                "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHMtMjAyNj8=&uuid=b26a8350-9bc0-11f1-b1ce-592f6af4337c&vid=",
+                "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHM/&uuid=1e866837-9b9f-11f1-ab45-f6b968a1df93&vid=",
+                "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHM/&uuid=9618ebf3-9b7d-11f1-b775-f6b968a1df93&vid="
+              ],
+              "verdict": "REAL_TREND",
+              "specificity_score": 0.83,
+              "source_breakdown": {
+                "gemini_travel": 3
+              }
+            },
+            "output": {
+              "accepted": true,
+              "accepted_count": 1,
+              "candidate_id": "cand-qc36y5uomt23zj7s"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "reasoning": "Consumers are shifting travel patterns toward off-season and year-round alpine and mountain destinations ('coolcationing') as a response to summer heatwaves and crowded coastal resorts, prioritizing stillness, mountain wellness retreats, and nature immersion beyond traditional ski seasons. Atomic query: coolcationing",
+          "topic": "Alpine coolcationing — year-round mountain retreats for heat avoidance and wellness",
+          "evidence_added": [
+            "3 signals from Skyscanner travel trends showing year-round alpine wellness and coolcationing demand to escape coastal heat and overtourism."
+          ],
+          "confidence": 0.86,
+          "supporting_signal_ids": [
+            "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHMtMjAyNj8=&uuid=b26a8350-9bc0-11f1-b1ce-592f6af4337c&vid=",
+            "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHM/&uuid=1e866837-9b9f-11f1-ab45-f6b968a1df93&vid=",
+            "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHM/&uuid=9618ebf3-9b7d-11f1-b775-f6b968a1df93&vid="
+          ],
+          "verdict": "REAL_TREND",
+          "specificity_score": 0.83,
+          "source_breakdown": {
+            "gemini_travel": 3
+          }
+        },
+        "final_text": "### Signal Distillation & Scan Summary\n\n1. **Signals Inspected**:\n   - Total signals evaluated: 3 (`gemini_travel`)\n   - Primary cluster: Community 0 (\"Altitude Shift\" / Alpine Year-Round Escapes & Coolcationing)\n\n2. **Deduplication & Neighbor Analysis**:\n   - Compared candidate behavior against active 30-day trends via `query_trend_neighbors`.\n   - Nearest existing trends (*Curated Wellness Voyages*, *Clinical Intimate Wellness*, *Social Wellness Clubs*) showed low lexical and semantic similarity (scores ~0.11), confirming novel behavior around alpine climate-escape travel.\n\n3. **Subagent Execution**:\n   - Subagent endpoint disabled/not configured for this run; direct evaluation performed.\n\n4. **Accepted Trends & Registration**:\n   - **Topic**: `Alpine coolcationing — year-round mountain retreats for heat avoidance and wellness`\n   - **Atomic Query**: `coolcationing`\n   - **Candidate ID**: `cand-qc36y5uomt23zj7s`\n   - **Confidence**: 0.86 | **Specificity Score**: 0.83\n   - **Verdict**: REAL_TREND (Supported by 3 independent data points capturing the behavioral shift toward mountain retreats outside the ski season to evade summer heatwaves and crowded coastal destinations).",
+        "accounting": {
+          "input_tokens": 14475,
+          "candidates_tokens": 810,
+          "thoughts_tokens": 854,
+          "total_tokens": 16139,
+          "cost_as_deployed": 0.0138,
+          "cost_with_thinking": 0.0172,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0034
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 4,
+        "tool_sequence": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "propose_trend_candidate"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "query_signals_window",
+            "args": {
+              "limit": 10
+            },
+            "output": {
+              "signals": [
+                {
+                  "signal_id": "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHMtMjAyNj8=&uuid=b26a8350-9bc0-11f1-b1ce-592f6af4337c&vid=",
+                  "title": "Altitude Shift",
+                  "source": "gemini_travel",
+                  "domain": null,
+                  "detected_at": "2026-08-19T11:25:34",
+                  "snippet": "Travelers are seeking out alpine and mountain destinations year-round to find stillness and reconnect with nature away from coastal crowds.",
+                  "url": null,
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHM/&uuid=1e866837-9b9f-11f1-ab45-f6b968a1df93&vid=",
+                  "title": "Altitude Shift",
+                  "source": "gemini_travel",
+                  "domain": null,
+                  "detected_at": "2026-08-19T07:25:13",
+                  "snippet": "Travelers are increasingly seeking year-round alpine escapes, moving beyond winter skiing to find stillness and nature in mountain regions during all seasons.",
+                  "url": null,
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHM/&uuid=9618ebf3-9b7d-11f1-b775-f6b968a1df93&vid=",
+                  "title": "Altitude Shift",
+                  "source": "gemini_travel",
+                  "domain": null,
+                  "detected_at": "2026-08-19T03:25:11",
+                  "snippet": "Mountain destinations are seeing a surge in year-round popularity as travelers seek 'coolcationing' escapes from rising summer temperatures. Alpine regions are rebranding as wellness and stillness retreats beyond the traditional ski season.",
+                  "url": null,
+                  "cluster_id": 0
+                }
+              ],
+              "total_in_pool": 3,
+              "returned": 3
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 2,
+            "name": "query_trend_neighbors",
+            "args": {
+              "k": 3,
+              "topic": "coolcationing alpine retreats year-round mountain travel"
+            },
+            "output": {
+              "neighbors": [
+                {
+                  "trend_id": "2a6407d6-d06f-4e10-acce-0839cb2d3540",
+                  "trend_topic": "Starbucks Zero-Sugar Energy Refreshers",
+                  "total_cluster_size": 269,
+                  "velocity_direction": "GROWING",
+                  "trend_heat_index": 99.7,
+                  "similarity_score": 0
+                },
+                {
+                  "trend_id": "a6f1db2a-4887-4307-a188-f0256ef000fc",
+                  "trend_topic": "Zebra-Striped Drinking",
+                  "total_cluster_size": 9,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 86.9,
+                  "similarity_score": 0
+                },
+                {
+                  "trend_id": "60b381be-c02f-46cb-9b5d-31ec17f57822",
+                  "trend_topic": "Blended Cottage Cheese Sauces",
+                  "total_cluster_size": 5,
+                  "velocity_direction": "GROWING",
+                  "trend_heat_index": 70.5,
+                  "similarity_score": 0
+                }
+              ]
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 3,
+            "name": "propose_trend_candidate",
+            "args": {
+              "supporting_signal_ids": [
+                "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHMtMjAyNj8=&uuid=b26a8350-9bc0-11f1-b1ce-592f6af4337c&vid=",
+                "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHM/&uuid=1e866837-9b9f-11f1-ab45-f6b968a1df93&vid=",
+                "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHM/&uuid=9618ebf3-9b7d-11f1-b775-f6b968a1df93&vid="
+              ],
+              "verdict": "REAL_TREND",
+              "topic": "\"Coolcationing\" via year-round alpine wellness retreats",
+              "evidence_added": [],
+              "confidence": 0.85,
+              "specificity_score": 0.85,
+              "source_breakdown": {
+                "gemini_travel": 3
+              },
+              "reasoning": "Rising summer temperatures and overcrowded coastal destinations are driving travelers to seek out mountain and alpine regions year-round. Coined 'coolcationing', this shifts the traditional ski-season destination into a summer wellness and stillness retreat."
+            },
+            "output": {
+              "accepted": true,
+              "accepted_count": 2,
+              "candidate_id": "cand-ei0pkzp7mt23zx6h"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "supporting_signal_ids": [
+            "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHMtMjAyNj8=&uuid=b26a8350-9bc0-11f1-b1ce-592f6af4337c&vid=",
+            "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHM/&uuid=1e866837-9b9f-11f1-ab45-f6b968a1df93&vid=",
+            "https://www.skyscanner.com/sttc/px/captcha-v2/index.html?url=L3RpcHMtYW5kLWluc3BpcmF0aW9uL3RyYXZlbC10cmVuZHM/&uuid=9618ebf3-9b7d-11f1-b775-f6b968a1df93&vid="
+          ],
+          "verdict": "REAL_TREND",
+          "topic": "\"Coolcationing\" via year-round alpine wellness retreats",
+          "evidence_added": [],
+          "confidence": 0.85,
+          "specificity_score": 0.85,
+          "source_breakdown": {
+            "gemini_travel": 3
+          },
+          "reasoning": "Rising summer temperatures and overcrowded coastal destinations are driving travelers to seek out mountain and alpine regions year-round. Coined 'coolcationing', this shifts the traditional ski-season destination into a summer wellness and stillness retreat."
+        },
+        "final_text": "**Orchestration Summary**\n\n*   **Signals Seen:** 3 total signals from `gemini_travel` highlighting an \"Altitude Shift\" in travel.\n*   **Hypotheses Formed:** Travelers are substituting traditional summer coastal vacations with alpine/mountain destinations to escape extreme heat and crowds, rebranding ski locations as year-round \"coolcationing\" wellness retreats.\n*   **Dispatches Sent:** 0 (Subagents disabled for this run; direct validation performed).\n*   **Accepted Candidates:** \n    *   **\"Coolcationing\" via year-round alpine wellness retreats** (Query: `coolcationing`) — validated as highly specific, actionable, and not overlapping with recent historical trends.",
+        "accounting": {
+          "input_tokens": 14407,
+          "candidates_tokens": 631,
+          "thoughts_tokens": 798,
+          "total_tokens": 15836,
+          "cost_as_deployed": 0.0364,
+          "cost_with_thinking": 0.046,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0096
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 9,
+          "present_count": 0,
+          "coverage_pct": 0,
+          "missing_required": [
+            "topic",
+            "supporting_signal_ids[]",
+            "confidence",
+            "specificity_score",
+            "verdict",
+            "reasoning"
+          ],
+          "nulled": [],
+          "undeclared_survived": [
+            "candidates[]",
+            "candidates[].topic",
+            "candidates[].query",
+            "candidates[].verdict",
+            "candidates[].confidence",
+            "candidates[].specificity_score",
+            "candidates[].reasoning"
+          ],
+          "rows": [
+            {
+              "path": "topic",
+              "type": "string",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "supporting_signal_ids[]",
+              "type": "array<string>",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "confidence",
+              "type": "number",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "specificity_score",
+              "type": "number",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "verdict",
+              "type": "string",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "dedup_of_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "source_breakdown",
+              "type": "object",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "evidence_added[]",
+              "type": "array<string>",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 9,
+          "present_count": 8,
+          "coverage_pct": 88.9,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "source_breakdown.gemini_travel"
+          ],
+          "rows": [
+            {
+              "path": "topic",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "supporting_signal_ids[]",
+              "type": "array<string>",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 3
+            },
+            {
+              "path": "confidence",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "specificity_score",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "verdict",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "dedup_of_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "source_breakdown",
+              "type": "object",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "evidence_added[]",
+              "type": "array<string>",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "fields_lost": [],
+        "fields_gained": [
+          "topic",
+          "supporting_signal_ids[]",
+          "confidence",
+          "specificity_score",
+          "verdict",
+          "source_breakdown",
+          "evidence_added[]",
+          "reasoning"
+        ],
+        "coverage_delta_pct": 88.9
+      },
+      "descriptor": null
+    },
+    {
+      "case": {
+        "id": "cand-2bj029gnmt03d9ac",
+        "label": "Snacking on collagen-fortified savory chips and RTD beverages · REAL_TREND · 3 signals @ 2026-08-19T08:52",
+        "incumbentAt": "2026-08-19",
+        "signalIds": [
+          "https://foodbev.com/news/khlo%C3%A9-kardashian-s-khloud-launches-collagen-protein-chips",
+          "https://prnewswire.com/news-releases/khloud-expands-functional-snack-line-introduces-khloud-plus-protein-chips-with-collagen-302847154.html",
+          "https://qsrmagazine.com/news/7-brew-introduces-liquid-collagen-protein-boost"
+        ],
+        "incumbent": {
+          "emission": {
+            "candidates": [
+              {
+                "topic": "Snacking on collagen-fortified savory chips and RTD beverages",
+                "query": null,
+                "verdict": "REAL_TREND",
+                "confidence": 0.85,
+                "specificity_score": 0.85,
+                "reasoning": "Embedding collagen into everyday RTD beverages and savory grab-and-go snacks for incidental beauty benefits."
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "cluster_size": 3
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_trend_candidate",
+        "tool_names": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "query_trend_metrics",
+          "validate_dedupe_pair",
+          "validate_url_canonical",
+          "discover_external_tools",
+          "dispatch_subagent",
+          "propose_trend_candidate"
+        ],
+        "prompt_provenance": {
+          "distillation.lead.system": {
+            "version": 7,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5803
+          }
+        },
+        "system_chars": 5805,
+        "user_chars": 595,
+        "input_notes": {
+          "signals_in_pool": 3,
+          "neighbors": 200,
+          "cluster_hint": "single synthetic community — the real Louvain hint is not persisted",
+          "few_shot_examples": "none passed (production renders these from q_load_examples)",
+          "subagent": "unconfigured on purpose — replay must not fan out real work",
+          "dead_code_note": "distillation-p_mkCBBqb/run_lead_agent is NOT deployed; its pin is not live"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 7,
+        "tool_sequence": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "query_trend_neighbors",
+          "propose_trend_candidate",
+          "query_trend_neighbors",
+          "propose_trend_candidate"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "query_signals_window",
+            "args": {
+              "limit": 10
+            },
+            "output": {
+              "signals": [
+                {
+                  "signal_id": "https://foodbev.com/news/khlo%C3%A9-kardashian-s-khloud-launches-collagen-protein-chips",
+                  "title": "Eating collagen-fortified savory chips",
+                  "source": "agent_chatgpt_discovery",
+                  "domain": "foodbev.com",
+                  "detected_at": "2026-08-19T12:08:47",
+                  "snippet": "Eating collagen-fortified savory chips — Brands are folding beauty/wellness ingredients into everyday snacks—Khloud’s new collagen + protein chips package collagen into a mainstream chip format to meet demand for functional, convenient snac",
+                  "url": "https://foodbev.com/news/khlo%C3%A9-kardashian-s-khloud-launches-collagen-protein-chips",
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://qsrmagazine.com/news/7-brew-introduces-liquid-collagen-protein-boost",
+                  "title": "Adding collagen to RTD coffee and cold brews",
+                  "source": "agent_chatgpt_discovery",
+                  "domain": "qsrmagazine.com",
+                  "detected_at": "2026-08-19T08:08:48",
+                  "snippet": "Adding collagen to RTD coffee and cold brews — 7 Brew announced a liquid collagen protein boost for drinks (early Aug), showing rapid functionalization of on‑the‑go coffee—brands are layering beauty/repair ingredients into everyday RTDs to ",
+                  "url": "https://qsrmagazine.com/news/7-brew-introduces-liquid-collagen-protein-boost",
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://prnewswire.com/news-releases/khloud-expands-functional-snack-line-introduces-khloud-plus-protein-chips-with-collagen-302847154.html",
+                  "title": "Buying collagen-infused savory chips",
+                  "source": "agent_chatgpt_discovery",
+                  "domain": "prnewswire.com",
+                  "detected_at": "2026-08-10T14:15:00",
+                  "snippet": "Buying collagen-infused savory chips — Celebrity-backed Khloud launched a Walmart‑exclusive collagen + protein chip on Aug 10, signaling CPGs are embedding beauty/wellness actives into snack formats and taking them into mass retail.",
+                  "url": "https://prnewswire.com/news-releases/khloud-expands-functional-snack-line-introduces-khloud-plus-protein-chips-with-collagen-302847154.html",
+                  "cluster_id": 0
+                }
+              ],
+              "total_in_pool": 3,
+              "returned": 3
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 2,
+            "name": "query_trend_neighbors",
+            "args": {
+              "k": 5,
+              "topic": "collagen protein chips savory snacks"
+            },
+            "output": {
+              "neighbors": [
+                {
+                  "trend_id": "2489b0a7-560b-4ea4-91b3-05e8d0f70bae",
+                  "trend_topic": "Savory-Sweet Fusions",
+                  "total_cluster_size": 28,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 18.1,
+                  "similarity_score": 0.14285714285714285
+                },
+                {
+                  "trend_id": "7f13dba0-52b6-4a97-ab30-07538327a18e",
+                  "trend_topic": "Carbonated Protein Water",
+                  "total_cluster_size": 1,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 11.5,
+                  "similarity_score": 0.14285714285714285
+                },
+                {
+                  "trend_id": "49b02c63-a7b1-4f39-957d-05ca67dbe6e7",
+                  "trend_topic": "Functional Sleep Snacks",
+                  "total_cluster_size": 37,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 9.6,
+                  "similarity_score": 0.14285714285714285
+                },
+                {
+                  "trend_id": "a4b1a4d7-4525-461b-a0a3-e0efd9b54042",
+                  "trend_topic": "Protein-Fortified Desserts",
+                  "total_cluster_size": 3,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 9.1,
+                  "similarity_score": 0.14285714285714285
+                },
+                {
+                  "trend_id": "9119c1ac-2b68-4af7-a806-062a5ac7c97b",
+                  "trend_topic": "Clear Protein Water",
+                  "total_cluster_size": 2,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 9.1,
+                  "similarity_score": 0.14285714285714285
+                }
+              ]
+            },
+            "error": null,
+            "duration_ms": 1
+          },
+          {
+            "turn": 3,
+            "name": "query_trend_neighbors",
+            "args": {
+              "k": 5,
+              "topic": "collagen coffee rtd cold brew protein boost"
+            },
+            "output": {
+              "neighbors": [
+                {
+                  "trend_id": "7f13dba0-52b6-4a97-ab30-07538327a18e",
+                  "trend_topic": "Carbonated Protein Water",
+                  "total_cluster_size": 1,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 11.5,
+                  "similarity_score": 0.1111111111111111
+                },
+                {
+                  "trend_id": "a4b1a4d7-4525-461b-a0a3-e0efd9b54042",
+                  "trend_topic": "Protein-Fortified Desserts",
+                  "total_cluster_size": 3,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 9.1,
+                  "similarity_score": 0.1111111111111111
+                },
+                {
+                  "trend_id": "d41ba740-4130-4fb4-bd62-9e4c09ece489",
+                  "trend_topic": "RTD Dirty Sodas",
+                  "total_cluster_size": 5,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 9.1,
+                  "similarity_score": 0.1111111111111111
+                },
+                {
+                  "trend_id": "9119c1ac-2b68-4af7-a806-062a5ac7c97b",
+                  "trend_topic": "Clear Protein Water",
+                  "total_cluster_size": 2,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 9.1,
+                  "similarity_score": 0.1111111111111111
+                },
+                {
+                  "trend_id": "83f6e7a5-1e60-48d2-bcd7-1c8831e80d36",
+                  "trend_topic": "High-Protein Childhood Favorites",
+                  "total_cluster_size": 2,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 10.4,
+                  "similarity_score": 0.1
+                }
+              ]
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 4,
+            "name": "propose_trend_candidate",
+            "args": {
+              "reasoning": "Consumers and CPG brands are shifting functional ingestible beauty (collagen) from powders, gummies, and sweet bars directly into mainstream savory snack formats like potato/protein chips. This offers passive functional wellness without the routine overhead of mixing supplements.",
+              "source_breakdown": {
+                "agent_chatgpt_discovery": 2
+              },
+              "specificity_score": 0.88,
+              "evidence_added": [
+                "Walmart exclusive launch of Khloud collagen + protein chips",
+                "FoodBev coverage of beauty/wellness ingredients expanding into savory snack formats"
+              ],
+              "verdict": "REAL_TREND",
+              "confidence": 0.85,
+              "topic": "Collagen-fortified savory chips",
+              "supporting_signal_ids": [
+                "https://foodbev.com/news/khlo%C3%A9-kardashian-s-khloud-launches-collagen-protein-chips",
+                "https://prnewswire.com/news-releases/khloud-expands-functional-snack-line-introduces-khloud-plus-protein-chips-with-collagen-302847154.html"
+              ]
+            },
+            "output": {
+              "accepted": true,
+              "accepted_count": 1,
+              "candidate_id": "cand-eqcpdfesmt240c3m"
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 5,
+            "name": "query_trend_neighbors",
+            "args": {
+              "topic": "collagen coffee cold brew",
+              "k": 3
+            },
+            "output": {
+              "neighbors": [
+                {
+                  "trend_id": "2a6407d6-d06f-4e10-acce-0839cb2d3540",
+                  "trend_topic": "Starbucks Zero-Sugar Energy Refreshers",
+                  "total_cluster_size": 269,
+                  "velocity_direction": "GROWING",
+                  "trend_heat_index": 99.7,
+                  "similarity_score": 0
+                },
+                {
+                  "trend_id": "a6f1db2a-4887-4307-a188-f0256ef000fc",
+                  "trend_topic": "Zebra-Striped Drinking",
+                  "total_cluster_size": 9,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 86.9,
+                  "similarity_score": 0
+                },
+                {
+                  "trend_id": "60b381be-c02f-46cb-9b5d-31ec17f57822",
+                  "trend_topic": "Blended Cottage Cheese Sauces",
+                  "total_cluster_size": 5,
+                  "velocity_direction": "GROWING",
+                  "trend_heat_index": 70.5,
+                  "similarity_score": 0
+                }
+              ]
+            },
+            "error": null,
+            "duration_ms": 1
+          },
+          {
+            "turn": 6,
+            "name": "propose_trend_candidate",
+            "args": {
+              "specificity_score": 0.84,
+              "verdict": "REAL_TREND",
+              "topic": "Liquid collagen boosts in drive-thru coffee and cold brews",
+              "source_breakdown": {
+                "agent_chatgpt_discovery": 1
+              },
+              "evidence_added": [
+                "7 Brew drive-thru coffee introducing liquid collagen protein boosts for cold brew and custom beverages"
+              ],
+              "reasoning": "Drive-thru beverage and QSR coffee concepts are expanding functional customization beyond syrups and dairy alternatives by offering liquid collagen add-in shots directly into iced coffees and cold brews for effortless ingestible wellness.",
+              "supporting_signal_ids": [
+                "https://qsrmagazine.com/news/7-brew-introduces-liquid-collagen-protein-boost"
+              ],
+              "confidence": 0.72
+            },
+            "output": {
+              "accepted": true,
+              "accepted_count": 2,
+              "candidate_id": "cand-pq8bucyvmt240e45"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "specificity_score": 0.84,
+          "verdict": "REAL_TREND",
+          "topic": "Liquid collagen boosts in drive-thru coffee and cold brews",
+          "source_breakdown": {
+            "agent_chatgpt_discovery": 1
+          },
+          "evidence_added": [
+            "7 Brew drive-thru coffee introducing liquid collagen protein boosts for cold brew and custom beverages"
+          ],
+          "reasoning": "Drive-thru beverage and QSR coffee concepts are expanding functional customization beyond syrups and dairy alternatives by offering liquid collagen add-in shots directly into iced coffees and cold brews for effortless ingestible wellness.",
+          "supporting_signal_ids": [
+            "https://qsrmagazine.com/news/7-brew-introduces-liquid-collagen-protein-boost"
+          ],
+          "confidence": 0.72
+        },
+        "final_text": "### Pipeline Run Summary\n\n- **Signals Seen:** 3 signals across 1 community (`agent_chatgpt_discovery`).\n- **Hypotheses Formed:** 2 distinct functional nutrition behaviors:\n  1. Collagen-fortified savory chips / snack formats.\n  2. Liquid collagen protein boosts added to on-the-go coffee and cold brews.\n- **Dedup / Nearest Neighbor Check:** Checked against the 200 active trends database (`Savory-Sweet Fusions`, `Carbonated Protein Water`, `Protein-Fortified Desserts`). No direct duplicates found (similarity scores ≤ 0.14).\n- **Accepted Candidates Proposed:**\n  1. **Topic:** `Collagen-fortified savory chips`\n     - **Atomic Query:** `collagen chips`\n     - **Specificity Score:** 0.88 | **Confidence:** 0.85\n     - **Signals:** `foodbev.com` (Khloud collagen protein chips launch) & `prnewswire.com` (Walmart-exclusive retail rollout).\n  2. **Topic:** `Liquid collagen boosts in drive-thru coffee and cold brews`\n     - **Atomic Query:** `collagen coffee`\n     - **Specificity Score:** 0.84 | **Confidence:** 0.72\n     - **Signals:** `qsrmagazine.com` (7 Brew rollout of liquid collagen protein customization).",
+        "accounting": {
+          "input_tokens": 30816,
+          "candidates_tokens": 822,
+          "thoughts_tokens": 886,
+          "total_tokens": 32524,
+          "cost_as_deployed": 0.0262,
+          "cost_with_thinking": 0.0295,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0033
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 4,
+        "tool_sequence": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "propose_trend_candidate"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "query_signals_window",
+            "args": {
+              "limit": 10
+            },
+            "output": {
+              "signals": [
+                {
+                  "signal_id": "https://foodbev.com/news/khlo%C3%A9-kardashian-s-khloud-launches-collagen-protein-chips",
+                  "title": "Eating collagen-fortified savory chips",
+                  "source": "agent_chatgpt_discovery",
+                  "domain": "foodbev.com",
+                  "detected_at": "2026-08-19T12:08:47",
+                  "snippet": "Eating collagen-fortified savory chips — Brands are folding beauty/wellness ingredients into everyday snacks—Khloud’s new collagen + protein chips package collagen into a mainstream chip format to meet demand for functional, convenient snac",
+                  "url": "https://foodbev.com/news/khlo%C3%A9-kardashian-s-khloud-launches-collagen-protein-chips",
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://qsrmagazine.com/news/7-brew-introduces-liquid-collagen-protein-boost",
+                  "title": "Adding collagen to RTD coffee and cold brews",
+                  "source": "agent_chatgpt_discovery",
+                  "domain": "qsrmagazine.com",
+                  "detected_at": "2026-08-19T08:08:48",
+                  "snippet": "Adding collagen to RTD coffee and cold brews — 7 Brew announced a liquid collagen protein boost for drinks (early Aug), showing rapid functionalization of on‑the‑go coffee—brands are layering beauty/repair ingredients into everyday RTDs to ",
+                  "url": "https://qsrmagazine.com/news/7-brew-introduces-liquid-collagen-protein-boost",
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://prnewswire.com/news-releases/khloud-expands-functional-snack-line-introduces-khloud-plus-protein-chips-with-collagen-302847154.html",
+                  "title": "Buying collagen-infused savory chips",
+                  "source": "agent_chatgpt_discovery",
+                  "domain": "prnewswire.com",
+                  "detected_at": "2026-08-10T14:15:00",
+                  "snippet": "Buying collagen-infused savory chips — Celebrity-backed Khloud launched a Walmart‑exclusive collagen + protein chip on Aug 10, signaling CPGs are embedding beauty/wellness actives into snack formats and taking them into mass retail.",
+                  "url": "https://prnewswire.com/news-releases/khloud-expands-functional-snack-line-introduces-khloud-plus-protein-chips-with-collagen-302847154.html",
+                  "cluster_id": 0
+                }
+              ],
+              "total_in_pool": 3,
+              "returned": 3
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 2,
+            "name": "query_trend_neighbors",
+            "args": {
+              "min_similarity": 0.6,
+              "topic": "Collagen-infused everyday snacks and RTD beverages",
+              "k": 5
+            },
+            "output": {
+              "neighbors": []
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 3,
+            "name": "propose_trend_candidate",
+            "args": {
+              "reasoning": "Multiple brands (Khloud, 7 Brew) are introducing collagen-fortified everyday formats like savory chips and RTD coffees to offer functional beauty/repair benefits in mass-retail and QSR settings. (Query: collagen snacks)",
+              "confidence": 0.8,
+              "source_breakdown": {},
+              "topic": "Collagen-infused everyday snacks and RTD coffee",
+              "verdict": "REAL_TREND",
+              "supporting_signal_ids": [
+                "https://foodbev.com/news/khlo%C3%A9-kardashian-s-khloud-launches-collagen-protein-chips",
+                "https://qsrmagazine.com/news/7-brew-introduces-liquid-collagen-protein-boost",
+                "https://prnewswire.com/news-releases/khloud-expands-functional-snack-line-introduces-khloud-plus-protein-chips-with-collagen-302847154.html"
+              ],
+              "specificity_score": 0.85
+            },
+            "output": {
+              "accepted": true,
+              "accepted_count": 3,
+              "candidate_id": "cand-21kmwnoomt240qbn"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "reasoning": "Multiple brands (Khloud, 7 Brew) are introducing collagen-fortified everyday formats like savory chips and RTD coffees to offer functional beauty/repair benefits in mass-retail and QSR settings. (Query: collagen snacks)",
+          "confidence": 0.8,
+          "source_breakdown": {},
+          "topic": "Collagen-infused everyday snacks and RTD coffee",
+          "verdict": "REAL_TREND",
+          "supporting_signal_ids": [
+            "https://foodbev.com/news/khlo%C3%A9-kardashian-s-khloud-launches-collagen-protein-chips",
+            "https://qsrmagazine.com/news/7-brew-introduces-liquid-collagen-protein-boost",
+            "https://prnewswire.com/news-releases/khloud-expands-functional-snack-line-introduces-khloud-plus-protein-chips-with-collagen-302847154.html"
+          ],
+          "specificity_score": 0.85
+        },
+        "final_text": "**Summary of Run:**\n- **Signals Examined:** 3 signals reviewed from the `agent_chatgpt_discovery` source.\n- **Hypotheses Formed:** 1 hypothesis regarding collagen being infused into everyday mainstream food and beverage formats (savory chips, RTD coffee). \n- **Dispatches Sent:** Subagents are not configured for this run, so skipped deep investigation.\n- **Accepted Candidates:** \n  - *Collagen-infused everyday snacks and RTD coffee* (Query: `collagen snacks`) - Functionalizing everyday CPG formats with beauty and health ingredients beyond traditional supplements.",
+        "accounting": {
+          "input_tokens": 13428,
+          "candidates_tokens": 425,
+          "thoughts_tokens": 752,
+          "total_tokens": 14605,
+          "cost_as_deployed": 0.032,
+          "cost_with_thinking": 0.041,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.009
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 9,
+          "present_count": 0,
+          "coverage_pct": 0,
+          "missing_required": [
+            "topic",
+            "supporting_signal_ids[]",
+            "confidence",
+            "specificity_score",
+            "verdict",
+            "reasoning"
+          ],
+          "nulled": [],
+          "undeclared_survived": [
+            "candidates[]",
+            "candidates[].topic",
+            "candidates[].query",
+            "candidates[].verdict",
+            "candidates[].confidence",
+            "candidates[].specificity_score",
+            "candidates[].reasoning"
+          ],
+          "rows": [
+            {
+              "path": "topic",
+              "type": "string",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "supporting_signal_ids[]",
+              "type": "array<string>",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "confidence",
+              "type": "number",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "specificity_score",
+              "type": "number",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "verdict",
+              "type": "string",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "dedup_of_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "source_breakdown",
+              "type": "object",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "evidence_added[]",
+              "type": "array<string>",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 9,
+          "present_count": 8,
+          "coverage_pct": 88.9,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "source_breakdown.agent_chatgpt_discovery"
+          ],
+          "rows": [
+            {
+              "path": "topic",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "supporting_signal_ids[]",
+              "type": "array<string>",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "confidence",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "specificity_score",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "verdict",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "dedup_of_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "source_breakdown",
+              "type": "object",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "evidence_added[]",
+              "type": "array<string>",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "fields_lost": [],
+        "fields_gained": [
+          "topic",
+          "supporting_signal_ids[]",
+          "confidence",
+          "specificity_score",
+          "verdict",
+          "source_breakdown",
+          "evidence_added[]",
+          "reasoning"
+        ],
+        "coverage_delta_pct": 88.9
+      },
+      "descriptor": null
+    },
+    {
+      "case": {
+        "id": "cand-t5wlgre0msywhxru",
+        "label": "Applying dissolving microneedle patches for cosmetics and skincare · REAL_TREND · 3 signals @ 2026-08-18T12:52",
+        "incumbentAt": "2026-08-18",
+        "signalIds": [
+          "https://ebay.com/itm/168419522900",
+          "https://evenskyn.com/blogs/skin-beautyarticles/best-dissolving-microneedle-eye-patches-compared-2026",
+          "https://timeout.com/london/news/world-first-painless-tattoo-cipherx-081426"
+        ],
+        "incumbent": {
+          "emission": {
+            "candidates": [
+              {
+                "topic": "Applying dissolving microneedle patches for cosmetics and skincare",
+                "query": null,
+                "verdict": "REAL_TREND",
+                "confidence": 0.85,
+                "specificity_score": 0.9,
+                "reasoning": "Consumers are utilizing dissolvable microneedle patch technology beyond basic acne treatments, expanding into targeted skincare (eye patches), sunless tanning, and even painless temporary tattoos. This represents a distinct evolution in at-home cosmetic ingredient delivery."
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "cluster_size": 3
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_trend_candidate",
+        "tool_names": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "query_trend_metrics",
+          "validate_dedupe_pair",
+          "validate_url_canonical",
+          "discover_external_tools",
+          "dispatch_subagent",
+          "propose_trend_candidate"
+        ],
+        "prompt_provenance": {
+          "distillation.lead.system": {
+            "version": 7,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5803
+          }
+        },
+        "system_chars": 5805,
+        "user_chars": 646,
+        "input_notes": {
+          "signals_in_pool": 3,
+          "neighbors": 200,
+          "cluster_hint": "single synthetic community — the real Louvain hint is not persisted",
+          "few_shot_examples": "none passed (production renders these from q_load_examples)",
+          "subagent": "unconfigured on purpose — replay must not fan out real work",
+          "dead_code_note": "distillation-p_mkCBBqb/run_lead_agent is NOT deployed; its pin is not live"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 7,
+        "tool_sequence": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "query_trend_neighbors",
+          "query_trend_metrics",
+          "validate_dedupe_pair",
+          "propose_trend_candidate"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "query_signals_window",
+            "args": {
+              "limit": 10
+            },
+            "output": {
+              "signals": [
+                {
+                  "signal_id": "https://timeout.com/london/news/world-first-painless-tattoo-cipherx-081426",
+                  "title": "Adopting painless temporary tattoos via microneedle patches",
+                  "source": "agent_gemini_discovery",
+                  "domain": "timeout.com",
+                  "detected_at": "2026-08-18T10:06:28",
+                  "snippet": "Adopting painless temporary tattoos via microneedle patches — A new technology utilizing microneedle patches infused with tattoo ink and dissolvable polymers allows consumers to get temporary tattoos painlessly and without the use of a trad",
+                  "url": "https://timeout.com/london/news/world-first-painless-tattoo-cipherx-081426",
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://ebay.com/itm/168419522900",
+                  "title": "Using microneedle patches for sunless tanning",
+                  "source": "agent_gemini_discovery",
+                  "domain": "ebay.com",
+                  "detected_at": "2026-08-18T10:06:28",
+                  "snippet": "Using microneedle patches for sunless tanning — An innovative application of microneedle technology is emerging in sunless tanning, where dissolvable patches deliver tanning ingredients deep into the skin for a streak-free, natural-looking ",
+                  "url": "https://ebay.com/itm/168419522900",
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://evenskyn.com/blogs/skin-beautyarticles/best-dissolving-microneedle-eye-patches-compared-2026",
+                  "title": "Using dissolving microneedle patches for targeted at-home skincare",
+                  "source": "agent_gemini_discovery",
+                  "domain": "evenskyn.com",
+                  "detected_at": "2026-08-12T08:57:18",
+                  "snippet": "Using dissolving microneedle patches for targeted at-home skincare — Consumers are adopting adhesive patches with thousands of tiny, dissolvable microneedles made from ingredients like hyaluronic acid and peptides for targeted at-home skinc",
+                  "url": "https://evenskyn.com/blogs/skin-beautyarticles/best-dissolving-microneedle-eye-patches-compared-2026",
+                  "cluster_id": 0
+                }
+              ],
+              "total_in_pool": 3,
+              "returned": 3
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 2,
+            "name": "query_trend_neighbors",
+            "args": {
+              "topic": "Dissolving microneedle patches for targeted skincare and body treatments",
+              "k": 5
+            },
+            "output": {
+              "neighbors": [
+                {
+                  "trend_id": "ea7cffc2-c150-4ffc-b0eb-b8e900eec1d9",
+                  "trend_topic": "Using display pedestals for residential art and plants",
+                  "total_cluster_size": 4,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 24.9,
+                  "similarity_score": 0.13333333333333333
+                },
+                {
+                  "trend_id": "cfca4811-ca16-4a8f-891b-8c7662f63627",
+                  "trend_topic": "Tallow Skincare",
+                  "total_cluster_size": 2,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 8.6,
+                  "similarity_score": 0.1
+                },
+                {
+                  "trend_id": "99df5c29-4d38-4fd8-8972-b65da7a7ec15",
+                  "trend_topic": "Cellular Longevity Skincare",
+                  "total_cluster_size": 30,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 22.6,
+                  "similarity_score": 0.09090909090909091
+                },
+                {
+                  "trend_id": "f3bc9cfb-6e6e-4adc-bf03-e37ff5ba2885",
+                  "trend_topic": "Targeted Supplement Stacking",
+                  "total_cluster_size": 3,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 17.1,
+                  "similarity_score": 0.09090909090909091
+                },
+                {
+                  "trend_id": "fa72298a-e7ca-48d2-9c75-cbf40f52a2fa",
+                  "trend_topic": "Whole-Body Deodorant",
+                  "total_cluster_size": 1,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 9.1,
+                  "similarity_score": 0.09090909090909091
+                }
+              ]
+            },
+            "error": null,
+            "duration_ms": 1
+          },
+          {
+            "turn": 3,
+            "name": "query_trend_neighbors",
+            "args": {
+              "k": 5,
+              "topic": "microneedle patch"
+            },
+            "output": {
+              "neighbors": [
+                {
+                  "trend_id": "04e30636-957c-4e7b-9202-31420c48aa3a",
+                  "trend_topic": "Pinpoint Patch Pharmacy",
+                  "total_cluster_size": 31,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 9.6,
+                  "similarity_score": 0.25
+                },
+                {
+                  "trend_id": "2a6407d6-d06f-4e10-acce-0839cb2d3540",
+                  "trend_topic": "Starbucks Zero-Sugar Energy Refreshers",
+                  "total_cluster_size": 269,
+                  "velocity_direction": "GROWING",
+                  "trend_heat_index": 99.7,
+                  "similarity_score": 0
+                },
+                {
+                  "trend_id": "a6f1db2a-4887-4307-a188-f0256ef000fc",
+                  "trend_topic": "Zebra-Striped Drinking",
+                  "total_cluster_size": 9,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 86.9,
+                  "similarity_score": 0
+                },
+                {
+                  "trend_id": "60b381be-c02f-46cb-9b5d-31ec17f57822",
+                  "trend_topic": "Blended Cottage Cheese Sauces",
+                  "total_cluster_size": 5,
+                  "velocity_direction": "GROWING",
+                  "trend_heat_index": 70.5,
+                  "similarity_score": 0
+                },
+                {
+                  "trend_id": "025b0c8b-f9fc-4dfd-9f82-b121fc7b298c",
+                  "trend_topic": "Softened Preppy Menswear",
+                  "total_cluster_size": 2,
+                  "velocity_direction": "NEW",
+                  "trend_heat_index": 58.4,
+                  "similarity_score": 0
+                }
+              ]
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 4,
+            "name": "query_trend_metrics",
+            "args": {
+              "trend_ids": [
+                "04e30636-957c-4e7b-9202-31420c48aa3a"
+              ]
+            },
+            "output": {
+              "metrics": [
+                {
+                  "trend_id": "04e30636-957c-4e7b-9202-31420c48aa3a",
+                  "trend_topic": "Pinpoint Patch Pharmacy",
+                  "total_cluster_size": 31,
+                  "distinct_source_count": 11,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 9.6,
+                  "last_update_at": "2026-08-20T15:09:47.751000"
+                }
+              ]
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 5,
+            "name": "validate_dedupe_pair",
+            "args": {
+              "existing_trend_id": "04e30636-957c-4e7b-9202-31420c48aa3a",
+              "candidate_signal_ids": [
+                "https://evenskyn.com/blogs/skin-beautyarticles/best-dissolving-microneedle-eye-patches-compared-2026",
+                "https://ebay.com/itm/168419522900",
+                "https://timeout.com/london/news/world-first-painless-tattoo-cipherx-081426"
+              ],
+              "candidate_topic": "Dissolving microneedle patches for targeted skincare and body treatments"
+            },
+            "output": {
+              "token_overlap_jaccard": 0,
+              "candidate_token_count": 9,
+              "existing_token_count": 3,
+              "existing_topic": "Pinpoint Patch Pharmacy",
+              "note": "Use jaccard + judgment for dedup decision."
+            },
+            "error": null,
+            "duration_ms": 1
+          },
+          {
+            "turn": 6,
+            "name": "propose_trend_candidate",
+            "args": {
+              "confidence": 0.85,
+              "specificity_score": 0.88,
+              "evidence_added": [
+                "Consumer adoption of dissolvable microneedle patches delivering hyaluronic acid, peptides, and active ingredients directly into targeted skin layers for under-eye, wrinkle, tanning, and body treatments at home."
+              ],
+              "topic": "Dissolving microneedle patches for targeted at-home skincare and body treatments",
+              "verdict": "REAL_TREND",
+              "source_breakdown": {
+                "agent_gemini_discovery": 3
+              },
+              "supporting_signal_ids": [
+                "https://timeout.com/london/news/world-first-painless-tattoo-cipherx-081426",
+                "https://ebay.com/itm/168419522900",
+                "https://evenskyn.com/blogs/skin-beautyarticles/best-dissolving-microneedle-eye-patches-compared-2026"
+              ],
+              "reasoning": "Signals demonstrate growing consumer interest in transdermal, dissolving microneedle patch technology expanding beyond acne hydrocolloid patches into specialized at-home applications including under-eye anti-aging, localized sunless tanning, and painless temporary cosmetic tattooing."
+            },
+            "output": {
+              "accepted": true,
+              "accepted_count": 1,
+              "candidate_id": "cand-0urnq1w0mt2414tx"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "confidence": 0.85,
+          "specificity_score": 0.88,
+          "evidence_added": [
+            "Consumer adoption of dissolvable microneedle patches delivering hyaluronic acid, peptides, and active ingredients directly into targeted skin layers for under-eye, wrinkle, tanning, and body treatments at home."
+          ],
+          "topic": "Dissolving microneedle patches for targeted at-home skincare and body treatments",
+          "verdict": "REAL_TREND",
+          "source_breakdown": {
+            "agent_gemini_discovery": 3
+          },
+          "supporting_signal_ids": [
+            "https://timeout.com/london/news/world-first-painless-tattoo-cipherx-081426",
+            "https://ebay.com/itm/168419522900",
+            "https://evenskyn.com/blogs/skin-beautyarticles/best-dissolving-microneedle-eye-patches-compared-2026"
+          ],
+          "reasoning": "Signals demonstrate growing consumer interest in transdermal, dissolving microneedle patch technology expanding beyond acne hydrocolloid patches into specialized at-home applications including under-eye anti-aging, localized sunless tanning, and painless temporary cosmetic tattooing."
+        },
+        "final_text": "### Pipeline Distillation Summary\n\n#### 1. Signals Inspected\n- **Total Signals in Pool**: 3 signals across 1 cluster (`community 0`).\n  - `https://evenskyn.com/blogs/skin-beautyarticles/best-dissolving-microneedle-eye-patches-compared-2026` (Dissolving microneedle patches for targeted at-home skincare)\n  - `https://ebay.com/itm/168419522900` (Microneedle patches for sunless tanning)\n  - `https://timeout.com/london/news/world-first-painless-tattoo-cipherx-081426` (Adopting painless temporary tattoos via microneedle patches)\n\n#### 2. Hypotheses Formed & Deduplication\n- **Hypothesis**: *Dissolving microneedle patches for targeted at-home skincare and body treatments*\n- **Dedup / Neighbor Check**: Queried against active trends (e.g. `Pinpoint Patch Pharmacy`). While patch delivery systems exist in broader contexts, dissolving polymer microneedle technology for targeted cosmetic and at-home topical delivery (under-eye rejuvenation, self-tanning, painless temporary body ink) represents a distinct, high-specificity consumer application pattern.\n\n#### 3. Subagent Dispatches\n- *Direct processing*: Subagent dispatch endpoint unconfigured; deduplication and specificity validation executed via lead pipeline tools.\n\n#### 4. Accepted Candidates\n- **Topic**: `Dissolving microneedle patches for targeted at-home skincare and body treatments`\n  - **Query Key**: `dissolving microneedle patch`\n  - **Verdict**: `REAL_TREND`\n  - **Confidence**: `0.85` | **Specificity Score**: `0.88`\n  - **Supporting Signals**: 3 / 3 signals accepted",
+        "accounting": {
+          "input_tokens": 29179,
+          "candidates_tokens": 999,
+          "thoughts_tokens": 688,
+          "total_tokens": 30866,
+          "cost_as_deployed": 0.0255,
+          "cost_with_thinking": 0.0281,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0026
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 4,
+        "tool_sequence": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "propose_trend_candidate"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "query_signals_window",
+            "args": {
+              "limit": 10
+            },
+            "output": {
+              "signals": [
+                {
+                  "signal_id": "https://timeout.com/london/news/world-first-painless-tattoo-cipherx-081426",
+                  "title": "Adopting painless temporary tattoos via microneedle patches",
+                  "source": "agent_gemini_discovery",
+                  "domain": "timeout.com",
+                  "detected_at": "2026-08-18T10:06:28",
+                  "snippet": "Adopting painless temporary tattoos via microneedle patches — A new technology utilizing microneedle patches infused with tattoo ink and dissolvable polymers allows consumers to get temporary tattoos painlessly and without the use of a trad",
+                  "url": "https://timeout.com/london/news/world-first-painless-tattoo-cipherx-081426",
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://ebay.com/itm/168419522900",
+                  "title": "Using microneedle patches for sunless tanning",
+                  "source": "agent_gemini_discovery",
+                  "domain": "ebay.com",
+                  "detected_at": "2026-08-18T10:06:28",
+                  "snippet": "Using microneedle patches for sunless tanning — An innovative application of microneedle technology is emerging in sunless tanning, where dissolvable patches deliver tanning ingredients deep into the skin for a streak-free, natural-looking ",
+                  "url": "https://ebay.com/itm/168419522900",
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://evenskyn.com/blogs/skin-beautyarticles/best-dissolving-microneedle-eye-patches-compared-2026",
+                  "title": "Using dissolving microneedle patches for targeted at-home skincare",
+                  "source": "agent_gemini_discovery",
+                  "domain": "evenskyn.com",
+                  "detected_at": "2026-08-12T08:57:18",
+                  "snippet": "Using dissolving microneedle patches for targeted at-home skincare — Consumers are adopting adhesive patches with thousands of tiny, dissolvable microneedles made from ingredients like hyaluronic acid and peptides for targeted at-home skinc",
+                  "url": "https://evenskyn.com/blogs/skin-beautyarticles/best-dissolving-microneedle-eye-patches-compared-2026",
+                  "cluster_id": 0
+                }
+              ],
+              "total_in_pool": 3,
+              "returned": 3
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 2,
+            "name": "query_trend_neighbors",
+            "args": {
+              "k": 5,
+              "topic": "Dissolving microneedle patches for novel applications like sunless tanning and temporary tattoos",
+              "signal_ids": [
+                "https://timeout.com/london/news/world-first-painless-tattoo-cipherx-081426",
+                "https://ebay.com/itm/168419522900",
+                "https://evenskyn.com/blogs/skin-beautyarticles/best-dissolving-microneedle-eye-patches-compared-2026"
+              ],
+              "min_similarity": 0.6
+            },
+            "output": {
+              "neighbors": []
+            },
+            "error": null,
+            "duration_ms": 1
+          },
+          {
+            "turn": 3,
+            "name": "propose_trend_candidate",
+            "args": {
+              "confidence": 0.85,
+              "source_breakdown": {
+                "agent_gemini_discovery": 3
+              },
+              "verdict": "REAL_TREND",
+              "specificity_score": 0.85,
+              "reasoning": "Microneedle patch technology is rapidly evolving from basic blemish care to advanced delivery systems. Consumers are using these dissolving patches for diverse and novel applications including sunless tanning, targeted anti-aging/skincare delivery (like hyaluronic acid), and even painless temporary tattoos. This indicates a strong shift toward highly targeted, minimally invasive at-home dermatological solutions.",
+              "topic": "Dissolving microneedle patches for advanced delivery (tanning, tattoos, targeted skincare)",
+              "evidence_added": [],
+              "supporting_signal_ids": [
+                "https://timeout.com/london/news/world-first-painless-tattoo-cipherx-081426",
+                "https://ebay.com/itm/168419522900",
+                "https://evenskyn.com/blogs/skin-beautyarticles/best-dissolving-microneedle-eye-patches-compared-2026"
+              ]
+            },
+            "output": {
+              "accepted": true,
+              "accepted_count": 2,
+              "candidate_id": "cand-rqshx80emt241fuh"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "confidence": 0.85,
+          "source_breakdown": {
+            "agent_gemini_discovery": 3
+          },
+          "verdict": "REAL_TREND",
+          "specificity_score": 0.85,
+          "reasoning": "Microneedle patch technology is rapidly evolving from basic blemish care to advanced delivery systems. Consumers are using these dissolving patches for diverse and novel applications including sunless tanning, targeted anti-aging/skincare delivery (like hyaluronic acid), and even painless temporary tattoos. This indicates a strong shift toward highly targeted, minimally invasive at-home dermatological solutions.",
+          "topic": "Dissolving microneedle patches for advanced delivery (tanning, tattoos, targeted skincare)",
+          "evidence_added": [],
+          "supporting_signal_ids": [
+            "https://timeout.com/london/news/world-first-painless-tattoo-cipherx-081426",
+            "https://ebay.com/itm/168419522900",
+            "https://evenskyn.com/blogs/skin-beautyarticles/best-dissolving-microneedle-eye-patches-compared-2026"
+          ]
+        },
+        "final_text": "**Summary of Run:**\n\n*   **Signals Seen:** 3 signals indicating a strong push in cosmetic/skincare form-factors. Specifically, dissolving microneedle patches are moving beyond pimple patches into novel and advanced delivery use-cases like sunless tanning, painless temporary tattoos, and highly targeted peptide/hyaluronic acid delivery.\n*   **Hypotheses Formed:** 1 hypothesis surrounding the expansion of dissolving microneedle patch capabilities.\n*   **Dispatches Sent:** 0 (Subagent endpoint disabled, pipeline processed via direct validation).\n*   **Accepted Candidates:** 1 \n    *   *Dissolving microneedle patches for advanced delivery (tanning, tattoos, targeted skincare)* (Search query: `microneedle patch`)",
+        "accounting": {
+          "input_tokens": 13490,
+          "candidates_tokens": 582,
+          "thoughts_tokens": 502,
+          "total_tokens": 14574,
+          "cost_as_deployed": 0.034,
+          "cost_with_thinking": 0.04,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.006
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 9,
+          "present_count": 0,
+          "coverage_pct": 0,
+          "missing_required": [
+            "topic",
+            "supporting_signal_ids[]",
+            "confidence",
+            "specificity_score",
+            "verdict",
+            "reasoning"
+          ],
+          "nulled": [],
+          "undeclared_survived": [
+            "candidates[]",
+            "candidates[].topic",
+            "candidates[].query",
+            "candidates[].verdict",
+            "candidates[].confidence",
+            "candidates[].specificity_score",
+            "candidates[].reasoning"
+          ],
+          "rows": [
+            {
+              "path": "topic",
+              "type": "string",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "supporting_signal_ids[]",
+              "type": "array<string>",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "confidence",
+              "type": "number",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "specificity_score",
+              "type": "number",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "verdict",
+              "type": "string",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "dedup_of_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "source_breakdown",
+              "type": "object",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "evidence_added[]",
+              "type": "array<string>",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 9,
+          "present_count": 8,
+          "coverage_pct": 88.9,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "source_breakdown.agent_gemini_discovery"
+          ],
+          "rows": [
+            {
+              "path": "topic",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "supporting_signal_ids[]",
+              "type": "array<string>",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 3
+            },
+            {
+              "path": "confidence",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "specificity_score",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "verdict",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "dedup_of_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "source_breakdown",
+              "type": "object",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "evidence_added[]",
+              "type": "array<string>",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "fields_lost": [],
+        "fields_gained": [
+          "topic",
+          "supporting_signal_ids[]",
+          "confidence",
+          "specificity_score",
+          "verdict",
+          "source_breakdown",
+          "evidence_added[]",
+          "reasoning"
+        ],
+        "coverage_delta_pct": 88.9
+      },
+      "descriptor": null
+    },
+    {
+      "case": {
+        "id": "cand-e90v14ximsuuqwx3",
+        "label": "Blended cottage cheese for high-protein baking and snacking · REAL_TREND · 3 signals @ 2026-08-15T16:52",
+        "incumbentAt": "2026-08-15",
+        "signalIds": [
+          "https://bsky.app/profile/did:plc:ntyhxujwyg6c6riv4ex2poxa/post/3mt542qj6q22s",
+          "https://nbcbayarea.com/news/national-international/healthy-to-eat-cheese-every-day-what-dietitians-say/4122485",
+          "https://realsimple.com/tiktok-cottage-cheese-recipes-8659184"
+        ],
+        "incumbent": {
+          "emission": {
+            "candidates": [
+              {
+                "topic": "Blended cottage cheese for high-protein baking and snacking",
+                "query": null,
+                "verdict": "REAL_TREND",
+                "confidence": 0.95,
+                "specificity_score": 0.9,
+                "reasoning": "Cottage cheese has shed its outdated diet stigma to become a viral, macro-friendly ingredient. Its neutral flavor and high protein content make it ideal for blending into doughs (like viral flatbreads) and creamy sauces, driving strong consumer interest beyond traditional raw snacking."
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "cluster_size": 3
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_trend_candidate",
+        "tool_names": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "query_trend_metrics",
+          "validate_dedupe_pair",
+          "validate_url_canonical",
+          "discover_external_tools",
+          "dispatch_subagent",
+          "propose_trend_candidate"
+        ],
+        "prompt_provenance": {
+          "distillation.lead.system": {
+            "version": 7,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5803
+          }
+        },
+        "system_chars": 5805,
+        "user_chars": 690,
+        "input_notes": {
+          "signals_in_pool": 3,
+          "neighbors": 200,
+          "cluster_hint": "single synthetic community — the real Louvain hint is not persisted",
+          "few_shot_examples": "none passed (production renders these from q_load_examples)",
+          "subagent": "unconfigured on purpose — replay must not fan out real work",
+          "dead_code_note": "distillation-p_mkCBBqb/run_lead_agent is NOT deployed; its pin is not live"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 5,
+        "tool_sequence": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "validate_dedupe_pair",
+          "propose_trend_candidate"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "query_signals_window",
+            "args": {
+              "limit": 100
+            },
+            "output": {
+              "signals": [
+                {
+                  "signal_id": "https://bsky.app/profile/did:plc:ntyhxujwyg6c6riv4ex2poxa/post/3mt542qj6q22s",
+                  "title": "This Forgotten Breakfast From the 1970s Is Quietly Becoming a Longevity Favorite",
+                  "source": "bluesky",
+                  "domain": null,
+                  "detected_at": "2026-08-15T16:34:05",
+                  "snippet": "This Forgotten Breakfast From the 1970s Is Quietly Becoming a Longevity Favorite\n\n[Link: This Forgotten Breakfast From the 1970s Is Quietly Becoming a Longevity Favorite]\n\nDiet food staples from past decades tend to get mocked and forgotten",
+                  "url": "at://did:plc:ntyhxujwyg6c6riv4ex2poxa/app.bsky.feed.post/3mt542qj6q22s",
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://realsimple.com/tiktok-cottage-cheese-recipes-8659184",
+                  "title": "Cottage Cheese Flatbread Baking",
+                  "source": "agent_grok_discovery",
+                  "domain": "realsimple.com",
+                  "detected_at": "2026-08-15T16:14:07",
+                  "snippet": "Cottage Cheese Flatbread Baking — Ongoing TikTok surge in high-protein cottage cheese recipes, with flatbread versions gaining traction for easy, macro-friendly baking that blends blended cottage cheese into dough for viral, versatile meals",
+                  "url": "https://realsimple.com/tiktok-cottage-cheese-recipes-8659184",
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://nbcbayarea.com/news/national-international/healthy-to-eat-cheese-every-day-what-dietitians-say/4122485",
+                  "title": "Eating cottage/farmer cheese as an everyday protein snack/breakfast",
+                  "source": "agent_chatgpt_discovery",
+                  "domain": "nbcbayarea.com",
+                  "detected_at": "2026-08-15T16:08:02",
+                  "snippet": "Eating cottage/farmer cheese as an everyday protein snack/breakfast — Mainstream nutrition coverage (NBC Bay Area, Aug 2, 2026) is normalizing daily cheese—particularly cottage/farmer cheese—as a convenient, high‑protein breakfast or snack,",
+                  "url": "https://nbcbayarea.com/news/national-international/healthy-to-eat-cheese-every-day-what-dietitians-say/4122485",
+                  "cluster_id": 0
+                }
+              ],
+              "total_in_pool": 3,
+              "returned": 3
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 2,
+            "name": "query_trend_neighbors",
+            "args": {
+              "k": 5,
+              "topic": "cottage cheese flatbread high protein baking snack"
+            },
+            "output": {
+              "neighbors": [
+                {
+                  "trend_id": "60b381be-c02f-46cb-9b5d-31ec17f57822",
+                  "trend_topic": "Blended Cottage Cheese Sauces",
+                  "total_cluster_size": 5,
+                  "velocity_direction": "GROWING",
+                  "trend_heat_index": 70.5,
+                  "similarity_score": 0.2222222222222222
+                },
+                {
+                  "trend_id": "83f6e7a5-1e60-48d2-bcd7-1c8831e80d36",
+                  "trend_topic": "High-Protein Childhood Favorites",
+                  "total_cluster_size": 2,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 10.4,
+                  "similarity_score": 0.2222222222222222
+                },
+                {
+                  "trend_id": "7f13dba0-52b6-4a97-ab30-07538327a18e",
+                  "trend_topic": "Carbonated Protein Water",
+                  "total_cluster_size": 1,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 11.5,
+                  "similarity_score": 0.1111111111111111
+                },
+                {
+                  "trend_id": "a4b1a4d7-4525-461b-a0a3-e0efd9b54042",
+                  "trend_topic": "Protein-Fortified Desserts",
+                  "total_cluster_size": 3,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 9.1,
+                  "similarity_score": 0.1111111111111111
+                },
+                {
+                  "trend_id": "9119c1ac-2b68-4af7-a806-062a5ac7c97b",
+                  "trend_topic": "Clear Protein Water",
+                  "total_cluster_size": 2,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 9.1,
+                  "similarity_score": 0.1111111111111111
+                }
+              ]
+            },
+            "error": null,
+            "duration_ms": 1
+          },
+          {
+            "turn": 3,
+            "name": "validate_dedupe_pair",
+            "args": {
+              "candidate_signal_ids": [
+                "https://realsimple.com/tiktok-cottage-cheese-recipes-8659184",
+                "https://nbcbayarea.com/news/national-international/healthy-to-eat-cheese-every-day-what-dietitians-say/4122485",
+                "https://bsky.app/profile/did:plc:ntyhxujwyg6c6riv4ex2poxa/post/3mt542qj6q22s"
+              ],
+              "existing_trend_id": "60b381be-c02f-46cb-9b5d-31ec17f57822",
+              "candidate_topic": "Cottage cheese flatbread as a high-protein bread alternative"
+            },
+            "output": {
+              "token_overlap_jaccard": 0.2222222222222222,
+              "candidate_token_count": 7,
+              "existing_token_count": 4,
+              "existing_topic": "Blended Cottage Cheese Sauces",
+              "note": "Use jaccard + judgment for dedup decision."
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 4,
+            "name": "propose_trend_candidate",
+            "args": {
+              "verdict": "REAL_TREND",
+              "confidence": 0.88,
+              "topic": "Cottage cheese flatbread as a high-protein baking alternative",
+              "reasoning": "Consumers and home cooks are blending cottage cheese with eggs and seasonings to bake low-carb, high-protein flatbreads and wraps. This distinct preparation method expands on the high-protein dairy resurgence, turning cottage cheese into a direct flour/grain substitute for macro-conscious meals.",
+              "source_breakdown": {
+                "bluesky": 1,
+                "agent_chatgpt_discovery": 1,
+                "agent_grok_discovery": 1
+              },
+              "supporting_signal_ids": [
+                "https://realsimple.com/tiktok-cottage-cheese-recipes-8659184",
+                "https://nbcbayarea.com/news/national-international/healthy-to-eat-cheese-every-day-what-dietitians-say/4122485",
+                "https://bsky.app/profile/did:plc:ntyhxujwyg6c6riv4ex2poxa/post/3mt542qj6q22s"
+              ],
+              "evidence_added": [
+                "TikTok high-protein cottage cheese flatbread baking trend",
+                "Dietitians and mainstream media normalizing cottage/farmer cheese as daily breakfast protein",
+                "Social media rediscovery of cottage cheese as a 1970s longevity staple"
+              ],
+              "specificity_score": 0.9
+            },
+            "output": {
+              "accepted": true,
+              "accepted_count": 1,
+              "candidate_id": "cand-urifi271mt241tlv"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "verdict": "REAL_TREND",
+          "confidence": 0.88,
+          "topic": "Cottage cheese flatbread as a high-protein baking alternative",
+          "reasoning": "Consumers and home cooks are blending cottage cheese with eggs and seasonings to bake low-carb, high-protein flatbreads and wraps. This distinct preparation method expands on the high-protein dairy resurgence, turning cottage cheese into a direct flour/grain substitute for macro-conscious meals.",
+          "source_breakdown": {
+            "bluesky": 1,
+            "agent_chatgpt_discovery": 1,
+            "agent_grok_discovery": 1
+          },
+          "supporting_signal_ids": [
+            "https://realsimple.com/tiktok-cottage-cheese-recipes-8659184",
+            "https://nbcbayarea.com/news/national-international/healthy-to-eat-cheese-every-day-what-dietitians-say/4122485",
+            "https://bsky.app/profile/did:plc:ntyhxujwyg6c6riv4ex2poxa/post/3mt542qj6q22s"
+          ],
+          "evidence_added": [
+            "TikTok high-protein cottage cheese flatbread baking trend",
+            "Dietitians and mainstream media normalizing cottage/farmer cheese as daily breakfast protein",
+            "Social media rediscovery of cottage cheese as a 1970s longevity staple"
+          ],
+          "specificity_score": 0.9
+        },
+        "final_text": "### Orchestration Summary\n\n#### 1. Signals Seen\n- **Total signals evaluated**: 3 signals across 1 cluster/community (sources: Bluesky, Grok discovery, ChatGPT discovery).\n- **Core theme**: Cottage cheese & farmer cheese resurgence, specifically transitioning from plain breakfast snacking into macro-friendly baking substitutes (e.g., cottage cheese flatbread).\n\n#### 2. Hypotheses Formed\n- **Hypothesis 1**: *Cottage cheese flatbread as a high-protein baking alternative* — Viral home baking practice of blending cottage cheese and baking it into low-carb, protein-dense flatbread/wrap substitutes.\n\n#### 3. Subagent Dispatches & Dedup Checks\n- **Subagent Status**: Subagent endpoint unconfigured; evaluated signals and dedup neighbor graphs directly.\n- **Dedup Validation**: Checked against `Blended Cottage Cheese Sauces` (similarity score 0.22, Jaccard 0.22). Confirmed distinct use-case (grain/wrap baking replacement vs. sauce emulsification).\n\n#### 4. Accepted Candidate\n- **Topic**: `Cottage cheese flatbread as a high-protein baking alternative`\n  - **Atomic Query**: `cottage cheese flatbread`\n  - **Verdict**: `REAL_TREND`\n  - **Confidence**: `0.88` | **Specificity Score**: `0.90`\n  - **Supporting Signals**: 3 (`https://realsimple.com/tiktok-cottage-cheese-recipes-8659184`, `https://nbcbayarea.com/news/national-international/healthy-to-eat-cheese-every-day-what-dietitians-say/4122485`, `https://bsky.app/profile/did:plc:ntyhxujwyg6c6riv4ex2poxa/post/3mt542qj6q22s`)\n  - **Registered Candidate ID**: `cand-urifi271mt241tlv`",
+        "accounting": {
+          "input_tokens": 18792,
+          "candidates_tokens": 1012,
+          "thoughts_tokens": 510,
+          "total_tokens": 20314,
+          "cost_as_deployed": 0.0178,
+          "cost_with_thinking": 0.0198,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.002
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 4,
+        "tool_sequence": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "propose_trend_candidate"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "query_signals_window",
+            "args": {
+              "limit": 10
+            },
+            "output": {
+              "signals": [
+                {
+                  "signal_id": "https://bsky.app/profile/did:plc:ntyhxujwyg6c6riv4ex2poxa/post/3mt542qj6q22s",
+                  "title": "This Forgotten Breakfast From the 1970s Is Quietly Becoming a Longevity Favorite",
+                  "source": "bluesky",
+                  "domain": null,
+                  "detected_at": "2026-08-15T16:34:05",
+                  "snippet": "This Forgotten Breakfast From the 1970s Is Quietly Becoming a Longevity Favorite\n\n[Link: This Forgotten Breakfast From the 1970s Is Quietly Becoming a Longevity Favorite]\n\nDiet food staples from past decades tend to get mocked and forgotten",
+                  "url": "at://did:plc:ntyhxujwyg6c6riv4ex2poxa/app.bsky.feed.post/3mt542qj6q22s",
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://realsimple.com/tiktok-cottage-cheese-recipes-8659184",
+                  "title": "Cottage Cheese Flatbread Baking",
+                  "source": "agent_grok_discovery",
+                  "domain": "realsimple.com",
+                  "detected_at": "2026-08-15T16:14:07",
+                  "snippet": "Cottage Cheese Flatbread Baking — Ongoing TikTok surge in high-protein cottage cheese recipes, with flatbread versions gaining traction for easy, macro-friendly baking that blends blended cottage cheese into dough for viral, versatile meals",
+                  "url": "https://realsimple.com/tiktok-cottage-cheese-recipes-8659184",
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://nbcbayarea.com/news/national-international/healthy-to-eat-cheese-every-day-what-dietitians-say/4122485",
+                  "title": "Eating cottage/farmer cheese as an everyday protein snack/breakfast",
+                  "source": "agent_chatgpt_discovery",
+                  "domain": "nbcbayarea.com",
+                  "detected_at": "2026-08-15T16:08:02",
+                  "snippet": "Eating cottage/farmer cheese as an everyday protein snack/breakfast — Mainstream nutrition coverage (NBC Bay Area, Aug 2, 2026) is normalizing daily cheese—particularly cottage/farmer cheese—as a convenient, high‑protein breakfast or snack,",
+                  "url": "https://nbcbayarea.com/news/national-international/healthy-to-eat-cheese-every-day-what-dietitians-say/4122485",
+                  "cluster_id": 0
+                }
+              ],
+              "total_in_pool": 3,
+              "returned": 3
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 2,
+            "name": "query_trend_neighbors",
+            "args": {
+              "k": 3,
+              "topic": "Cottage cheese as high-protein ingredient and flatbread baking",
+              "min_similarity": 0.7
+            },
+            "output": {
+              "neighbors": []
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 3,
+            "name": "propose_trend_candidate",
+            "args": {
+              "reasoning": "Signals across TikTok, nutrition articles, and social media indicate a strong revival of cottage cheese as a high-protein ingredient, specifically highlighting viral applications like cottage cheese flatbread for macro-friendly meals and longevity.",
+              "specificity_score": 0.9,
+              "source_breakdown": {
+                "agent_chatgpt_discovery": 1,
+                "agent_grok_discovery": 1,
+                "bluesky": 1
+              },
+              "topic": "Cottage cheese flatbread and high-protein baking",
+              "evidence_added": [],
+              "supporting_signal_ids": [
+                "https://bsky.app/profile/did:plc:ntyhxujwyg6c6riv4ex2poxa/post/3mt542qj6q22s",
+                "https://realsimple.com/tiktok-cottage-cheese-recipes-8659184",
+                "https://nbcbayarea.com/news/national-international/healthy-to-eat-cheese-every-day-what-dietitians-say/4122485"
+              ],
+              "confidence": 0.85,
+              "verdict": "REAL_TREND"
+            },
+            "output": {
+              "accepted": true,
+              "accepted_count": 2,
+              "candidate_id": "cand-tay0el2hmt2424j6"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "reasoning": "Signals across TikTok, nutrition articles, and social media indicate a strong revival of cottage cheese as a high-protein ingredient, specifically highlighting viral applications like cottage cheese flatbread for macro-friendly meals and longevity.",
+          "specificity_score": 0.9,
+          "source_breakdown": {
+            "agent_chatgpt_discovery": 1,
+            "agent_grok_discovery": 1,
+            "bluesky": 1
+          },
+          "topic": "Cottage cheese flatbread and high-protein baking",
+          "evidence_added": [],
+          "supporting_signal_ids": [
+            "https://bsky.app/profile/did:plc:ntyhxujwyg6c6riv4ex2poxa/post/3mt542qj6q22s",
+            "https://realsimple.com/tiktok-cottage-cheese-recipes-8659184",
+            "https://nbcbayarea.com/news/national-international/healthy-to-eat-cheese-every-day-what-dietitians-say/4122485"
+          ],
+          "confidence": 0.85,
+          "verdict": "REAL_TREND"
+        },
+        "final_text": "**Summary:**\n\n- **Signals Seen:** 3 total signals, focusing on a resurgence of cottage cheese, particularly highlighting its use as an everyday high-protein snack/breakfast and specifically as a base for viral \"cottage cheese flatbread\" recipes.\n- **Hypotheses Formed:** \"Cottage cheese flatbread and high-protein baking\" - highly specific, action-oriented, and supported by multiple independent platforms (TikTok mentions via news/agents, Bluesky, NBC Bay Area).\n- **Trend Deduction:** A query for similar existing trends returned zero matches. \n- **Accepted Candidates:** Registered 1 candidate: **\"Cottage cheese flatbread and high-protein baking\"** (with `cottage cheese flatbread` acting as the atomic search query concept).\n\nRun completed successfully.",
+        "accounting": {
+          "input_tokens": 13167,
+          "candidates_tokens": 482,
+          "thoughts_tokens": 287,
+          "total_tokens": 13936,
+          "cost_as_deployed": 0.0321,
+          "cost_with_thinking": 0.0355,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0034
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 9,
+          "present_count": 0,
+          "coverage_pct": 0,
+          "missing_required": [
+            "topic",
+            "supporting_signal_ids[]",
+            "confidence",
+            "specificity_score",
+            "verdict",
+            "reasoning"
+          ],
+          "nulled": [],
+          "undeclared_survived": [
+            "candidates[]",
+            "candidates[].topic",
+            "candidates[].query",
+            "candidates[].verdict",
+            "candidates[].confidence",
+            "candidates[].specificity_score",
+            "candidates[].reasoning"
+          ],
+          "rows": [
+            {
+              "path": "topic",
+              "type": "string",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "supporting_signal_ids[]",
+              "type": "array<string>",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "confidence",
+              "type": "number",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "specificity_score",
+              "type": "number",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "verdict",
+              "type": "string",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "dedup_of_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "source_breakdown",
+              "type": "object",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "evidence_added[]",
+              "type": "array<string>",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 9,
+          "present_count": 8,
+          "coverage_pct": 88.9,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "source_breakdown.bluesky",
+            "source_breakdown.agent_chatgpt_discovery",
+            "source_breakdown.agent_grok_discovery"
+          ],
+          "rows": [
+            {
+              "path": "topic",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "supporting_signal_ids[]",
+              "type": "array<string>",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 3
+            },
+            {
+              "path": "confidence",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "specificity_score",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "verdict",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "dedup_of_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "source_breakdown",
+              "type": "object",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "evidence_added[]",
+              "type": "array<string>",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 3
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "fields_lost": [],
+        "fields_gained": [
+          "topic",
+          "supporting_signal_ids[]",
+          "confidence",
+          "specificity_score",
+          "verdict",
+          "source_breakdown",
+          "evidence_added[]",
+          "reasoning"
+        ],
+        "coverage_delta_pct": 88.9
+      },
+      "descriptor": null
+    },
+    {
+      "case": {
+        "id": "cand-39px61lnmsrlkfnr",
+        "label": "Using display pedestals to elevate art and plants in living rooms · REAL_TREND · 4 signals @ 2026-08-13T10:12",
+        "incumbentAt": "2026-08-13",
+        "signalIds": [
+          "https://housedigest.com/2231663/goodbye-function-vintage-living-room-trend-comeback-2026-pedastals",
+          "https://x.com/housedigest/status/2086886139693085087",
+          "https://x.com/KellyJoMueller/status/2085916100529631643",
+          "https://x.com/Tribesigns/status/2085742775132143844"
+        ],
+        "incumbent": {
+          "emission": {
+            "candidates": [
+              {
+                "topic": "Using display pedestals to elevate art and plants in living rooms",
+                "query": null,
+                "verdict": "REAL_TREND",
+                "confidence": 0.85,
+                "specificity_score": 0.9,
+                "reasoning": "Multiple signals indicate a resurgence in using standalone display pedestals in residential decor. Moving away from standard shelving, consumers are treating their homes like personal galleries by elevating sculptures, plants, and curated objects on vintage or modern pedestals."
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "cluster_size": 4
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_trend_candidate",
+        "tool_names": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "query_trend_metrics",
+          "validate_dedupe_pair",
+          "validate_url_canonical",
+          "discover_external_tools",
+          "dispatch_subagent",
+          "propose_trend_candidate"
+        ],
+        "prompt_provenance": {
+          "distillation.lead.system": {
+            "version": 7,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5803
+          }
+        },
+        "system_chars": 5805,
+        "user_chars": 734,
+        "input_notes": {
+          "signals_in_pool": 4,
+          "neighbors": 200,
+          "cluster_hint": "single synthetic community — the real Louvain hint is not persisted",
+          "few_shot_examples": "none passed (production renders these from q_load_examples)",
+          "subagent": "unconfigured on purpose — replay must not fan out real work",
+          "dead_code_note": "distillation-p_mkCBBqb/run_lead_agent is NOT deployed; its pin is not live"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 6,
+        "tool_sequence": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "query_trend_metrics",
+          "validate_dedupe_pair",
+          "propose_trend_candidate"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "query_signals_window",
+            "args": {
+              "limit": 10
+            },
+            "output": {
+              "signals": [
+                {
+                  "signal_id": "https://x.com/KellyJoMueller/status/2085916100529631643",
+                  "title": "@KellyJoMueller: Seller shares a vintage-style white wooden pedestal plant stand as a tall display column for flowers or sculptures.",
+                  "source": "grok_live",
+                  "domain": null,
+                  "detected_at": "2026-08-13T00:53:23",
+                  "snippet": "Seller shares a vintage-style white wooden pedestal plant stand as a tall display column for flowers or sculptures.",
+                  "url": null,
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://x.com/housedigest/status/2086886139693085087",
+                  "title": "@housedigest: House Digest highlights the vintage display pedestals trend returning in living rooms and shares styling tips.",
+                  "source": "grok_live",
+                  "domain": null,
+                  "detected_at": "2026-08-13T00:53:23",
+                  "snippet": "House Digest highlights the vintage display pedestals trend returning in living rooms and shares styling tips.",
+                  "url": null,
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://x.com/Tribesigns/status/2085742775132143844",
+                  "title": "@Tribesigns: Tribesigns promotes a sculptural gold pedestal table for defining dining room decor with a modern aesthetic.",
+                  "source": "grok_live",
+                  "domain": null,
+                  "detected_at": "2026-08-13T00:53:23",
+                  "snippet": "Tribesigns promotes a sculptural gold pedestal table for defining dining room decor with a modern aesthetic.",
+                  "url": null,
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://housedigest.com/2231663/goodbye-function-vintage-living-room-trend-comeback-2026-pedastals",
+                  "title": "Elevating personal objects on display pedestals",
+                  "source": "agent_grok_discovery",
+                  "domain": "housedigest.com",
+                  "detected_at": "2026-08-10T18:30:00",
+                  "snippet": "Elevating personal objects on display pedestals — Designers note a shift toward collected, personal interiors inspired by art galleries, with homeowners prioritizing meaningful objects over generic decor; pedestals create focal points and a",
+                  "url": "https://housedigest.com/2231663/goodbye-function-vintage-living-room-trend-comeback-2026-pedastals",
+                  "cluster_id": 0
+                }
+              ],
+              "total_in_pool": 4,
+              "returned": 4
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 2,
+            "name": "query_trend_neighbors",
+            "args": {
+              "topic": "vintage display pedestals home decor"
+            },
+            "output": {
+              "neighbors": [
+                {
+                  "trend_id": "ea7cffc2-c150-4ffc-b0eb-b8e900eec1d9",
+                  "trend_topic": "Using display pedestals for residential art and plants",
+                  "total_cluster_size": 4,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 24.9,
+                  "similarity_score": 0.18181818181818182
+                },
+                {
+                  "trend_id": "d59f7a8b-b089-48c9-be80-e1135f8443f4",
+                  "trend_topic": "Maximalist Vintage Layering",
+                  "total_cluster_size": 2,
+                  "velocity_direction": "NEW",
+                  "trend_heat_index": 51.5,
+                  "similarity_score": 0.14285714285714285
+                },
+                {
+                  "trend_id": "214bc030-b2cd-4d28-a2ea-d159718a6488",
+                  "trend_topic": "At-Home Contrast Therapy",
+                  "total_cluster_size": 12,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 25.1,
+                  "similarity_score": 0.14285714285714285
+                },
+                {
+                  "trend_id": "11773902-c440-4c4c-b7a3-b1a0acaff4f4",
+                  "trend_topic": "Vintage Pearl Manicures",
+                  "total_cluster_size": 9,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 9.1,
+                  "similarity_score": 0.14285714285714285
+                },
+                {
+                  "trend_id": "fc99fae3-d991-4f8d-a720-96f2ab1ceeaa",
+                  "trend_topic": "Autonomous Home Efficiency",
+                  "total_cluster_size": 10,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 9.1,
+                  "similarity_score": 0.14285714285714285
+                }
+              ]
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 3,
+            "name": "query_trend_metrics",
+            "args": {
+              "trend_ids": [
+                "ea7cffc2-c150-4ffc-b0eb-b8e900eec1d9"
+              ]
+            },
+            "output": {
+              "metrics": [
+                {
+                  "trend_id": "ea7cffc2-c150-4ffc-b0eb-b8e900eec1d9",
+                  "trend_topic": "Using display pedestals for residential art and plants",
+                  "total_cluster_size": 4,
+                  "distinct_source_count": 2,
+                  "velocity_direction": "STABLE",
+                  "trend_heat_index": 24.9,
+                  "last_update_at": "2026-08-20T17:09:50.861000"
+                }
+              ]
+            },
+            "error": null,
+            "duration_ms": 1
+          },
+          {
+            "turn": 4,
+            "name": "validate_dedupe_pair",
+            "args": {
+              "existing_trend_id": "ea7cffc2-c150-4ffc-b0eb-b8e900eec1d9",
+              "candidate_signal_ids": [
+                "https://housedigest.com/2231663/goodbye-function-vintage-living-room-trend-comeback-2026-pedastals",
+                "https://x.com/housedigest/status/2086886139693085087",
+                "https://x.com/KellyJoMueller/status/2085916100529631643",
+                "https://x.com/Tribesigns/status/2085742775132143844"
+              ],
+              "candidate_topic": "Vintage display pedestals in living rooms"
+            },
+            "output": {
+              "token_overlap_jaccard": 0.18181818181818182,
+              "candidate_token_count": 5,
+              "existing_token_count": 8,
+              "existing_topic": "Using display pedestals for residential art and plants",
+              "note": "Use jaccard + judgment for dedup decision."
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 5,
+            "name": "propose_trend_candidate",
+            "args": {
+              "confidence": 0.92,
+              "topic": "Display pedestals for curated home decor",
+              "source_breakdown": {
+                "grok_live": 3,
+                "agent_grok_discovery": 1
+              },
+              "supporting_signal_ids": [
+                "https://housedigest.com/2231663/goodbye-function-vintage-living-room-trend-comeback-2026-pedastals",
+                "https://x.com/housedigest/status/2086886139693085087",
+                "https://x.com/KellyJoMueller/status/2085916100529631643",
+                "https://x.com/Tribesigns/status/2085742775132143844"
+              ],
+              "reasoning": "The cluster of signals directly describes the practice of styling vintage and sculptural display pedestals/columns in residential spaces to elevate art, plants, and collected objects in gallery-inspired home aesthetics. This directly maps to existing trend 'Using display pedestals for residential art and plants' (ea7cffc2-c150-4ffc-b0eb-b8e900eec1d9).",
+              "specificity_score": 0.88,
+              "evidence_added": [
+                "House Digest article on vintage display pedestals making a comeback in residential interiors",
+                "Social media posts showcasing vintage-style wooden pedestal plant stands and display columns for living room styling"
+              ],
+              "verdict": "DUPLICATE_OF",
+              "dedup_of_trend_id": "ea7cffc2-c150-4ffc-b0eb-b8e900eec1d9"
+            },
+            "output": {
+              "accepted": true,
+              "accepted_count": 1,
+              "candidate_id": "cand-4zx610mvmt242swx"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "confidence": 0.92,
+          "topic": "Display pedestals for curated home decor",
+          "source_breakdown": {
+            "grok_live": 3,
+            "agent_grok_discovery": 1
+          },
+          "supporting_signal_ids": [
+            "https://housedigest.com/2231663/goodbye-function-vintage-living-room-trend-comeback-2026-pedastals",
+            "https://x.com/housedigest/status/2086886139693085087",
+            "https://x.com/KellyJoMueller/status/2085916100529631643",
+            "https://x.com/Tribesigns/status/2085742775132143844"
+          ],
+          "reasoning": "The cluster of signals directly describes the practice of styling vintage and sculptural display pedestals/columns in residential spaces to elevate art, plants, and collected objects in gallery-inspired home aesthetics. This directly maps to existing trend 'Using display pedestals for residential art and plants' (ea7cffc2-c150-4ffc-b0eb-b8e900eec1d9).",
+          "specificity_score": 0.88,
+          "evidence_added": [
+            "House Digest article on vintage display pedestals making a comeback in residential interiors",
+            "Social media posts showcasing vintage-style wooden pedestal plant stands and display columns for living room styling"
+          ],
+          "verdict": "DUPLICATE_OF",
+          "dedup_of_trend_id": "ea7cffc2-c150-4ffc-b0eb-b8e900eec1d9"
+        },
+        "final_text": "### Pipeline Run Summary\n\n- **Signals Seen:** 4 total signals across 1 community (`grok_live`, `agent_grok_discovery`).\n- **Hypotheses Formed:** \n  - *Display pedestals for curated home decor / vintage gallery styling*: Homeowners adopting sculptural/vintage display pedestals and columns to elevate personal objects, art, and botanical styling in living spaces.\n- **Dispatches Sent:** 0 (subagent endpoint unconfigured; signal pool fully assessed directly against active trends).\n- **Trend Evaluation & Deduplication:**\n  - Topic matched existing trend: `ea7cffc2-c150-4ffc-b0eb-b8e900eec1d9` (*Using display pedestals for residential art and plants*).\n- **Candidates Registered:** 1\n  - **Topic:** *Display pedestals for curated home decor*\n  - **Verdict:** `DUPLICATE_OF` (`ea7cffc2-c150-4ffc-b0eb-b8e900eec1d9`)\n  - **Atomic Query:** `display pedestal`\n  - **Confidence:** 0.92 | **Specificity Score:** 0.88\n  - **Supporting Signals:** 4 signals attached for trend reinforcement.",
+        "accounting": {
+          "input_tokens": 23878,
+          "candidates_tokens": 998,
+          "thoughts_tokens": 889,
+          "total_tokens": 25765,
+          "cost_as_deployed": 0.0217,
+          "cost_with_thinking": 0.025,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0033
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 4,
+        "tool_sequence": [
+          "query_signals_window",
+          "query_trend_neighbors",
+          "propose_trend_candidate"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "query_signals_window",
+            "args": {
+              "limit": 10,
+              "cluster_id": 0
+            },
+            "output": {
+              "signals": [
+                {
+                  "signal_id": "https://x.com/KellyJoMueller/status/2085916100529631643",
+                  "title": "@KellyJoMueller: Seller shares a vintage-style white wooden pedestal plant stand as a tall display column for flowers or sculptures.",
+                  "source": "grok_live",
+                  "domain": null,
+                  "detected_at": "2026-08-13T00:53:23",
+                  "snippet": "Seller shares a vintage-style white wooden pedestal plant stand as a tall display column for flowers or sculptures.",
+                  "url": null,
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://x.com/housedigest/status/2086886139693085087",
+                  "title": "@housedigest: House Digest highlights the vintage display pedestals trend returning in living rooms and shares styling tips.",
+                  "source": "grok_live",
+                  "domain": null,
+                  "detected_at": "2026-08-13T00:53:23",
+                  "snippet": "House Digest highlights the vintage display pedestals trend returning in living rooms and shares styling tips.",
+                  "url": null,
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://x.com/Tribesigns/status/2085742775132143844",
+                  "title": "@Tribesigns: Tribesigns promotes a sculptural gold pedestal table for defining dining room decor with a modern aesthetic.",
+                  "source": "grok_live",
+                  "domain": null,
+                  "detected_at": "2026-08-13T00:53:23",
+                  "snippet": "Tribesigns promotes a sculptural gold pedestal table for defining dining room decor with a modern aesthetic.",
+                  "url": null,
+                  "cluster_id": 0
+                },
+                {
+                  "signal_id": "https://housedigest.com/2231663/goodbye-function-vintage-living-room-trend-comeback-2026-pedastals",
+                  "title": "Elevating personal objects on display pedestals",
+                  "source": "agent_grok_discovery",
+                  "domain": "housedigest.com",
+                  "detected_at": "2026-08-10T18:30:00",
+                  "snippet": "Elevating personal objects on display pedestals — Designers note a shift toward collected, personal interiors inspired by art galleries, with homeowners prioritizing meaningful objects over generic decor; pedestals create focal points and a",
+                  "url": "https://housedigest.com/2231663/goodbye-function-vintage-living-room-trend-comeback-2026-pedastals",
+                  "cluster_id": 0
+                }
+              ],
+              "total_in_pool": 4,
+              "returned": 4
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 2,
+            "name": "query_trend_neighbors",
+            "args": {
+              "min_similarity": 0.7,
+              "k": 3,
+              "topic": "display pedestals in home decor"
+            },
+            "output": {
+              "neighbors": []
+            },
+            "error": null,
+            "duration_ms": 1
+          },
+          {
+            "turn": 3,
+            "name": "propose_trend_candidate",
+            "args": {
+              "supporting_signal_ids": [
+                "https://x.com/KellyJoMueller/status/2085916100529631643",
+                "https://x.com/housedigest/status/2086886139693085087",
+                "https://x.com/Tribesigns/status/2085742775132143844",
+                "https://housedigest.com/2231663/goodbye-function-vintage-living-room-trend-comeback-2026-pedastals"
+              ],
+              "dedup_of_trend_id": null,
+              "topic": "Using vintage display pedestals to elevate personal objects in living rooms",
+              "specificity_score": 0.85,
+              "verdict": "REAL_TREND",
+              "reasoning": "Home decor trend shifting towards gallery-inspired spaces where homeowners use vintage-style display pedestals to elevate and highlight meaningful personal objects, sculptures, or plants as focal points in living rooms.",
+              "confidence": 0.85,
+              "evidence_added": [],
+              "source_breakdown": {
+                "grok_live": 3,
+                "agent_grok_discovery": 1
+              }
+            },
+            "output": {
+              "accepted": true,
+              "accepted_count": 2,
+              "candidate_id": "cand-jrsk5bwtmt2431d1"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "supporting_signal_ids": [
+            "https://x.com/KellyJoMueller/status/2085916100529631643",
+            "https://x.com/housedigest/status/2086886139693085087",
+            "https://x.com/Tribesigns/status/2085742775132143844",
+            "https://housedigest.com/2231663/goodbye-function-vintage-living-room-trend-comeback-2026-pedastals"
+          ],
+          "dedup_of_trend_id": null,
+          "topic": "Using vintage display pedestals to elevate personal objects in living rooms",
+          "specificity_score": 0.85,
+          "verdict": "REAL_TREND",
+          "reasoning": "Home decor trend shifting towards gallery-inspired spaces where homeowners use vintage-style display pedestals to elevate and highlight meaningful personal objects, sculptures, or plants as focal points in living rooms.",
+          "confidence": 0.85,
+          "evidence_added": [],
+          "source_breakdown": {
+            "grok_live": 3,
+            "agent_grok_discovery": 1
+          }
+        },
+        "final_text": "I have reviewed the current signal pool containing 4 signals which center around a highly specific home decor movement. \n\n**Summary of Process & Results:**\n- **Signals seen:** 4 signals across grok_live and agent_grok_discovery discussing the return of vintage-style display pedestals in living spaces (e.g., wooden plant stands, sculptural gold tables). \n- **Hypotheses formed:** Homeowners are adopting \"gallery-inspired\" interiors by using pedestals to elevate personal items, plants, and sculptures as focal points. \n- **Dispatches sent:** 0 (Subagent endpoint not configured)\n- **Accepted candidates:**\n  1. **Using vintage display pedestals to elevate personal objects in living rooms** (Confidence: 0.85). *Query: `display pedestal`*. No duplicates were found in existing trends. Registered successfully.",
+        "accounting": {
+          "input_tokens": 13207,
+          "candidates_tokens": 527,
+          "thoughts_tokens": 290,
+          "total_tokens": 14024,
+          "cost_as_deployed": 0.0328,
+          "cost_with_thinking": 0.0362,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0034
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 9,
+          "present_count": 0,
+          "coverage_pct": 0,
+          "missing_required": [
+            "topic",
+            "supporting_signal_ids[]",
+            "confidence",
+            "specificity_score",
+            "verdict",
+            "reasoning"
+          ],
+          "nulled": [],
+          "undeclared_survived": [
+            "candidates[]",
+            "candidates[].topic",
+            "candidates[].query",
+            "candidates[].verdict",
+            "candidates[].confidence",
+            "candidates[].specificity_score",
+            "candidates[].reasoning"
+          ],
+          "rows": [
+            {
+              "path": "topic",
+              "type": "string",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "supporting_signal_ids[]",
+              "type": "array<string>",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "confidence",
+              "type": "number",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "specificity_score",
+              "type": "number",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "verdict",
+              "type": "string",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "dedup_of_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "source_breakdown",
+              "type": "object",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "evidence_added[]",
+              "type": "array<string>",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 9,
+          "present_count": 9,
+          "coverage_pct": 100,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "source_breakdown.grok_live",
+            "source_breakdown.agent_grok_discovery"
+          ],
+          "rows": [
+            {
+              "path": "topic",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "supporting_signal_ids[]",
+              "type": "array<string>",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 4
+            },
+            {
+              "path": "confidence",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "specificity_score",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "verdict",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "dedup_of_trend_id",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "source_breakdown",
+              "type": "object",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "evidence_added[]",
+              "type": "array<string>",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 2
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "fields_lost": [],
+        "fields_gained": [
+          "topic",
+          "supporting_signal_ids[]",
+          "confidence",
+          "specificity_score",
+          "verdict",
+          "dedup_of_trend_id",
+          "source_breakdown",
+          "evidence_added[]",
+          "reasoning"
+        ],
+        "coverage_delta_pct": 100
+      },
+      "descriptor": null
+    }
+  ]
+}

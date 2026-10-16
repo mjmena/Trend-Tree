@@ -1,0 +1,504 @@
+{
+  "lane": "promotion",
+  "summary": "Per-candidate promote/reject/dedupe gate. Tightest budget in the fleet — where the budget-gate trap bites first.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-20T23:38:02.600Z",
+  "finished_at": "2026-08-20T23:38:35.630Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 3,
+    "rerunIncumbent": true,
+    "caseId": "cand-rvu9vo5smt200vmm",
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "cand-rvu9vo5smt200vmm",
+        "label": "Mainstreaming of fermented foods for metabolic support · MERGE_INTO_EXISTING @ 2026-08-20T19:15",
+        "incumbentAt": "2026-08-20",
+        "decidedAt": "2026-08-20T19:15:29.872000",
+        "incumbent": {
+          "emission": {
+            "decision": "MERGE_INTO_EXISTING",
+            "decision_category": "MISSED_DUPLICATE",
+            "confidence": 0.8,
+            "rationale": "The candidate trend focuses on consumers adopting fermented foods like kimchi and sauerkraut for metabolic support and probiotic benefits. This is fundamentally the same consumer behavior as the existing trend 'Fermented Food Revolution' (9ff11688-d2f6-4747-a321-4adb756b125e), which tracks the mainstreaming of these exact foods as dietary staples for gut health and microbial diversity. I am overriding distillation's recommendation to promote a new trend and instead merging it into the existing one.",
+            "max_neighbor_sim": 0.736,
+            "considered_neighbors": [
+              {
+                "judgment": "same_topic",
+                "reasoning": "Both focus on consumers increasingly adopting fermented foods like kimchi and sauerkraut for gut health and microbial/metabolic support.",
+                "similarity": 0.736,
+                "trend_id": "9ff11688-d2f6-4747-a321-4adb756b125e"
+              }
+            ]
+          },
+          "context": {
+            "distillation_verdict": "REAL_TREND",
+            "overrode_verdict": true,
+            "cluster_size": 2,
+            "source_count": 2
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "input_tokens": 7987,
+            "output_tokens": 287,
+            "cost_estimate": 0.0194
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_decision",
+        "tool_names": [
+          "compare_topics",
+          "query_neighbor_details",
+          "verify_exploding_topics",
+          "propose_decision"
+        ],
+        "prompt_provenance": {
+          "promotion.subagent.system": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2576
+          },
+          "promotion.subagent.decision_rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 3876
+          }
+        },
+        "system_chars": 9041,
+        "user_chars": 584,
+        "input_notes": {
+          "neighbors": 4,
+          "quality_flags": [],
+          "budget_usd": 0.15,
+          "budget_gate_warning": "This lane's budget is measured on the TRUTHFUL cost. Production measures it on the understated one, so a real switch must correct RATES_PER_M in the same slice.",
+          "reconstructed": "candidate row (q_load_pending_candidates filters on PENDING; a historical candidate is not)",
+          "neighbors_excluded_as_anachronistic": 1,
+          "et_rescue": "forced false — ET rescue routing is a lead-side classification the harness does not replay"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 3,
+        "tool_sequence": [
+          "compare_topics",
+          "propose_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "compare_topics",
+            "args": {
+              "my_judgment": "same_topic",
+              "neighbor_trend_id": "9ff11688-d2f6-4747-a321-4adb756b125e",
+              "reasoning": "Both describe the mainstream adoption of fermented foods (kimchi, sauerkraut) into everyday diets for gut health and metabolic wellness."
+            },
+            "output": {
+              "neighbor": {
+                "trend_id": "9ff11688-d2f6-4747-a321-4adb756b125e",
+                "topic": "Fermented Food Revolution",
+                "summary": "Shoppers are making traditional fermented foods like kimchi and sauerkraut everyday dietary staples to improve gut health and microbial diversity through natural, whole-food sources.",
+                "similarity": 0.736,
+                "cluster_size": 5,
+                "heat": 6.8,
+                "age_days": 137,
+                "sample_signals": [
+                  {
+                    "title": "Fermented Food Mainstreaming",
+                    "domain": null,
+                    "timestamp": "2026-08-20T19:24:55"
+                  },
+                  {
+                    "title": "Avoiding Xanthan Gum Due to Gut Health Concerns",
+                    "domain": "foodnavigator.com",
+                    "timestamp": "2026-08-19T00:00:00"
+                  },
+                  {
+                    "title": "Fermented Foods Mainstreaming",
+                    "domain": "amagicalmess.com",
+                    "timestamp": "2026-04-27T04:21:09"
+                  }
+                ]
+              },
+              "recorded_judgment": "same_topic",
+              "note": "judgment recorded in considered_neighbors trail"
+            },
+            "error": null,
+            "duration_ms": 1
+          },
+          {
+            "turn": 2,
+            "name": "propose_decision",
+            "args": {
+              "target_trend_id": "9ff11688-d2f6-4747-a321-4adb756b125e",
+              "decision": "MERGE_INTO_EXISTING",
+              "rationale": "The candidate 'Mainstreaming of fermented foods for metabolic support' describes the same consumer behavior and category shift as existing trend 9ff11688-d2f6-4747-a321-4adb756b125e ('Fermented Food Revolution'), which already tracks the mainstream adoption of fermented whole foods like kimchi and sauerkraut for gut and metabolic health. Merging into the existing trend.",
+              "decision_category": "MISSED_DUPLICATE"
+            },
+            "output": {
+              "accepted": true,
+              "decision": "MERGE_INTO_EXISTING",
+              "category": "MISSED_DUPLICATE"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "target_trend_id": "9ff11688-d2f6-4747-a321-4adb756b125e",
+          "decision": "MERGE_INTO_EXISTING",
+          "rationale": "The candidate 'Mainstreaming of fermented foods for metabolic support' describes the same consumer behavior and category shift as existing trend 9ff11688-d2f6-4747-a321-4adb756b125e ('Fermented Food Revolution'), which already tracks the mainstream adoption of fermented whole foods like kimchi and sauerkraut for gut and metabolic health. Merging into the existing trend.",
+          "decision_category": "MISSED_DUPLICATE"
+        },
+        "final_text": "I have evaluated the candidate and completed the verification:\n\n- **Decision**: `MERGE_INTO_EXISTING` (`MISSED_DUPLICATE`)\n- **Target Trend ID**: `9ff11688-d2f6-4747-a321-4adb756b125e` (\"Fermented Food Revolution\")\n- **Rationale**: The candidate captures the mainstream dietary adoption of fermented foods (e.g., kimchi, sauerkraut) for gut health and metabolic support, which directly matches the existing trend tracking this exact consumer shift.",
+        "accounting": {
+          "input_tokens": 13234,
+          "candidates_tokens": 391,
+          "thoughts_tokens": 519,
+          "total_tokens": 14144,
+          "cost_as_deployed": 0.0114,
+          "cost_with_thinking": 0.0134,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.002
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 3,
+        "tool_sequence": [
+          "compare_topics",
+          "propose_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "compare_topics",
+            "args": {
+              "neighbor_trend_id": "9ff11688-d2f6-4747-a321-4adb756b125e",
+              "my_judgment": "same_topic",
+              "reasoning": "Both focus on the mainstreaming of traditional fermented foods like kimchi and sauerkraut for gut and metabolic health benefits."
+            },
+            "output": {
+              "neighbor": {
+                "trend_id": "9ff11688-d2f6-4747-a321-4adb756b125e",
+                "topic": "Fermented Food Revolution",
+                "summary": "Shoppers are making traditional fermented foods like kimchi and sauerkraut everyday dietary staples to improve gut health and microbial diversity through natural, whole-food sources.",
+                "similarity": 0.736,
+                "cluster_size": 5,
+                "heat": 6.8,
+                "age_days": 137,
+                "sample_signals": [
+                  {
+                    "title": "Fermented Food Mainstreaming",
+                    "domain": null,
+                    "timestamp": "2026-08-20T19:24:55"
+                  },
+                  {
+                    "title": "Avoiding Xanthan Gum Due to Gut Health Concerns",
+                    "domain": "foodnavigator.com",
+                    "timestamp": "2026-08-19T00:00:00"
+                  },
+                  {
+                    "title": "Fermented Foods Mainstreaming",
+                    "domain": "amagicalmess.com",
+                    "timestamp": "2026-04-27T04:21:09"
+                  }
+                ]
+              },
+              "recorded_judgment": "same_topic",
+              "note": "judgment recorded in considered_neighbors trail"
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 2,
+            "name": "propose_decision",
+            "args": {
+              "target_trend_id": "9ff11688-d2f6-4747-a321-4adb756b125e",
+              "decision": "MERGE_INTO_EXISTING",
+              "rationale": "The candidate focuses on consumers adopting fermented foods like kimchi and sauerkraut for metabolic and gut health. This is fundamentally the same consumer behavior as the existing trend 'Fermented Food Revolution' (Neighbor 1), which already tracks the mainstreaming of these exact foods for gut health and microbial diversity. Therefore, the candidate should be merged into the existing trend.",
+              "decision_category": "MISSED_DUPLICATE"
+            },
+            "output": {
+              "accepted": true,
+              "decision": "MERGE_INTO_EXISTING",
+              "category": "MISSED_DUPLICATE"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "target_trend_id": "9ff11688-d2f6-4747-a321-4adb756b125e",
+          "decision": "MERGE_INTO_EXISTING",
+          "rationale": "The candidate focuses on consumers adopting fermented foods like kimchi and sauerkraut for metabolic and gut health. This is fundamentally the same consumer behavior as the existing trend 'Fermented Food Revolution' (Neighbor 1), which already tracks the mainstreaming of these exact foods for gut health and microbial diversity. Therefore, the candidate should be merged into the existing trend.",
+          "decision_category": "MISSED_DUPLICATE"
+        },
+        "final_text": "I have evaluated the candidate and the surrounding neighbor pool. \n\nAlthough the distillation agent marked the verdict as `REAL_TREND`, this candidate overlaps entirely with an existing active trend. The candidate, \"Mainstreaming of fermented foods for metabolic support,\" describes exactly the same consumer behavior tracked by Neighbor 1 (\"Fermented Food Revolution\" - `9ff11688-d2f6-4747-a321-4adb756b125e`), which already monitors the everyday adoption of traditional fermented foods like kimchi and sauerkraut for gut health and microbial benefits. I have overridden the recommendation to merge it into this existing trend to avoid duplicating the concept.",
+        "accounting": {
+          "input_tokens": 13145,
+          "candidates_tokens": 384,
+          "thoughts_tokens": 470,
+          "total_tokens": 13999,
+          "cost_as_deployed": 0.0309,
+          "cost_with_thinking": 0.0365,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0056
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 10,
+          "present_count": 3,
+          "coverage_pct": 30,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "confidence",
+            "max_neighbor_sim",
+            "considered_neighbors[]",
+            "considered_neighbors[].judgment",
+            "considered_neighbors[].reasoning",
+            "considered_neighbors[].similarity",
+            "considered_neighbors[].trend_id"
+          ],
+          "rows": [
+            {
+              "path": "decision",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "decision_category",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "target_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "trend_topic",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rejection_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_until",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rationale",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "et_was_second_source",
+              "type": "boolean",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "et_matched_keyword",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 10,
+          "present_count": 4,
+          "coverage_pct": 40,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "decision",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "decision_category",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "target_trend_id",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "trend_topic",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rejection_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_until",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rationale",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "et_was_second_source",
+              "type": "boolean",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "et_matched_keyword",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "fields_lost": [],
+        "fields_gained": [
+          "target_trend_id"
+        ],
+        "coverage_delta_pct": 10
+      },
+      "descriptor": null
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "lane": "promotion",
+  "summary": "Per-candidate promote/reject/dedupe gate. Tightest budget in the fleet — where the budget-gate trap bites first.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-09-21T00:14:04.951Z",
+  "finished_at": "2026-09-21T00:14:20.279Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 3,
+    "rerunIncumbent": false,
+    "caseId": "f5895c12-1087-4b6b-bd43-e6bd36211462",
+    "dryRun": true,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "cand-kvggp06bmrgg2o4j",
+        "auditId": "f5895c12-1087-4b6b-bd43-e6bd36211462",
+        "label": "Tweens adopting multi-step adult skincare with harsh actives · DEFER @ 2026-07-11T10:15 · audit f5895c12",
+        "incumbentAt": "2026-07-11",
+        "decidedAt": "2026-07-11T10:15:30.643000",
+        "incumbent": {
+          "emission": {
+            "decision": "DEFER",
+            "decision_category": "AMBIGUOUS_TOPIC_JUDGMENT",
+            "confidence": 0.95,
+            "rationale": "agent did not call propose_decision",
+            "max_neighbor_sim": null,
+            "considered_neighbors": []
+          },
+          "context": {
+            "distillation_verdict": "REAL_TREND",
+            "overrode_verdict": false,
+            "cluster_size": 2,
+            "source_count": 1
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "input_tokens": 25045,
+            "output_tokens": 133,
+            "cost_estimate": 0.0517
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_decision",
+        "tool_names": [
+          "compare_topics",
+          "query_neighbor_details",
+          "verify_exploding_topics",
+          "propose_decision"
+        ],
+        "prompt_provenance": {
+          "promotion.subagent.system": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2576
+          },
+          "promotion.subagent.decision_rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 3876
+          }
+        },
+        "system_chars": 7649,
+        "user_chars": 584,
+        "input_notes": {
+          "neighbors": 0,
+          "quality_flags": [],
+          "budget_usd": 0.15,
+          "budget_gate_warning": "This lane's budget is measured on the TRUTHFUL cost. Production measures it on the understated one, so a real switch must correct RATES_PER_M in the same slice.",
+          "reconstructed": "candidate row (q_load_pending_candidates filters on PENDING; a historical candidate is not)",
+          "neighbors_excluded_as_anachronistic": 0,
+          "et_rescue": "routed to ET-rescue — single_family ([agent_gemini_discovery]) conf=0.95>=0.5 spec=0.9>=0.5 — eligible for ET corroboration"
+        }
+      },
+      "skipped": "dry-run"
+    }
+  ]
+}

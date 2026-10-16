@@ -1,0 +1,430 @@
+{
+  "lane": "lifecycle",
+  "summary": "Hourly trend-status re-evaluation. Highest-volume LLM lane in the fleet and the only one with a recorded tool trace.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-21T00:03:26.039Z",
+  "finished_at": "2026-08-21T00:04:13.445Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 3,
+    "rerunIncumbent": true,
+    "caseId": "a6f1db2a-4887-4307-a188-f0256ef000fc",
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "a6f1db2a-4887-4307-a188-f0256ef000fc",
+        "label": "Zebra Striping: Alternating alcoholic and NA drinks to pace a night out · GROWING→STABLE @ 2026-08-20T14:09",
+        "incumbentAt": "2026-08-20",
+        "evaluatedAt": "2026-08-20T14:09:46.692000",
+        "incumbent": {
+          "emission": {
+            "emitted_at": "2026-08-20T18:09:30.737Z",
+            "next_eval_in_hours": 6,
+            "re_enrichment_reason": "",
+            "reasoning": "n7 (3) has flattened to within ±1 of n7_prior (2), and no new linked signals have arrived in over 5 days. Transitioning from GROWING to STABLE as velocity is no longer accelerating.",
+            "request_re_enrichment": false,
+            "retirement_reason": "",
+            "status": "STABLE"
+          },
+          "committed": {
+            "prior_status": "GROWING",
+            "new_status": "STABLE",
+            "prior_heat": 91.1,
+            "new_heat": 82.4,
+            "heat_base": 82.4,
+            "heat_modifier_pct": 0,
+            "reasoning": "n7 (3) has flattened to within ±1 of n7_prior (2), and no new linked signals have arrived in over 5 days. Transitioning from GROWING to STABLE as velocity is no longer accelerating."
+          },
+          "tool_calls": [],
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "stop_reason": "STOP",
+            "input_tokens": 11901,
+            "output_tokens": 163,
+            "cost_estimate": 0.0258
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_lifecycle_decision",
+        "tool_names": [
+          "query_trend_neighbors",
+          "query_signal_velocity",
+          "query_lifecycle_history",
+          "propose_lifecycle_decision"
+        ],
+        "prompt_provenance": {
+          "lifecycle.subagent.decision_rubric": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 4853
+          },
+          "lifecycle.subagent.system": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5296
+          }
+        },
+        "system_chars": 14042,
+        "user_chars": 244,
+        "input_notes": {
+          "heat_base": 82.3,
+          "recent_signals": 5,
+          "candidate_signals": 5,
+          "neighbors": 30,
+          "replayed_eval_at": "2026-08-20T14:09:46.692000",
+          "prior_state_restored": "status=GROWING heat=91.1",
+          "history_entries_after_cut_dropped": 1,
+          "answer_leak_cut": "the replayed evaluation and everything after it are hidden: status, heat and history come from BEFORE it, so the model is not shown the incumbent's own answer",
+          "recomputed_now": "heat_base and the signal windows are recomputed against TODAY, so they differ from the incumbent's evaluation"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 4,
+        "tool_sequence": [
+          "query_signal_velocity",
+          "query_lifecycle_history",
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "query_signal_velocity",
+            "args": {
+              "per_source": true
+            },
+            "output": {
+              "counts": {
+                "last_24h": 0,
+                "last_7d": 3,
+                "last_14d": 5
+              },
+              "total_in_pool": 5,
+              "per_source": {
+                "gemini_food_drink": 1,
+                "agent_grok_discovery": 3,
+                "agent_gemini_discovery": 1
+              }
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 2,
+            "name": "query_lifecycle_history",
+            "args": {
+              "limit": 5
+            },
+            "output": {
+              "history": [
+                {
+                  "evaluated_at": "2026-08-20T09:09:49.043000",
+                  "prior_status": "GROWING",
+                  "new_status": "GROWING",
+                  "prior_heat": 91.4,
+                  "new_heat": 91.1,
+                  "heat_base": 82.8,
+                  "heat_modifier_pct": 10,
+                  "reasoning": "Maintains GROWING status. Linked signal velocity for the past 7 days (n7=5) remains well above the prior week (n7_prior=0), supported by strong multi-publisher breadth (6 active domains). While the newest linked signal is 5.2 days old, the criteria for sustaining GROWING are clearly met. Unlinked candidates provide some corroborating ongoing interest.",
+                  "retirement_proposal": null,
+                  "requested_re_enrichment": false
+                },
+                {
+                  "evaluated_at": "2026-08-20T04:10:05.578000",
+                  "prior_status": "GROWING",
+                  "new_status": "GROWING",
+                  "prior_heat": 91.9,
+                  "new_heat": 91.4,
+                  "heat_base": 83.1,
+                  "heat_modifier_pct": 10,
+                  "reasoning": "Trend sustains GROWING status. Linked signal velocity for the past 7 days (n7=5) comfortably exceeds the prior week (n7_prior=1) with strong multi-publisher breadth (6 active domains). While the newest linked signal is 5 days old, the strong 7-day aggregate continues to support the growing classification.",
+                  "retirement_proposal": null,
+                  "requested_re_enrichment": false
+                },
+                {
+                  "evaluated_at": "2026-08-19T23:09:46.170000",
+                  "prior_status": "GROWING",
+                  "new_status": "GROWING",
+                  "prior_heat": 92.3,
+                  "new_heat": 91.9,
+                  "heat_base": 83.5,
+                  "heat_modifier_pct": 10,
+                  "reasoning": "Trend sustains GROWING status. Linked signal velocity for the past 7 days (n7=5) comfortably exceeds the prior week (n7_prior=1) with strong multi-publisher breadth (6 active domains). While no new signals arrived in the last 24h, the trailing 7-day velocity supports continued growth.",
+                  "retirement_proposal": null,
+                  "requested_re_enrichment": false
+                },
+                {
+                  "evaluated_at": "2026-08-19T18:09:48.203000",
+                  "prior_status": "GROWING",
+                  "new_status": "GROWING",
+                  "prior_heat": 92.8,
+                  "new_heat": 92.3,
+                  "heat_base": 83.9,
+                  "heat_modifier_pct": 10,
+                  "reasoning": "Sustains GROWING status. Linked signal velocity for the past 7 days (n7=5) comfortably exceeds the prior week (n7_prior=1) with strong multi-publisher breadth (6 active domains). While no new signals arrived in the last 24 hours (newest is 4.6 days old), the 7-day volume continues to meet the threshold for growth.",
+                  "retirement_proposal": null,
+                  "requested_re_enrichment": false
+                }
+              ],
+              "total_in_pool": 4
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 3,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "next_eval_in_hours": 6,
+              "reasoning": "Transition to STABLE. Trailing 7d linked signals have flattened to within ±1 of the prior week (n7=3 vs n7_prior=2), with the newest linked signal arriving 5.5 days ago (n24=0). Publisher breadth remains strong at 6 active domains, and unlinked candidates indicate continued thematic interest, but linked velocity has plateaued, meeting the STABLE override criteria.",
+              "status": "STABLE",
+              "request_re_enrichment": false
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "next_eval_in_hours": 6,
+          "reasoning": "Transition to STABLE. Trailing 7d linked signals have flattened to within ±1 of the prior week (n7=3 vs n7_prior=2), with the newest linked signal arriving 5.5 days ago (n24=0). Publisher breadth remains strong at 6 active domains, and unlinked candidates indicate continued thematic interest, but linked velocity has plateaued, meeting the STABLE override criteria.",
+          "status": "STABLE",
+          "request_re_enrichment": false
+        },
+        "final_text": "### Lifecycle Evaluation Summary\n\n- **Trend ID:** `a6f1db2a-4887-4307-a188-f0256ef000fc`\n- **Topic:** Zebra Striping: Alternating alcoholic and NA drinks to pace a night out\n- **Previous Status:** `GROWING`\n- **New Proposed Status:** `STABLE`\n- **Next Evaluation:** In 6 hours\n- **Re-Enrichment Requested:** No\n\n#### Key Evidence & Rationale:\n- **Velocity Metrics:** Trailing 7-day linked signal volume has flattened relative to the prior week ($n_7 = 3$ vs. $n_{7\\text{-prior}} = 2$, $\\Delta = 1$), meeting the rubric override for transitioning from `GROWING` to `STABLE`.\n- **Recency & Arrival:** No new linked signals in the last 24 hours ($n_{24} = 0$), with the most recent linked signal dated 5.5 days ago.\n- **Breadth & Candidate Signals:** Multi-publisher breadth remains broad (6 active domains across 21 days), and vector candidates show continued zero-proof beverage discussion, confirming healthy baseline interest without current acceleration.",
+        "accounting": {
+          "input_tokens": 31474,
+          "candidates_tokens": 435,
+          "thoughts_tokens": 3202,
+          "total_tokens": 35111,
+          "cost_as_deployed": 0.0252,
+          "cost_with_thinking": 0.0372,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.012
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "next_eval_in_hours": 6,
+              "status": "STABLE",
+              "reasoning": "Linked signal velocity in the past 7 days (n7=3) has flattened compared to the prior week (n7_prior=2), falling within the ±1 threshold. While the trend maintains strong multi-publisher breadth (6 active domains), the slowing momentum warrants a transition from GROWING to STABLE.",
+              "re_enrichment_reason": "",
+              "request_re_enrichment": false
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "next_eval_in_hours": 6,
+          "status": "STABLE",
+          "reasoning": "Linked signal velocity in the past 7 days (n7=3) has flattened compared to the prior week (n7_prior=2), falling within the ±1 threshold. While the trend maintains strong multi-publisher breadth (6 active domains), the slowing momentum warrants a transition from GROWING to STABLE.",
+          "re_enrichment_reason": "",
+          "request_re_enrichment": false
+        },
+        "final_text": "I have evaluated the trend based on the latest linked signal metrics. The velocity in the last 7 days (n7=3) has flattened relative to the prior week (n7_prior=2), satisfying the condition to override the default GROWING status and transition the trend to STABLE. Next evaluation is scheduled in 6 hours.",
+        "accounting": {
+          "input_tokens": 11501,
+          "candidates_tokens": 188,
+          "thoughts_tokens": 564,
+          "total_tokens": 12253,
+          "cost_as_deployed": 0.0252,
+          "cost_with_thinking": 0.032,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0068
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 6,
+          "present_count": 6,
+          "coverage_pct": 100,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "emitted_at"
+          ],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 1,
+              "sample_count": 1
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 1,
+              "sample_count": 1
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 6,
+          "present_count": 4,
+          "coverage_pct": 66.7,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "fields_lost": [
+          "retirement_reason",
+          "re_enrichment_reason"
+        ],
+        "fields_gained": [],
+        "coverage_delta_pct": -33.3
+      },
+      "descriptor": null
+    }
+  ]
+}

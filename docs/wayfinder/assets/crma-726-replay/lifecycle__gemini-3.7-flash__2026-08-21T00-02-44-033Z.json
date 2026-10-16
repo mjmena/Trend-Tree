@@ -1,0 +1,363 @@
+{
+  "lane": "lifecycle",
+  "summary": "Hourly trend-status re-evaluation. Highest-volume LLM lane in the fleet and the only one with a recorded tool trace.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-21T00:02:44.033Z",
+  "finished_at": "2026-08-21T00:03:25.694Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 3,
+    "rerunIncumbent": true,
+    "caseId": "2a6407d6-d06f-4e10-acce-0839cb2d3540",
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "2a6407d6-d06f-4e10-acce-0839cb2d3540",
+        "label": "Starbucks Energy Refreshers · GROWING→GROWING @ 2026-08-20T17:09",
+        "incumbentAt": "2026-08-20",
+        "evaluatedAt": "2026-08-20T17:09:51.703000",
+        "incumbent": {
+          "emission": {
+            "emitted_at": "2026-08-20T21:09:33.771Z",
+            "next_eval_in_hours": 4,
+            "reasoning": "Trend meets criteria to sustain GROWING: n7 (6) >= n7_prior (0), n7 >= 3, and active publisher domains (7) remain strong. Although there are no linked signals in the past 24 hours, the overall 7-day volume and breadth continue to support growth.",
+            "request_re_enrichment": false,
+            "status": "GROWING"
+          },
+          "committed": {
+            "prior_status": "GROWING",
+            "new_status": "GROWING",
+            "prior_heat": 100,
+            "new_heat": 100,
+            "heat_base": 92.9,
+            "heat_modifier_pct": 10,
+            "reasoning": "Trend meets criteria to sustain GROWING: n7 (6) >= n7_prior (0), n7 >= 3, and active publisher domains (7) remain strong. Although there are no linked signals in the past 24 hours, the overall 7-day volume and breadth continue to support growth."
+          },
+          "tool_calls": [],
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "stop_reason": "STOP",
+            "input_tokens": 13304,
+            "output_tokens": 284,
+            "cost_estimate": 0.03
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_lifecycle_decision",
+        "tool_names": [
+          "query_trend_neighbors",
+          "query_signal_velocity",
+          "query_lifecycle_history",
+          "propose_lifecycle_decision"
+        ],
+        "prompt_provenance": {
+          "lifecycle.subagent.decision_rubric": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 4853
+          },
+          "lifecycle.subagent.system": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5296
+          }
+        },
+        "system_chars": 15208,
+        "user_chars": 244,
+        "input_notes": {
+          "heat_base": 93,
+          "recent_signals": 6,
+          "candidate_signals": 15,
+          "neighbors": 30,
+          "replayed_eval_at": "2026-08-20T17:09:51.703000",
+          "prior_state_restored": "status=GROWING heat=100",
+          "history_entries_after_cut_dropped": 1,
+          "answer_leak_cut": "the replayed evaluation and everything after it are hidden: status, heat and history come from BEFORE it, so the model is not shown the incumbent's own answer",
+          "recomputed_now": "heat_base and the signal windows are recomputed against TODAY, so they differ from the incumbent's evaluation"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 3,
+        "tool_sequence": [
+          "query_signal_velocity",
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "query_signal_velocity",
+            "args": {
+              "per_source": true
+            },
+            "output": {
+              "counts": {
+                "last_24h": 0,
+                "last_7d": 6,
+                "last_14d": 6
+              },
+              "total_in_pool": 6,
+              "per_source": {
+                "agent_chatgpt_discovery": 2,
+                "agent_grok_discovery": 1,
+                "bluesky": 1,
+                "gemini_food_drink": 2
+              }
+            },
+            "error": null,
+            "duration_ms": 1
+          },
+          {
+            "turn": 2,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "next_eval_in_hours": 4,
+              "reasoning": "Trend sustains GROWING status: n7 (6) >= n7_prior (0), n7 >= 3, and publisher breadth remains robust across 7 domains. Candidate activity and recent linked signals across diverse sources support continued growth momentum.",
+              "status": "GROWING",
+              "request_re_enrichment": false
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "next_eval_in_hours": 4,
+          "reasoning": "Trend sustains GROWING status: n7 (6) >= n7_prior (0), n7 >= 3, and publisher breadth remains robust across 7 domains. Candidate activity and recent linked signals across diverse sources support continued growth momentum.",
+          "status": "GROWING",
+          "request_re_enrichment": false
+        },
+        "final_text": "### Lifecycle Evaluation Summary\n\n- **Trend ID**: `2a6407d6-d06f-4e10-acce-0839cb2d3540`\n- **Trend Topic**: Starbucks Energy Refreshers\n- **Status Decision**: `GROWING` (retained)\n- **Next Evaluation**: in 4 hours\n- **Re-enrichment Requested**: `false`\n\n### Decision Rationale\n- **Velocity**: $n_7 = 6$ vs. $n_{7,\\text{prior}} = 0$, exceeding the $n_7 \\ge 3$ and $n_7 \\ge n_{7,\\text{prior}}$ thresholds for sustaining `GROWING`.\n- **Breadth**: Active publisher domain breadth remains strong (7 distinct publisher domains active over the last 21 days).\n- **Candidate Context**: Steady candidate signal flow across beverage and functional wellness spaces supports ongoing category momentum.",
+        "accounting": {
+          "input_tokens": 19595,
+          "candidates_tokens": 315,
+          "thoughts_tokens": 787,
+          "total_tokens": 20697,
+          "cost_as_deployed": 0.0158,
+          "cost_with_thinking": 0.0188,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.003
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "reasoning": "Trend sustains its GROWING status with n7 (6) > n7_prior (0), n7 >= 3, and 7 active publisher domains. Momentum remains strong despite 0 signals in the last 24h. Re-enrichment is requested because the linked signal narrative has broadened significantly beyond the original Starbucks-specific topic.",
+              "re_enrichment_reason": "Trend name 'Starbucks Energy Refreshers' is too narrow for recent linked signals which now cover functional beers, collagen RTD coffee, and energy mocktails.",
+              "request_re_enrichment": true,
+              "status": "GROWING",
+              "next_eval_in_hours": 4
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "reasoning": "Trend sustains its GROWING status with n7 (6) > n7_prior (0), n7 >= 3, and 7 active publisher domains. Momentum remains strong despite 0 signals in the last 24h. Re-enrichment is requested because the linked signal narrative has broadened significantly beyond the original Starbucks-specific topic.",
+          "re_enrichment_reason": "Trend name 'Starbucks Energy Refreshers' is too narrow for recent linked signals which now cover functional beers, collagen RTD coffee, and energy mocktails.",
+          "request_re_enrichment": true,
+          "status": "GROWING",
+          "next_eval_in_hours": 4
+        },
+        "final_text": "The evaluation for this trend is complete. Based on the robust linked signal volume (6 over the last 7 days compared to 0 in the prior week) and strong breadth (7 active publisher domains), the trend maintains a clear growth trajectory. \n\nI've committed the decision to sustain its `GROWING` status and scheduled the next evaluation for 4 hours. Because the recent linked signals—which feature functional beers, collagen-infused coffees, and energy mocktails—are significantly broader than the original \"Starbucks Energy Refreshers\" scope, I've also triggered a re-enrichment to update the narrative and better reflect its true market footprint.",
+        "accounting": {
+          "input_tokens": 12993,
+          "candidates_tokens": 290,
+          "thoughts_tokens": 873,
+          "total_tokens": 14156,
+          "cost_as_deployed": 0.0295,
+          "cost_with_thinking": 0.0399,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0104
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 6,
+          "present_count": 4,
+          "coverage_pct": 66.7,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "emitted_at"
+          ],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 6,
+          "present_count": 4,
+          "coverage_pct": 66.7,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "fields_lost": [],
+        "fields_gained": [],
+        "coverage_delta_pct": 0
+      },
+      "descriptor": null
+    }
+  ]
+}

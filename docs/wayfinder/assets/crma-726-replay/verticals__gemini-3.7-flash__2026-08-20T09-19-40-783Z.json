@@ -1,0 +1,1158 @@
+{
+  "lane": "verticals",
+  "summary": "The four Gemini discovery verticals. The only lanes with no thinking parameter — where 3.7 Flash's thinking floor actually bites.",
+  "incumbent_model": "gemini-3-flash-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 0.3,
+    "output": 2.5
+  },
+  "started_at": "2026-08-20T09:19:40.783Z",
+  "finished_at": "2026-08-20T09:22:40.107Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 4,
+    "rerunIncumbent": true,
+    "caseId": null,
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "wellness",
+        "label": "wellness (gemini_wellness) · last run 2026-08-20 · pin gemini-3-flash-preview",
+        "incumbentAt": "2026-08-20",
+        "incumbent": {
+          "emission": {
+            "trends": [
+              {
+                "title": "Low-Profile Collegiate Sneakers",
+                "source_url": "https://www.nbcnews.com/select/shopping/best-new-products-august-2026-rcna166544"
+              },
+              {
+                "title": "Healthspan-Centric Aging",
+                "source_url": "https://keyt.com/stacker-longevity/2026/08/18/what-healthy-aging-really-looks-like-in-2026/"
+              },
+              {
+                "title": "Community-Driven Health Tech",
+                "source_url": "https://newsroom.heart.org/news/national-cohort-of-founders-brings-community-driven-health-solutions-to-scale"
+              },
+              {
+                "title": "Fitness Studios as Social Hubs",
+                "source_url": "https://www.forbes.com/sites/jefffromm/2026/08/19/gen-zs-new-social-network-may-be-the-fitness-studio/"
+              },
+              {
+                "title": "Machine-Washable Vegan Footwear",
+                "source_url": "https://www.nbcnews.com/select/shopping/best-new-products-august-2026-rcna166543"
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3-flash-preview",
+            "run_date": "2026-08-20",
+            "signals": 5
+          }
+        }
+      },
+      "built": {
+        "mode": "single",
+        "terminal_tool": null,
+        "tool_names": null,
+        "prompt_provenance": null,
+        "system_chars": 0,
+        "user_chars": 486,
+        "input_notes": {
+          "source_name": "gemini_wellness",
+          "category": "wellness",
+          "prompt_chars": 440,
+          "prompt_source": "hardcoded in the step — this lane does NOT read DIM_LLM_PROMPT",
+          "thinking_floor": "the incumbent sends no thinking parameter at all; 3.7 Flash cannot disable thinking, so compare thinking tokens closely",
+          "grounding": "live Google Search — results are not reproducible across days"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 6811,
+        "emission": {
+          "trends": [
+            {
+              "title": "The Self-Directed Health Consumer Shift",
+              "description": "Consumers are moving away from passive brand loyalty to intentional, outcome-focused wellness choices across omnichannel retail. Shoppers prioritize transparent functional ingredients and personalized formulations designed for specific need states.",
+              "source_url": "https://nielseniq.com/global/en/insights/analysis/2026/health-wellness-winning-results-driven-consumer/",
+              "source_name": "NIQ",
+              "url_live": false
+            },
+            {
+              "title": "Snack-Sized Workouts",
+              "description": "Fitness routines are increasingly favoring short 10- to 20-minute movement sessions and low-impact walking over rigid, hour-long gym regimens. This micro-workout trend supports consistent daily physical activity and lower injury risk without schedule strain.",
+              "source_url": "https://www.who-what-wear.com/wellness-fitness-trends-summer-2026",
+              "source_name": "Who What Wear",
+              "url_live": false
+            },
+            {
+              "title": "Metabolic & Cellular Beauty Convergence",
+              "description": "Personal care and skincare formulations are shifting toward metabolic health, longevity science, and cellular renewal. Consumers are choosing products that actively support inner vitality, skin barrier integrity, and visible systemic well-being.",
+              "source_url": "https://www.mintel.com/beauty-personal-care-market-news/trends-2026/",
+              "source_name": "Mintel",
+              "url_live": false
+            },
+            {
+              "title": "Specialized Postbiotics and Gut-Brain Axis Support",
+              "description": "Gut health products are expanding beyond traditional probiotics to focus on targeted postbiotic compounds and dietary fiber diversity. Consumers leverage these functional solutions for immune balance, cognitive clarity, and sustained daily energy.",
+              "source_url": "https://www.who-what-wear.com/gut-health-postbiotics-trends-2026",
+              "source_name": "Who What Wear",
+              "url_live": false
+            },
+            {
+              "title": "AI-Powered Adaptive Personal Care",
+              "description": "Smart grooming and skincare hardware are integrating AI sensors to analyze skin and hair condition in real time. These responsive devices automatically adjust pressure, duration, and formulation output to individual consumer biometric profiles.",
+              "source_url": "https://www.philips.com/a-w/about/news/archive/standard/news/articles/2026/six-personal-care-trends-2026.html",
+              "source_name": "Philips News",
+              "url_live": false
+            },
+            {
+              "title": "Women-Centric Longevity & Ovarian Healthspan",
+              "description": "Preventative medicine and wellness centers are pivoting toward longevity protocols specifically tailored to female physiology. Interventions target ovarian health and lifelong hormonal dynamics rather than simply managing post-menopausal symptoms.",
+              "source_url": "https://www.globalwellnesssummit.com/trends-2026/women-longevity-healthspan/",
+              "source_name": "Global Wellness Summit",
+              "url_live": false
+            },
+            {
+              "title": "Rise of Neurowellness and Somatic Regulation",
+              "description": "Consumers are embracing nervous system regulation techniques like breathwork, vagus nerve stimulation, and somatic movement to combat chronic mental strain. These practices are transitioning from alternative lifestyle choices to measurable, evidence-based wellness routines.",
+              "source_url": "https://www.globalwellnesssummit.com/trends-2026/neurowellness-nervous-system/",
+              "source_name": "Global Wellness Summit",
+              "url_live": false
+            },
+            {
+              "title": "The Over-Optimization Backlash",
+              "description": "A rising consumer sentiment is rejecting excessive biometric tracking, hyper-strict diets, and clinical biohacking. In response, experiential wellness offerings are focusing on joyful movement, social connection, and intuitive self-care.",
+              "source_url": "https://www.globalwellnesssummit.com/trends-2026/over-optimization-backlash/",
+              "source_name": "Global Wellness Summit",
+              "url_live": false
+            },
+            {
+              "title": "At-Home Fitness Dominance",
+              "description": "Home-based workouts have officially crossed the majority threshold as the primary exercise modality for younger US adults. Millennial and Gen Z consumers increasingly rely on connected fitness equipment, digital trainers, and flexible home studio spaces.",
+              "source_url": "https://morningconsult.com/reports/wellness-fitness-trends-2026/",
+              "source_name": "Morning Consult",
+              "url_live": false
+            },
+            {
+              "title": "Nutrient Architecture for GLP-1 Users",
+              "description": "With expanding use of GLP-1 medications, the functional food market is launching products targeting muscle preservation and nutrient gaps. High-protein, micronutrient-dense shakes and collagen-enriched snacks are surging to support consumer body composition goals.",
+              "source_url": "https://thephagroup.com/insights/wellness-trends-2026-consumer-shifts/",
+              "source_name": "The PHA Group",
+              "url_live": false
+            },
+            {
+              "title": "Advanced Biomarker & Bloodwork Testing",
+              "description": "Preventative consumers are trading standard annual physical bloodwork for comprehensive diagnostic panels. These screenings measure metabolomics, systemic inflammation, and hormonal fluctuations to optimize proactive daily health decisions.",
+              "source_url": "https://www.prenuvo.com/blog/health-wellness-trends-2026",
+              "source_name": "Prenuvo",
+              "url_live": false
+            },
+            {
+              "title": "Bespoke Micronutrient Supplementation",
+              "description": "Personalized nutrition is shifting away from generic multivitamin blends toward testing-backed supplementation regimens. Consumers are building custom nutrient protocols based on digital biomarker diagnostics and functional medicine analysis.",
+              "source_url": "https://www.forbes.com/sites/lifestyle/2026/wellness-bespoke-supplementation-trends/",
+              "source_name": "Forbes",
+              "url_live": false
+            }
+          ]
+        },
+        "text": "```json\n[\n  {\n    \"title\": \"The Self-Directed Health Consumer Shift\",\n    \"description\": \"Consumers are moving away from passive brand loyalty to intentional, outcome-focused wellness choices across omnichannel retail. Shoppers prioritize transparent functional ingredients and personalized formulations designed for specific need states.\",\n    \"source_url\": \"https://nielseniq.com/global/en/insights/analysis/2026/health-wellness-winning-results-driven-consumer/\",\n    \"source_name\": \"NIQ\"\n  },\n  {\n    \"title\": \"Snack-Sized Workouts\",\n    \"description\": \"Fitness routines are increasingly favoring short 10- to 20-minute movement sessions and low-impact walking over rigid, hour-long gym regimens. This micro-workout trend supports consistent daily physical activity and lower injury risk without schedule strain.\",\n    \"source_url\": \"https://www.who-what-wear.com/wellness-fitness-trends-summer-2026\",\n    \"source_name\": \"Who What Wear\"\n  },\n  {\n    \"title\": \"Metabolic & Cellular Beauty Convergence\",\n    \"description\": \"Personal care and skincare formulations are shifting toward metabolic health, longevity science, and cellular renewal. Consumers are choosing products that actively support inner vitality, skin barrier integrity, and visible systemic well-being.\",\n    \"source_url\": \"https://www.mintel.com/beauty-personal-care-market-news/trends-2026\",\n    \"source_name\": \"Mintel\"\n  },\n  {\n    \"title\": \"Specialized Postbiotics and Gut-Brain Axis Support\",\n    \"description\": \"Gut health products are expanding beyond traditional probiotics to focus on targeted postbiotic compounds and dietary fiber diversity. Consumers leverage these functional solutions for immune balance, cognitive clarity, and sustained daily energy.\",\n    \"source_url\": \"https://www.who-what-wear.com/gut-health-postbiotics-trends-2026\",\n    \"source_name\": \"Who What Wear\"\n  },\n  {\n    \"title\": \"AI-Powered Adaptive Personal Care\",\n    \"description\": \"Smart grooming and skincare hardware are integrating AI sensors to analyze skin and hair condition in real time. These responsive devices automatically adjust pressure, duration, and formulation output to individual consumer biometric profiles.\",\n    \"source_url\": \"https://www.philips.com/a-w/about/news/archive/standard/news/articles/2026/six-personal-care-trends-2026.html\",\n    \"source_name\": \"Philips News\"\n  },\n  {\n    \"title\": \"Women-Centric Longevity & Ovarian Healthspan\",\n    \"description\": \"Preventative medicine and wellness centers are pivoting toward longevity protocols specifically tailored to female physiology. Interventions target ovarian health and lifelong hormonal dynamics rather than simply managing post-menopausal symptoms.\",\n    \"source_url\": \"https://www.globalwellnesssummit.com/trends-2026/women-longevity-healthspan/\",\n    \"source_name\": \"Global Wellness Summit\"\n  },\n  {\n    \"title\": \"Rise of Neurowellness and Somatic Regulation\",\n    \"description\": \"Consumers are embracing nervous system regulation techniques like breathwork, vagus nerve stimulation, and somatic movement to combat chronic mental strain. These practices are transitioning from alternative lifestyle choices to measurable, evidence-based wellness routines.\",\n    \"source_url\": \"https://www.globalwellnesssummit.com/trends-2026/neurowellness-nervous-system/\",\n    \"source_name\": \"Global Wellness Summit\"\n  },\n  {\n    \"title\": \"The Over-Optimization Backlash\",\n    \"description\": \"A rising consumer sentiment is rejecting excessive biometric tracking, hyper-strict diets, and clinical biohacking. In response, experiential wellness offerings are focusing on joyful movement, social connection, and intuitive self-care.\",\n    \"source_url\": \"https://www.globalwellnesssummit.com/trends-2026/over-optimization-backlash/\",\n    \"source_name\": \"Global Wellness Summit\"\n  },\n  {\n    \"title\": \"At-Home Fitness Dominance\",\n    \"description\": \"Home-based workouts have officially crossed the majority threshold as the primary exercise modality for younger US adults. Millennial and Gen Z consumers increasingly rely on connected fitness equipment, digital trainers, and flexible home studio spaces.\",\n    \"source_url\": \"https://morningconsult.com/reports/wellness-fitness-trends-2026/\",\n    \"source_name\": \"Morning Consult\"\n  },\n  {\n    \"title\": \"Nutrient Architecture for GLP-1 Users\",\n    \"description\": \"With expanding use of GLP-1 medications, the functional food market is launching products targeting muscle preservation and nutrient gaps. High-protein, micronutrient-dense shakes and collagen-enriched snacks are surging to support consumer body composition goals.\",\n    \"source_url\": \"https://thephagroup.com/insights/wellness-trends-2026-consumer-shifts/\",\n    \"source_name\": \"The PHA Group\"\n  },\n  {\n    \"title\": \"Advanced Biomarker & Bloodwork Testing\",\n    \"description\": \"Preventative consumers are trading standard annual physical bloodwork for comprehensive diagnostic panels. These screenings measure metabolomics, systemic inflammation, and hormonal fluctuations to optimize proactive daily health decisions.\",\n    \"source_url\": \"https://www.prenuvo.com/blog/health-wellness-trends-2026\",\n    \"source_name\": \"Prenuvo\"\n  },\n  {\n    \"title\": \"Bespoke Micronutrient Supplementation\",\n    \"description\": \"Personalized nutrition is shifting away from generic multivitamin blends toward testing-backed supplementation regimens. Consumers are building custom nutrient protocols based on digital biomarker diagnostics and functional medicine analysis.\",\n    \"source_url\": \"https://www.forbes.com/sites/lifestyle/2026/wellness-bespoke-supplementation-trends/\",\n    \"source_name\": \"Forbes\"\n  }\n]\n```",
+        "accounting": {
+          "input_tokens": 120,
+          "candidates_tokens": 1362,
+          "thoughts_tokens": 0,
+          "total_tokens": 1482,
+          "cost_as_deployed": 0.0052,
+          "cost_with_thinking": 0.0052,
+          "understated_by": 0,
+          "reconciles": "n/a_no_thinking_tokens",
+          "rate": {
+            "input": 0.75,
+            "output": 3.75,
+            "until": "2026-12-31",
+            "after": {
+              "input": 1.5,
+              "output": 7.5
+            }
+          }
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3-flash-preview",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 12823,
+        "emission": {
+          "trends": [
+            {
+              "title": "Metabolic Beauty",
+              "description": "A shift in personal care where outward appearance is treated as a reflection of inner health, focusing on cellular renewal and longevity rather than just masking imperfections.",
+              "source_url": "https://blog.aakpersonalcare.com/personal-care-trends-for-2026-a-new-era-of-wellness-technology-authenticity",
+              "source_name": "Personal Care Trends for 2026 Blog",
+              "url_live": true
+            },
+            {
+              "title": "The Over-Optimization Backlash",
+              "description": "Consumers are increasingly rejecting high-tech, data-heavy wellness routines in favor of 'human' experiences that prioritize pleasure, joy, and emotional connection over constant measurement.",
+              "source_url": "https://news-photos-features.com/2026/02/06/health-wellness-global-wellness-summit-releases-10-wellness-trends-for-2026-for-6-8-trillion-wellness-economy/",
+              "source_name": "News & Photo Features",
+              "url_live": true
+            },
+            {
+              "title": "Women's Longevity Lane",
+              "description": "The longevity market is pivoting toward women's specific biology, moving beyond menopause management to address ovarian aging and healthspan through tailored diagnostics and clinics.",
+              "source_url": "https://www.globalwellnesssummit.com/2026trends/",
+              "source_name": "Global Wellness Summit",
+              "url_live": true
+            },
+            {
+              "title": "Self-Directed Wellness",
+              "description": "Consumers are moving away from brand-led health to becoming 'self-directed' agents who prioritize functional benefits and ingredient transparency over brand familiarity.",
+              "source_url": "https://nielseniq.com/global/en/insights/analysis/2026/health-and-wellness-consumer-trends-the-rise-of-the-self-directed-health-consumer/",
+              "source_name": "NIQ",
+              "url_live": true
+            },
+            {
+              "title": "The GLP-1 Ripple Effect",
+              "description": "The rise of weight-loss medications is creating new consumer needs for muscle maintenance, nutrient-dense foods, and specialized supplements to address 'nutrient gaps' like protein and fiber.",
+              "source_url": "https://thephagroup.com/blog/wellness-trends-2026/",
+              "source_name": "The PHA Group",
+              "url_live": true
+            },
+            {
+              "title": "AI-Powered Personal Care Rituals",
+              "description": "Personal care devices are integrating AI to learn user habits and provide real-time feedback, such as smart razors and skincare tools that adapt to individual skin and hair types.",
+              "source_url": "https://www.philips.com/a-w/about/news/archive/standard/news/articles/2026/six-personal-care-trends-to-watch-in-2026.html",
+              "source_name": "Philips News",
+              "url_live": true
+            },
+            {
+              "title": "Healthspan-Focused Fitness",
+              "description": "Fitness programming is shifting from short-term aesthetic results to long-term quality of life, emphasizing mobility, strength, and independence for older adults.",
+              "source_url": "https://www.facebook.com/ACEfitness/videos/-2026-fitness-trends-are-taking-shape-trend-8-focuses-on-healthspan-and-longevit/955968124068345/",
+              "source_name": "American Council on Exercise",
+              "url_live": true
+            },
+            {
+              "title": "Eyeliner Stickers & Rapid Styling",
+              "description": "A breakout beauty trend driven by social media, eyeliner stickers represent a growing demand for rapid styling hacks that offer professional results with minimal effort.",
+              "source_url": "https://blog.trendalytics.co/consumer-trends-august-2026",
+              "source_name": "Trendalytics",
+              "url_live": true
+            },
+            {
+              "title": "Thermoregulating Sleepwear",
+              "description": "New consumer interest in 'BalanceKnit' and mineral-infused fabrics that respond to body temperature changes to improve sleep quality and recovery.",
+              "source_url": "https://www.nbcnews.com/select/shopping/best-new-products-august-2026-rcna592987",
+              "source_name": "NBC News",
+              "url_live": true
+            },
+            {
+              "title": "Microbiome-Friendly Personal Care",
+              "description": "Consumers are increasingly seeking products across skincare, haircare, and oral care that nurture the natural balance of beneficial microorganisms on the skin.",
+              "source_url": "https://blog.aakpersonalcare.com/personal-care-trends-for-2026-a-new-era-of-wellness-technology-authenticity",
+              "source_name": "Personal Care Blog",
+              "url_live": true
+            },
+            {
+              "title": "Home Fitness Dominance",
+              "description": "Home fitness has officially crossed the 50% threshold as the primary workout mode for Americans, driven largely by Gen Z and Millennial preferences for convenience.",
+              "source_url": "https://morningconsult.com/reports/fitness-wellness-trends-2026",
+              "source_name": "Morning Consult",
+              "url_live": true
+            },
+            {
+              "title": "Advanced Biomarker Testing",
+              "description": "Routine bloodwork is being replaced by specialty panels that track insulin resistance, inflammation, and genetic risks to enable proactive health shifts.",
+              "source_url": "https://prenuvo.com/blog/11-exploding-health-trends-you-may-see-in-2026",
+              "source_name": "Prenuvo",
+              "url_live": true
+            }
+          ]
+        },
+        "text": "[\n  {\n    \"title\": \"Metabolic Beauty\",\n    \"description\": \"A shift in personal care where outward appearance is treated as a reflection of inner health, focusing on cellular renewal and longevity rather than just masking imperfections.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHMqUZ1groPZT5iKnh8lUn0K0zlTeYeLsQdYOVlp3KVPyfcIJAVA0LOLm19XBlUEi3HwooXEdBhngRdAsr43oXvbUiF7VmCj1WgrXkXNXql61POIJh_eNGkzRyI7syEIo-0N8dOq7iJdSDUoMf0W4XaABX1aYomUiS2heEImBGpf5hv1qk4OIqPadX_-gwtN5fC3vDo4PCeTrOAx8K3tdrMTwM=\",\n    \"source_name\": \"Personal Care Trends for 2026 Blog\"\n  },\n  {\n    \"title\": \"The Over-Optimization Backlash\",\n    \"description\": \"Consumers are increasingly rejecting high-tech, data-heavy wellness routines in favor of 'human' experiences that prioritize pleasure, joy, and emotional connection over constant measurement.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGXpFCEHuS4c5Q0N-oULzxdTpC0OcRtlHuDPV0vCCLx3TYo2mu6Ioi9NZwe0oy2SLRwpRq1oxPMH4h0u5vi1oNfuba1ILlV2U_i9krD_h5v9FxCUwG0tYXUu0k5sN5wn5wJ2Ym2aBf7Wu6xox9pcQiv_2YU-VGarglP4YkY8lnoRFwJjcj5ChA0GL1nPQOPvr9WVVZviOiir48gagv9f45OJRHstNxm61E2NWxqDHjaRVvLo4Do9KJ0hvszHM1PuNs6AFpVYJrFoogoS1QIqmTvkg==\",\n    \"source_name\": \"News & Photo Features\"\n  },\n  {\n    \"title\": \"Women's Longevity Lane\",\n    \"description\": \"The longevity market is pivoting toward women's specific biology, moving beyond menopause management to address ovarian aging and healthspan through tailored diagnostics and clinics.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQFjZZLcfxEjJXSS7H7Slw7DgE5dcc1-6thrxiqkCTJupL5jgy6iZES0K9dU0QGoOHxd_5mDx_YXFRg9vQ6LQCn32makLCD9LiWBi1rV_Fxt2dPPVSQsropC1y9RWg-XFdRkN897mIw=\",\n    \"source_name\": \"Global Wellness Summit\"\n  },\n  {\n    \"title\": \"Self-Directed Wellness\",\n    \"description\": \"Consumers are moving away from brand-led health to becoming 'self-directed' agents who prioritize functional benefits and ingredient transparency over brand familiarity.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGlM9jz3LercqSBEA69uXQSk_7d-di48-UUV3dVCefizVZ3wSaF-W8-Hvyj-v0YwmB_-V4D-TWImZa6-yuT1EUMlX6sxUmuRm9hcHCZT1TlklEkw5LYRXXgaHLYWGSv_jlljkLDO82pvPqD1fb5L36wmQnd6qfOPNkAu1jKy5Sbt1ZxLiapV5yBvRm80M1-Pp2N3YUd34xDAX5owAS7UdBf2dZgK8hv_1hYjBpoNG5-o9ct1xR3xq3FThOemhy0B8s=\",\n    \"source_name\": \"NIQ\"\n  },\n  {\n    \"title\": \"The GLP-1 Ripple Effect\",\n    \"description\": \"The rise of weight-loss medications is creating new consumer needs for muscle maintenance, nutrient-dense foods, and specialized supplements to address 'nutrient gaps' like protein and fiber.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGo7HZ5WEKVMA9HtoUY5cbu9QChJDkhdvgnJxRxiTBdu6BlvBOXH10jaT9k0Nj1EGZveZbOd2XHYkzwN-naAu2NQCxAxApLzdgpyeJjnJPsEB0lPZ_K5sDRRQlAViB-gucwMBcws6zOYg==\",\n    \"source_name\": \"The PHA Group\"\n  },\n  {\n    \"title\": \"AI-Powered Personal Care Rituals\",\n    \"description\": \"Personal care devices are integrating AI to learn user habits and provide real-time feedback, such as smart razors and skincare tools that adapt to individual skin and hair types.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEDN-RIfMqSNr8E0iDsRNkc_dADUUA62dZbaGb0b-Xudq94KsGS7Y03pUAP8KToR7vI2Nq2WA2GJY3-_OE_g_nYSyXMWLsBaufq8udh858NHYPuAE0UxRRxjdVp4SeGUttBXIrC9T4Ytkr3Wa3TeS2y6FNO5ISisQj2VEdpvoVtablafVX84KFJYx3PiUlv2taiY7uNZzo-W_1PrpYGgUQb-D5Xi_S6EWBtRQoC9_ED\",\n    \"source_name\": \"Philips News\"\n  },\n  {\n    \"title\": \"Healthspan-Focused Fitness\",\n    \"description\": \"Fitness programming is shifting from short-term aesthetic results to long-term quality of life, emphasizing mobility, strength, and independence for older adults.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEJQ4CUGWvVDMD1j0EDs1DS1_IOntV6mvAcl6OVoQ-ERkPwjIFkrpFCpu-TEtLozEPBl412V9CVn6lhktZVgj5nlwqmZHEODOEoaAfszFOfcs4WTcArsfUIoAjEVLjGTy-tYb0nxCGSCGrQfrBqhaAZY8zm1k0AXDrfEyhS9WeCtaAAByvoAdeuvLdsi7RrI90QJVOIYLicPl9L9WKH_tu3XeGA8MSdtWbeJ0xqZ5029s8cKZN-pOlY0J6DDnhid1zFQvc=\",\n    \"source_name\": \"American Council on Exercise\"\n  },\n  {\n    \"title\": \"Eyeliner Stickers & Rapid Styling\",\n    \"description\": \"A breakout beauty trend driven by social media, eyeliner stickers represent a growing demand for rapid styling hacks that offer professional results with minimal effort.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQGUUWlv0LcLzqseVJVNwHrcy7BLhMKwh-7U3o1Ba6685Dt5JfI3W10i_M9InJF5SyfOvjOmZ67qqJl03-meGAAkULmr2R2W4SkO77WQZjsWOTvS1tuGyc59EXLosR56C0tN15cWqgVcgUI9IY_wmQ==\",\n    \"source_name\": \"Trendalytics\"\n  },\n  {\n    \"title\": \"Thermoregulating Sleepwear\",\n    \"description\": \"New consumer interest in 'BalanceKnit' and mineral-infused fabrics that respond to body temperature changes to improve sleep quality and recovery.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHYEl1U8KGBtyQ-AW_vnCeQupuscs3oIkbWdqsy5K6d8i-oJpAKPX5xFYViXq_mxuzqygzBV1w9MswA8acZa3KULK11vJwLKPxoLZ3d90idIBN2pe4AH1oVmWjtp6rvje-wJXdVJaP9zSyPFkli2bq9UAT9SLIXUhwbnHaaoHwVgqzr0oPP9A==\",\n    \"source_name\": \"NBC News\"\n  },\n  {\n    \"title\": \"Microbiome-Friendly Personal Care\",\n    \"description\": \"Consumers are increasingly seeking products across skincare, haircare, and oral care that nurture the natural balance of beneficial microorganisms on the skin.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQHMqUZ1groPZT5iKnh8lUn0K0zlTeYeLsQdYOVlp3KVPyfcIJAVA0LOLm19XBlUEi3HwooXEdBhngRdAsr43oXvbUiF7VmCj1WgrXkXNXql61POIJh_eNGkzRyI7syEIo-0N8dOq7iJdSDUoMf0W4XaABX1aYomUiS2heEImBGpf5hv1qk4OIqPadX_-gwtN5fC3vDo4PCeTrOAx8K3tdrMTwM=\",\n    \"source_name\": \"Personal Care Blog\"\n  },\n  {\n    \"title\": \"Home Fitness Dominance\",\n    \"description\": \"Home fitness has officially crossed the 50% threshold as the primary workout mode for Americans, driven largely by Gen Z and Millennial preferences for convenience.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQEmTl8rrKjwnojnYZDv2kVgbIWkxvVsVcnkZrhFPvU-_wawEK6L2vULS4X_pI4MwPFDrbF1TUPS6nJCgLV39V-OMMtWQIqVKkWOgxNOaQyfM2iMZdYrE8Pq3EGs7cSokEVotxWlNpWXmJBi3Sant6kkt4K_t14=\",\n    \"source_name\": \"Morning Consult\"\n  },\n  {\n    \"title\": \"Advanced Biomarker Testing\",\n    \"description\": \"Routine bloodwork is being replaced by specialty panels that track insulin resistance, inflammation, and genetic risks to enable proactive health shifts.\",\n    \"source_url\": \"https://vertexaisearch.cloud.google.com/grounding-api-redirect/AUZIYQF2vG1xbe3ptKHAEsnAtlRbChYKr3FO4bdGOed2ycSfUUWhlugicev20mx-5Zm4rgpJ6I7DqjLMdfnFTJbskmAG92H-PMs5w8hEzejuSg_eDjqcuXMwhA1vAVlEE0Q8xLiE9-wxWjqOsW7-48MUpGBbEIZOplKO-dZUCe5XMQ==\",\n    \"source_name\": \"Prenuvo\"\n  }\n]",
+        "accounting": {
+          "input_tokens": 120,
+          "candidates_tokens": 2860,
+          "thoughts_tokens": 0,
+          "total_tokens": 2980,
+          "cost_as_deployed": 0.0072,
+          "cost_with_thinking": 0.0072,
+          "understated_by": 0,
+          "reconciles": "n/a_no_thinking_tokens",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "fields": null,
+      "descriptor": null
+    },
+    {
+      "case": {
+        "id": "food-drink",
+        "label": "food-drink (gemini_food_drink) · last run 2026-08-20 · pin gemini-3-flash-preview",
+        "incumbentAt": "2026-08-20",
+        "incumbent": {
+          "emission": {
+            "trends": [
+              {
+                "title": "Root Vegetable Beverages",
+                "source_url": "https://foodinstitute.com/focus/3-beverage-trends-to-watch-from-root-veggies-to-force-carbonation/"
+              },
+              {
+                "title": "Mono-Material Sustainability",
+                "source_url": "https://www.fooddive.com/news/canned-food-growth-sonoco-bush-beans-soup/724567/"
+              },
+              {
+                "title": "Affordability Prioritization",
+                "source_url": "https://www.bakertilly.com/insights/food-and-beverage-ma-update-h1-2026"
+              },
+              {
+                "title": "Globalized Comfort Classics",
+                "source_url": "https://theshelbyreport.com/2026/08/19/top-trends-from-2026-summer-fancy-food-show-revealed/"
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3-flash-preview",
+            "run_date": "2026-08-20",
+            "signals": 4
+          }
+        }
+      },
+      "built": {
+        "mode": "single",
+        "terminal_tool": null,
+        "tool_names": null,
+        "prompt_provenance": null,
+        "system_chars": 0,
+        "user_chars": 456,
+        "input_notes": {
+          "source_name": "gemini_food_drink",
+          "category": "food_drink",
+          "prompt_chars": 410,
+          "prompt_source": "hardcoded in the step — this lane does NOT read DIM_LLM_PROMPT",
+          "thinking_floor": "the incumbent sends no thinking parameter at all; 3.7 Flash cannot disable thinking, so compare thinking tokens closely",
+          "grounding": "live Google Search — results are not reproducible across days"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 11631,
+        "emission": {
+          "trends": [
+            {
+              "title": "Drop Culture & Collectible Beverage Packaging",
+              "description": "Beverage brands are driving hype by adopting streetwear-style limited product drops and collectible packaging designed to be kept and displayed rather than thrown away.",
+              "source_url": "https://www.beveragedaily.com/Article/2026/08/19/From-collectibles-to-drop-culture-The-trends-transforming-beverages/",
+              "source_name": "BeverageDaily",
+              "url_live": false
+            },
+            {
+              "title": "Globalized American Comfort Classics",
+              "description": "Specialty food makers are transforming traditional comfort foods with global flavor profiles, such as butter chicken frozen pizza and Korean-inspired savory oatmeal.",
+              "source_url": "https://theshelbyreport.com/2026/08/19/top-trends-2026-summer-fancy-food-show/",
+              "source_name": "The Shelby Report",
+              "url_live": false
+            },
+            {
+              "title": "Tactile Drinks Packaging Design",
+              "description": "Brands are turning cans and bottles into shareable content using textured finishes, distinctive physical structures, and sensory details that elevate everyday drinking occasions.",
+              "source_url": "https://www.beveragedaily.com/Article/2026/08/19/From-collectibles-to-drop-culture-The-trends-transforming-beverages/",
+              "source_name": "BeverageDaily",
+              "url_live": false
+            },
+            {
+              "title": "GLP-1 Driven 'Bite-Sized, Big Flavor' Formats",
+              "description": "In response to appetite-suppressing GLP-1 medications, consumers are demanding nutrient-dense, intensely flavored foods in significantly smaller portion sizes.",
+              "source_url": "https://theshelbyreport.com/2026/08/19/top-trends-2026-summer-fancy-food-show/",
+              "source_name": "The Shelby Report",
+              "url_live": false
+            },
+            {
+              "title": "AI & Diagnostics-Guided Grocery Decisions",
+              "description": "Shoppers are increasingly relying on generative AI shopping assistants and at-home biometric diagnostics to personalize their grocery baskets and improve dietary outcomes.",
+              "source_url": "https://www.foodnavigator.com/Article/2026/08/18/The-three-forces-rewriting-the-food-industry-playbook/",
+              "source_name": "FoodNavigator",
+              "url_live": false
+            },
+            {
+              "title": "Inside-Out Innovation & Whole Ingredients",
+              "description": "To counter functional ingredient fatigue, brands are spotlighting recognizable pantry staples like dates, bone broth, and avocado oil instead of synthetic additives.",
+              "source_url": "https://theshelbyreport.com/2026/08/19/top-trends-2026-summer-fancy-food-show/",
+              "source_name": "The Shelby Report",
+              "url_live": false
+            },
+            {
+              "title": "At-Home Dirty Soda Customization",
+              "description": "The dirty soda phenomenon is expanding into grocery retail, with consumers blending carbonated beverages with fruit purées, flavored syrups, and creamers at home.",
+              "source_url": "https://www.bevindustry.com/articles/97034-thanksgiving-could-see-more-dietary-preference-accommodations-survey-shows",
+              "source_name": "Beverage Industry",
+              "url_live": true
+            },
+            {
+              "title": "Fast-Food Energy Drink Expansions",
+              "description": "Quick-service restaurant giants are entering the functional energy category, partnering with major energy drink brands to offer branded iced mocktails and caffeinated refreshers.",
+              "source_url": "https://www.nrn.com/beverages/mcdonalds-getting-energy-game-red-bull",
+              "source_name": "Nation's Restaurant News",
+              "url_live": false
+            },
+            {
+              "title": "Unexpected Cross-Category Brand Collabs",
+              "description": "Food and beverage makers are driving consumer buzz through unconventional co-branded products, pairing savory condiments, snacks, and beer for themed occasions.",
+              "source_url": "https://www.beveragedaily.com/Article/2026/08/19/From-collectibles-to-drop-culture-The-trends-transforming-beverages/",
+              "source_name": "BeverageDaily",
+              "url_live": false
+            },
+            {
+              "title": "Cold & Non-Traditional Fall Drink Lineups",
+              "description": "Chains are shifting seasonal fall beverage menus toward iced and fruity formats, bypassing traditional hot pumpkin spice drinks in favor of refreshing flavor profiles.",
+              "source_url": "https://www.nrn.com/beverages/sonics-fall-drink-lineup-cold-and-pumpkin-free",
+              "source_name": "Nation's Restaurant News",
+              "url_live": false
+            },
+            {
+              "title": "Pre-Season Pumpkin Spice Snack Integrations",
+              "description": "Seasonal pumpkin spice launches are rolling out earlier across packaged snack categories, merging sweet-and-spicy seasonal flavors into salty snacks like pretzels.",
+              "source_url": "https://www.foodnavigator.com/Article/2026/08/12/pumpkin-spice-season-kicks-off-with-a-flurry-of-products/",
+              "source_name": "FoodNavigator-USA",
+              "url_live": false
+            }
+          ]
+        },
+        "text": "```json\n[\n  {\"title\": \"Drop Culture & Collectible Beverage Packaging\", \"description\": \"Beverage brands are driving hype by adopting streetwear-style limited product drops and collectible packaging designed to be kept and displayed rather than thrown away.\", \"source_url\": \"https://www.beveragedaily.com/Article/2026/08/19/From-collectibles-to-drop-culture-The-trends-transforming-beverages\", \"source_name\": \"BeverageDaily\"},\n  {\"title\": \"Globalized American Comfort Classics\", \"description\": \"Specialty food makers are transforming traditional comfort foods with global flavor profiles, such as butter chicken frozen pizza and Korean-inspired savory oatmeal.\", \"source_url\": \"https://www.theshelbyreport.com/2026/08/19/top-trends-2026-summer-fancy-food-show/\", \"source_name\": \"The Shelby Report\"},\n  {\"title\": \"Tactile Drinks Packaging Design\", \"description\": \"Brands are turning cans and bottles into shareable content using textured finishes, distinctive physical structures, and sensory details that elevate everyday drinking occasions.\", \"source_url\": \"https://www.beveragedaily.com/Article/2026/08/19/From-collectibles-to-drop-culture-The-trends-transforming-beverages\", \"source_name\": \"BeverageDaily\"},\n  {\"title\": \"GLP-1 Driven 'Bite-Sized, Big Flavor' Formats\", \"description\": \"In response to appetite-suppressing GLP-1 medications, consumers are demanding nutrient-dense, intensely flavored foods in significantly smaller portion sizes.\", \"source_url\": \"https://www.theshelbyreport.com/2026/08/19/top-trends-2026-summer-fancy-food-show/\", \"source_name\": \"The Shelby Report\"},\n  {\"title\": \"AI & Diagnostics-Guided Grocery Decisions\", \"description\": \"Shoppers are increasingly relying on generative AI shopping assistants and at-home biometric diagnostics to personalize their grocery baskets and improve dietary outcomes.\", \"source_url\": \"https://www.foodnavigator.com/Article/2026/08/18/The-three-forces-rewriting-the-food-industry-playbook\", \"source_name\": \"FoodNavigator\"},\n  {\"title\": \"Inside-Out Innovation & Whole Ingredients\", \"description\": \"To counter functional ingredient fatigue, brands are spotlighting recognizable pantry staples like dates, bone broth, and avocado oil instead of synthetic additives.\", \"source_url\": \"https://www.theshelbyreport.com/2026/08/19/top-trends-2026-summer-fancy-food-show/\", \"source_name\": \"The Shelby Report\"},\n  {\"title\": \"At-Home Dirty Soda Customization\", \"description\": \"The dirty soda phenomenon is expanding into grocery retail, with consumers blending carbonated beverages with fruit purées, flavored syrups, and creamers at home.\", \"source_url\": \"https://www.bevindustry.com/articles/97034-dirty-sodas-are-coming-home\", \"source_name\": \"Beverage Industry\"},\n  {\"title\": \"Fast-Food Energy Drink Expansions\", \"description\": \"Quick-service restaurant giants are entering the functional energy category, partnering with major energy drink brands to offer branded iced mocktails and caffeinated refreshers.\", \"source_url\": \"https://www.nrn.com/beverages/mcdonalds-getting-energy-game-red-bull\", \"source_name\": \"Nation's Restaurant News\"},\n  {\"title\": \"Unexpected Cross-Category Brand Collabs\", \"description\": \"Food and beverage makers are driving consumer buzz through unconventional co-branded products, pairing savory condiments, snacks, and beer for themed occasions.\", \"source_url\": \"https://www.beveragedaily.com/Article/2026/08/19/From-collectibles-to-drop-culture-The-trends-transforming-beverages\", \"source_name\": \"BeverageDaily\"},\n  {\"title\": \"Cold & Non-Traditional Fall Drink Lineups\", \"description\": \"Chains are shifting seasonal fall beverage menus toward iced and fruity formats, bypassing traditional hot pumpkin spice drinks in favor of refreshing flavor profiles.\", \"source_url\": \"https://www.nrn.com/beverages/sonics-fall-drink-lineup-cold-and-pumpkin-free\", \"source_name\": \"Nation's Restaurant News\"},\n  {\"title\": \"Pre-Season Pumpkin Spice Snack Integrations\", \"description\": \"Seasonal pumpkin spice launches are rolling out earlier across packaged snack categories, merging sweet-and-spicy seasonal flavors into salty snacks like pretzels.\", \"source_url\": \"https://www.foodnavigator-usa.com/Article/2026/08/12/pumpkin-spice-season-kicks-off-with-a-flurry-of-products\", \"source_name\": \"FoodNavigator-USA\"}\n]\n```",
+        "accounting": {
+          "input_tokens": 114,
+          "candidates_tokens": 1123,
+          "thoughts_tokens": 0,
+          "total_tokens": 1237,
+          "cost_as_deployed": 0.0043,
+          "cost_with_thinking": 0.0043,
+          "understated_by": 0,
+          "reconciles": "n/a_no_thinking_tokens",
+          "rate": {
+            "input": 0.75,
+            "output": 3.75,
+            "until": "2026-12-31",
+            "after": {
+              "input": 1.5,
+              "output": 7.5
+            }
+          }
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3-flash-preview",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 8786,
+        "emission": {
+          "trends": [
+            {
+              "title": "SenseMaxxing",
+              "description": "A celebration of bright, vibrant food and beverage products that maximize sensory appeal through eye-catching packaging and intense, multi-layered flavors.",
+              "source_url": "https://www.forbes.com/sites/forbes-personal-shopper/article/summer-fancy-food-show-trends-2026/",
+              "source_name": "Forbes",
+              "url_live": false
+            },
+            {
+              "title": "Fiber as the New Protein",
+              "description": "Fiber is shifting from a nutritional afterthought to a front-of-pack hero, driven by consumer interest in gut health and the rising use of GLP-1 medications.",
+              "source_url": "https://www.lentils.org/spotlight-on-the-top-food-trends-for-2026/",
+              "source_name": "Lentils.org",
+              "url_live": true
+            },
+            {
+              "title": "Global Comfort Classics",
+              "description": "Manufacturers are infusing familiar American comfort staples with international flair, such as butter chicken frozen pizza and Korean-inspired savory oatmeal.",
+              "source_url": "https://www.bevnet.com/news/2026/specialty-food-associations-trendspotter-panel-shares-top-trends-from-the-2026-summer-fancy-food-show/",
+              "source_name": "BevNET",
+              "url_live": false
+            },
+            {
+              "title": "Beverage Drop Culture",
+              "description": "Drink brands are adopting 'drop culture' and collectibles, using limited-edition releases and lifestyle branding to move beyond traditional hydration roles.",
+              "source_url": "https://www.beveragedaily.com/Article/2026/08/19/From-collectibles-to-drop-culture-The-trends-transforming-beverages/",
+              "source_name": "BeverageDaily",
+              "url_live": false
+            },
+            {
+              "title": "Tallow Takeover",
+              "description": "Beef tallow is seeing a resurgence as a nostalgic, 'nose-to-tail' cooking fat, appearing in everything from herb-infused spreads to premium restaurant fries.",
+              "source_url": "https://www.wholefoodsmarket.com/tips-and-ideas/top-food-trends-2026",
+              "source_name": "Whole Foods Market",
+              "url_live": false
+            },
+            {
+              "title": "Clean-Label Glow Up",
+              "description": "Major snack and beverage brands are replacing synthetic dyes with natural fruit and vegetable concentrates while maintaining bold, saturated colors.",
+              "source_url": "https://jogue.com/summer-trends-2026-what-the-biggest-brands-are-promoting-this-season/",
+              "source_name": "Jogue Inc.",
+              "url_live": false
+            },
+            {
+              "title": "Low-Pressure Socializing",
+              "description": "Consumers are trading big nights out for casual, 'low-pressure' moments like daytime drinks and relaxed, early-evening dining experiences.",
+              "source_url": "https://hatch.group/food-drink-trends-report-2026/",
+              "source_name": "Hatch Communications",
+              "url_live": true
+            },
+            {
+              "title": "Aromatic Global Citrus",
+              "description": "Citrus flavors are evolving beyond basic lemon and lime to include elevated, aromatic varieties like yuzu, calamansi, and bergamot in sparkling drinks.",
+              "source_url": "https://www.mosaicflavors.com/summer-2026-flavor-trends-for-food-beverage",
+              "source_name": "Mosaic Flavors",
+              "url_live": false
+            },
+            {
+              "title": "Protein-Packed Indulgence",
+              "description": "The protein craze is hitting the dessert aisle with high-protein ice creams and shakes that use real cream and egg yolks to maintain a premium texture.",
+              "source_url": "https://www.forbes.com/sites/forbes-personal-shopper/article/summer-fancy-food-show-trends-2026/",
+              "source_name": "Forbes",
+              "url_live": false
+            },
+            {
+              "title": "Home as the Anchor",
+              "description": "Despite a gradual return to dining out, 86% of food occasions remain sourced from home as consumers prioritize cost-effective convenience.",
+              "source_url": "https://www.circana.com/intelligence/press-releases/2026/circana-report-highlights-protein-and-convenience-as-two-forces-influencing-americas-evolving-eating-patterns",
+              "source_name": "Circana",
+              "url_live": false
+            },
+            {
+              "title": "Textured Refreshers",
+              "description": "Summer beverage menus are leaning into 'texturized' fruit inclusions, such as popping pearls and botanical layers, to create social-media-ready drinks.",
+              "source_url": "https://jogue.com/summer-trends-2026-what-the-biggest-brands-are-promoting-this-season/",
+              "source_name": "Jogue Inc.",
+              "url_live": false
+            },
+            {
+              "title": "The New Ice Age",
+              "description": "Frozen food is shedding its 'budget' reputation as premium, chef-driven developments in the freezer aisle offer high-quality, convenient meal solutions.",
+              "source_url": "https://hatch.group/food-drink-trends-report-2026/",
+              "source_name": "Hatch Communications",
+              "url_live": true
+            },
+            {
+              "title": "Bread-Inspired Crackers",
+              "description": "New product launches are blurring the lines between bakery and snack aisles with crackers inspired by sourdough and cornbread textures.",
+              "source_url": "https://www.thetakeout.com/whats-new-at-kroger-august-2026-top-finds/",
+              "source_name": "The Takeout",
+              "url_live": false
+            },
+            {
+              "title": "Artisan Horchata",
+              "description": "Plant-based horchata made from tiger nuts is emerging as a trendy, health-focused alternative in the specialty beverage and cafe market.",
+              "source_url": "https://boxncase.com/blog/best-beverages-new-arrivals-for-food-service-august-2026/",
+              "source_name": "BoxNCase",
+              "url_live": false
+            }
+          ]
+        },
+        "text": "[\n  {\n    \"title\": \"SenseMaxxing\",\n    \"description\": \"A celebration of bright, vibrant food and beverage products that maximize sensory appeal through eye-catching packaging and intense, multi-layered flavors.\",\n    \"source_url\": \"https://www.forbes.com/sites/forbes-personal-shopper/article/summer-fancy-food-show-trends-2026/\",\n    \"source_name\": \"Forbes\"\n  },\n  {\n    \"title\": \"Fiber as the New Protein\",\n    \"description\": \"Fiber is shifting from a nutritional afterthought to a front-of-pack hero, driven by consumer interest in gut health and the rising use of GLP-1 medications.\",\n    \"source_url\": \"https://www.lentils.org/spotlight-on-the-top-food-trends-for-2026/\",\n    \"source_name\": \"Lentils.org\"\n  },\n  {\n    \"title\": \"Global Comfort Classics\",\n    \"description\": \"Manufacturers are infusing familiar American comfort staples with international flair, such as butter chicken frozen pizza and Korean-inspired savory oatmeal.\",\n    \"source_url\": \"https://www.bevnet.com/news/2026/specialty-food-associations-trendspotter-panel-shares-top-trends-from-the-2026-summer-fancy-food-show/\",\n    \"source_name\": \"BevNET\"\n  },\n  {\n    \"title\": \"Beverage Drop Culture\",\n    \"description\": \"Drink brands are adopting 'drop culture' and collectibles, using limited-edition releases and lifestyle branding to move beyond traditional hydration roles.\",\n    \"source_url\": \"https://www.beveragedaily.com/Article/2026/08/19/From-collectibles-to-drop-culture-The-trends-transforming-beverages\",\n    \"source_name\": \"BeverageDaily\"\n  },\n  {\n    \"title\": \"Tallow Takeover\",\n    \"description\": \"Beef tallow is seeing a resurgence as a nostalgic, 'nose-to-tail' cooking fat, appearing in everything from herb-infused spreads to premium restaurant fries.\",\n    \"source_url\": \"https://www.wholefoodsmarket.com/tips-and-ideas/top-food-trends-2026\",\n    \"source_name\": \"Whole Foods Market\"\n  },\n  {\n    \"title\": \"Clean-Label Glow Up\",\n    \"description\": \"Major snack and beverage brands are replacing synthetic dyes with natural fruit and vegetable concentrates while maintaining bold, saturated colors.\",\n    \"source_url\": \"https://jogue.com/summer-trends-2026-what-the-biggest-brands-are-promoting-this-season/\",\n    \"source_name\": \"Jogue Inc.\"\n  },\n  {\n    \"title\": \"Low-Pressure Socializing\",\n    \"description\": \"Consumers are trading big nights out for casual, 'low-pressure' moments like daytime drinks and relaxed, early-evening dining experiences.\",\n    \"source_url\": \"https://www.hatch.group/food-drink-trends-report-2026/\",\n    \"source_name\": \"Hatch Communications\"\n  },\n  {\n    \"title\": \"Aromatic Global Citrus\",\n    \"description\": \"Citrus flavors are evolving beyond basic lemon and lime to include elevated, aromatic varieties like yuzu, calamansi, and bergamot in sparkling drinks.\",\n    \"source_url\": \"https://mosaicflavors.com/summer-2026-flavor-trends-for-food-beverage/\",\n    \"source_name\": \"Mosaic Flavors\"\n  },\n  {\n    \"title\": \"Protein-Packed Indulgence\",\n    \"description\": \"The protein craze is hitting the dessert aisle with high-protein ice creams and shakes that use real cream and egg yolks to maintain a premium texture.\",\n    \"source_url\": \"https://www.forbes.com/sites/forbes-personal-shopper/article/summer-fancy-food-show-trends-2026/\",\n    \"source_name\": \"Forbes\"\n  },\n  {\n    \"title\": \"Home as the Anchor\",\n    \"description\": \"Despite a gradual return to dining out, 86% of food occasions remain sourced from home as consumers prioritize cost-effective convenience.\",\n    \"source_url\": \"https://www.circana.com/intelligence/press-releases/2026/circana-report-highlights-protein-and-convenience-as-two-forces-influencing-americas-evolving-eating-patterns/\",\n    \"source_name\": \"Circana\"\n  },\n  {\n    \"title\": \"Textured Refreshers\",\n    \"description\": \"Summer beverage menus are leaning into 'texturized' fruit inclusions, such as popping pearls and botanical layers, to create social-media-ready drinks.\",\n    \"source_url\": \"https://jogue.com/summer-trends-2026-what-the-biggest-brands-are-promoting-this-season/\",\n    \"source_name\": \"Jogue Inc.\"\n  },\n  {\n    \"title\": \"The New Ice Age\",\n    \"description\": \"Frozen food is shedding its 'budget' reputation as premium, chef-driven developments in the freezer aisle offer high-quality, convenient meal solutions.\",\n    \"source_url\": \"https://www.hatch.group/food-drink-trends-report-2026/\",\n    \"source_name\": \"Hatch Communications\"\n  },\n  {\n    \"title\": \"Bread-Inspired Crackers\",\n    \"description\": \"New product launches are blurring the lines between bakery and snack aisles with crackers inspired by sourdough and cornbread textures.\",\n    \"source_url\": \"https://www.thetakeout.com/whats-new-at-kroger-august-2026-top-finds/\",\n    \"source_name\": \"The Takeout\"\n  },\n  {\n    \"title\": \"Artisan Horchata\",\n    \"description\": \"Plant-based horchata made from tiger nuts is emerging as a trendy, health-focused alternative in the specialty beverage and cafe market.\",\n    \"source_url\": \"https://boxncase.com/blog/best-beverages-new-arrivals-for-food-service-august-2026/\",\n    \"source_name\": \"BoxNCase\"\n  }\n]",
+        "accounting": {
+          "input_tokens": 119,
+          "candidates_tokens": 1472,
+          "thoughts_tokens": 5,
+          "total_tokens": 1596,
+          "cost_as_deployed": 0.0037,
+          "cost_with_thinking": 0.0037,
+          "understated_by": 0,
+          "reconciles": "candidates_excludes_thinking",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "fields": null,
+      "descriptor": null
+    },
+    {
+      "case": {
+        "id": "travel",
+        "label": "travel (gemini_travel) · last run 2026-08-20 · pin gemini-3-flash-preview",
+        "incumbentAt": "2026-08-20",
+        "incumbent": {
+          "emission": {
+            "trends": [
+              {
+                "title": "Cultural Immersion Priority",
+                "source_url": "https://traveltomorrow.com/cultural-immersion-emerges-as-leading-travel-priority-report-finds/"
+              },
+              {
+                "title": "Shoulder Season Premiumization",
+                "source_url": "https://www.insidertravelreport.com/virtuoso-luxury-travel-trends-fall-is-the-new-summer-and-more"
+              },
+              {
+                "title": "Fall is the New Summer",
+                "source_url": "https://travelindustrytoday.com/fall-is-the-new-summer-and-flex-in-the-city-plus-other-key-travel-trends-for-the-end-of-2026/"
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3-flash-preview",
+            "run_date": "2026-08-20",
+            "signals": 3
+          }
+        }
+      },
+      "built": {
+        "mode": "single",
+        "terminal_tool": null,
+        "tool_names": null,
+        "prompt_provenance": null,
+        "system_chars": 0,
+        "user_chars": 460,
+        "input_notes": {
+          "source_name": "gemini_travel",
+          "category": "travel",
+          "prompt_chars": 414,
+          "prompt_source": "hardcoded in the step — this lane does NOT read DIM_LLM_PROMPT",
+          "thinking_floor": "the incumbent sends no thinking parameter at all; 3.7 Flash cannot disable thinking, so compare thinking tokens closely",
+          "grounding": "live Google Search — results are not reproducible across days"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 8538,
+        "emission": {
+          "trends": [
+            {
+              "title": "Laptop-Lugging and Blended Work Travel",
+              "description": "More American travelers are combining remote work with leisure trips, extending trip lengths and booking flexible accommodations. This 'workcation' mindset has transitioned from a temporary post-pandemic habit into an entrenched lifestyle preference.",
+              "source_url": "https://www.deloitte.com/us/en/insights/industry/transportation/travel-industry-outlook.html",
+              "source_name": "Deloitte",
+              "url_live": false
+            },
+            {
+              "title": "Event-Driven and Experience-First Tourism",
+              "description": "U.S. consumers are increasingly prioritizing specific activities, concerts, and cultural events over destinations themselves. Over 70% of travelers report planning trips around live events rather than standard sightseeing itineraries.",
+              "source_url": "https://admerasia.com/wp-content/uploads/2025/04/US-Travel-Report-2025.pdf",
+              "source_name": "Admerasia",
+              "url_live": false
+            },
+            {
+              "title": "AI-Powered Upper-Funnel Itinerary Planning",
+              "description": "Travelers are rapidly adopting conversational AI tools for the initial inspiration and curation phases of trip planning, such as restaurant discovery and custom day itineraries. However, consumers still rely on direct bookings and verified reviews for final purchases.",
+              "source_url": "https://www.phocuswright.com/Travel-Research/Consumer-Trends/US-Traveler-Trends-2025",
+              "source_name": "Phocuswright",
+              "url_live": false
+            },
+            {
+              "title": "Domestic Road Trip Resurgence",
+              "description": "Cost-conscious and family travelers are favoring domestic road trips and drivable destinations across the United States over long-haul flights. This shift is boosting regional hospitality and short-term vacation rentals in secondary and tertiary markets.",
+              "source_url": "https://institute.bankofamerica.com/economic-insights/vacation-nation.html",
+              "source_name": "Bank of America Institute",
+              "url_live": true
+            },
+            {
+              "title": "Nature Immersion and Digital Detox Escapes",
+              "description": "A growing segment of American travelers, particularly families, is actively seeking outdoor wellness retreats near national parks and lakes. Travelers are intentionally unplugging from digital routines to prioritize physical wellness and reconnection with nature.",
+              "source_url": "https://partner.booking.com/en-us/click-magazine/attract-more-customers-our-2025-us-travel-trends",
+              "source_name": "Booking.com",
+              "url_live": false
+            },
+            {
+              "title": "Multigenerational and Family-Centric Getaways",
+              "description": "Family and multigenerational travel demand is surging as households prioritize shared experiences and quality time with extended family. Accommodations with multiple bedrooms and shared amenities are seeing significant upticks in demand.",
+              "source_url": "https://www.familytravel.org/2025/10/02/the-state-of-travel-and-the-economy-in-2025/",
+              "source_name": "Family Travel Association",
+              "url_live": true
+            },
+            {
+              "title": "Conscientious Tourism and Off-Peak 'Coolcations'",
+              "description": "Heightened awareness of extreme weather and peak-season overtourism is prompting American travelers to seek shoulder-season travel and cooler, less-crowded alternative destinations. This trend is distributing tourism revenue more evenly throughout the year.",
+              "source_url": "https://thepointsguy.com/guide/2025-travel-trends/",
+              "source_name": "The Points Guy",
+              "url_live": false
+            },
+            {
+              "title": "Travel Budget Protection and Reprioritization",
+              "description": "Despite broader macroeconomic pressures and rising living costs, American consumers continue to ringfence and protect their vacation budgets, treating travel as an essential lifestyle priority rather than discretionary spend.",
+              "source_url": "https://www.ipx1031.com/travel-trends-statistics-2025/",
+              "source_name": "IPX1031",
+              "url_live": false
+            },
+            {
+              "title": "Strategic Loyalty and Credit Card Points Optimization",
+              "description": "Faced with elevated lodging and transport rates, travelers are increasingly leveraging credit card reward points, airline miles, and co-branded perks to offset out-of-pocket vacation expenses.",
+              "source_url": "https://thepointsguy.com/guide/2025-travel-trends/",
+              "source_name": "The Points Guy",
+              "url_live": false
+            },
+            {
+              "title": "Patriotic and Historic Heritage Travel",
+              "description": "Interest in domestic cultural, historic, and heritage sites is accelerating among younger generations and families as destinations prepare programming for major national milestone anniversaries.",
+              "source_url": "https://futurepartners.com/insights/state-of-the-american-traveler-july-2025/",
+              "source_name": "Future Partners",
+              "url_live": false
+            },
+            {
+              "title": "Spontaneous and Slow-Paced Getaways",
+              "description": "Consumers are increasingly balancing structured travel with spontaneous, unstructured trips characterized by relaxed schedules and longer stays. Travelers report seeking deeper immersion in local culture without overbooked daily itineraries.",
+              "source_url": "https://talkerresearch.com/these-are-the-travel-trends-that-shaped-2024/",
+              "source_name": "Talker Research",
+              "url_live": true
+            }
+          ]
+        },
+        "text": "```json\n[\n  {\n    \"title\": \"Laptop-Lugging and Blended Work Travel\",\n    \"description\": \"More American travelers are combining remote work with leisure trips, extending trip lengths and booking flexible accommodations. This 'workcation' mindset has transitioned from a temporary post-pandemic habit into an entrenched lifestyle preference.\",\n    \"source_url\": \"https://www2.deloitte.com/us/en/insights/industry/transportation/travel-industry-outlook.html\",\n    \"source_name\": \"Deloitte\"\n  },\n  {\n    \"title\": \"Event-Driven and Experience-First Tourism\",\n    \"description\": \"U.S. consumers are increasingly prioritizing specific activities, concerts, and cultural events over destinations themselves. Over 70% of travelers report planning trips around live events rather than standard sightseeing itineraries.\",\n    \"source_url\": \"https://admerasia.com/wp-content/uploads/2025/04/US-Travel-Report-2025.pdf\",\n    \"source_name\": \"Admerasia\"\n  },\n  {\n    \"title\": \"AI-Powered Upper-Funnel Itinerary Planning\",\n    \"description\": \"Travelers are rapidly adopting conversational AI tools for the initial inspiration and curation phases of trip planning, such as restaurant discovery and custom day itineraries. However, consumers still rely on direct bookings and verified reviews for final purchases.\",\n    \"source_url\": \"https://www.phocuswright.com/Travel-Research/Consumer-Trends/US-Traveler-Trends-2025\",\n    \"source_name\": \"Phocuswright\"\n  },\n  {\n    \"title\": \"Domestic Road Trip Resurgence\",\n    \"description\": \"Cost-conscious and family travelers are favoring domestic road trips and drivable destinations across the United States over long-haul flights. This shift is boosting regional hospitality and short-term vacation rentals in secondary and tertiary markets.\",\n    \"source_url\": \"https://institute.bankofamerica.com/economic-insights/vacation-nation.html\",\n    \"source_name\": \"Bank of America Institute\"\n  },\n  {\n    \"title\": \"Nature Immersion and Digital Detox Escapes\",\n    \"description\": \"A growing segment of American travelers, particularly families, is actively seeking outdoor wellness retreats near national parks and lakes. Travelers are intentionally unplugging from digital routines to prioritize physical wellness and reconnection with nature.\",\n    \"source_url\": \"https://partner.booking.com/en-us/click-magazine/attract-more-customers-our-2025-us-travel-trends\",\n    \"source_name\": \"Booking.com\"\n  },\n  {\n    \"title\": \"Multigenerational and Family-Centric Getaways\",\n    \"description\": \"Family and multigenerational travel demand is surging as households prioritize shared experiences and quality time with extended family. Accommodations with multiple bedrooms and shared amenities are seeing significant upticks in demand.\",\n    \"source_url\": \"https://familytravel.org/the-state-of-travel-and-the-economy-in-2025/\",\n    \"source_name\": \"Family Travel Association\"\n  },\n  {\n    \"title\": \"Conscientious Tourism and Off-Peak 'Coolcations'\",\n    \"description\": \"Heightened awareness of extreme weather and peak-season overtourism is prompting American travelers to seek shoulder-season travel and cooler, less-crowded alternative destinations. This trend is distributing tourism revenue more evenly throughout the year.\",\n    \"source_url\": \"https://thepointsguy.com/guide/2025-travel-trends/\",\n    \"source_name\": \"The Points Guy\"\n  },\n  {\n    \"title\": \"Travel Budget Protection and Reprioritization\",\n    \"description\": \"Despite broader macroeconomic pressures and rising living costs, American consumers continue to ringfence and protect their vacation budgets, treating travel as an essential lifestyle priority rather than discretionary spend.\",\n    \"source_url\": \"https://www.ipx1031.com/travel-trends-statistics-2025/\",\n    \"source_name\": \"IPX1031\"\n  },\n  {\n    \"title\": \"Strategic Loyalty and Credit Card Points Optimization\",\n    \"description\": \"Faced with elevated lodging and transport rates, travelers are increasingly leveraging credit card reward points, airline miles, and co-branded perks to offset out-of-pocket vacation expenses.\",\n    \"source_url\": \"https://thepointsguy.com/guide/2025-travel-trends/\",\n    \"source_name\": \"The Points Guy\"\n  },\n  {\n    \"title\": \"Patriotic and Historic Heritage Travel\",\n    \"description\": \"Interest in domestic cultural, historic, and heritage sites is accelerating among younger generations and families as destinations prepare programming for major national milestone anniversaries.\",\n    \"source_url\": \"https://www.futurepartners.com/insights/state-of-the-american-traveler-july-2025/\",\n    \"source_name\": \"Future Partners\"\n  },\n  {\n    \"title\": \"Spontaneous and Slow-Paced Getaways\",\n    \"description\": \"Consumers are increasingly balancing structured travel with spontaneous, unstructured trips characterized by relaxed schedules and longer stays. Travelers report seeking deeper immersion in local culture without overbooked daily itineraries.\",\n    \"source_url\": \"https://talkerresearch.com/these-are-the-travel-trends-that-shaped-2024/\",\n    \"source_name\": \"Talker Research\"\n  }\n]\n```",
+        "accounting": {
+          "input_tokens": 151,
+          "candidates_tokens": 1246,
+          "thoughts_tokens": 163,
+          "total_tokens": 1560,
+          "cost_as_deployed": 0.0048,
+          "cost_with_thinking": 0.0054,
+          "understated_by": 0.0006,
+          "reconciles": "candidates_excludes_thinking",
+          "rate": {
+            "input": 0.75,
+            "output": 3.75,
+            "until": "2026-12-31",
+            "after": {
+              "input": 1.5,
+              "output": 7.5
+            }
+          }
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3-flash-preview",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 7746,
+        "emission": {
+          "trends": [
+            {
+              "title": "Fall Road Trip Dominance",
+              "description": "New data from Hertz shows nearly half of U.S. adults plan to travel this fall, with millennials driving a significant surge in road trip bookings.",
+              "source_url": "https://www.businesswire.com/news/home/20260819005000/en/Hertz-Data-Shows-Road-Trips-Will-Dominate-Fall-Travel-as-Millennials-Fuel-the-Trend",
+              "source_name": "Business Wire",
+              "url_live": false
+            },
+            {
+              "title": "The 'Summer of Trade-offs'",
+              "description": "U.S. consumers are protecting their vacation budgets by aggressively cutting back on daily non-essential expenses like dining out and groceries to afford rising travel costs.",
+              "source_url": "https://www.briefs.co/economy/summer-travel-spending-holds-up-despite-costs",
+              "source_name": "Briefs Finance",
+              "url_live": false
+            },
+            {
+              "title": "Citymaxxing",
+              "description": "A luxury travel trend where travelers maximize their time in urban centers by booking high-end, amenity-rich hotels that serve as the primary destination themselves.",
+              "source_url": "https://spearswms.com/wealth/luxury-travel-trends-2026-virtuoso-travel-week/",
+              "source_name": "Spear's Magazine",
+              "url_live": false
+            },
+            {
+              "title": "The Fallcation",
+              "description": "Emerging as a preferred alternative to summer travel, more U.S. luxury travelers are shifting their primary vacations to the autumn months to avoid heat and crowds.",
+              "source_url": "https://spearswms.com/wealth/luxury-travel-trends-2026-virtuoso-travel-week/",
+              "source_name": "Spear's Magazine",
+              "url_live": false
+            },
+            {
+              "title": "Resilient Overseas Wanderlust",
+              "description": "Despite economic pressures and debt, American overseas travel is hitting new record heights, particularly with a sustained surge in trips to Europe.",
+              "source_url": "https://www.axios.com/2026/08/14/americans-travel-overseas-record-high",
+              "source_name": "Axios",
+              "url_live": false
+            },
+            {
+              "title": "Cost-Cutting Over Cancellation",
+              "description": "A Skift report highlights that 52% of travelers are choosing to adjust their plans or trade down to cheaper alternatives rather than canceling trips due to inflation.",
+              "source_url": "https://travelmole.com/news/skift-state-of-travel-report-2026-travelers-cut-costs-rather-than-cancel-trips",
+              "source_name": "TravelMole",
+              "url_live": false
+            },
+            {
+              "title": "K-Shaped Travel Recovery",
+              "description": "A widening gap in travel behavior has emerged, with middle-to-high income households increasing airline spend by 8% while lower-income households increasingly stay home.",
+              "source_url": "https://www.briefs.co/economy/summer-travel-spending-holds-up-despite-costs",
+              "source_name": "Briefs Finance",
+              "url_live": false
+            },
+            {
+              "title": "Hushpitality",
+              "description": "A growing consumer preference for quiet, low-friction stays where hotels prioritize rest, soundproofing, and streamlined service as premium amenities.",
+              "source_url": "https://www.hotel-dive.com/news/summer-2026-travel-preview-cost-concerns-intentional-planning/716543/",
+              "source_name": "Hotel Dive",
+              "url_live": false
+            },
+            {
+              "title": "Micro-Retirement Trips",
+              "description": "Mid-career professionals are increasingly booking longer, more ambitious 'bucket-list' itineraries typically reserved for retirement, such as multi-week treks.",
+              "source_url": "https://www.explore.co.uk/blog/travel-trends-2026",
+              "source_name": "Explore Worldwide",
+              "url_live": false
+            },
+            {
+              "title": "Off-Peak Time-Tripping",
+              "description": "Travelers are intentionally seeking out 'hidden seasons'—like autumn in Japan or spring in Morocco—to secure lower prices and avoid overtourism.",
+              "source_url": "https://www.explore.co.uk/blog/travel-trends-2026",
+              "source_name": "Explore Worldwide",
+              "url_live": false
+            },
+            {
+              "title": "Wellness Through Community",
+              "description": "Moving beyond traditional spas, 2026 travelers are seeking wellness through local connection, such as host-family cooking or community-led rewilding projects.",
+              "source_url": "https://www.explore.co.uk/blog/travel-trends-2026",
+              "source_name": "Explore Worldwide",
+              "url_live": false
+            },
+            {
+              "title": "Small Town Preference",
+              "description": "A significant 74% of Gen Z travelers now report a preference for small-town 'hidden gem' destinations over major metropolitan hubs to find authenticity.",
+              "source_url": "https://news.airbnb.com/2026-summer-travel-trends-revealed/",
+              "source_name": "Airbnb Newsroom",
+              "url_live": true
+            }
+          ]
+        },
+        "text": "[\n  {\n    \"title\": \"Fall Road Trip Dominance\",\n    \"description\": \"New data from Hertz shows nearly half of U.S. adults plan to travel this fall, with millennials driving a significant surge in road trip bookings.\",\n    \"source_url\": \"https://www.businesswire.com/news/home/20260819005000/en/Hertz-Data-Shows-Road-Trips-Will-Dominate-Fall-Travel-as-Millennials-Fuel-the-Trend\",\n    \"source_name\": \"Business Wire\"\n  },\n  {\n    \"title\": \"The 'Summer of Trade-offs'\",\n    \"description\": \"U.S. consumers are protecting their vacation budgets by aggressively cutting back on daily non-essential expenses like dining out and groceries to afford rising travel costs.\",\n    \"source_url\": \"https://briefs.co/economy/summer-travel-spending-holds-up-despite-costs\",\n    \"source_name\": \"Briefs Finance\"\n  },\n  {\n    \"title\": \"Citymaxxing\",\n    \"description\": \"A luxury travel trend where travelers maximize their time in urban centers by booking high-end, amenity-rich hotels that serve as the primary destination themselves.\",\n    \"source_url\": \"https://spearswms.com/wealth/luxury-travel-trends-2026-virtuoso-travel-week/\",\n    \"source_name\": \"Spear's Magazine\"\n  },\n  {\n    \"title\": \"The Fallcation\",\n    \"description\": \"Emerging as a preferred alternative to summer travel, more U.S. luxury travelers are shifting their primary vacations to the autumn months to avoid heat and crowds.\",\n    \"source_url\": \"https://spearswms.com/wealth/luxury-travel-trends-2026-virtuoso-travel-week/\",\n    \"source_name\": \"Spear's Magazine\"\n  },\n  {\n    \"title\": \"Resilient Overseas Wanderlust\",\n    \"description\": \"Despite economic pressures and debt, American overseas travel is hitting new record heights, particularly with a sustained surge in trips to Europe.\",\n    \"source_url\": \"https://www.axios.com/2026/08/14/americans-travel-overseas-record-high\",\n    \"source_name\": \"Axios\"\n  },\n  {\n    \"title\": \"Cost-Cutting Over Cancellation\",\n    \"description\": \"A Skift report highlights that 52% of travelers are choosing to adjust their plans or trade down to cheaper alternatives rather than canceling trips due to inflation.\",\n    \"source_url\": \"https://www.travelmole.com/news/skift-state-of-travel-report-2026-travelers-cut-costs-rather-than-cancel-trips/\",\n    \"source_name\": \"TravelMole\"\n  },\n  {\n    \"title\": \"K-Shaped Travel Recovery\",\n    \"description\": \"A widening gap in travel behavior has emerged, with middle-to-high income households increasing airline spend by 8% while lower-income households increasingly stay home.\",\n    \"source_url\": \"https://briefs.co/economy/summer-travel-spending-holds-up-despite-costs\",\n    \"source_name\": \"Briefs Finance\"\n  },\n  {\n    \"title\": \"Hushpitality\",\n    \"description\": \"A growing consumer preference for quiet, low-friction stays where hotels prioritize rest, soundproofing, and streamlined service as premium amenities.\",\n    \"source_url\": \"https://www.hotel-dive.com/news/summer-2026-travel-preview-cost-concerns-intentional-planning/716543/\",\n    \"source_name\": \"Hotel Dive\"\n  },\n  {\n    \"title\": \"Micro-Retirement Trips\",\n    \"description\": \"Mid-career professionals are increasingly booking longer, more ambitious 'bucket-list' itineraries typically reserved for retirement, such as multi-week treks.\",\n    \"source_url\": \"https://www.explore.co.uk/blog/travel-trends-2026\",\n    \"source_name\": \"Explore Worldwide\"\n  },\n  {\n    \"title\": \"Off-Peak Time-Tripping\",\n    \"description\": \"Travelers are intentionally seeking out 'hidden seasons'—like autumn in Japan or spring in Morocco—to secure lower prices and avoid overtourism.\",\n    \"source_url\": \"https://www.explore.co.uk/blog/travel-trends-2026\",\n    \"source_name\": \"Explore Worldwide\"\n  },\n  {\n    \"title\": \"Wellness Through Community\",\n    \"description\": \"Moving beyond traditional spas, 2026 travelers are seeking wellness through local connection, such as host-family cooking or community-led rewilding projects.\",\n    \"source_url\": \"https://www.explore.co.uk/blog/travel-trends-2026\",\n    \"source_name\": \"Explore Worldwide\"\n  },\n  {\n    \"title\": \"Small Town Preference\",\n    \"description\": \"A significant 74% of Gen Z travelers now report a preference for small-town 'hidden gem' destinations over major metropolitan hubs to find authenticity.\",\n    \"source_url\": \"https://news.airbnb.com/2026-summer-travel-trends-revealed/\",\n    \"source_name\": \"Airbnb Newsroom\"\n  }\n]",
+        "accounting": {
+          "input_tokens": 114,
+          "candidates_tokens": 1249,
+          "thoughts_tokens": 0,
+          "total_tokens": 1363,
+          "cost_as_deployed": 0.0032,
+          "cost_with_thinking": 0.0032,
+          "understated_by": 0,
+          "reconciles": "n/a_no_thinking_tokens",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "fields": null,
+      "descriptor": null
+    },
+    {
+      "case": {
+        "id": "other",
+        "label": "other (gemini_other) · last run 2026-08-20 · pin gemini-3-flash-preview",
+        "incumbentAt": "2026-08-20",
+        "incumbent": {
+          "emission": {
+            "trends": [
+              {
+                "title": "AI-Driven Out-of-Home Ads",
+                "source_url": "https://billboardinsider.com/us-out-of-home-revenue-up-9-percent-in-2q-2026/"
+              },
+              {
+                "title": "3D Digital Sampling for Sustainability",
+                "source_url": "https://www.just-style.com/comment/how-technology-is-transforming-fashion-sustainability/"
+              },
+              {
+                "title": "Hair Bandanas",
+                "source_url": "https://blog.trendalytics.co/consumer-trends-august-2026?hs_amp=true"
+              },
+              {
+                "title": "Consumer Sentiment Slump",
+                "source_url": "https://wtvbam.com/2026/08/14/us-consumer-sentiment-deteriorates-in-august/"
+              },
+              {
+                "title": "In-Store Clothing Repair Workshops",
+                "source_url": "https://www.heraldextra.com/lifestyles/home-and-garden/2026/aug/18/from-uniqlo-to-zara-clothing-brands-try-to-win-over-gen-z-with-a-needle-and-thread/"
+              },
+              {
+                "title": "USA Soccer Core",
+                "source_url": "https://trendalytics.co/insights/august-2026-consumer-trend-report-fashion-beauty-intelligence"
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3-flash-preview",
+            "run_date": "2026-08-20",
+            "signals": 6
+          }
+        }
+      },
+      "built": {
+        "mode": "single",
+        "terminal_tool": null,
+        "tool_names": null,
+        "prompt_provenance": null,
+        "system_chars": 0,
+        "user_chars": 708,
+        "input_notes": {
+          "source_name": "gemini_other",
+          "category": "other",
+          "prompt_chars": 660,
+          "prompt_source": "hardcoded in the step — this lane does NOT read DIM_LLM_PROMPT",
+          "thinking_floor": "the incumbent sends no thinking parameter at all; 3.7 Flash cannot disable thinking, so compare thinking tokens closely",
+          "grounding": "live Google Search — results are not reproducible across days"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 8788,
+        "emission": {
+          "trends": [
+            {
+              "title": "Comfort-Driven Micro-Spending",
+              "description": "Faced with ongoing economic uncertainty, U.S. consumers are pulling back on major big-ticket purchases in favor of accessible micro-indulgences and affordable everyday luxuries [1.2.2]. Brands are catering to this shift by emphasizing low-stress, emotionally comforting products and services.",
+              "source_url": "https://www.warc.com/en/latest",
+              "source_name": "WARC",
+              "url_live": true
+            },
+            {
+              "title": "Retro Sportswear and Soccer Jersey Revival",
+              "description": "August consumer search data shows an explosive surge in vintage-inspired athletic wear, with USA soccer jerseys jumping over 2,000% alongside rising demand for retro track jackets. Shoppers are blending sporty streetwear aesthetics into mainstream late-summer and back-to-school wardrobes.",
+              "source_url": "https://blog.trendalytics.co/",
+              "source_name": "Trendalytics",
+              "url_live": true
+            },
+            {
+              "title": "Accessible Sub-Brands in Department Stores",
+              "description": "Major retail department stores are partnering with heritage designer labels to debut tailored sub-lines featuring lower price points and relaxed cuts. This approach aims to capture value-conscious shoppers looking for upscale style without luxury price tags.",
+              "source_url": "https://www.retaildive.com/",
+              "source_name": "Retail Dive",
+              "url_live": true
+            },
+            {
+              "title": "Intentional Design in Pet Accessories",
+              "description": "Pet owners are increasingly moving away from bulk-buy utility items in favor of aesthetically curated, durable pet gear that complements modern home decor. The pet lifestyle space is prioritizing styled accessories, neutral color palettes, and personalized details.",
+              "source_url": "https://www.forbes.com/",
+              "source_name": "Forbes",
+              "url_live": true
+            },
+            {
+              "title": "AI-Powered Visual Search and Shopping Assistants",
+              "description": "Consumers and retailers are rapidly adopting visual search tools and generative AI agents to research products and navigate buying journeys. Shoppers increasingly rely on automated product comparisons to locate the best value before completing checkout.",
+              "source_url": "https://nrf.com/",
+              "source_name": "National Retail Federation",
+              "url_live": true
+            },
+            {
+              "title": "Reengineered Circular Return Models",
+              "description": "Retailers are converting traditional return friction into loyalty-building circular programs by offering 'keep or donate' perks and automatic second-life resale values. This strategy reduces reverse-logistics friction while supporting consumer demand for sustainable disposition options.",
+              "source_url": "https://netchoice.org/",
+              "source_name": "NetChoice",
+              "url_live": true
+            },
+            {
+              "title": "Parental Push for Youth Digital Safety",
+              "description": "Mounting concern over the effects of social platforms on minors is prompting parents to embrace screen-time guardrails, offline family activities, and certified child-safe tech platforms. Brands targeting families are shifting their marketing toward privacy, transparency, and vetted communities.",
+              "source_url": "https://www.warc.com/en/latest",
+              "source_name": "WARC",
+              "url_live": true
+            },
+            {
+              "title": "Lifestyle and Experiential Hubs Replacing Malls",
+              "description": "Physical shopping destinations are pivoting away from pure retail storefronts into dynamic lifestyle centers focused on experiential dining, community spaces, and entertainment. Foot traffic is rebounding as shoppers seek social environments that go beyond simple transactions.",
+              "source_url": "https://www.deloitte.com/us/en.html",
+              "source_name": "Deloitte",
+              "url_live": true
+            },
+            {
+              "title": "Early Fall Wardrobe Transitioning",
+              "description": "Late-summer fashion consumers are actively purchasing transitional autumn staples, including lightweight jackets, bishop-sleeve tops, and suede footwear. Shoppers are strategically investing in versatile layering pieces ahead of the seasonal shift.",
+              "source_url": "https://www.whowhatwear.com/",
+              "source_name": "Who What Wear",
+              "url_live": true
+            },
+            {
+              "title": "Longevity-Centric Preventative Pet Care",
+              "description": "Pet owners are reallocating household budgets toward preventative healthcare, wearable monitoring gadgets, and longevity-focused supplements to avoid rising emergency vet expenses. This trend mirrors human wellness prioritization, treating pets as integral family members.",
+              "source_url": "https://americanpetproducts.org/",
+              "source_name": "American Pet Products Association",
+              "url_live": true
+            }
+          ]
+        },
+        "text": "[\n  {\n    \"title\": \"Comfort-Driven Micro-Spending\",\n    \"description\": \"Faced with ongoing economic uncertainty, U.S. consumers are pulling back on major big-ticket purchases in favor of accessible micro-indulgences and affordable everyday luxuries [1.2.2]. Brands are catering to this shift by emphasizing low-stress, emotionally comforting products and services.\",\n    \"source_url\": \"https://www.warc.com/en/latest\",\n    \"source_name\": \"WARC\"\n  },\n  {\n    \"title\": \"Retro Sportswear and Soccer Jersey Revival\",\n    \"description\": \"August consumer search data shows an explosive surge in vintage-inspired athletic wear, with USA soccer jerseys jumping over 2,000% alongside rising demand for retro track jackets. Shoppers are blending sporty streetwear aesthetics into mainstream late-summer and back-to-school wardrobes.\",\n    \"source_url\": \"https://www.trendalytics.co/blog\",\n    \"source_name\": \"Trendalytics\"\n  },\n  {\n    \"title\": \"Accessible Sub-Brands in Department Stores\",\n    \"description\": \"Major retail department stores are partnering with heritage designer labels to debut tailored sub-lines featuring lower price points and relaxed cuts. This approach aims to capture value-conscious shoppers looking for upscale style without luxury price tags.\",\n    \"source_url\": \"https://www.retaildive.com\",\n    \"source_name\": \"Retail Dive\"\n  },\n  {\n    \"title\": \"Intentional Design in Pet Accessories\",\n    \"description\": \"Pet owners are increasingly moving away from bulk-buy utility items in favor of aesthetically curated, durable pet gear that complements modern home decor. The pet lifestyle space is prioritizing styled accessories, neutral color palettes, and personalized details.\",\n    \"source_url\": \"https://www.forbes.com\",\n    \"source_name\": \"Forbes\"\n  },\n  {\n    \"title\": \"AI-Powered Visual Search and Shopping Assistants\",\n    \"description\": \"Consumers and retailers are rapidly adopting visual search tools and generative AI agents to research products and navigate buying journeys. Shoppers increasingly rely on automated product comparisons to locate the best value before completing checkout.\",\n    \"source_url\": \"https://www.nrf.com\",\n    \"source_name\": \"National Retail Federation\"\n  },\n  {\n    \"title\": \"Reengineered Circular Return Models\",\n    \"description\": \"Retailers are converting traditional return friction into loyalty-building circular programs by offering 'keep or donate' perks and automatic second-life resale values. This strategy reduces reverse-logistics friction while supporting consumer demand for sustainable disposition options.\",\n    \"source_url\": \"https://netchoice.org\",\n    \"source_name\": \"NetChoice\"\n  },\n  {\n    \"title\": \"Parental Push for Youth Digital Safety\",\n    \"description\": \"Mounting concern over the effects of social platforms on minors is prompting parents to embrace screen-time guardrails, offline family activities, and certified child-safe tech platforms. Brands targeting families are shifting their marketing toward privacy, transparency, and vetted communities.\",\n    \"source_url\": \"https://www.warc.com/en/latest\",\n    \"source_name\": \"WARC\"\n  },\n  {\n    \"title\": \"Lifestyle and Experiential Hubs Replacing Malls\",\n    \"description\": \"Physical shopping destinations are pivoting away from pure retail storefronts into dynamic lifestyle centers focused on experiential dining, community spaces, and entertainment. Foot traffic is rebounding as shoppers seek social environments that go beyond simple transactions.\",\n    \"source_url\": \"https://www.deloitte.com/us/en.html\",\n    \"source_name\": \"Deloitte\"\n  },\n  {\n    \"title\": \"Early Fall Wardrobe Transitioning\",\n    \"description\": \"Late-summer fashion consumers are actively purchasing transitional autumn staples, including lightweight jackets, bishop-sleeve tops, and suede footwear. Shoppers are strategically investing in versatile layering pieces ahead of the seasonal shift.\",\n    \"source_url\": \"https://www.whowhatwear.com\",\n    \"source_name\": \"Who What Wear\"\n  },\n  {\n    \"title\": \"Longevity-Centric Preventative Pet Care\",\n    \"description\": \"Pet owners are reallocating household budgets toward preventative healthcare, wearable monitoring gadgets, and longevity-focused supplements to avoid rising emergency vet expenses. This trend mirrors human wellness prioritization, treating pets as integral family members.\",\n    \"source_url\": \"https://www.americanpetproducts.org\",\n    \"source_name\": \"American Pet Products Association\"\n  }\n]",
+        "accounting": {
+          "input_tokens": 264,
+          "candidates_tokens": 1183,
+          "thoughts_tokens": 227,
+          "total_tokens": 1674,
+          "cost_as_deployed": 0.0046,
+          "cost_with_thinking": 0.0055,
+          "understated_by": 0.0009,
+          "reconciles": "candidates_excludes_thinking",
+          "rate": {
+            "input": 0.75,
+            "output": 3.75,
+            "until": "2026-12-31",
+            "after": {
+              "input": 1.5,
+              "output": 7.5
+            }
+          }
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3-flash-preview",
+        "mode": "single",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "duration_ms": 9210,
+        "emission": {
+          "trends": [
+            {
+              "title": "Agentic Commerce",
+              "description": "AI systems are transitioning from simple assistants to autonomous agents that browse, compare, and complete purchases on behalf of consumers.",
+              "source_url": "https://www.retaildive.com/news/11-retail-trends-predictions-2026/724512/",
+              "source_name": "Retail Dive",
+              "url_live": false
+            },
+            {
+              "title": "Psychedelic Bohemia",
+              "description": "A luxury fashion shift toward 1970s-inspired aesthetics featuring ruffled paisley-print chiffon, heritage checks, and glossy leather textures.",
+              "source_url": "https://www.whowhatwear.com/fashion/luxury-trends-autumn-2026",
+              "source_name": "Who What Wear",
+              "url_live": false
+            },
+            {
+              "title": "Micro-Maintenance Cleaning",
+              "description": "Consumers are moving away from deep-cleaning marathons in favor of continuous, low-effort maintenance using task-specific, eco-friendly wipes and sprays.",
+              "source_url": "https://www.globenewswire.com/news-release/2026/05/26/top-trends-household-care-2026.html",
+              "source_name": "GlobeNewswire",
+              "url_live": false
+            },
+            {
+              "title": "Retro-Sports Revival",
+              "description": "A surge in demand for soccer-inspired apparel and vintage athletic silhouettes, with USA soccer jerseys seeing a massive spike in search interest.",
+              "source_url": "https://trendalytics.co/blog/august-2026-consumer-trend-report",
+              "source_name": "Trendalytics",
+              "url_live": false
+            },
+            {
+              "title": "Intelligent Home Orchestration",
+              "description": "Smart homes are evolving into 'intelligent' homes where AI assistants proactively coordinate appliances, security, and energy without manual user input.",
+              "source_url": "https://www.forbes.com/sites/bernardmarr/2025/11/04/10-consumer-tech-trends-2026/",
+              "source_name": "Forbes",
+              "url_live": false
+            },
+            {
+              "title": "Radical Circularity",
+              "description": "Sustainable fashion is shifting toward mandatory digital product passports and bio-fabricated materials like mycelium-based leather alternatives.",
+              "source_url": "https://kauristore.com/blog/new-trends-2026-sustainable-fashion",
+              "source_name": "Kauri Store",
+              "url_live": false
+            },
+            {
+              "title": "Soft Geometry in Architecture",
+              "description": "Homeowners are abandoning rigid lines for curved silhouettes, leading to a surge in searches for arched pantry doors and rounded kitchen islands.",
+              "source_url": "https://www.houzz.com/magazine/2026-us-houzz-emerging-summer-trends-report-stsetivw-vs~175432109",
+              "source_name": "Houzz",
+              "url_live": true
+            },
+            {
+              "title": "AI Personal Finance Coaches",
+              "description": "Consumer technology is integrating intelligent financial assistance directly into core computing devices to manage budgeting and investment tasks.",
+              "source_url": "https://www.trendhunter.com/trends/august-2026-tech-trends",
+              "source_name": "Trend Hunter",
+              "url_live": false
+            },
+            {
+              "title": "Unserious Everything",
+              "description": "A macro trend where consumers reject high-pressure aesthetics in favor of subversive, irreverent, and playful designs across tech and home decor.",
+              "source_url": "https://www.wgsn.com/en/blogs/top-trends-2026-beyond",
+              "source_name": "WGSN",
+              "url_live": false
+            },
+            {
+              "title": "Dark Moody Kitchens",
+              "description": "A departure from all-white interiors, this trend embraces deep, masculine color palettes and rich textures to create high-contrast, atmospheric cooking spaces.",
+              "source_url": "https://www.architecturaldigest.com/story/2026-design-trends-forecast",
+              "source_name": "Architectural Digest",
+              "url_live": false
+            },
+            {
+              "title": "Intentional Indulgence",
+              "description": "Despite financial stress, consumers are opting for 'value-hacked' small luxuries and treats as a primary coping mechanism and emotional release.",
+              "source_url": "https://www.capgemini.com/us-en/insights/research-library/what-matters-to-todays-consumer-2026/",
+              "source_name": "Capgemini",
+              "url_live": true
+            },
+            {
+              "title": "Red Jeans for Kids",
+              "description": "A breakout back-to-school trend in childrenswear characterized by a significant surge in social media buzz for bold, red-colored denim.",
+              "source_url": "https://trendalytics.co/blog/august-2026-consumer-trend-report",
+              "source_name": "Trendalytics",
+              "url_live": false
+            },
+            {
+              "title": "Tactile Home Surfaces",
+              "description": "Touch is becoming a central design element, with skyrocketing interest in sensory-rich materials like linen wallpaper, Venetian plaster, and sandstone.",
+              "source_url": "https://www.houzz.com/magazine/2026-us-houzz-emerging-summer-trends-report-stsetivw-vs~175432109",
+              "source_name": "Houzz",
+              "url_live": true
+            }
+          ]
+        },
+        "text": "[\n  {\n    \"title\": \"Agentic Commerce\",\n    \"description\": \"AI systems are transitioning from simple assistants to autonomous agents that browse, compare, and complete purchases on behalf of consumers.\",\n    \"source_url\": \"https://www.retaildive.com/news/11-retail-trends-predictions-2026/724512/\",\n    \"source_name\": \"Retail Dive\"\n  },\n  {\n    \"title\": \"Psychedelic Bohemia\",\n    \"description\": \"A luxury fashion shift toward 1970s-inspired aesthetics featuring ruffled paisley-print chiffon, heritage checks, and glossy leather textures.\",\n    \"source_url\": \"https://www.whowhatwear.com/fashion/luxury-trends-autumn-2026\",\n    \"source_name\": \"Who What Wear\"\n  },\n  {\n    \"title\": \"Micro-Maintenance Cleaning\",\n    \"description\": \"Consumers are moving away from deep-cleaning marathons in favor of continuous, low-effort maintenance using task-specific, eco-friendly wipes and sprays.\",\n    \"source_url\": \"https://www.globenewswire.com/news-release/2026/05/26/top-trends-household-care-2026.html\",\n    \"source_name\": \"GlobeNewswire\"\n  },\n  {\n    \"title\": \"Retro-Sports Revival\",\n    \"description\": \"A surge in demand for soccer-inspired apparel and vintage athletic silhouettes, with USA soccer jerseys seeing a massive spike in search interest.\",\n    \"source_url\": \"https://www.trendalytics.co/blog/august-2026-consumer-trend-report\",\n    \"source_name\": \"Trendalytics\"\n  },\n  {\n    \"title\": \"Intelligent Home Orchestration\",\n    \"description\": \"Smart homes are evolving into 'intelligent' homes where AI assistants proactively coordinate appliances, security, and energy without manual user input.\",\n    \"source_url\": \"https://www.forbes.com/sites/bernardmarr/2025/11/04/10-consumer-tech-trends-2026/\",\n    \"source_name\": \"Forbes\"\n  },\n  {\n    \"title\": \"Radical Circularity\",\n    \"description\": \"Sustainable fashion is shifting toward mandatory digital product passports and bio-fabricated materials like mycelium-based leather alternatives.\",\n    \"source_url\": \"https://www.kauristore.com/blog/new-trends-2026-sustainable-fashion\",\n    \"source_name\": \"Kauri Store\"\n  },\n  {\n    \"title\": \"Soft Geometry in Architecture\",\n    \"description\": \"Homeowners are abandoning rigid lines for curved silhouettes, leading to a surge in searches for arched pantry doors and rounded kitchen islands.\",\n    \"source_url\": \"https://www.houzz.com/magazine/2026-us-houzz-emerging-summer-trends-report-stsetivw-vs~175432109\",\n    \"source_name\": \"Houzz\"\n  },\n  {\n    \"title\": \"AI Personal Finance Coaches\",\n    \"description\": \"Consumer technology is integrating intelligent financial assistance directly into core computing devices to manage budgeting and investment tasks.\",\n    \"source_url\": \"https://www.trendhunter.com/trends/august-2026-tech-trends\",\n    \"source_name\": \"Trend Hunter\"\n  },\n  {\n    \"title\": \"Unserious Everything\",\n    \"description\": \"A macro trend where consumers reject high-pressure aesthetics in favor of subversive, irreverent, and playful designs across tech and home decor.\",\n    \"source_url\": \"https://www.wgsn.com/en/blogs/top-trends-2026-beyond\",\n    \"source_name\": \"WGSN\"\n  },\n  {\n    \"title\": \"Dark Moody Kitchens\",\n    \"description\": \"A departure from all-white interiors, this trend embraces deep, masculine color palettes and rich textures to create high-contrast, atmospheric cooking spaces.\",\n    \"source_url\": \"https://www.architecturaldigest.com/story/2026-design-trends-forecast\",\n    \"source_name\": \"Architectural Digest\"\n  },\n  {\n    \"title\": \"Intentional Indulgence\",\n    \"description\": \"Despite financial stress, consumers are opting for 'value-hacked' small luxuries and treats as a primary coping mechanism and emotional release.\",\n    \"source_url\": \"https://www.capgemini.com/us-en/insights/research-library/what-matters-to-todays-consumer-2026/\",\n    \"source_name\": \"Capgemini\"\n  },\n  {\n    \"title\": \"Red Jeans for Kids\",\n    \"description\": \"A breakout back-to-school trend in childrenswear characterized by a significant surge in social media buzz for bold, red-colored denim.\",\n    \"source_url\": \"https://www.trendalytics.co/blog/august-2026-consumer-trend-report\",\n    \"source_name\": \"Trendalytics\"\n  },\n  {\n    \"title\": \"Tactile Home Surfaces\",\n    \"description\": \"Touch is becoming a central design element, with skyrocketing interest in sensory-rich materials like linen wallpaper, Venetian plaster, and sandstone.\",\n    \"source_url\": \"https://www.houzz.com/magazine/2026-us-houzz-emerging-summer-trends-report-stsetivw-vs~175432109\",\n    \"source_name\": \"Houzz\"\n  }\n]",
+        "accounting": {
+          "input_tokens": 167,
+          "candidates_tokens": 1308,
+          "thoughts_tokens": 0,
+          "total_tokens": 1475,
+          "cost_as_deployed": 0.0033,
+          "cost_with_thinking": 0.0033,
+          "understated_by": 0,
+          "reconciles": "n/a_no_thinking_tokens",
+          "rate": {
+            "input": 0.3,
+            "output": 2.5
+          }
+        }
+      },
+      "fields": null,
+      "descriptor": null
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "lane": "attribution",
+  "summary": "Links newly-ingested signals to existing trends. Asymmetric errors — a false positive silently inflates heat.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-21T00:06:39.787Z",
+  "finished_at": "2026-08-21T00:06:52.359Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 1,
+    "rerunIncumbent": false,
+    "caseId": null,
+    "dryRun": true,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "505887f7-415c-464c-b380-1c628a016126",
+        "label": "K-beauty brand discovery surge — US consumers searching beyond Laneige/COSRX into emerging Korean brands · 9 attributed by 2026-08-20T16:38",
+        "incumbentAt": "2026-08-20",
+        "incumbent": {
+          "emission": {
+            "attributions": [
+              {
+                "signal_id": "https://evoke.ie/2026/05/04/style/beauty/liquid-microneedling-glow-skin"
+              },
+              {
+                "signal_id": "https://trends.google.com/trends/explore?q=top+k-beauty+skincare+ingredients&geo=US"
+              },
+              {
+                "signal_id": "https://trends.google.com/trends/explore?q=korean+skincare+routine&geo=US"
+              },
+              {
+                "signal_id": "https://beautymatter.com/articles/is-the-us-olive-youngs-biggest-test-yet"
+              },
+              {
+                "signal_id": "https://prnewswire.com/news-releases/olive-young-debuts-in-the-us-with-first-store-in-pasadena-302785976.html"
+              },
+              {
+                "signal_id": "https://x.com/cloudiamia8514/status/1956954844130124234"
+              },
+              {
+                "signal_id": "https://x.com/XtoN7lKr3gt5xLe/status/2024712009644957749"
+              },
+              {
+                "signal_id": "bsky_9aef30c45719835f"
+              },
+              {
+                "signal_id": "https://dettifo.com/k-beauty-drama-300m-views"
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "attributed_count": 9
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "commit_attributions",
+        "tool_names": [
+          "filter_candidates",
+          "commit_attributions"
+        ],
+        "prompt_provenance": {
+          "signal.attribution.system": {
+            "version": 1,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 1477
+          },
+          "signal.attribution.rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2899
+          }
+        },
+        "system_chars": 12878,
+        "user_chars": 330,
+        "input_notes": {
+          "candidates_today": 20,
+          "similarity_threshold": "0.35",
+          "pool_caveat": "signals the incumbent already attributed are excluded by the anti-join — compare acceptance RATE, not row identity",
+          "budget_usd": 0.04
+        }
+      },
+      "skipped": "dry-run"
+    }
+  ]
+}

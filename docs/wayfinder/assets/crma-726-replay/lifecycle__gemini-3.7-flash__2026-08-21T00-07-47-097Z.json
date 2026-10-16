@@ -1,0 +1,104 @@
+{
+  "lane": "lifecycle",
+  "summary": "Hourly trend-status re-evaluation. Highest-volume LLM lane in the fleet and the only one with a recorded tool trace.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-21T00:07:47.097Z",
+  "finished_at": "2026-08-21T00:08:08.209Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 1,
+    "rerunIncumbent": false,
+    "caseId": null,
+    "dryRun": true,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "7b00295b-2d22-48a4-80c2-8c808d1d1dbd",
+        "label": "Topical peptide & HA formulas for lip/skin plumping instead of injectables · STABLE→STABLE @ 2026-08-20T19:09",
+        "incumbentAt": "2026-08-20",
+        "evaluatedAt": "2026-08-20T19:09:48.411000",
+        "incumbent": {
+          "emission": {
+            "emitted_at": "2026-08-20T23:09:29.484Z",
+            "next_eval_in_hours": 6,
+            "reasoning": "Zero linked signals in the past 14 days (n7=0, n7_prior=0). The 14-day total linked volume is 0, which remains below the threshold of 5 required to transition to DECLINING. As per the rubric, the trend maintains its STABLE status. Several candidate signals indicate ongoing but unlinked topic relevance.",
+            "request_re_enrichment": false,
+            "status": "STABLE"
+          },
+          "committed": {
+            "prior_status": "STABLE",
+            "new_status": "STABLE",
+            "prior_heat": 9,
+            "new_heat": 9,
+            "heat_base": 9,
+            "heat_modifier_pct": 0,
+            "reasoning": "Zero linked signals in the past 14 days (n7=0, n7_prior=0). The 14-day total linked volume is 0, which remains below the threshold of 5 required to transition to DECLINING. As per the rubric, the trend maintains its STABLE status. Several candidate signals indicate ongoing but unlinked topic relevance."
+          },
+          "tool_calls": [],
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "stop_reason": "STOP",
+            "input_tokens": 11436,
+            "output_tokens": 184,
+            "cost_estimate": 0.0251
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_lifecycle_decision",
+        "tool_names": [
+          "query_trend_neighbors",
+          "query_signal_velocity",
+          "query_lifecycle_history",
+          "propose_lifecycle_decision"
+        ],
+        "prompt_provenance": {
+          "lifecycle.subagent.decision_rubric": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 4853
+          },
+          "lifecycle.subagent.system": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5296
+          }
+        },
+        "system_chars": 13922,
+        "user_chars": 243,
+        "input_notes": {
+          "heat_base": 9,
+          "recent_signals": 0,
+          "candidate_signals": 7,
+          "neighbors": 30,
+          "replayed_eval_at": "2026-08-20T19:09:48.411000",
+          "prior_state_restored": "status=STABLE heat=9",
+          "history_entries_after_cut_dropped": 1,
+          "answer_leak_cut": "the replayed evaluation and everything after it are hidden: status, heat and history come from BEFORE it, so the model is not shown the incumbent's own answer",
+          "recomputed_now": "heat_base and the signal windows are recomputed against TODAY, so they differ from the incumbent's evaluation"
+        }
+      },
+      "skipped": "dry-run"
+    }
+  ]
+}

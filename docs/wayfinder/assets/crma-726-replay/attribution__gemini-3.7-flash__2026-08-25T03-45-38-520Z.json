@@ -1,0 +1,89 @@
+{
+  "lane": "attribution",
+  "summary": "Links newly-ingested signals to existing trends. Asymmetric errors — a false positive silently inflates heat.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-25T03:45:38.520Z",
+  "finished_at": "2026-08-25T03:45:52.779Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 1,
+    "rerunIncumbent": false,
+    "caseId": null,
+    "dryRun": true,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "5d5ca228-c2cf-4119-b88a-ef2b9c3831bb",
+        "label": "Exercise Snacks · 3 attributed by 2026-08-24T19:38",
+        "incumbentAt": "2026-08-24",
+        "incumbent": {
+          "emission": {
+            "attributions": [
+              {
+                "signal_id": "https://mindbodygreen.com/articles/this-isnt-about-gym-everyday-activity-can-improve-mood"
+              },
+              {
+                "signal_id": "bsky_82d58ecd1c3e7ce1"
+              },
+              {
+                "signal_id": "https://www.youtube.com/watch?v=Yf7l-x55UuA"
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "attributed_count": 3
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "commit_attributions",
+        "tool_names": [
+          "filter_candidates",
+          "commit_attributions"
+        ],
+        "prompt_provenance": {
+          "signal.attribution.system": {
+            "version": 1,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 1477
+          },
+          "signal.attribution.rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2899
+          }
+        },
+        "system_chars": 8775,
+        "user_chars": 240,
+        "input_notes": {
+          "candidates_today": 8,
+          "similarity_threshold": "0.35",
+          "pool_caveat": "signals the incumbent already attributed are excluded by the anti-join — compare acceptance RATE, not row identity",
+          "budget_usd": 0.04
+        }
+      },
+      "skipped": "dry-run"
+    }
+  ]
+}

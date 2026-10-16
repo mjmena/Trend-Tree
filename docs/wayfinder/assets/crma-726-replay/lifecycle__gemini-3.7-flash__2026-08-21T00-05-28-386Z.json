@@ -1,0 +1,339 @@
+{
+  "lane": "lifecycle",
+  "summary": "Hourly trend-status re-evaluation. Highest-volume LLM lane in the fleet and the only one with a recorded tool trace.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-21T00:05:28.386Z",
+  "finished_at": "2026-08-21T00:06:02.480Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 3,
+    "rerunIncumbent": true,
+    "caseId": "7b00295b-2d22-48a4-80c2-8c808d1d1dbd",
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "7b00295b-2d22-48a4-80c2-8c808d1d1dbd",
+        "label": "Topical peptide & HA formulas for lip/skin plumping instead of injectables · STABLE→STABLE @ 2026-08-20T19:09",
+        "incumbentAt": "2026-08-20",
+        "evaluatedAt": "2026-08-20T19:09:48.411000",
+        "incumbent": {
+          "emission": {
+            "emitted_at": "2026-08-20T23:09:29.484Z",
+            "next_eval_in_hours": 6,
+            "reasoning": "Zero linked signals in the past 14 days (n7=0, n7_prior=0). The 14-day total linked volume is 0, which remains below the threshold of 5 required to transition to DECLINING. As per the rubric, the trend maintains its STABLE status. Several candidate signals indicate ongoing but unlinked topic relevance.",
+            "request_re_enrichment": false,
+            "status": "STABLE"
+          },
+          "committed": {
+            "prior_status": "STABLE",
+            "new_status": "STABLE",
+            "prior_heat": 9,
+            "new_heat": 9,
+            "heat_base": 9,
+            "heat_modifier_pct": 0,
+            "reasoning": "Zero linked signals in the past 14 days (n7=0, n7_prior=0). The 14-day total linked volume is 0, which remains below the threshold of 5 required to transition to DECLINING. As per the rubric, the trend maintains its STABLE status. Several candidate signals indicate ongoing but unlinked topic relevance."
+          },
+          "tool_calls": [],
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "stop_reason": "STOP",
+            "input_tokens": 11436,
+            "output_tokens": 184,
+            "cost_estimate": 0.0251
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_lifecycle_decision",
+        "tool_names": [
+          "query_trend_neighbors",
+          "query_signal_velocity",
+          "query_lifecycle_history",
+          "propose_lifecycle_decision"
+        ],
+        "prompt_provenance": {
+          "lifecycle.subagent.decision_rubric": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 4853
+          },
+          "lifecycle.subagent.system": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5296
+          }
+        },
+        "system_chars": 13922,
+        "user_chars": 243,
+        "input_notes": {
+          "heat_base": 9,
+          "recent_signals": 0,
+          "candidate_signals": 7,
+          "neighbors": 30,
+          "replayed_eval_at": "2026-08-20T19:09:48.411000",
+          "prior_state_restored": "status=STABLE heat=9",
+          "history_entries_after_cut_dropped": 1,
+          "answer_leak_cut": "the replayed evaluation and everything after it are hidden: status, heat and history come from BEFORE it, so the model is not shown the incumbent's own answer",
+          "recomputed_now": "heat_base and the signal windows are recomputed against TODAY, so they differ from the incumbent's evaluation"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "request_re_enrichment": false,
+              "next_eval_in_hours": 6,
+              "status": "STABLE",
+              "reasoning": "No linked signals in the last 14 days (n7=0, n7_prior=0). Total 14-day linked volume (0) is below the threshold of 5 required to transition to DECLINING. Candidate signals show ongoing relevant activity in peptide lip treatments, but absent linked evidence, status remains STABLE per rubric."
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "request_re_enrichment": false,
+          "next_eval_in_hours": 6,
+          "status": "STABLE",
+          "reasoning": "No linked signals in the last 14 days (n7=0, n7_prior=0). Total 14-day linked volume (0) is below the threshold of 5 required to transition to DECLINING. Candidate signals show ongoing relevant activity in peptide lip treatments, but absent linked evidence, status remains STABLE per rubric."
+        },
+        "final_text": "### Lifecycle Evaluation Summary\n\n- **Trend ID:** `7b00295b-2d22-48a4-80c2-8c808d1d1dbd`\n- **Topic:** Topical peptide & HA formulas for lip/skin plumping instead of injectables\n- **Decision:** **STABLE** (maintained)\n- **Next Evaluation:** In 6 hours\n- **Re-enrichment Requested:** False\n\n#### Rationale\n- **Linked Signals:** `n7 = 0`, `n7_prior = 0`, `n24 = 0`. With total 14-day linked signal volume at 0, the threshold of $(n7 + n7_{\\text{prior}}) \\ge 5$ required to trigger a `DECLINING` transition is not met.\n- **Candidate Evidence:** Several strong vector-similar candidate signals exist around peptide lip treatments, but candidate signals do not contribute to deterministic heat metrics or status gates until formally attributed.\n- **Status:** Maintained as `STABLE` per rubric guidelines.",
+        "accounting": {
+          "input_tokens": 11388,
+          "candidates_tokens": 347,
+          "thoughts_tokens": 719,
+          "total_tokens": 12454,
+          "cost_as_deployed": 0.0099,
+          "cost_with_thinking": 0.0125,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0026
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "status": "STABLE",
+              "reasoning": "Zero linked signals in the last 14 days (n7=0, n7_prior=0). The 14-day total linked volume is 0, which is well below the threshold of 5 required to transition to DECLINING. The trend maintains its STABLE status. Some related candidates (e.g., peptide lip treatments) continue to appear, but lack formal linkage.",
+              "re_enrichment_reason": "",
+              "next_eval_in_hours": 6,
+              "request_re_enrichment": false
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "status": "STABLE",
+          "reasoning": "Zero linked signals in the last 14 days (n7=0, n7_prior=0). The 14-day total linked volume is 0, which is well below the threshold of 5 required to transition to DECLINING. The trend maintains its STABLE status. Some related candidates (e.g., peptide lip treatments) continue to appear, but lack formal linkage.",
+          "re_enrichment_reason": "",
+          "next_eval_in_hours": 6,
+          "request_re_enrichment": false
+        },
+        "final_text": "I have evaluated the trend and submitted the lifecycle decision. The trend remains **STABLE** because the 14-day linked signal volume is 0, which does not meet the minimum volume threshold (≥ 5) required to override to DECLINING. Candidate signals continue to hint at relevant activity, but without formal linkages, the status stays stable.",
+        "accounting": {
+          "input_tokens": 11081,
+          "candidates_tokens": 207,
+          "thoughts_tokens": 388,
+          "total_tokens": 11676,
+          "cost_as_deployed": 0.0247,
+          "cost_with_thinking": 0.0293,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0046
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 6,
+          "present_count": 4,
+          "coverage_pct": 66.7,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "emitted_at"
+          ],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 6,
+          "present_count": 4,
+          "coverage_pct": 66.7,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "fields_lost": [],
+        "fields_gained": [],
+        "coverage_delta_pct": 0
+      },
+      "descriptor": null
+    }
+  ]
+}

@@ -1,0 +1,635 @@
+{
+  "lane": "promotion",
+  "summary": "Per-candidate promote/reject/dedupe gate. Tightest budget in the fleet — where the budget-gate trap bites first.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-20T23:39:33.147Z",
+  "finished_at": "2026-08-20T23:40:33.959Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 3,
+    "rerunIncumbent": true,
+    "caseId": "cand-4fqd63vwmt1lne7t",
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "cand-4fqd63vwmt1lne7t",
+        "label": "Applying UV-sensor stickers to time sunscreen reapplication · REJECT @ 2026-08-20T10:15",
+        "incumbentAt": "2026-08-20",
+        "decidedAt": "2026-08-20T10:15:19.403000",
+        "incumbent": {
+          "emission": {
+            "decision": "REJECT",
+            "decision_category": "CONFIRM_REJECT",
+            "confidence": 0.85,
+            "rationale": "The candidate is highly specific and interesting, but it relies on a single source family (agent_chatgpt_discovery). I checked Exploding Topics for variations like 'Applying UV-sensor stickers to time sunscreen reapplication', 'UV stickers', 'UV patches', and 'sunscreen stickers', but found no corroborating search volume. As it lacks a verified second source family, it must be rejected under the two-source doctrine.",
+            "max_neighbor_sim": 0.5794,
+            "considered_neighbors": []
+          },
+          "context": {
+            "distillation_verdict": "REAL_TREND",
+            "overrode_verdict": true,
+            "cluster_size": 2,
+            "source_count": 1
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "input_tokens": 22080,
+            "output_tokens": 224,
+            "cost_estimate": 0.0468
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_decision",
+        "tool_names": [
+          "compare_topics",
+          "query_neighbor_details",
+          "verify_exploding_topics",
+          "propose_decision"
+        ],
+        "prompt_provenance": {
+          "promotion.subagent.system": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2576
+          },
+          "promotion.subagent.decision_rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 3876
+          }
+        },
+        "system_chars": 8755,
+        "user_chars": 584,
+        "input_notes": {
+          "neighbors": 3,
+          "quality_flags": [],
+          "budget_usd": 0.15,
+          "budget_gate_warning": "This lane's budget is measured on the TRUTHFUL cost. Production measures it on the understated one, so a real switch must correct RATES_PER_M in the same slice.",
+          "reconstructed": "candidate row (q_load_pending_candidates filters on PENDING; a historical candidate is not)",
+          "neighbors_excluded_as_anachronistic": 0,
+          "et_rescue": "forced false — ET rescue routing is a lead-side classification the harness does not replay"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "max_iterations"
+        },
+        "turns": 6,
+        "tool_sequence": [
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "compare_topics",
+          "propose_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "uv stickers"
+            },
+            "output": {
+              "queried": "uv stickers",
+              "matched": false,
+              "total": 0,
+              "top_keyword": null,
+              "top_absolute_volume": null,
+              "classifications": null,
+              "growth": null,
+              "candidates": [],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 2853
+          },
+          {
+            "turn": 2,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "sunscreen stickers"
+            },
+            "output": {
+              "queried": "sunscreen stickers",
+              "matched": false,
+              "total": 0,
+              "top_keyword": null,
+              "top_absolute_volume": null,
+              "classifications": null,
+              "growth": null,
+              "candidates": [],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 2653
+          },
+          {
+            "turn": 3,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "spotmyuv"
+            },
+            "output": {
+              "queried": "spotmyuv",
+              "matched": false,
+              "total": 0,
+              "top_keyword": null,
+              "top_absolute_volume": null,
+              "classifications": null,
+              "growth": null,
+              "candidates": [],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 2614
+          },
+          {
+            "turn": 4,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "uv patch"
+            },
+            "output": {
+              "queried": "uv patch",
+              "matched": false,
+              "total": 0,
+              "top_keyword": null,
+              "top_absolute_volume": null,
+              "classifications": null,
+              "growth": null,
+              "candidates": [],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 2852
+          },
+          {
+            "turn": 5,
+            "name": "compare_topics",
+            "args": {
+              "reasoning": "UV-sensor stickers/patches for timing sunscreen reapplication are disposable color-changing adhesive patches, distinct from fashion-forward smart electronic jewelry wearables.",
+              "my_judgment": "different_topic",
+              "neighbor_trend_id": "a3a4a10a-6b54-40bc-a133-c92af2d2d253"
+            },
+            "output": {
+              "neighbor": {
+                "trend_id": "a3a4a10a-6b54-40bc-a133-c92af2d2d253",
+                "topic": "Wearing fashion-forward smart jewelry to track real-time UV exposure",
+                "summary": "Consumers are wearing fashion-forward smart jewelry with integrated UV sensors to continuously track their sun exposure. Pairing with apps for personalized sunscreen reminders, these wearables reframe sun care as a trackable, daily health habit.",
+                "similarity": 0.5794,
+                "cluster_size": 3,
+                "heat": 8.5,
+                "age_days": 67,
+                "sample_signals": [
+                  {
+                    "title": "Wearing fashion-forward UV-tracking jewelry for sun safety",
+                    "domain": "techedt.com",
+                    "timestamp": "2026-06-14T00:06:15"
+                  },
+                  {
+                    "title": "Wearable UV Sensors for Smart Sun Care",
+                    "domain": "prnewswire.com",
+                    "timestamp": "2026-06-13T08:05:12"
+                  },
+                  {
+                    "title": "Wearing sun‑intelligence jewelry to track/manage UV exposure",
+                    "domain": "prnewswire.com",
+                    "timestamp": "2026-06-11T13:00:00"
+                  }
+                ]
+              },
+              "recorded_judgment": "different_topic",
+              "note": "judgment recorded in considered_neighbors trail"
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 6,
+            "name": "propose_decision",
+            "args": {
+              "decision_category": "LOW_QUALITY",
+              "rejection_reason": "NO_SECOND_SOURCE",
+              "rationale": "Candidate has only 1 signal source family (agent_chatgpt_discovery). Checked Exploding Topics for independent corroboration across multiple queries ('uv stickers', 'sunscreen stickers', 'spotmyuv', 'uv patch'), but no matching demand signals were returned. Lacking a second independent source family, the candidate fails the two-source doctrine and cannot be promoted.",
+              "decision": "REJECT"
+            },
+            "output": {
+              "accepted": true,
+              "decision": "REJECT",
+              "category": "LOW_QUALITY"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "decision_category": "LOW_QUALITY",
+          "rejection_reason": "NO_SECOND_SOURCE",
+          "rationale": "Candidate has only 1 signal source family (agent_chatgpt_discovery). Checked Exploding Topics for independent corroboration across multiple queries ('uv stickers', 'sunscreen stickers', 'spotmyuv', 'uv patch'), but no matching demand signals were returned. Lacking a second independent source family, the candidate fails the two-source doctrine and cannot be promoted.",
+          "decision": "REJECT"
+        },
+        "final_text": "",
+        "accounting": {
+          "input_tokens": 26412,
+          "candidates_tokens": 301,
+          "thoughts_tokens": 731,
+          "total_tokens": 27444,
+          "cost_as_deployed": 0.0209,
+          "cost_with_thinking": 0.0236,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0027
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 6,
+        "tool_sequence": [
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "verify_exploding_topics",
+          "propose_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "UV stickers"
+            },
+            "output": {
+              "queried": "UV stickers",
+              "matched": false,
+              "total": 0,
+              "top_keyword": null,
+              "top_absolute_volume": null,
+              "classifications": null,
+              "growth": null,
+              "candidates": [],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 3504
+          },
+          {
+            "turn": 2,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "UV patches"
+            },
+            "output": {
+              "queried": "UV patches",
+              "matched": false,
+              "total": 0,
+              "top_keyword": null,
+              "top_absolute_volume": null,
+              "classifications": null,
+              "growth": null,
+              "candidates": [],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 3076
+          },
+          {
+            "turn": 3,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "sunscreen stickers"
+            },
+            "output": {
+              "queried": "sunscreen stickers",
+              "matched": false,
+              "total": 0,
+              "top_keyword": null,
+              "top_absolute_volume": null,
+              "classifications": null,
+              "growth": null,
+              "candidates": [],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 3042
+          },
+          {
+            "turn": 4,
+            "name": "verify_exploding_topics",
+            "args": {
+              "keyword": "spotmyuv"
+            },
+            "output": {
+              "queried": "spotmyuv",
+              "matched": false,
+              "total": 0,
+              "top_keyword": null,
+              "top_absolute_volume": null,
+              "classifications": null,
+              "growth": null,
+              "candidates": [],
+              "volume_floor": 1000,
+              "rubric": "Corroboration = (this is the SAME concept as the candidate — your judgment; the match is fuzzy) AND (absolute_volume above the volume_floor). classifications/growth are informational only. If corroborated, propose_decision(PROMOTE_NEW) with et_was_second_source=true and et_matched_keyword set. If not corroborated, the candidate is still single-family — REJECT.",
+              "error": null
+            },
+            "error": null,
+            "duration_ms": 3063
+          },
+          {
+            "turn": 5,
+            "name": "propose_decision",
+            "args": {
+              "rationale": "The candidate only has a single source family (agent_chatgpt_discovery=1) and we attempted to verify it using Exploding Topics as an ET-RESCUE candidate. Searches for 'UV stickers', 'UV patches', 'sunscreen stickers', and 'spotmyuv' returned no corroborating search volume. Therefore, the candidate lacks the required second independent source family and must be rejected.",
+              "decision_category": "LOW_QUALITY",
+              "rejection_reason": "NO_SECOND_SOURCE",
+              "decision": "REJECT"
+            },
+            "output": {
+              "accepted": true,
+              "decision": "REJECT",
+              "category": "LOW_QUALITY"
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "rationale": "The candidate only has a single source family (agent_chatgpt_discovery=1) and we attempted to verify it using Exploding Topics as an ET-RESCUE candidate. Searches for 'UV stickers', 'UV patches', 'sunscreen stickers', and 'spotmyuv' returned no corroborating search volume. Therefore, the candidate lacks the required second independent source family and must be rejected.",
+          "decision_category": "LOW_QUALITY",
+          "rejection_reason": "NO_SECOND_SOURCE",
+          "decision": "REJECT"
+        },
+        "final_text": "I have reviewed the candidate and the neighbor pool. As the candidate only had a single source family (`agent_chatgpt_discovery=1`), I attempted to rescue it by corroborating search demand with Exploding Topics for terms like \"UV stickers\", \"UV patches\", \"sunscreen stickers\", and brand names like \"spotmyuv\". Since none of these queries returned corroborating search volume, the candidate fails the two-source doctrine and has been rejected due to lack of a second independent source.",
+        "accounting": {
+          "input_tokens": 26386,
+          "candidates_tokens": 310,
+          "thoughts_tokens": 358,
+          "total_tokens": 27054,
+          "cost_as_deployed": 0.0565,
+          "cost_with_thinking": 0.0608,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0043
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 10,
+          "present_count": 3,
+          "coverage_pct": 30,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "confidence",
+            "max_neighbor_sim",
+            "considered_neighbors[]"
+          ],
+          "rows": [
+            {
+              "path": "decision",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "decision_category",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "target_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "trend_topic",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rejection_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_until",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rationale",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "et_was_second_source",
+              "type": "boolean",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "et_matched_keyword",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 10,
+          "present_count": 4,
+          "coverage_pct": 40,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "decision",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "decision_category",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "target_trend_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "trend_topic",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rejection_reason",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "defer_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "defer_until",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "rationale",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "et_was_second_source",
+              "type": "boolean",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "et_matched_keyword",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "fields_lost": [],
+        "fields_gained": [
+          "rejection_reason"
+        ],
+        "coverage_delta_pct": 10
+      },
+      "descriptor": null
+    }
+  ]
+}

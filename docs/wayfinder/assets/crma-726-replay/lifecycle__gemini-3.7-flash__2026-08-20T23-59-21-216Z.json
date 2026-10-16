@@ -1,0 +1,106 @@
+{
+  "lane": "lifecycle",
+  "summary": "Hourly trend-status re-evaluation. Highest-volume LLM lane in the fleet and the only one with a recorded tool trace.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-20T23:59:21.216Z",
+  "finished_at": "2026-08-20T23:59:44.174Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 3,
+    "rerunIncumbent": false,
+    "caseId": "55957e73-28f8-4539-a81e-0aaca3df05ac",
+    "dryRun": true,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "55957e73-28f8-4539-a81e-0aaca3df05ac",
+        "label": "Nervous system training via biofeedback wearables for active stress fitness · DORMANT→RETIRED @ 2026-08-02T02:09",
+        "incumbentAt": "2026-08-02",
+        "evaluatedAt": "2026-08-02T02:09:49.761000",
+        "incumbent": {
+          "emission": {
+            "emitted_at": "2026-08-02T06:09:29.695Z",
+            "next_eval_in_hours": 24,
+            "re_enrichment_reason": "",
+            "reasoning": "Trend has remained DORMANT for over 30 days. There have been zero formally linked signals in the last 14 days, and active publisher domains remain at 0 over the last 21 days. The previous evaluation proposed retirement. With no new linked evidence to change the trajectory, the two-cycle confirmation is met. Committing RETIRED.",
+            "request_re_enrichment": false,
+            "retirement_reason": "Trend has been DORMANT for >30 days with 0 active publisher domains in the last 21 days, confirming second cycle for retirement.",
+            "status": "RETIRED"
+          },
+          "committed": {
+            "prior_status": "DORMANT",
+            "new_status": "RETIRED",
+            "prior_heat": 7.5,
+            "new_heat": 8.8,
+            "heat_base": 8.8,
+            "heat_modifier_pct": 0,
+            "reasoning": "Trend has remained DORMANT for over 30 days. There have been zero formally linked signals in the last 14 days, and active publisher domains remain at 0 over the last 21 days. The previous evaluation proposed retirement. With no new linked evidence to change the trajectory, the two-cycle confirmation is met. Committing RETIRED."
+          },
+          "tool_calls": [],
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "stop_reason": "STOP",
+            "input_tokens": 11897,
+            "output_tokens": 185,
+            "cost_estimate": 0.026
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_lifecycle_decision",
+        "tool_names": [
+          "query_trend_neighbors",
+          "query_signal_velocity",
+          "query_lifecycle_history",
+          "propose_lifecycle_decision"
+        ],
+        "prompt_provenance": {
+          "lifecycle.subagent.decision_rubric": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 4853
+          },
+          "lifecycle.subagent.system": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5296
+          }
+        },
+        "system_chars": 14881,
+        "user_chars": 244,
+        "input_notes": {
+          "heat_base": 8.8,
+          "recent_signals": 0,
+          "candidate_signals": 14,
+          "neighbors": 30,
+          "replayed_eval_at": "2026-08-02T02:09:49.761000",
+          "prior_state_restored": "status=DORMANT heat=7.5",
+          "history_entries_after_cut_dropped": 1,
+          "answer_leak_cut": "the replayed evaluation and everything after it are hidden: status, heat and history come from BEFORE it, so the model is not shown the incumbent's own answer",
+          "recomputed_now": "heat_base and the signal windows are recomputed against TODAY, so they differ from the incumbent's evaluation"
+        }
+      },
+      "skipped": "dry-run"
+    }
+  ]
+}

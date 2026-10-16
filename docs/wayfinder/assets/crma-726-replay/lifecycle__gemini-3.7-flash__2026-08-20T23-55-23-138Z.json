@@ -1,0 +1,342 @@
+{
+  "lane": "lifecycle",
+  "summary": "Hourly trend-status re-evaluation. Highest-volume LLM lane in the fleet and the only one with a recorded tool trace.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-20T23:55:23.138Z",
+  "finished_at": "2026-08-20T23:55:53.059Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 3,
+    "rerunIncumbent": true,
+    "caseId": "55957e73-28f8-4539-a81e-0aaca3df05ac",
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "55957e73-28f8-4539-a81e-0aaca3df05ac",
+        "label": "Nervous system training via biofeedback wearables for active stress fitness · DORMANT→RETIRED @ 2026-08-02T02:09",
+        "incumbentAt": "2026-08-02",
+        "incumbent": {
+          "emission": {
+            "emitted_at": "2026-08-02T06:09:29.695Z",
+            "next_eval_in_hours": 24,
+            "re_enrichment_reason": "",
+            "reasoning": "Trend has remained DORMANT for over 30 days. There have been zero formally linked signals in the last 14 days, and active publisher domains remain at 0 over the last 21 days. The previous evaluation proposed retirement. With no new linked evidence to change the trajectory, the two-cycle confirmation is met. Committing RETIRED.",
+            "request_re_enrichment": false,
+            "retirement_reason": "Trend has been DORMANT for >30 days with 0 active publisher domains in the last 21 days, confirming second cycle for retirement.",
+            "status": "RETIRED"
+          },
+          "committed": {
+            "prior_status": "DORMANT",
+            "new_status": "RETIRED",
+            "prior_heat": 7.5,
+            "new_heat": 8.8,
+            "heat_base": 8.8,
+            "heat_modifier_pct": 0,
+            "reasoning": "Trend has remained DORMANT for over 30 days. There have been zero formally linked signals in the last 14 days, and active publisher domains remain at 0 over the last 21 days. The previous evaluation proposed retirement. With no new linked evidence to change the trajectory, the two-cycle confirmation is met. Committing RETIRED."
+          },
+          "tool_calls": [],
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "stop_reason": "STOP",
+            "input_tokens": 11897,
+            "output_tokens": 185,
+            "cost_estimate": 0.026
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_lifecycle_decision",
+        "tool_names": [
+          "query_trend_neighbors",
+          "query_signal_velocity",
+          "query_lifecycle_history",
+          "propose_lifecycle_decision"
+        ],
+        "prompt_provenance": {
+          "lifecycle.subagent.decision_rubric": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 4853
+          },
+          "lifecycle.subagent.system": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5296
+          }
+        },
+        "system_chars": 15213,
+        "user_chars": 244,
+        "input_notes": {
+          "heat_base": 8.8,
+          "recent_signals": 0,
+          "candidate_signals": 14,
+          "neighbors": 30,
+          "recomputed_now": "heat_base and the signal windows are recomputed against TODAY, so they differ from the incumbent's evaluation"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "status": "RETIRED",
+              "request_re_enrichment": false,
+              "reasoning": "Trend is already in RETIRED status following a prior two-cycle confirmation on 2026-08-02. There are zero linked signals in the evaluation window and active domains remain at 0. Maintaining RETIRED status as specified by rubric.",
+              "retirement_reason": "Trend previously retired after two-cycle confirmation; remains inactive with 0 linked signals.",
+              "next_eval_in_hours": 168
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "status": "RETIRED",
+          "request_re_enrichment": false,
+          "reasoning": "Trend is already in RETIRED status following a prior two-cycle confirmation on 2026-08-02. There are zero linked signals in the evaluation window and active domains remain at 0. Maintaining RETIRED status as specified by rubric.",
+          "retirement_reason": "Trend previously retired after two-cycle confirmation; remains inactive with 0 linked signals.",
+          "next_eval_in_hours": 168
+        },
+        "final_text": "### Lifecycle Evaluation Summary\n\n- **Trend ID:** `55957e73-28f8-4539-a81e-0aaca3df05ac`\n- **Topic:** Nervous system training via biofeedback wearables for active stress fitness\n- **Previous Status:** `RETIRED`\n- **Proposed Status:** `RETIRED`\n- **Retirement Reason:** Trend previously retired after two-cycle confirmation; remains inactive with 0 linked signals and 0 active publisher domains.\n- **Next Evaluation:** Irrelevant / NULL (set to 168 hours by default)\n- **Re-Enrichment Requested:** `false`\n\n**Reasoning:**\nThe trend was already moved to `RETIRED` following two consecutive confirmed evaluations. With zero linked signals in the last 14 days and zero active publisher domains over the last 21 days, there is no linked evidence to warrant resurrection. Per the decision rubric, the trend remains `RETIRED`.",
+        "accounting": {
+          "input_tokens": 12142,
+          "candidates_tokens": 340,
+          "thoughts_tokens": 403,
+          "total_tokens": 12885,
+          "cost_as_deployed": 0.0104,
+          "cost_with_thinking": 0.0119,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0015
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "next_eval_in_hours": 24,
+              "re_enrichment_reason": "",
+              "request_re_enrichment": false,
+              "retirement_reason": "Already retired.",
+              "reasoning": "Trend is already RETIRED. The sweeper should have filtered this out; something upstream is wrong. Emitting RETIRED to maintain state.",
+              "status": "RETIRED"
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "next_eval_in_hours": 24,
+          "re_enrichment_reason": "",
+          "request_re_enrichment": false,
+          "retirement_reason": "Already retired.",
+          "reasoning": "Trend is already RETIRED. The sweeper should have filtered this out; something upstream is wrong. Emitting RETIRED to maintain state.",
+          "status": "RETIRED"
+        },
+        "final_text": "I have emitted the lifecycle decision to maintain this trend's status as `RETIRED`. Since `RETIRED` trends are supposed to be filtered out by the sweeper, I have flagged this anomaly in the reasoning.",
+        "accounting": {
+          "input_tokens": 11926,
+          "candidates_tokens": 141,
+          "thoughts_tokens": 211,
+          "total_tokens": 12278,
+          "cost_as_deployed": 0.0255,
+          "cost_with_thinking": 0.0281,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0026
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 6,
+          "present_count": 6,
+          "coverage_pct": 100,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "emitted_at"
+          ],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 1,
+              "sample_count": 1
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 6,
+          "present_count": 5,
+          "coverage_pct": 83.3,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "fields_lost": [
+          "re_enrichment_reason"
+        ],
+        "fields_gained": [],
+        "coverage_delta_pct": -16.7
+      },
+      "descriptor": null
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "lane": "promotion",
+  "summary": "Per-candidate promote/reject/dedupe gate. Tightest budget in the fleet — where the budget-gate trap bites first.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-25T03:47:17.835Z",
+  "finished_at": "2026-08-25T03:47:34.585Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 1,
+    "rerunIncumbent": false,
+    "caseId": null,
+    "dryRun": true,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "cand-0ek7mwwimt7ya67o",
+        "label": "Collecting savory and pickle-flavored novelty lip balms · REJECT @ 2026-08-24T22:14",
+        "incumbentAt": "2026-08-24",
+        "decidedAt": "2026-08-24T22:14:59.520000",
+        "incumbent": {
+          "emission": {
+            "decision": "REJECT",
+            "decision_category": "LOW_QUALITY",
+            "confidence": 0.8,
+            "rationale": "The candidate only has a single source family (agent_grok_discovery). Since it was flagged as an ET-rescue candidate, we checked Exploding Topics for corroboration, but it returned no matches for 'pickle lip balm'. Therefore, the candidate fails the two-source doctrine and must be rejected.",
+            "max_neighbor_sim": 0.5668,
+            "considered_neighbors": []
+          },
+          "context": {
+            "distillation_verdict": "REAL_TREND",
+            "overrode_verdict": true,
+            "cluster_size": 1,
+            "source_count": 1
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "input_tokens": 7971,
+            "output_tokens": 130,
+            "cost_estimate": 0.0175
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_decision",
+        "tool_names": [
+          "compare_topics",
+          "query_neighbor_details",
+          "verify_exploding_topics",
+          "propose_decision"
+        ],
+        "prompt_provenance": {
+          "promotion.subagent.system": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2576
+          },
+          "promotion.subagent.decision_rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 3876
+          }
+        },
+        "system_chars": 8185,
+        "user_chars": 584,
+        "input_notes": {
+          "neighbors": 3,
+          "quality_flags": [],
+          "budget_usd": 0.15,
+          "budget_gate_warning": "This lane's budget is measured on the TRUTHFUL cost. Production measures it on the understated one, so a real switch must correct RATES_PER_M in the same slice.",
+          "reconstructed": "candidate row (q_load_pending_candidates filters on PENDING; a historical candidate is not)",
+          "neighbors_excluded_as_anachronistic": 0,
+          "et_rescue": "forced false — ET rescue routing is a lead-side classification the harness does not replay"
+        }
+      },
+      "skipped": "dry-run"
+    }
+  ]
+}

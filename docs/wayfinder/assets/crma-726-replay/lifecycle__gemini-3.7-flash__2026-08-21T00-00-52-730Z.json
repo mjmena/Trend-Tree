@@ -1,0 +1,341 @@
+{
+  "lane": "lifecycle",
+  "summary": "Hourly trend-status re-evaluation. Highest-volume LLM lane in the fleet and the only one with a recorded tool trace.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-21T00:00:52.730Z",
+  "finished_at": "2026-08-21T00:01:28.412Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 3,
+    "rerunIncumbent": true,
+    "caseId": "844b52ec-012a-4d5b-b628-401491d6b43d",
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "844b52ec-012a-4d5b-b628-401491d6b43d",
+        "label": "Wearable Adhesive Cramp Relief Patches · DECLINING→DORMANT @ 2026-07-24T06:09",
+        "incumbentAt": "2026-07-24",
+        "evaluatedAt": "2026-07-24T06:09:48.278000",
+        "incumbent": {
+          "emission": {
+            "emitted_at": "2026-07-24T10:09:29.426Z",
+            "next_eval_in_hours": 24,
+            "reasoning": "Zero linked signals in the last 14 days. The trend has fully cooled and is transitioning from DECLINING to DORMANT. Will wait for any resurgent activity.",
+            "request_re_enrichment": false,
+            "status": "DORMANT"
+          },
+          "committed": {
+            "prior_status": "DECLINING",
+            "new_status": "DORMANT",
+            "prior_heat": 9,
+            "new_heat": 7.2,
+            "heat_base": 8.5,
+            "heat_modifier_pct": -15,
+            "reasoning": "Zero linked signals in the last 14 days. The trend has fully cooled and is transitioning from DECLINING to DORMANT. Will wait for any resurgent activity."
+          },
+          "tool_calls": [],
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "stop_reason": "STOP",
+            "input_tokens": 10605,
+            "output_tokens": 145,
+            "cost_estimate": 0.0229
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_lifecycle_decision",
+        "tool_names": [
+          "query_trend_neighbors",
+          "query_signal_velocity",
+          "query_lifecycle_history",
+          "propose_lifecycle_decision"
+        ],
+        "prompt_provenance": {
+          "lifecycle.subagent.decision_rubric": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 4853
+          },
+          "lifecycle.subagent.system": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5296
+          }
+        },
+        "system_chars": 13221,
+        "user_chars": 246,
+        "input_notes": {
+          "heat_base": 8.5,
+          "recent_signals": 0,
+          "candidate_signals": 1,
+          "neighbors": 30,
+          "replayed_eval_at": "2026-07-24T06:09:48.278000",
+          "prior_state_restored": "status=DECLINING heat=9",
+          "history_entries_after_cut_dropped": 1,
+          "answer_leak_cut": "the replayed evaluation and everything after it are hidden: status, heat and history come from BEFORE it, so the model is not shown the incumbent's own answer",
+          "recomputed_now": "heat_base and the signal windows are recomputed against TODAY, so they differ from the incumbent's evaluation"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "request_re_enrichment": false,
+              "reasoning": "Zero linked signals in the past 14 days and 0 active publisher domains over the last 21 days. Meeting the rubric override condition for DECLINING trends with no linked activity in the 14-day window, the trend transitions to DORMANT.",
+              "next_eval_in_hours": 24,
+              "status": "DORMANT"
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "request_re_enrichment": false,
+          "reasoning": "Zero linked signals in the past 14 days and 0 active publisher domains over the last 21 days. Meeting the rubric override condition for DECLINING trends with no linked activity in the 14-day window, the trend transitions to DORMANT.",
+          "next_eval_in_hours": 24,
+          "status": "DORMANT"
+        },
+        "final_text": "### Lifecycle Evaluation Summary\n\n- **Trend:** Wearable Adhesive Cramp Relief Patches (`844b52ec-012a-4d5b-b628-401491d6b43d`)\n- **Previous Status:** `DECLINING`\n- **New Status:** `DORMANT`\n- **Next Evaluation:** In 24 hours\n- **Re-Enrichment Requested:** No\n\n#### Rationalization\nThe trend has had zero formally linked signals over the past 14 days and zero active publisher domains over the last 21 days. Under the decision rubric, when a `DECLINING` trend experiences complete linked signal silence across the 14-day evaluation window, it overrides to `DORMANT`.",
+        "accounting": {
+          "input_tokens": 10665,
+          "candidates_tokens": 266,
+          "thoughts_tokens": 572,
+          "total_tokens": 11503,
+          "cost_as_deployed": 0.009,
+          "cost_with_thinking": 0.0111,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0021
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "request_re_enrichment": false,
+              "next_eval_in_hours": 24,
+              "reasoning": "Zero linked signals in the last 14d. Trajectory has cooled completely, with active publisher domains falling to 0. Transitioning from DECLINING to DORMANT per rubric override. Candidate activity remains weak and tangential.",
+              "retirement_reason": "",
+              "re_enrichment_reason": "",
+              "status": "DORMANT"
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "request_re_enrichment": false,
+          "next_eval_in_hours": 24,
+          "reasoning": "Zero linked signals in the last 14d. Trajectory has cooled completely, with active publisher domains falling to 0. Transitioning from DECLINING to DORMANT per rubric override. Candidate activity remains weak and tangential.",
+          "retirement_reason": "",
+          "re_enrichment_reason": "",
+          "status": "DORMANT"
+        },
+        "final_text": "The lifecycle decision has been successfully proposed. The trend has cooled entirely with zero linked signals in the last 14 days, prompting the transition from DECLINING to DORMANT.",
+        "accounting": {
+          "input_tokens": 10429,
+          "candidates_tokens": 146,
+          "thoughts_tokens": 324,
+          "total_tokens": 10899,
+          "cost_as_deployed": 0.0226,
+          "cost_with_thinking": 0.0265,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0039
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 6,
+          "present_count": 4,
+          "coverage_pct": 66.7,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "emitted_at"
+          ],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 6,
+          "present_count": 4,
+          "coverage_pct": 66.7,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "fields_lost": [],
+        "fields_gained": [],
+        "coverage_delta_pct": 0
+      },
+      "descriptor": null
+    }
+  ]
+}

@@ -1,0 +1,1059 @@
+{
+  "lane": "attribution",
+  "summary": "Links newly-ingested signals to existing trends. Asymmetric errors — a false positive silently inflates heat.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-21T00:01:47.586Z",
+  "finished_at": "2026-08-21T00:03:25.975Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 4,
+    "rerunIncumbent": false,
+    "caseId": null,
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "505887f7-415c-464c-b380-1c628a016126",
+        "label": "K-beauty brand discovery surge — US consumers searching beyond Laneige/COSRX into emerging Korean brands · 9 attributed by 2026-08-20T16:38",
+        "incumbentAt": "2026-08-20",
+        "incumbent": {
+          "emission": {
+            "attributions": [
+              {
+                "signal_id": "https://evoke.ie/2026/05/04/style/beauty/liquid-microneedling-glow-skin"
+              },
+              {
+                "signal_id": "https://trends.google.com/trends/explore?q=top+k-beauty+skincare+ingredients&geo=US"
+              },
+              {
+                "signal_id": "https://trends.google.com/trends/explore?q=korean+skincare+routine&geo=US"
+              },
+              {
+                "signal_id": "https://beautymatter.com/articles/is-the-us-olive-youngs-biggest-test-yet"
+              },
+              {
+                "signal_id": "https://prnewswire.com/news-releases/olive-young-debuts-in-the-us-with-first-store-in-pasadena-302785976.html"
+              },
+              {
+                "signal_id": "https://x.com/cloudiamia8514/status/1956954844130124234"
+              },
+              {
+                "signal_id": "https://x.com/XtoN7lKr3gt5xLe/status/2024712009644957749"
+              },
+              {
+                "signal_id": "bsky_9aef30c45719835f"
+              },
+              {
+                "signal_id": "https://dettifo.com/k-beauty-drama-300m-views"
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "attributed_count": 9
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "commit_attributions",
+        "tool_names": [
+          "filter_candidates",
+          "commit_attributions"
+        ],
+        "prompt_provenance": {
+          "signal.attribution.system": {
+            "version": 1,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 1477
+          },
+          "signal.attribution.rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2899
+          }
+        },
+        "system_chars": 12878,
+        "user_chars": 330,
+        "input_notes": {
+          "candidates_today": 20,
+          "similarity_threshold": "0.35",
+          "pool_caveat": "signals the incumbent already attributed are excluded by the anti-join — compare acceptance RATE, not row identity",
+          "budget_usd": 0.04
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "commit_attributions"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "commit_attributions",
+            "args": {
+              "attributions": []
+            },
+            "output": {
+              "accepted": true,
+              "count": 0,
+              "note": "Attributions captured. Commit step will INSERT to FCT_TREND_SIGNALS (LINK_KIND='attributed')."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "attributions": []
+        },
+        "final_text": "### Evaluation Summary\n\n**Trend:** K-beauty brand discovery surge — US consumers searching beyond Laneige/COSRX into emerging Korean brands (`505887f7-415c-464c-b380-1c628a016126`)\n\nEach candidate signal was evaluated against the specific topic of discovery and adoption of niche/emerging Korean skincare labels:\n\n1. **Men are Investing More in Skincare (#Japan / Tokyo)**: *SKIP* — Focuses on Japanese men's skincare market, not niche K-beauty labels.\n2. **Kim Kardashian / Broc Shot**: *SKIP* — Western celebrity skin health supplement.\n3. **Upcycled ingredients in beauty**: *SKIP* — General sustainability/upcycled ingredient trend.\n4. & 13. **Humanrace Skincare Google Trends**: *SKIP* — Western celebrity brand (Pharrell Williams), not long-tail K-beauty.\n5. **NAD+ Cellular Skincare**: *SKIP* — Mentions \"glass skin\" aesthetic passingly, but focuses on Western/biotech cellular repair active ingredients.\n6. **Upcycled Ingredient Beauty Product Purchasing**: *SKIP* — General circular economy cosmetic formulations.\n7. & 11. **Ingesting 'Beauty Foods' / Sardines**: *SKIP* — Ingestible wellness/nutritional beauty trend.\n8. **Target / Ulta Beauty Studio**: *SKIP* — US mass retail channel shifts.\n9. **Dual-chamber skincare-makeup hybrid (e.l.f. x Bubble)**: *SKIP* — Western drugstore/indie hybrid formulations.\n10. **Skin-Specific Beauty Tissues (Kleenex)**: *SKIP* — Mass market facial tissue innovation.\n12. & 15. **Eco-Conscious / Refined Gourmand Fragrances**: *SKIP* — Fragrance category trends.\n14. **GHK-Cu Copper Peptide Serums**: *SKIP* — Ingredient-led peptide trend.\n16. **Peptide-infused lip treatments**: *SKIP* — Lip treatment category.\n17. **Upscale Affordable Gyms**: *SKIP* — Fitness category.\n18. **Fermented Food Mainstreaming**: *SKIP* — Gut health and dietary fermented foods.\n19. **Chewable oral probiotics**: *SKIP* — Oral microbiome supplements.\n20. **Affordability Prioritization**: *SKIP* — Macro food & beverage retail shift.\n\n**Attributions committed:** 0 signals linked.",
+        "accounting": {
+          "input_tokens": 8975,
+          "candidates_tokens": 562,
+          "thoughts_tokens": 654,
+          "total_tokens": 10191,
+          "cost_as_deployed": 0.0089,
+          "cost_with_thinking": 0.0113,
+          "reconciles": [
+            "candidates_excludes_thinking",
+            "n/a_no_thinking_tokens"
+          ],
+          "understated_by": 0.0024
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "commit_attributions"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "commit_attributions",
+            "args": {
+              "attributions": []
+            },
+            "output": {
+              "accepted": true,
+              "count": 0,
+              "note": "Attributions captured. Commit step will INSERT to FCT_TREND_SIGNALS (LINK_KIND='attributed')."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "attributions": []
+        },
+        "final_text": "I have reviewed the 20 candidate signals against the \"K-beauty brand discovery surge\" trend. \n\nAfter applying the attribution rubric, none of the candidates qualified. The candidate signals largely covered unrelated beauty or wellness trends such as Japanese men's skincare, upcycled ingredients, peptide treatments, and other general skincare topics (e.g., Humanrace skincare, NAD+ skincare), rather than the specific trend of US consumers discovering emerging, niche Korean beauty brands. \n\nTherefore, I have committed an empty list of attributions to ensure the trend's velocity and breadth metrics remain uncorrupted by false positives.",
+        "accounting": {
+          "input_tokens": 8778,
+          "candidates_tokens": 140,
+          "thoughts_tokens": 470,
+          "total_tokens": 9388,
+          "cost_as_deployed": 0.0192,
+          "cost_with_thinking": 0.0249,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0057
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 3,
+          "present_count": 2,
+          "coverage_pct": 66.7,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "attributions[]",
+              "type": "array<object>",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 9
+            },
+            {
+              "path": "attributions[].signal_id",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 9
+            },
+            {
+              "path": "attributions[].link_type",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 3,
+          "present_count": 0,
+          "coverage_pct": 0,
+          "missing_required": [
+            "attributions[]"
+          ],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "attributions[]",
+              "type": "array<object>",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "attributions[].signal_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "attributions[].link_type",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "fields_lost": [
+          "attributions[]",
+          "attributions[].signal_id"
+        ],
+        "fields_gained": [],
+        "coverage_delta_pct": -66.7
+      },
+      "descriptor": null
+    },
+    {
+      "case": {
+        "id": "d3bcd2cb-62bc-470b-80b5-a562b5c17a44",
+        "label": "Taking Chitosan Supplements for Microplastic Detox · 2 attributed by 2026-08-20T01:38",
+        "incumbentAt": "2026-08-20",
+        "incumbent": {
+          "emission": {
+            "attributions": [
+              {
+                "signal_id": "https://x.com/Sydney843/status/2084687095709241789"
+              },
+              {
+                "signal_id": "https://x.com/FreezerBurnv2/status/2084842394843762812"
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "attributed_count": 2
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "commit_attributions",
+        "tool_names": [
+          "filter_candidates",
+          "commit_attributions"
+        ],
+        "prompt_provenance": {
+          "signal.attribution.system": {
+            "version": 1,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 1477
+          },
+          "signal.attribution.rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2899
+          }
+        },
+        "system_chars": 10177,
+        "user_chars": 276,
+        "input_notes": {
+          "candidates_today": 12,
+          "similarity_threshold": "0.35",
+          "pool_caveat": "signals the incumbent already attributed are excluded by the anti-join — compare acceptance RATE, not row identity",
+          "budget_usd": 0.04
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "commit_attributions"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "commit_attributions",
+            "args": {
+              "attributions": []
+            },
+            "output": {
+              "accepted": true,
+              "count": 0,
+              "note": "Attributions captured. Commit step will INSERT to FCT_TREND_SIGNALS (LINK_KIND='attributed')."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "attributions": []
+        },
+        "final_text": "### Signal Evaluation Summary\n\n**Trend:** Taking Chitosan Supplements for Microplastic Detox (`d3bcd2cb-62bc-470b-80b5-a562b5c17a44`)\n\nEach of the 12 candidate signals was evaluated against the topic of consumers taking chitosan and microplastic-binding supplements for environmental plastic detox:\n\n1. **Cleaning tablet refills** (`greenpaperproducts.com` / sim: 0.43) — **SKIP**: Relates to home cleaning sustainability, not ingestible detox supplements.\n2. **Sulforaphane skin/gut health supplements** (`globalcosmeticsnews.com` / sim: 0.41) — **SKIP**: Different functional ingredient (sulforaphane) targeting general skin/gut health rather than microplastic detox.\n3. **Chewable oral probiotics** (`wboc.com` / sim: 0.40) — **SKIP**: Oral microbiome care, unrelated to microplastic detox.\n4. **Upcycled ingredients in beauty** (`personalcareinsights.com` / sim: 0.40) — **SKIP**: Topical circular beauty formulation trend, unrelated.\n5. **Sulforaphane post** (`bsky_1c2d961dcd394d35` / sim: 0.37) — **SKIP**: Discusses general broccoli/sulforaphane detox pathways, not chitosan or microplastic binding.\n6. **Food additive gums & gut health** (`bsky_ae0094c21cfd54d9` / sim: 0.37) — **SKIP**: Discusses food additive gums and gut microbiome impact.\n7. **Eco-conscious fragrances** (`personalcareinsights.com` / sim: 0.37) — **SKIP**: Discusses microplastic-free topical fragrance formulation, not ingestible microplastic detox supplements.\n8. **Xanthan gum gut inflammation** (`x.com/FoodNavigator` / sim: 0.36) — **SKIP**: Focuses on xanthan gum food additive risks.\n9. **Probiotic nasal sprays** (`gcimagazine.com` / sim: 0.36) — **SKIP**: Nasal microbiome product category, unrelated.\n10. **Xanthan gum & UPF** (`bsky_68c3843296a79bb7` / sim: 0.36) — **SKIP**: Discusses xanthan gum research.\n11. **Fermented foods** (`advisory.com` / sim: 0.35) — **SKIP**: Kimchi/sauerkraut dietary trends, unrelated.\n12. **Upcycled beauty** (`onestep.quest` / sim: 0.35) — **SKIP**: Circular skincare ingredients, unrelated.\n\n**Conclusion:** None of the candidate signals met the attribution threshold. An empty attribution list has been committed.",
+        "accounting": {
+          "input_tokens": 7332,
+          "candidates_tokens": 658,
+          "thoughts_tokens": 907,
+          "total_tokens": 8897,
+          "cost_as_deployed": 0.0079,
+          "cost_with_thinking": 0.0113,
+          "reconciles": [
+            "candidates_excludes_thinking",
+            "n/a_no_thinking_tokens"
+          ],
+          "understated_by": 0.0034
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "commit_attributions"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "commit_attributions",
+            "args": {
+              "attributions": []
+            },
+            "output": {
+              "accepted": true,
+              "count": 0,
+              "note": "Attributions captured. Commit step will INSERT to FCT_TREND_SIGNALS (LINK_KIND='attributed')."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "attributions": []
+        },
+        "final_text": "I evaluated the candidate signals against the trend \"Taking Chitosan Supplements for Microplastic Detox\". None of the newly-arrived signals correspond to taking chitosan or microplastic-binding detox supplements. Most candidates discuss other wellness trends (sulforaphane, oral probiotics, xanthan gum's effect on the microbiome, or microplastic-free formulations in completely different categories like fragrance or household cleaning). \n\nTherefore, no new signals were attributed, which will accurately prevent this trend's velocity from being falsely inflated by irrelevant data.",
+        "accounting": {
+          "input_tokens": 6793,
+          "candidates_tokens": 122,
+          "thoughts_tokens": 377,
+          "total_tokens": 7292,
+          "cost_as_deployed": 0.015,
+          "cost_with_thinking": 0.0196,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0046
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 3,
+          "present_count": 2,
+          "coverage_pct": 66.7,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "attributions[]",
+              "type": "array<object>",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 2
+            },
+            {
+              "path": "attributions[].signal_id",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 2
+            },
+            {
+              "path": "attributions[].link_type",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 3,
+          "present_count": 0,
+          "coverage_pct": 0,
+          "missing_required": [
+            "attributions[]"
+          ],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "attributions[]",
+              "type": "array<object>",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "attributions[].signal_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "attributions[].link_type",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "fields_lost": [
+          "attributions[]",
+          "attributions[].signal_id"
+        ],
+        "fields_gained": [],
+        "coverage_delta_pct": -66.7
+      },
+      "descriptor": null
+    },
+    {
+      "case": {
+        "id": "f55435d6-51ec-4c6e-ab6f-27c7466b2217",
+        "label": "Peel-and-stick slatted acoustic panels for home office DIY upgrades · 22 attributed by 2026-08-19T22:38",
+        "incumbentAt": "2026-08-19",
+        "incumbent": {
+          "emission": {
+            "attributions": [
+              {
+                "signal_id": "https://x.com/i/status/2026869965039554625"
+              },
+              {
+                "signal_id": "https://www.amazon.com/LARWORKS-Waterproof-Paneling-Bathroom-Bedroom/dp/B0F83SJZMH"
+              },
+              {
+                "signal_id": "https://www.amazon.com/GreenClad-Peel-Stick-Acoustic-Panels/dp/B0FWXJ4GJX"
+              },
+              {
+                "signal_id": "https://www.acupanel.com/collections/main?srsltid=AfmBOoqhaCakjNCopk-QVclgak8JlGnf6Q_0dUcfy8wL4gDwVtbkC18f"
+              },
+              {
+                "signal_id": "https://x.com/i/status/1982075123055173926"
+              },
+              {
+                "signal_id": "https://www.thewoodveneerhub.com/collections/decorative-slat-wood-panels?srsltid=AfmBOoqYf86hYu061EBvNz7LtZZ0HgJjNljtodBxvxeqFnQ4NWN--QL4"
+              },
+              {
+                "signal_id": "https://feltright.com/products/oak-wood-slat-wall?srsltid=AfmBOoo_ui2UjYlrZF1wFY-dP-5wNL-FzmotozAbHnWWjQCNHckSwezu"
+              },
+              {
+                "signal_id": "https://x.com/i/status/1997505906003616143"
+              },
+              {
+                "signal_id": "https://slatsolution.com/products/charcoal-gray-acoustic-slat-wood-wall-panels?srsltid=AfmBOooKDxW6btzxCSKRJ7DFi7003phjmiLGP8F0gQVx9YQFyOhGbbGA"
+              },
+              {
+                "signal_id": "https://www.homedepot.com/p/4-Piece-Wood-Slat-Wall-Panels-3D-Fluted-Sound-Absorbing-Panel-Wood-Slat-Acoustic-Panels-for-Home-and-Office-Decor-W347P375709Q/338964068"
+              },
+              {
+                "signal_id": "https://slats.co/?srsltid=AfmBOopQ09foHRiUxXPK1YeknnW_SMr4MzzISsaxJd3-Q7ksVx9eSKKq"
+              },
+              {
+                "signal_id": "https://wallribbon.com/product-category/slat-wall"
+              },
+              {
+                "signal_id": "https://x.com/i/status/1873579342594527513"
+              },
+              {
+                "signal_id": "https://www.jthomashome.com/collections/slat-wall-panels?srsltid=AfmBOopw9T31cn8I1xfvfonaLch49XshdV01OzXP_f9YpasTSQeYni8D"
+              },
+              {
+                "signal_id": "https://www.walmart.com/ip/4-Pack-Slat-Wall-Panels-3D-Wood-Wall-Panels-Felt-Backing-7-87x94-48-inch-Acoustic-Panels-Sound-Absorbing-3D-Wall-Panels-Decoration-Interior-Wall-Deco/14677201002"
+              },
+              {
+                "signal_id": "https://www.pinterest.com/ideas/home-office-acoustic-panels/904950416022"
+              },
+              {
+                "signal_id": "https://www.reddit.com/r/audioengineering/comments/1c0scem/home_office_acoustics"
+              },
+              {
+                "signal_id": "https://woodsonpanels.com/products/luxury-american-walnut-acoustic-slat-wood-wall-panels?srsltid=AfmBOorS6bhGCntX8yo0u9BIasbv_fzng_E55ElBEXaWi74n757gnxrV"
+              },
+              {
+                "signal_id": "https://www.thewoodveneerhub.com/collections/decorative-slat-wood-panels?srsltid=AfmBOooKkzFsTuOUtVYO5wVDHtnDbJF9AjixOaa4mFTBACeczQxSTqx2"
+              },
+              {
+                "signal_id": "https://x.com/i/status/2016550650172100995"
+              },
+              {
+                "signal_id": "https://fecastudio.com/en"
+              },
+              {
+                "signal_id": "https://modelrec.com/best-wall-paneling"
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "attributed_count": 22
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "commit_attributions",
+        "tool_names": [
+          "filter_candidates",
+          "commit_attributions"
+        ],
+        "prompt_provenance": {
+          "signal.attribution.system": {
+            "version": 1,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 1477
+          },
+          "signal.attribution.rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2899
+          }
+        },
+        "system_chars": 12972,
+        "user_chars": 293,
+        "input_notes": {
+          "candidates_today": 20,
+          "similarity_threshold": "0.35",
+          "pool_caveat": "signals the incumbent already attributed are excluded by the anti-join — compare acceptance RATE, not row identity",
+          "budget_usd": 0.04
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "commit_attributions"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "commit_attributions",
+            "args": {
+              "attributions": [
+                {
+                  "signal_id": "https://x.com/Arcfunmi/status/1957042281212498400",
+                  "link_type": "other"
+                },
+                {
+                  "link_type": "social",
+                  "signal_id": "bsky_cdfe7de8997d25a5"
+                },
+                {
+                  "signal_id": "https://x.com/decor_snippofbo/status/2090358980375961998",
+                  "link_type": "other"
+                }
+              ]
+            },
+            "output": {
+              "accepted": true,
+              "count": 3,
+              "note": "Attributions captured. Commit step will INSERT to FCT_TREND_SIGNALS (LINK_KIND='attributed')."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "attributions": [
+            {
+              "signal_id": "https://x.com/Arcfunmi/status/1957042281212498400",
+              "link_type": "other"
+            },
+            {
+              "link_type": "social",
+              "signal_id": "bsky_cdfe7de8997d25a5"
+            },
+            {
+              "signal_id": "https://x.com/decor_snippofbo/status/2090358980375961998",
+              "link_type": "other"
+            }
+          ]
+        },
+        "final_text": "### Signal Attribution Summary\n\n**Trend:** Peel-and-stick slatted acoustic panels for home office DIY upgrades (`f55435d6-51ec-4c6e-ab6f-27c7466b2217`)\n\n#### Confirmed Attributions (3 signals)\n1. **`https://x.com/Arcfunmi/status/1957042281212498400`** (`link_type: other`)\n   - **Reasoning:** Directly discusses lightweight faux wood slat peel-and-stick panels for easy and affordable DIY wall installation.\n2. **`bsky_cdfe7de8997d25a5`** (`link_type: social`)\n   - **Reasoning:** Specifically references lightweight peel-and-stick 3D wall panels that offer soundproofing and room transformation.\n3. **`https://x.com/decor_snippofbo/status/2090358980375961998`** (`link_type: other`)\n   - **Reasoning:** Highlights natural oak peel-and-stick panels for easy DIY architectural space upgrades.\n\n#### Skipped Signals\n- **`bsky_1da88fc9507d7e99` through `bsky_26904a29d6a2be12` (8 duplicates):** Promotional bot spam targeting peel-and-stick stone veneer panels rather than slatted/acoustic panels.\n- **`bsky_a0ccc3284b1b6753`, `bsky_feff36c30156783d`, `bsky_b2358a9022b7447d`:** Focus on peel-and-stick picture frame molding/wainscoting rather than slatted acoustic panels.\n- **`https://x.com/Duzzix_com/...`, `https://x.com/arivomkadaioffi/...`, `https://x.com/ElChadOfertas/...`:** Generic 3D tile/wallpaper sticker promotions lacking specific alignment with acoustic or wood-slat panels.\n- **`bsky_2406c22061b9a5b7`, `bsky_ca48e6c6e794f70e`, `bsky_ee8d3bf58731bf5e`:** Peel-and-stick wallpaper and mandala wall decals (unrelated product category).",
+        "accounting": {
+          "input_tokens": 10913,
+          "candidates_tokens": 714,
+          "thoughts_tokens": 2286,
+          "total_tokens": 13913,
+          "cost_as_deployed": 0.0109,
+          "cost_with_thinking": 0.0194,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0085
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "commit_attributions"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "commit_attributions",
+            "args": {
+              "attributions": [
+                {
+                  "link_type": "other",
+                  "signal_id": "https://x.com/Arcfunmi/status/1957042281212498400"
+                },
+                {
+                  "link_type": "social",
+                  "signal_id": "bsky_cdfe7de8997d25a5"
+                },
+                {
+                  "link_type": "other",
+                  "signal_id": "https://x.com/decor_snippofbo/status/2090358980375961998"
+                }
+              ]
+            },
+            "output": {
+              "accepted": true,
+              "count": 3,
+              "note": "Attributions captured. Commit step will INSERT to FCT_TREND_SIGNALS (LINK_KIND='attributed')."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "attributions": [
+            {
+              "link_type": "other",
+              "signal_id": "https://x.com/Arcfunmi/status/1957042281212498400"
+            },
+            {
+              "link_type": "social",
+              "signal_id": "bsky_cdfe7de8997d25a5"
+            },
+            {
+              "link_type": "other",
+              "signal_id": "https://x.com/decor_snippofbo/status/2090358980375961998"
+            }
+          ]
+        },
+        "final_text": "The candidate signals have been evaluated against the attribution rubric. I have committed the following 3 signals that perfectly align with the trend of using \"peel-and-stick slatted acoustic panels for DIY upgrades\":\n\n- **[https://x.com/Arcfunmi/status/1957042281212498400]** (link_type: `other`) - Explicitly covers lightweight faux wood slat peel-and-stick panels being affordable to install.\n- **[bsky_cdfe7de8997d25a5]** (link_type: `social`) - Mentions 3-D wall panels with peel and stick tape that provide soundproofing, fitting both the aesthetic and functional aspects of the trend. \n- **[https://x.com/decor_snippofbo/status/2090358980375961998]** (link_type: `other`) - Highlights natural oak peel and stick panels being a game-changer and easy to cut/install.\n\nThe remainder of the candidates were skipped because they dealt with different variations (like peel-and-stick stone wall panels, molding, wallpaper, or mandala stickers), failing the specific requirement for \"slatted acoustic panels\" described in the trend summary.",
+        "accounting": {
+          "input_tokens": 9744,
+          "candidates_tokens": 426,
+          "thoughts_tokens": 1107,
+          "total_tokens": 11277,
+          "cost_as_deployed": 0.0246,
+          "cost_with_thinking": 0.0379,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0133
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 3,
+          "present_count": 2,
+          "coverage_pct": 66.7,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "attributions[]",
+              "type": "array<object>",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 22
+            },
+            {
+              "path": "attributions[].signal_id",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 22
+            },
+            {
+              "path": "attributions[].link_type",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 3,
+          "present_count": 3,
+          "coverage_pct": 100,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "attributions[]",
+              "type": "array<object>",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 3
+            },
+            {
+              "path": "attributions[].signal_id",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 3
+            },
+            {
+              "path": "attributions[].link_type",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 3
+            }
+          ]
+        },
+        "fields_lost": [],
+        "fields_gained": [
+          "attributions[].link_type"
+        ],
+        "coverage_delta_pct": 33.3
+      },
+      "descriptor": null
+    },
+    {
+      "case": {
+        "id": "a3a4a10a-6b54-40bc-a133-c92af2d2d253",
+        "label": "Wearing fashion-forward smart jewelry to track real-time UV exposure · 1 attributed by 2026-08-19T16:38",
+        "incumbentAt": "2026-08-19",
+        "incumbent": {
+          "emission": {
+            "attributions": [
+              {
+                "signal_id": "https://drugstorenews.com/barriere-launches-uv-sensor-patches-prompt-sunscreen-reapplication"
+              }
+            ]
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "attributed_count": 1
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "commit_attributions",
+        "tool_names": [
+          "filter_candidates",
+          "commit_attributions"
+        ],
+        "prompt_provenance": {
+          "signal.attribution.system": {
+            "version": 1,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 1477
+          },
+          "signal.attribution.rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2899
+          }
+        },
+        "system_chars": 8406,
+        "user_chars": 293,
+        "input_notes": {
+          "candidates_today": 8,
+          "similarity_threshold": "0.35",
+          "pool_caveat": "signals the incumbent already attributed are excluded by the anti-join — compare acceptance RATE, not row identity",
+          "budget_usd": 0.04
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "commit_attributions"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "commit_attributions",
+            "args": {
+              "attributions": []
+            },
+            "output": {
+              "accepted": true,
+              "count": 0,
+              "note": "Attributions captured. Commit step will INSERT to FCT_TREND_SIGNALS (LINK_KIND='attributed')."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "attributions": []
+        },
+        "final_text": "### Evaluation Summary\n\n**Trend:** Wearing fashion-forward smart jewelry to track real-time UV exposure (`a3a4a10a-6b54-40bc-a133-c92af2d2d253`)\n\n#### Candidate Signal Review:\n1. **\"Applying UV sensor stickers to time sunscreen reapplication\"** (`sim=0.56`): **SKIP** — Focuses on disposable, non-electronic UV color-changing skin stickers/patches rather than fashion-forward smart jewelry / connected wearables. This represents a distinct product category within sun-care tracking.\n2. **\"Using smartwatch-linked perimenopause apps\"** (`sim=0.47`): **SKIP** — Off-topic (perimenopause symptom management).\n3. **\"Pressing vagus‑stim wearables for on‑demand calm\"** (`sim=0.40`): **SKIP** — Off-topic (vagus nerve stimulation devices).\n4. **\"Adopting Real-Time Moving Virtual Try-On\"** (`sim=0.39`): **SKIP** — Off-topic (virtual try-on e-commerce tech).\n5. **\"Joining waitlists for continuous hormone wearables\"** (`sim=0.39`): **SKIP** — Off-topic (continuous hormone monitoring).\n6. **\"Interactive & Gamified Fitness\"** (`sim=0.38`): **SKIP** — Off-topic (interactive fitness market).\n7. **\"Hair Bandanas\"** (`sim=0.38`): **SKIP** — Off-topic (hair accessories).\n8. **\"Adopting 'Nonna' summer styling\"** (`sim=0.36`): **SKIP** — Off-topic (fashion aesthetics).\n\n**Result:** 0 signals attributed. Committed empty array.",
+        "accounting": {
+          "input_tokens": 6920,
+          "candidates_tokens": 414,
+          "thoughts_tokens": 1448,
+          "total_tokens": 8782,
+          "cost_as_deployed": 0.0068,
+          "cost_with_thinking": 0.0122,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0054
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "commit_attributions"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "commit_attributions",
+            "args": {
+              "attributions": []
+            },
+            "output": {
+              "accepted": true,
+              "count": 0,
+              "note": "Attributions captured. Commit step will INSERT to FCT_TREND_SIGNALS (LINK_KIND='attributed')."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "attributions": []
+        },
+        "final_text": "I have reviewed the candidates and found no signals that directly extend the trend \"Wearing fashion-forward smart jewelry to track real-time UV exposure.\" While the first candidate regarding UV sensor stickers deals with tracking UV exposure for sun care, it falls into a different product category (disposable stickers/patches vs. fashion-forward smart jewelry). As such, I have conservatively excluded it to preserve the accuracy of the trend's velocity metrics and committed an empty attribution list.",
+        "accounting": {
+          "input_tokens": 5983,
+          "candidates_tokens": 108,
+          "thoughts_tokens": 512,
+          "total_tokens": 6603,
+          "cost_as_deployed": 0.0133,
+          "cost_with_thinking": 0.0194,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0061
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 3,
+          "present_count": 2,
+          "coverage_pct": 66.7,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "attributions[]",
+              "type": "array<object>",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "attributions[].signal_id",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "attributions[].link_type",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 3,
+          "present_count": 0,
+          "coverage_pct": 0,
+          "missing_required": [
+            "attributions[]"
+          ],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "attributions[]",
+              "type": "array<object>",
+              "required": true,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "attributions[].signal_id",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "attributions[].link_type",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            }
+          ]
+        },
+        "fields_lost": [
+          "attributions[]",
+          "attributions[].signal_id"
+        ],
+        "fields_gained": [],
+        "coverage_delta_pct": -66.7
+      },
+      "descriptor": null
+    }
+  ]
+}

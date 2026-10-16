@@ -1,0 +1,98 @@
+{
+  "lane": "promotion",
+  "summary": "Per-candidate promote/reject/dedupe gate. Tightest budget in the fleet — where the budget-gate trap bites first.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-21T00:08:11.608Z",
+  "finished_at": "2026-08-21T00:08:23.135Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 1,
+    "rerunIncumbent": false,
+    "caseId": null,
+    "dryRun": true,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "cand-w1nclmekmt200vmm",
+        "label": "Using facial tissues infused with targeted skincare actives · REJECT @ 2026-08-20T19:15",
+        "incumbentAt": "2026-08-20",
+        "decidedAt": "2026-08-20T19:15:31.872000",
+        "incumbent": {
+          "emission": {
+            "decision": "REJECT",
+            "decision_category": "LOW_QUALITY",
+            "confidence": 0.8,
+            "rationale": "This candidate only has one independent source family (agent_gemini_discovery) and requires a second source for promotion. An Exploding Topics lookup did not yield any corroborating keywords (it returned 'Under eye patches' and 'Sleep Spray', which are different concepts). Therefore, it fails the two-source doctrine and must be rejected.",
+            "max_neighbor_sim": 0.5662,
+            "considered_neighbors": []
+          },
+          "context": {
+            "distillation_verdict": "REAL_TREND",
+            "overrode_verdict": true,
+            "cluster_size": 2,
+            "source_count": 1
+          },
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "input_tokens": 15278,
+            "output_tokens": 160,
+            "cost_estimate": 0.0325
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_decision",
+        "tool_names": [
+          "compare_topics",
+          "query_neighbor_details",
+          "verify_exploding_topics",
+          "propose_decision"
+        ],
+        "prompt_provenance": {
+          "promotion.subagent.system": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 2576
+          },
+          "promotion.subagent.decision_rubric": {
+            "version": 3,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 3876
+          }
+        },
+        "system_chars": 11306,
+        "user_chars": 584,
+        "input_notes": {
+          "neighbors": 8,
+          "quality_flags": [],
+          "budget_usd": 0.15,
+          "budget_gate_warning": "This lane's budget is measured on the TRUTHFUL cost. Production measures it on the understated one, so a real switch must correct RATES_PER_M in the same slice.",
+          "reconstructed": "candidate row (q_load_pending_candidates filters on PENDING; a historical candidate is not)",
+          "neighbors_excluded_as_anachronistic": 0,
+          "et_rescue": "forced false — ET rescue routing is a lead-side classification the harness does not replay"
+        }
+      },
+      "skipped": "dry-run"
+    }
+  ]
+}

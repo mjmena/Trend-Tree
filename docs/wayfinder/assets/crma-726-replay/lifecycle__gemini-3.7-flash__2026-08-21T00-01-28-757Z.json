@@ -1,0 +1,403 @@
+{
+  "lane": "lifecycle",
+  "summary": "Hourly trend-status re-evaluation. Highest-volume LLM lane in the fleet and the only one with a recorded tool trace.",
+  "incumbent_model": "gemini-3.1-pro-preview",
+  "candidate_model": "gemini-3.7-flash",
+  "candidate_rates": {
+    "input": 0.75,
+    "output": 3.75,
+    "until": "2026-12-31",
+    "after": {
+      "input": 1.5,
+      "output": 7.5
+    }
+  },
+  "incumbent_rates": {
+    "input": 2,
+    "output": 12,
+    "note": "sub-200k context tier"
+  },
+  "started_at": "2026-08-21T00:01:28.757Z",
+  "finished_at": "2026-08-21T00:02:06.488Z",
+  "options": {
+    "model": "gemini-3.7-flash",
+    "limit": 3,
+    "rerunIncumbent": true,
+    "caseId": "930f93eb-83a1-4e42-a887-dd10e325aa90",
+    "dryRun": false,
+    "json": false,
+    "descriptorNeighbors": false,
+    "neighborK": 3
+  },
+  "results": [
+    {
+      "case": {
+        "id": "930f93eb-83a1-4e42-a887-dd10e325aa90",
+        "label": "Purchasing intimate wellness devices at mainstream beauty retailers · DORMANT→DORMANT @ 2026-08-20T18:09",
+        "incumbentAt": "2026-08-20",
+        "evaluatedAt": "2026-08-20T18:09:49.154000",
+        "incumbent": {
+          "emission": {
+            "emitted_at": "2026-08-20T22:09:28.138Z",
+            "next_eval_in_hours": 24,
+            "re_enrichment_reason": "",
+            "reasoning": "Trend remains DORMANT with zero formally linked signals in the past 14 days and zero active publisher domains. While there are a few candidate signals in the broader wellness/retail space, none have been attributed to this trend. Since the trend was promoted less than 30 days ago, it is not yet eligible for retirement.",
+            "request_re_enrichment": false,
+            "status": "DORMANT"
+          },
+          "committed": {
+            "prior_status": "DORMANT",
+            "new_status": "DORMANT",
+            "prior_heat": 7.2,
+            "new_heat": 7.2,
+            "heat_base": 8.5,
+            "heat_modifier_pct": -15,
+            "reasoning": "Trend remains DORMANT with zero formally linked signals in the past 14 days and zero active publisher domains. While there are a few candidate signals in the broader wellness/retail space, none have been attributed to this trend. Since the trend was promoted less than 30 days ago, it is not yet eligible for retirement."
+          },
+          "tool_calls": [],
+          "telemetry": {
+            "model": "gemini-3.1-pro-preview",
+            "stop_reason": "STOP",
+            "input_tokens": 12663,
+            "output_tokens": 224,
+            "cost_estimate": 0.028
+          }
+        }
+      },
+      "built": {
+        "mode": "loop",
+        "terminal_tool": "propose_lifecycle_decision",
+        "tool_names": [
+          "query_trend_neighbors",
+          "query_signal_velocity",
+          "query_lifecycle_history",
+          "propose_lifecycle_decision"
+        ],
+        "prompt_provenance": {
+          "lifecycle.subagent.decision_rubric": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 4853
+          },
+          "lifecycle.subagent.system": {
+            "version": 6,
+            "registry_model": "gemini-3.1-pro-preview",
+            "chars": 5296
+          }
+        },
+        "system_chars": 15249,
+        "user_chars": 244,
+        "input_notes": {
+          "heat_base": 8.5,
+          "recent_signals": 0,
+          "candidate_signals": 18,
+          "neighbors": 30,
+          "replayed_eval_at": "2026-08-20T18:09:49.154000",
+          "prior_state_restored": "status=DORMANT heat=7.2",
+          "history_entries_after_cut_dropped": 1,
+          "answer_leak_cut": "the replayed evaluation and everything after it are hidden: status, heat and history come from BEFORE it, so the model is not shown the incumbent's own answer",
+          "recomputed_now": "heat_base and the signal windows are recomputed against TODAY, so they differ from the incumbent's evaluation"
+        }
+      },
+      "candidate": {
+        "model": "gemini-3.7-flash",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 3,
+        "tool_sequence": [
+          "query_lifecycle_history",
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "query_lifecycle_history",
+            "args": {
+              "limit": 5
+            },
+            "output": {
+              "history": [
+                {
+                  "evaluated_at": "2026-08-19T17:09:42.459000",
+                  "prior_status": "DORMANT",
+                  "new_status": "DORMANT",
+                  "prior_heat": 24.9,
+                  "new_heat": 7.2,
+                  "heat_base": 8.5,
+                  "heat_modifier_pct": -15,
+                  "reasoning": "Trend remains DORMANT with zero formally linked signals in the past 14 days and zero active publisher domains. While there are some loosely related candidate signals in the wellness space, none are linked. It will remain DORMANT as it is not yet 30 days old.",
+                  "retirement_proposal": null,
+                  "requested_re_enrichment": false
+                },
+                {
+                  "evaluated_at": "2026-08-18T16:09:54.201000",
+                  "prior_status": "DORMANT",
+                  "new_status": "DORMANT",
+                  "prior_heat": 30.8,
+                  "new_heat": 24.9,
+                  "heat_base": 29.3,
+                  "heat_modifier_pct": -15,
+                  "reasoning": "The trend remains DORMANT with zero formally linked signals in the past 14 days. While a few loosely related candidate signals exist in the sexual wellness space, none have been attributed to this trend to trigger a resurgence. Active publisher domains are at 3 in the last 21 days, so it does not yet meet the criteria for retirement.",
+                  "retirement_proposal": null,
+                  "requested_re_enrichment": false
+                },
+                {
+                  "evaluated_at": "2026-08-17T15:09:50.183000",
+                  "prior_status": "DORMANT",
+                  "new_status": "DORMANT",
+                  "prior_heat": 30.8,
+                  "new_heat": 30.8,
+                  "heat_base": 36.2,
+                  "heat_modifier_pct": -15,
+                  "reasoning": "Trend remains DORMANT with zero formally linked signals in the past 14 days. While there are a few candidate signals in the broader sexual wellness space, none have been attributed to this trend. Active domains remain above zero but recent activity is completely silent.",
+                  "retirement_proposal": null,
+                  "requested_re_enrichment": false
+                },
+                {
+                  "evaluated_at": "2026-08-16T14:09:48.810000",
+                  "prior_status": "DORMANT",
+                  "new_status": "DORMANT",
+                  "prior_heat": 30.8,
+                  "new_heat": 30.8,
+                  "heat_base": 36.2,
+                  "heat_modifier_pct": -15,
+                  "reasoning": "The trend remains DORMANT with zero formally linked signals in the last 14 days. While a few loose candidate signals exist in the sexual wellness space, none have been attributed to this trend to trigger a transition to RESURGENT. We will continue monitoring.",
+                  "retirement_proposal": null,
+                  "requested_re_enrichment": false
+                }
+              ],
+              "total_in_pool": 4
+            },
+            "error": null,
+            "duration_ms": 0
+          },
+          {
+            "turn": 2,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "status": "DORMANT",
+              "request_re_enrichment": false,
+              "next_eval_in_hours": 24,
+              "reasoning": "Trend remains DORMANT with 0 linked signals in the past 14 days and 0 active publisher domains. While candidate signals in intimate wellness exist, none are linked, precluding RESURGENT status. Trend is ~23 days post-promotion, so does not yet qualify for retirement consideration (<30 days)."
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "status": "DORMANT",
+          "request_re_enrichment": false,
+          "next_eval_in_hours": 24,
+          "reasoning": "Trend remains DORMANT with 0 linked signals in the past 14 days and 0 active publisher domains. While candidate signals in intimate wellness exist, none are linked, precluding RESURGENT status. Trend is ~23 days post-promotion, so does not yet qualify for retirement consideration (<30 days)."
+        },
+        "final_text": "### Lifecycle Evaluation Summary\n\n- **Trend ID:** `930f93eb-83a1-4e42-a887-dd10e325aa90`\n- **Topic:** Purchasing intimate wellness devices at mainstream beauty retailers\n- **Status:** **DORMANT** (Maintained)\n- **Next Evaluation:** In 24 hours\n- **Re-enrichment Requested:** False\n\n#### Key Rationale:\n1. **Linked Signal Velocity:** 0 linked signals in the last 14 days ($n_{7} = 0, n_{24} = 0$) and 0 active publisher domains in the 21-day window.\n2. **Candidates vs. Linked Evidence:** While related candidate signals exist within the sexual and intimate wellness domain, none have been formally attributed to this trend to trigger a transition to `RESURGENT`.\n3. **Retirement Criteria:** The trend was promoted on 2026-07-28 (~23 days ago) and thus does not yet meet the $\\ge 30$ days threshold required to propose retirement.",
+        "accounting": {
+          "input_tokens": 20033,
+          "candidates_tokens": 373,
+          "thoughts_tokens": 543,
+          "total_tokens": 20949,
+          "cost_as_deployed": 0.0164,
+          "cost_with_thinking": 0.0185,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0021
+        }
+      },
+      "incumbentRerun": {
+        "model": "gemini-3.1-pro-preview",
+        "mode": "loop",
+        "finish": {
+          "ok": true,
+          "reason": "STOP"
+        },
+        "turns": 2,
+        "tool_sequence": [
+          "propose_lifecycle_decision"
+        ],
+        "tool_calls": [
+          {
+            "turn": 1,
+            "name": "propose_lifecycle_decision",
+            "args": {
+              "reasoning": "Trend remains DORMANT with zero formally linked signals in the past 14 days and zero active publisher domains in the last 21 days. A few loosely related candidate signals exist in the sexual wellness space, but none have been formally attributed. The trend will remain DORMANT until linked activity resumes or it reaches the 30-day threshold for retirement.",
+              "next_eval_in_hours": 24,
+              "request_re_enrichment": false,
+              "status": "DORMANT"
+            },
+            "output": {
+              "accepted": true,
+              "note": "Lifecycle decision captured. Commit step will persist; sweeper applies based on write_live + two-cycle retire guard."
+            },
+            "error": null,
+            "duration_ms": 0
+          }
+        ],
+        "emission": {
+          "reasoning": "Trend remains DORMANT with zero formally linked signals in the past 14 days and zero active publisher domains in the last 21 days. A few loosely related candidate signals exist in the sexual wellness space, but none have been formally attributed. The trend will remain DORMANT until linked activity resumes or it reaches the 30-day threshold for retirement.",
+          "next_eval_in_hours": 24,
+          "request_re_enrichment": false,
+          "status": "DORMANT"
+        },
+        "final_text": "I have evaluated the trend and proposed to keep its status as DORMANT. It has not received any formally linked signals in the past 14 days and has no active publisher domains. It has not been dormant long enough to qualify for retirement consideration yet (only ~23 days old), so we will check on it again in 24 hours.",
+        "accounting": {
+          "input_tokens": 12308,
+          "candidates_tokens": 193,
+          "thoughts_tokens": 488,
+          "total_tokens": 12989,
+          "cost_as_deployed": 0.0269,
+          "cost_with_thinking": 0.0328,
+          "reconciles": [
+            "candidates_excludes_thinking"
+          ],
+          "understated_by": 0.0059
+        }
+      },
+      "fields": {
+        "incumbent": {
+          "declared_count": 6,
+          "present_count": 5,
+          "coverage_pct": 83.3,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [
+            "emitted_at"
+          ],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 1,
+              "sample_count": 1
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "candidate": {
+          "declared_count": 6,
+          "present_count": 4,
+          "coverage_pct": 66.7,
+          "missing_required": [],
+          "nulled": [],
+          "undeclared_survived": [],
+          "rows": [
+            {
+              "path": "status",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "retirement_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "next_eval_in_hours",
+              "type": "number",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "request_re_enrichment",
+              "type": "boolean",
+              "required": false,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            },
+            {
+              "path": "re_enrichment_reason",
+              "type": "string",
+              "required": false,
+              "present": false,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 0
+            },
+            {
+              "path": "reasoning",
+              "type": "string",
+              "required": true,
+              "present": true,
+              "null_count": 0,
+              "empty_count": 0,
+              "sample_count": 1
+            }
+          ]
+        },
+        "fields_lost": [
+          "re_enrichment_reason"
+        ],
+        "fields_gained": [],
+        "coverage_delta_pct": -16.6
+      },
+      "descriptor": null
+    }
+  ]
+}
