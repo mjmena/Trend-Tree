@@ -50,16 +50,17 @@ def run(session, SIGNAL_IDS, RESOLUTION):
         SIGNAL_IDS = json.loads(SIGNAL_IDS)
 
     resolution = float(RESOLUTION) if RESOLUTION is not None else 0.8
+    # Bound, not formatted: signal IDs are URLs and can contain "'" (CRMA-1446).
     ids_json = json.dumps(list(SIGNAL_IDS))
 
     # Step 1: fetch node metadata (title, source) for signals that have vectors.
-    nodes_rs = session.sql(f"""
+    nodes_rs = session.sql("""
         SELECT f.SIGNAL_ID, f.SIGNAL_TITLE, f.SOURCE_NAME
         FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f
         WHERE f.SIGNAL_ID IN (
-          SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON('{ids_json}')))
+          SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(?)))
         ) AND f.SIGNAL_VECTOR IS NOT NULL
-    """).collect()
+    """, params=[ids_json]).collect()
 
     if not nodes_rs:
         return []
@@ -79,7 +80,7 @@ def run(session, SIGNAL_IDS, RESOLUTION):
           SELECT f.SIGNAL_ID, f.SIGNAL_VECTOR
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f
           WHERE f.SIGNAL_ID IN (
-            SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON('{ids_json}')))
+            SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(?)))
           ) AND f.SIGNAL_VECTOR IS NOT NULL
         )
         SELECT a.SIGNAL_ID AS SID_A,
@@ -88,7 +89,7 @@ def run(session, SIGNAL_IDS, RESOLUTION):
         FROM signals a
         JOIN signals b ON a.SIGNAL_ID < b.SIGNAL_ID
         WHERE VECTOR_COSINE_SIMILARITY(a.SIGNAL_VECTOR, b.SIGNAL_VECTOR) > {EDGE_THRESHOLD}
-    """).collect()
+    """, params=[ids_json]).collect()
 
     # Step 3: build networkx graph and run Louvain.
     G = nx.Graph()
