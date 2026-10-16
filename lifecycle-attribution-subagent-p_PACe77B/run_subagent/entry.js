@@ -1,9 +1,9 @@
 // Lifecycle Attribution Subagent — run_subagent
 //
 // Gemini 3.1 Pro agent. Receives pre-fetched candidate signals (vector-
-// filtered, last 24h, not yet linked to this trend), reasons about which
-// genuinely extend the trend topic, and calls commit_attributions exactly
-// once with confirmed { signal_id, link_type } pairs.
+// filtered, within lookback_hours, not yet linked to this trend), reasons
+// about which genuinely extend the trend topic, and calls commit_attributions
+// exactly once with confirmed { signal_id, link_type } pairs.
 //
 // Early exit: if no candidates arrive, skips LLM entirely (saves cost).
 //

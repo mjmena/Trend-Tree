@@ -37,20 +37,27 @@ steps:
             WHERE TREND_VECTOR IS NOT NULL
           ) WHERE rn = 1
         ),
-        last_attr AS (
-          SELECT TREND_ID, MAX(LINKED_AT) AS LAST_ATTR_AT
-          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
-          WHERE LINK_KIND = 'attributed'
-          GROUP BY TREND_ID
+        -- Hourly round-robin over a stable hash order: the hash order splits
+        -- into blocks of sweep_cap trends and each hour sweeps the next block,
+        -- so every eligible trend is swept once per ceil(N / sweep_cap) hours.
+        -- The block mapping only moves when N crosses a multiple of sweep_cap.
+        -- Ordering by last attribution starved every trend that never gained
+        -- one (CRMA-1459).
+        eligible AS (
+          SELECT t.TREND_ID, t.TREND_TOPIC,
+                 COALESCE(lc.LIFECYCLE_STATUS, 'NEW') AS LIFECYCLE_STATUS,
+                 ROW_NUMBER() OVER (ORDER BY HASH(t.TREND_ID)) - 1 AS POS,
+                 COUNT(*) OVER () AS N
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+          JOIN trends_with_vector tv ON tv.TREND_ID = t.TREND_ID
+          LEFT JOIN latest_lifecycle lc ON lc.TREND_ID = t.TREND_ID
+          WHERE COALESCE(lc.LIFECYCLE_STATUS, 'NEW') NOT IN ('RETIRED', 'DORMANT')
         )
-        SELECT t.TREND_ID, t.TREND_TOPIC,
-               COALESCE(lc.LIFECYCLE_STATUS, 'NEW') AS LIFECYCLE_STATUS
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-        JOIN trends_with_vector tv ON tv.TREND_ID = t.TREND_ID
-        LEFT JOIN latest_lifecycle lc ON lc.TREND_ID = t.TREND_ID
-        LEFT JOIN last_attr la ON la.TREND_ID = t.TREND_ID
-        WHERE COALESCE(lc.LIFECYCLE_STATUS, 'NEW') NOT IN ('RETIRED', 'DORMANT')
-        ORDER BY COALESCE(la.LAST_ATTR_AT, t.PROMOTED_AT) ASC
+        SELECT TREND_ID, TREND_TOPIC, LIFECYCLE_STATUS
+        FROM eligible
+        WHERE FLOOR(POS / {{steps.normalize_event.$return_value.sweep_cap}})
+              = MOD(DATEDIFF(hour, '1970-01-01'::TIMESTAMP_NTZ, SYSDATE()), CEIL(N / {{steps.normalize_event.$return_value.sweep_cap}}))
+        ORDER BY POS
         LIMIT {{steps.normalize_event.$return_value.sweep_cap}}
       query: |-
         WITH latest_lifecycle AS (
@@ -69,20 +76,27 @@ steps:
             WHERE TREND_VECTOR IS NOT NULL
           ) WHERE rn = 1
         ),
-        last_attr AS (
-          SELECT TREND_ID, MAX(LINKED_AT) AS LAST_ATTR_AT
-          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
-          WHERE LINK_KIND = 'attributed'
-          GROUP BY TREND_ID
+        -- Hourly round-robin over a stable hash order: the hash order splits
+        -- into blocks of sweep_cap trends and each hour sweeps the next block,
+        -- so every eligible trend is swept once per ceil(N / sweep_cap) hours.
+        -- The block mapping only moves when N crosses a multiple of sweep_cap.
+        -- Ordering by last attribution starved every trend that never gained
+        -- one (CRMA-1459).
+        eligible AS (
+          SELECT t.TREND_ID, t.TREND_TOPIC,
+                 COALESCE(lc.LIFECYCLE_STATUS, 'NEW') AS LIFECYCLE_STATUS,
+                 ROW_NUMBER() OVER (ORDER BY HASH(t.TREND_ID)) - 1 AS POS,
+                 COUNT(*) OVER () AS N
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+          JOIN trends_with_vector tv ON tv.TREND_ID = t.TREND_ID
+          LEFT JOIN latest_lifecycle lc ON lc.TREND_ID = t.TREND_ID
+          WHERE COALESCE(lc.LIFECYCLE_STATUS, 'NEW') NOT IN ('RETIRED', 'DORMANT')
         )
-        SELECT t.TREND_ID, t.TREND_TOPIC,
-               COALESCE(lc.LIFECYCLE_STATUS, 'NEW') AS LIFECYCLE_STATUS
-        FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-        JOIN trends_with_vector tv ON tv.TREND_ID = t.TREND_ID
-        LEFT JOIN latest_lifecycle lc ON lc.TREND_ID = t.TREND_ID
-        LEFT JOIN last_attr la ON la.TREND_ID = t.TREND_ID
-        WHERE COALESCE(lc.LIFECYCLE_STATUS, 'NEW') NOT IN ('RETIRED', 'DORMANT')
-        ORDER BY COALESCE(la.LAST_ATTR_AT, t.PROMOTED_AT) ASC
+        SELECT TREND_ID, TREND_TOPIC, LIFECYCLE_STATUS
+        FROM eligible
+        WHERE FLOOR(POS / {{steps.normalize_event.$return_value.sweep_cap}})
+              = MOD(DATEDIFF(hour, '1970-01-01'::TIMESTAMP_NTZ, SYSDATE()), CEIL(N / {{steps.normalize_event.$return_value.sweep_cap}}))
+        ORDER BY POS
         LIMIT {{steps.normalize_event.$return_value.sweep_cap}}
     params: []
 - namespace: dispatch_to_subagents
