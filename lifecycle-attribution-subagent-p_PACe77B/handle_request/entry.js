@@ -2,8 +2,8 @@
 //
 // Sweeper POSTs: { trend_id, chain_id, budget_usd }
 // Manual/backfill POSTs may add { lookback_hours } to widen the candidate
-// window (default 72h outlasts the sweeper's full rotation of every trend,
-// ceil(N / sweep_cap) hours — 18h at 517 trends; backfill uses ~720h).
+// window (default 72h must outlast the sweeper's full rotation of every
+// trend, ceil(N / sweep_cap) hours; backfill uses ~720h).
 
 const SHORT_ID_OK = /^[A-Za-z0-9_\-]{1,64}$/;
 const TREND_ID_OK = /^[A-Za-z0-9_\-]{1,64}$/;

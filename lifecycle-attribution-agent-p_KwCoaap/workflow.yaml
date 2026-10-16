@@ -37,10 +37,12 @@ steps:
             WHERE TREND_VECTOR IS NOT NULL
           ) WHERE rn = 1
         ),
-        -- Hourly round-robin over a stable hash order: each hour takes the next
-        -- sweep_cap trends, so every eligible trend is swept once per
-        -- ceil(N / sweep_cap) hours. Ordering by last attribution starved every
-        -- trend that never gained one (CRMA-1459).
+        -- Hourly round-robin over a stable hash order: the hash order splits
+        -- into blocks of sweep_cap trends and each hour sweeps the next block,
+        -- so every eligible trend is swept once per ceil(N / sweep_cap) hours.
+        -- The block mapping only moves when N crosses a multiple of sweep_cap.
+        -- Ordering by last attribution starved every trend that never gained
+        -- one (CRMA-1459).
         eligible AS (
           SELECT t.TREND_ID, t.TREND_TOPIC,
                  COALESCE(lc.LIFECYCLE_STATUS, 'NEW') AS LIFECYCLE_STATUS,
@@ -53,8 +55,8 @@ steps:
         )
         SELECT TREND_ID, TREND_TOPIC, LIFECYCLE_STATUS
         FROM eligible
-        WHERE MOD(POS - MOD(DATEDIFF(hour, '1970-01-01'::TIMESTAMP_NTZ, CURRENT_TIMESTAMP()) * {{steps.normalize_event.$return_value.sweep_cap}}, N) + N, N)
-              < {{steps.normalize_event.$return_value.sweep_cap}}
+        WHERE FLOOR(POS / {{steps.normalize_event.$return_value.sweep_cap}})
+              = MOD(DATEDIFF(hour, '1970-01-01'::TIMESTAMP_NTZ, SYSDATE()), CEIL(N / {{steps.normalize_event.$return_value.sweep_cap}}))
         ORDER BY POS
         LIMIT {{steps.normalize_event.$return_value.sweep_cap}}
       query: |-
@@ -74,10 +76,12 @@ steps:
             WHERE TREND_VECTOR IS NOT NULL
           ) WHERE rn = 1
         ),
-        -- Hourly round-robin over a stable hash order: each hour takes the next
-        -- sweep_cap trends, so every eligible trend is swept once per
-        -- ceil(N / sweep_cap) hours. Ordering by last attribution starved every
-        -- trend that never gained one (CRMA-1459).
+        -- Hourly round-robin over a stable hash order: the hash order splits
+        -- into blocks of sweep_cap trends and each hour sweeps the next block,
+        -- so every eligible trend is swept once per ceil(N / sweep_cap) hours.
+        -- The block mapping only moves when N crosses a multiple of sweep_cap.
+        -- Ordering by last attribution starved every trend that never gained
+        -- one (CRMA-1459).
         eligible AS (
           SELECT t.TREND_ID, t.TREND_TOPIC,
                  COALESCE(lc.LIFECYCLE_STATUS, 'NEW') AS LIFECYCLE_STATUS,
@@ -90,8 +94,8 @@ steps:
         )
         SELECT TREND_ID, TREND_TOPIC, LIFECYCLE_STATUS
         FROM eligible
-        WHERE MOD(POS - MOD(DATEDIFF(hour, '1970-01-01'::TIMESTAMP_NTZ, CURRENT_TIMESTAMP()) * {{steps.normalize_event.$return_value.sweep_cap}}, N) + N, N)
-              < {{steps.normalize_event.$return_value.sweep_cap}}
+        WHERE FLOOR(POS / {{steps.normalize_event.$return_value.sweep_cap}})
+              = MOD(DATEDIFF(hour, '1970-01-01'::TIMESTAMP_NTZ, SYSDATE()), CEIL(N / {{steps.normalize_event.$return_value.sweep_cap}}))
         ORDER BY POS
         LIMIT {{steps.normalize_event.$return_value.sweep_cap}}
     params: []
