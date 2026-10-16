@@ -21,8 +21,6 @@
 //     both distillation and distillation-revisit dispatch to it and persist
 //     its proposals — CRMA-1335)
 //   - distillation-subagent-p_jmCjj3J/run_subagent/entry.js  (surfaces it)
-//   - distillation-p_mkCBBqb/run_lead_agent/entry.js  (not wired into that
-//     workflow.yaml; kept for reference)
 // so a corroboration oracle (Exploding Topics, slice 2) can be looked up at
 // promotion — before the trend, and thus descriptor.query, exists.
 // agents/lib/candidate_query_coverage.test.mjs fails if any copy drops the

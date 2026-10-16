@@ -20,7 +20,7 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 - `services/lib/` — shared pure-function modules (CRMA-439). Unit-tested by `scripts/test_services_lib.sh`. The Pipedream-era `agents/lib/` still serves the Pipedream workflows and is unaffected.
 - `services/<name>/` — one service (its HTTP server) or one job (its entrypoint), plus its `Dockerfile` and `deploy.env` (config + Secret Manager names, never secret values). **Build context is the repo root**, so a Dockerfile can see `services/lib/`.
 - **Do not add a `package.json` at the repo root** — Pipedream's GitHub sync watches the root. Node dependencies live in the service's own directory.
-- `services/ecomm-agent` — the ecomm (trend-to-product sourcing) agent, `POST /source {trend_id}` + `GET /healthz`. See [`docs/prd/trend-to-product-sourcing.md`](docs/prd/trend-to-product-sourcing.md).
+- `services/ecomm-agent` — the ecomm (trend-to-product sourcing) agent, `POST /source {trend_id}` + `GET /health` (not `/healthz`: Google's edge intercepts that path). See [`docs/prd/trend-to-product-sourcing.md`](docs/prd/trend-to-product-sourcing.md).
 - `services/tiktok-ingest` — Cloud Run **job** `trend-tree-tiktok-ingest` (CRMA-1337). SerpApi `google_short_videos` over a fixed seed list → `gemini-3.7-flash` title filter (`DIM_LLM_PROMPT` `ingestion.tiktok.filter`) → `SOURCE_NAME = 'tiktok'` rows via `MERGE_EXTERNAL_SIGNALS`. Max 50 SerpApi calls per run on the shared `dev@trendhunter.com` plan. Run by hand with `gcloud run jobs execute trend-tree-tiktok-ingest --region us-east4 --project mcc-crm-automations --wait`.
 - `services/catalog-sync` — Cloud Run **job** `trend-tree-catalog-sync` (CRMA-777): sweeps the public Shopify storefront `products.json` feed into `DIM_CATALOG_PRODUCT` daily at 09:00 UTC (Scheduler job `trend-tree-catalog-sync-daily`, managed by its `schedule.sh`). `deploy.env` sets `KIND=job`, which sends `services/deploy.sh` down its job path: deploy, then one real execution as the smoke test.
 
@@ -38,18 +38,18 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 | `distillation-p_mkCBBqb` + `distillation-subagent-p_jmCjj3J` | Distillation lead. Acquires unclaimed signals, cluster-hints via `PROC_CLUSTER_SIGNAL_SUBSET` over `FCT_SIGNALS`, then dispatches the actual clustering to the shared **cluster-agent** (suspend/resume) → candidates land in `STG_TREND_CANDIDATES`. 4h baseline cron + demand-fired by the watchdog. |
 | `distillation-cluster-agent-p_YyC89Ke` | Shared Gemini 3.1 Pro **cluster reasoner** (the LLM "lead"). HTTP suspend/resume subagent called by *both* `distillation` and `distillation-revisit` — works around the ~5.5-min HTTP sync-response cap. Fetches signals + embedding neighbors, emits trend candidates. |
 | `distillation-watchdog-p_dDCWWPg` | Demand-driven trigger. 15-min cron reads the unclaimed-signal pool size + cursor age; POSTs the distillation HTTP trigger when the pool is full enough and enough time has passed. Shrinks the gap the 4h baseline cron would otherwise leave. |
-| `distillation-revisit-p_o7CWWZl` + `distillation-revisit-subagent-p_ezCwwKm` | Re-clustering pass over *already-ingested* signals (batches from `STG_REVISIT_BATCH_QUEUE`), 24h cron. Reuses the shared cluster-agent. Recovers trends that earlier passes missed. |
+| `distillation-revisit-p_o7CWWZl` | Re-clustering pass over *already-ingested* signals (batches from `STG_REVISIT_BATCH_QUEUE`), 24h cron. Reuses the shared cluster-agent. Recovers trends that earlier passes missed. |
 | `promotion-p_xMC99jg` + `promotion-agent-p_yKCmm9r` | Gemini 3.1 Pro promotion agent. Evaluates candidates → calls `PROC_PROMOTION_APPLY` to write `FCT_TRENDS` rows → `fire_enrichment_chain` step fans out to dispatcher. The same step re-dispatches trends whose chain failed (no `initial` or `refinement` ledger row 6 h after promotion), once a day per trend (CRMA-1032) |
 | `dispatcher-p_8rCBgnl` | Stateless chain runner — takes `{trend_id}` POST → fires `sources` → `enrichment` → `write` synchronously |
 | `sources-p_7NCy36w` | Per-trend source-metrics fetcher — populates `FCT_TREND_SOURCE_METRICS` |
-| `enrichment-p_xMC995w` | Single Gemini 3.1 Pro agent loop — produces the canonical enrichment record. Its `run_name_reviewer` step is one of four remaining Sonnet 4.6 (Anthropic) callers; see **Anthropic callers** below |
+| `enrichment-p_xMC995w` | Single Gemini 3.1 Pro agent loop — produces the canonical enrichment record. Its `run_name_reviewer` step is one of three remaining Anthropic callers; see **Anthropic callers** below |
 | `write-p_o7CWa2K` | Persists enrichment to `FCT_TREND_ENRICHMENT_LEDGER` (append-only ledger; the legacy `DIM_TREND_ENRICHMENT` was retired in the 2026-04-28 agent-owned-ledgers refactor) |
 | `lifecycle-agent-p_JZCz73w` + `lifecycle-subagent-p_gYC562o` | Gemini 3.1 Pro lifecycle agent. Sweeps every hour, re-evaluates trend status (NEW/GROWING/STABLE/DECLINING/DORMANT/RESURGENT/RETIRED) → `FCT_TREND_LIFECYCLE_LEDGER` |
 | `lifecycle-attribution-agent-p_KwCoaap` + `lifecycle-attribution-subagent-p_PACe77B` | Gemini 3.1 Pro attribution agent. Hourly cron sweeps active trends and dispatches subagents that attribute newly-ingested candidate signals to existing trends → appends `FCT_TREND_SIGNALS` links (grows a trend's evidence pool over time). |
 | `prediction-agent-p_QPCkLP1` | Deterministic emergence scorer (no LLM). Computes `PREDICTION_SCORE` (0–100), `PREDICTION_FLAG` (Emerging / Watchlist / High Potential), `PREDICTION_ELIGIBLE` across all live trends in one batch SQL run → `FCT_TREND_PREDICTION_LEDGER`. Feeds the Insights Agent Predictions Queue. Daily 14:00 UTC cron (`dc_wDuPeGB`) + manual via HTTP. Scores + writes in a single `INSERT...SELECT` (no proc). |
 | `daily-digest-p_vQCkwgV` | Email digest of recently-promoted trends |
 | `audit-agent-p_xMC9nm3` | Gemini 3.1 Pro health auditor. Daily 13:00 UTC + HTTP. Prefetches Snowflake freshness/cost/stuck-trends + Pipedream errors per workflow (registry covers all live workflows incl. the full ingestion tier as of 2026-06-08) + `DIM_LLM_PROMPT` drift (live ACTIVE version vs. a committed manifest, CRMA-469), emits GREEN/YELLOW/RED report → `FCT_AUDIT_LEDGER` + Slack DM (gated on non-GREEN). Realtime per-error alerting is handled by an external multi-repo monitor outside this project |
-| `ingestion/*` | Per-source ingestion workflows (Bluesky, Amazon, Pinterest, Google Trends) + `ingestion/tools/` (agent search tools) + `ingestion/LLM/` (Gemini discovery verticals: food-drink / other / travel / wellness) |
+| `ingestion/*` | Per-source ingestion workflows (Bluesky, Amazon, Pinterest, Google Trends) + `ingestion/tools/` (agent search tools) + `ingestion/LLM/` (Gemini discovery vertical: other) |
 
 **Deactivated** (kept in repo for rollback / reference):
 - `ingestion/tiktok-p_yKCm9Am` — Creative Center hashtag scraper, scrapped 2026-06-09. TikTok retired the scraped page (301 → "TikTok One Creative Suite"; the `creative_radar_api` XHR is gone), and the hashtag-level output never met the distillation specificity rubric anyway (#18). The discovery workflow's Grok lane covers the TikTok cultural niche. TikTok now enters through `services/tiktok-ingest` (SerpApi, CRMA-1337) instead; this workflow stays off.
@@ -129,14 +129,13 @@ Measured cost is well below the ~$0.40-0.50/run p95 this section used to claim: 
 
 ### Anthropic callers
 
-The post-Gemini migration left **four** steps on `api.anthropic.com`, all Sonnet 4.6, all sharing the `apn_Oghan1O` connected account:
+The post-Gemini migration left **three** steps on `api.anthropic.com`, all sharing the `apn_Oghan1O` connected account:
 
-| Workflow | Step |
-|---|---|
-| `sources-p_7NCy36w` | `generate_search_terms` |
-| `discovery-p_5VCPP3N` | `rerank_claude` |
-| `distillation-revisit-subagent-p_ezCwwKm` | `run_revisit_subagent` |
-| `enrichment-p_xMC995w` | `run_name_reviewer` |
+| Workflow | Step | Model |
+|---|---|---|
+| `sources-p_7NCy36w` | `generate_search_terms` | `claude-haiku-4-5` (hardcoded) |
+| `discovery-p_5VCPP3N` | `rerank_claude` | its `DIM_LLM_PROMPT.MODEL` row |
+| `enrichment-p_xMC995w` | `run_name_reviewer` | `claude-sonnet-4-6` (hardcoded) |
 
 Note that `DIM_LLM_PROMPT.MODEL` still reads `claude-sonnet-4-6` for `enrichment.agent.user`, `enrichment.reviewer.decoder`, and `enrichment.reviewer.verifier`. That column does **not** drive the enrichment loop — `run_enrichment_agent/entry.js` hardcodes `const MODEL = "gemini-3.1-pro-preview"`. Trust the code, not the prompt row.
 

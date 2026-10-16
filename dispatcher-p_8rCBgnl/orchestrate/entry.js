@@ -3,7 +3,7 @@
 // Single custom code step that drives the whole enrichment pipeline
 // synchronously via fetch():
 //
-//   sources workflow → llm-enrichment workflow → write workflow
+//   sources workflow → enrichment workflow → write workflow
 //
 // Each hop is a plain HTTPS POST to the respective workflow's HTTP
 // trigger endpoint, waiting for the JSON response body before
@@ -12,10 +12,7 @@
 // under the 600s lambda timeout.
 //
 // On any HTTP or network failure, returns { error_message: "..." }.
-// The downstream mark_failed registry step uses that string as a
-// gate — when non-empty it UPDATEs the queue to STATUS='FAILED' with
-// the message in ERROR_MESSAGE. On success, error_message is empty
-// and the mark_failed step is a no-op (thanks to its WHERE :2 != '').
+// On success, error_message is empty.
 //
 // Endpoint URLs are tied to each workflow's HTTP trigger and don't
 // change once the workflow exists (Pipedream assigns the *.m.pipedream.net
@@ -24,22 +21,8 @@
 // them if you ever need to point at a different environment.
 
 const DEFAULT_SOURCES_URL = "https://eoqw249vy2xnwyv.m.pipedream.net"; // sources-p_7NCy36w
-const DEFAULT_LLM_URL     = "https://eoxadsat1xxgqa4.m.pipedream.net"; // enrichment-p_xMC995w (Phase 3 single-agent loop). Legacy llm-enrichment-p_YyC86Zo at https://eod25mq0qt8tk4q.m.pipedream.net is kept deactivated for instant rollback.
+const DEFAULT_LLM_URL     = "https://eoxadsat1xxgqa4.m.pipedream.net"; // enrichment-p_xMC995w
 const DEFAULT_WRITE_URL   = "https://eobhhpl77hkx33c.m.pipedream.net"; // write-p_o7CWa2K
-
-// mark_failed inlines this string directly into a Snowflake UPDATE via
-// mustache substitution (no parameter binding), so any embedded single
-// quote would terminate the SQL string literal early. Strip quotes and
-// control chars and cap at 480 chars (the column is LEFT-truncated to
-// 500 by the UPDATE itself, but we leave a small margin).
-function sanitizeErrorMessage(msg) {
-  if (!msg) return "";
-  return String(msg)
-    .replace(/['\u0000-\u001f\u007f]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, 480);
-}
 
 async function postJson(url, body, { timeoutMs = 500_000 } = {}) {
   const controller = new AbortController();
@@ -113,32 +96,28 @@ export default defineComponent({
       );
     } catch (e) {
       return {
-        error_message: sanitizeErrorMessage(`sources failed: ${e.message}`),
+        error_message: `sources failed: ${e.message}`,
         stage: "sources",
         trend_id: trendId,
       };
     }
 
-    // ── 2. LLM (skip for non-FULL) ────────────────────────────────
-    if (enrichmentType === "FULL") {
-      try {
-        console.log(`[llm] POST ${llmUrl}`);
-        llmResp = await postJson(llmUrl, { trend_id: trendId });
-        console.log(
-          `[llm] tokens=${llmResp?.llm_total_tokens ?? "?"} gated=${
-            llmResp?.gated ?? false
-          }`,
-        );
-      } catch (e) {
-        return {
-          error_message: sanitizeErrorMessage(`llm failed: ${e.message}`),
-          stage: "llm",
-          trend_id: trendId,
-          sources: sourcesResp,
-        };
-      }
-    } else {
-      console.log(`[llm] skipped (enrichment_type=${enrichmentType})`);
+    // ── 2. LLM ───────────────────────────────────────────────────
+    try {
+      console.log(`[llm] POST ${llmUrl}`);
+      llmResp = await postJson(llmUrl, { trend_id: trendId });
+      console.log(
+        `[llm] tokens=${llmResp?.llm_total_tokens ?? "?"} gated=${
+          llmResp?.gated ?? false
+        }`,
+      );
+    } catch (e) {
+      return {
+        error_message: `llm failed: ${e.message}`,
+        stage: "llm",
+        trend_id: trendId,
+        sources: sourcesResp,
+      };
     }
 
     // ── 3. Write ─────────────────────────────────────────────────
@@ -156,7 +135,7 @@ export default defineComponent({
       );
     } catch (e) {
       return {
-        error_message: sanitizeErrorMessage(`write failed: ${e.message}`),
+        error_message: `write failed: ${e.message}`,
         stage: "write",
         trend_id: trendId,
         sources: sourcesResp,
