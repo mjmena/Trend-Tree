@@ -1,11 +1,10 @@
 """Appending verdicts to the ledger (CRMA-766).
 
 The MERGE itself lives in ``domain/ledger.py``; this is the loop around it,
-extracted so the sweep route -- which writes two batches in one request, from
-two phases with different failure semantics -- does not carry its own copy.
+shared by /generate, /match and /sweep (which writes two batches in one
+request, from two phases with different failure semantics).
 
-Two properties it holds, both inherited from the routes that already do this
-by hand:
+Two properties it holds:
 
 * **A partial batch is real history.** The ledger is append-only, and rows
   that landed before a failure stay. The report says how many, so the caller

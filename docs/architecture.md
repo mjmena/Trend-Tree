@@ -57,7 +57,6 @@ All workflows share network `net_5Lnie3` (required for Snowflake egress allowlis
 | `p_jmCjj3J` | `distillation-subagent-p_jmCjj3J` | HTTP | Per-hypothesis verdict: REAL_TREND / NOISE / DUPLICATE | 4096 MB · 600s |
 | `p_YyC89Ke` | `distillation-cluster-agent-p_YyC89Ke` | HTTP (suspend/resume) | Shared Gemini 3.1 Pro cluster reasoner; called by distillation + revisit | 8192 MB · 750s |
 | `p_o7CWWZl` | `distillation-revisit-p_o7CWWZl` | cron + HTTP | Re-investigates previously deferred candidates | 4096 MB · 750s |
-| `p_ezCwwKm` | `distillation-revisit-subagent-p_ezCwwKm` | HTTP | Subagent for revisit pass | 4096 MB · 600s |
 | `p_dDCWWPg` | `distillation-watchdog-p_dDCWWPg` | cron ~5min | Fires distillation on demand if pool backlog > threshold or cursor stale | 512 MB · 60s |
 | `p_xMC99jg` | `promotion-p_xMC99jg` | cron 3h + HTTP | Candidate → FCT_TRENDS; fires enrichment chain per new trend | 4096 MB · 600s |
 | `p_yKCmm9r` | `promotion-agent-p_yKCmm9r` | HTTP | Promotion decision agent (Gemini 3.1 Pro) | 4096 MB · 600s |
@@ -197,7 +196,7 @@ Update schedule: `PUT /v1/sources/{source_id}` with new `intervalSeconds`.
 | `ingestion/pinterest-p_xMC9jR5` | Pinterest trends | cron | `STG_EXTERNAL_SIGNALS` (TEST table) |
 | ~~`ingestion/tiktok-p_yKCm9Am`~~ | ~~TikTok trending~~ | — | **Scrapped 2026-06-09** — page retired; workflow deactivated |
 
-**LLM discovery verticals** (`ingestion/LLM/`) — per-vertical Gemini discovery agents feeding `STG_EXTERNAL_SIGNALS`: `gemini-food-drink-p_5VCPJVJ`, `gemini-other-p_dDCWMDJ`, `gemini-travel-p_BjC3yGQ`, `gemini-wellness-p_zAC1DvL`, plus `gemini-prompt-tester-p_ZJCrPWJ` (non-prod harness).
+**LLM discovery verticals** (`ingestion/LLM/`) — Gemini discovery agent feeding `STG_EXTERNAL_SIGNALS`: `gemini-other-p_dDCWMDJ`. The food-drink, travel and wellness verticals were inactive since April 2026 and were removed (CRMA-1463).
 
 **Agent-callable search tools** (HTTP, fired on-demand by agent tool loops):
 
@@ -217,7 +216,6 @@ The shared library lives in `agents/lib/`. Because cross-workflow imports don't 
 | File | Purpose |
 |---|---|
 | `gemini_loop.mjs` | Gemini 3.1 Pro agentic loop — thinking tokens, `functionDeclarations`, `functionCall`/`functionResponse` round-trip |
-| `anthropic_loop.mjs` | Claude Sonnet 4.6 agentic loop — interleaved thinking, tool dispatch, prompt caching |
 | `tool_catalog.mjs` | Central tool registry. Eager tools (always available): `query_signals_window`, `query_trend_neighbors`, `validate_dedupe_pair`, `validate_url_canonical`. Deferred tools (on-demand): `ingest_search_bluesky`, `ingest_search_gdelt`, `ingest_grok_live_search`. Lead-only: `dispatch_subagent`, `propose_trend_candidate`. |
 | `prompt_loader.mjs` | Loads prompts from `DIM_LLM_PROMPT` by `PROMPT_KEY` + `IS_ACTIVE = TRUE`. Template expansion via `{{placeholder}}`. |
 | `subagent_client.mjs` | `fanoutSubagents({ url, dispatches, concurrency, perCallTimeoutMs })` — parallel HTTP POST fanout with configurable concurrency cap (default 10). Aggregates `{ succeeded, failed, by_verdict }`. |
@@ -240,7 +238,7 @@ Distillation lead (p_mkCBBqb)
   └─ distillation-subagent (p_jmCjj3J) → https://eo5h5le4j2qu3tm.m.pipedream.net
 
 Distillation revisit (p_o7CWWZl)
-  └─ distillation-revisit-subagent (p_ezCwwKm) → https://40f1843b3006b0f5d1556eff5101ae0d.m.pipedream.net
+  └─ distillation-cluster-agent (p_YyC89Ke) → https://eoo8hdm25do049f.m.pipedream.net
 
 Distillation watchdog (p_dDCWWPg)
   └─ distillation lead (p_mkCBBqb) → https://eo8lg4tmkchk2qc.m.pipedream.net (conditional)

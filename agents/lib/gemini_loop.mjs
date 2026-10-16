@@ -2,7 +2,7 @@
 // ==========================
 //
 // Drives a Gemini 3.1 Pro tool-use loop with thinking enabled. Mirrors
-// anthropic_loop.mjs but targets the Google Generative Language REST API
+// the retired anthropic_loop.mjs but targets the Google Generative Language REST API
 // instead of api.anthropic.com. Used by distillation, promotion, lifecycle,
 // and enrichment agents.
 //

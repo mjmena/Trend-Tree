@@ -46,7 +46,6 @@ from tt_services_lib.snowflake_client import SnowflakeClient
 
 from ..config import Settings
 from ..domain.claim import MAX_LENGTHS
-from ..domain.ledger import MERGE_VERDICT, insert_params
 from ..generation.blindness import BlindnessViolation
 from ..generation.llm import LLMError, PredictionLLM
 from ..generation.parse import UnparseableResponse
@@ -63,6 +62,7 @@ from ..generation.signals import (
     SnowflakeSignalReader,
 )
 from ..saturation import SaturationPhase, floor_from_settings
+from ..writes import VerdictWriteFailed, write_verdicts
 
 log = logging.getLogger(__name__)
 
@@ -283,49 +283,20 @@ def generate_router(
         written: set[str] = set()
         if not body.dry_run:
             table = settings.qualify("FCT_PREDICTION_VERDICT_LEDGER")
-            for verdict in result.verdicts:
-                try:
-                    rows = snowflake.execute(
-                        MERGE_VERDICT.format(table=table), insert_params(verdict)
-                    )
-                except Exception as err:
-                    # The shared client has already exhausted its retries.
-                    # Rows appended before this point stay -- the ledger is
-                    # append-only and a partial run is real history, not
-                    # something to pretend away. Say how many landed.
-                    log.exception(
-                        "verdict write failed",
-                        extra={
-                            "chain_id": chain_id,
-                            "prediction_eval_id": verdict.prediction_eval_id,
-                        },
-                    )
-                    raise HTTPException(
-                        status_code=502,
-                        detail=(
-                            f"verdict write failed after {len(written)} of "
-                            f"{len(result.verdicts)} row(s) landed; the ledger keeps them. "
-                            f"Re-firing with chain_id={chain_id!r} re-runs generation from "
-                            "the corpus: any claim identical to one already written MERGEs "
-                            "into it, and any claim the model words differently lands as a "
-                            "new row. It does not replay this run."
-                        ),
-                    ) from err
-                if rows > 0:
-                    written.add(verdict.prediction_eval_id)
-                else:
-                    # The MERGE matched: an earlier fire of this chain_id
-                    # already wrote this exact claim. Idempotent, by design --
-                    # the row in the ledger is the one that run minted, so
-                    # this verdict's PREDICTION_ID is not reported (see
-                    # PredictionOut.prediction_id).
-                    log.info(
-                        "verdict write was a no-op (this claim is already in the ledger)",
-                        extra={
-                            "chain_id": chain_id,
-                            "prediction_eval_id": verdict.prediction_eval_id,
-                        },
-                    )
+            try:
+                written = set(
+                    write_verdicts(snowflake, table, result.verdicts, chain_id=chain_id).written
+                )
+            except VerdictWriteFailed as err:
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        f"{err} Re-firing with chain_id={chain_id!r} re-runs generation from "
+                        "the corpus: any claim identical to one already written MERGEs "
+                        "into it, and any claim the model words differently lands as a "
+                        "new row. It does not replay this run."
+                    ),
+                ) from err
 
         return GenerateResponse(
             chain_id=chain_id,
