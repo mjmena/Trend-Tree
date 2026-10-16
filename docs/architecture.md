@@ -93,14 +93,15 @@ Key steps:
 Processes a 24h rolling window of unclaimed signals. Calls `PROC_CLUSTER_SIGNAL_SUBSET` (k-means++ over `FCT_SIGNALS.SIGNAL_VECTOR`, K = `ceil(N/20)` clamped to [4, 15]) to produce cluster hints for the LLM.
 
 Key steps:
-1. `normalize_event` — coerces trigger payload into a standard run context (`chain_id`, `iteration`, `budget_usd`, `dry_run`)
-2. `q_release_stale_claims` — calls `PROC_RELEASE_STALE_SIGNAL_CLAIMS` to unblock signals stuck >1h
-3. `q_signals_window` — SELECT 450 unclaimed signals from last 24h
-4. `q_cluster_signals` — calls `PROC_CLUSTER_SIGNAL_SUBSET` to annotate signals with `cluster_id` hints
-5. `run_lead_agent` — Gemini 3.1 Pro agentic loop with tools: `query_signals_window`, `query_louvain_candidates`, `query_trend_neighbors`, `dispatch_subagent`, `propose_trend_candidate`, plus 4 live search tools
-6. `commit_candidates` — INSERT into `STG_TREND_CANDIDATES`
-7. `claim_window_signals` — UPDATE `STG_EXTERNAL_SIGNALS.AGENT_SESSION_ID`
-8. `update_cursor` — MERGE checkpoint into `STG_DISTILLATION_CURSOR`
+1. `normalize_event` — coerces trigger payload into a standard run context (`cursor_name`, `chain_id`, `agent_session_id`, `iteration`)
+2. `respond_accepted` — 202 ack to the HTTP caller before the suspend
+3. `q_release_stale_claims` — calls `PROC_RELEASE_STALE_SIGNAL_CLAIMS` to unblock signals stuck >1h
+4. `acquire_signal_ids` — picks the unclaimed signal pool
+5. `q_cluster_signals` — calls `PROC_CLUSTER_SIGNAL_SUBSET` to annotate signals with `cluster_id` hints
+6. `claim_window_signals` — UPDATE `STG_EXTERNAL_SIGNALS.AGENT_SESSION_ID`
+7. `dispatch_to_cluster_agent` + `parse_cluster_result` — suspend/resume call to the shared cluster agent (`p_YyC89Ke`)
+8. `commit_candidates` — INSERT into `STG_TREND_CANDIDATES`
+9. `update_cursor` — MERGE checkpoint into `STG_DISTILLATION_CURSOR`
 
 ### promotion-p_xMC99jg (lead)
 

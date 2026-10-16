@@ -13,8 +13,8 @@
 //
 // The SOURCES_ONLY / REFRESH gate has been removed — the promotion agent
 // only queues trends that need enrichment, so every run is a FULL run
-// from the dashboard's perspective. `enrichment_type` is captured for
-// audit/telemetry but no longer skips the DIM write.
+// from the dashboard's perspective. A run with no `enrichment_output`
+// throws, so no empty payload reaches the ledger.
 
 const CATEGORY_MAP = {
   // Canonical pass-through
