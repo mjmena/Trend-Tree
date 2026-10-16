@@ -18,24 +18,6 @@ steps:
   uses: "./respond_accepted/entry.mjs"
   props:
     event: "{{steps.normalize_event.$return_value}}"
-- namespace: q_load_cursor
-  runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
-  props:
-    snowflake:
-      authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        SELECT CURSOR_NAME, LAST_RUN_AT, LAST_SIGNAL_TS,
-               COALESCE(LAST_SIGNAL_TS, DATEADD(hour, -2, CURRENT_TIMESTAMP())) AS WINDOW_START_TS
-        FROM MCC_RAW.MARKETING_DEV.STG_DISTILLATION_CURSOR
-        WHERE CURSOR_NAME = '{{steps.normalize_event.$return_value.cursor_name}}'
-      query: |-
-        SELECT CURSOR_NAME, LAST_RUN_AT, LAST_SIGNAL_TS,
-               COALESCE(LAST_SIGNAL_TS, DATEADD(hour, -2, CURRENT_TIMESTAMP())) AS WINDOW_START_TS
-        FROM MCC_RAW.MARKETING_DEV.STG_DISTILLATION_CURSOR
-        WHERE CURSOR_NAME = '{{steps.normalize_event.$return_value.cursor_name}}'
-      params: []
 - namespace: q_release_stale_claims
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3

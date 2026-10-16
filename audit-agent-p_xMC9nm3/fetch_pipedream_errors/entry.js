@@ -39,7 +39,6 @@ const WORKFLOW_REGISTRY = [
   { id: "p_mkCBBqb", name: "distillation" },
   { id: "p_jmCjj3J", name: "distillation-subagent" },
   { id: "p_o7CWWZl", name: "distillation-revisit" },
-  { id: "p_ezCwwKm", name: "distillation-revisit-subagent" },
   { id: "p_dDCWWPg", name: "distillation-watchdog" },
   { id: "p_xMC99jg", name: "promotion" },
   { id: "p_yKCmm9r", name: "promotion-agent" },
@@ -62,11 +61,7 @@ const WORKFLOW_REGISTRY = [
   { id: "p_xMC9jR5", name: "ingest-pinterest" },
   // ingest-tiktok-trending (p_yKCm9Am) scrapped 2026-06-09 — TikTok retired the
   // Creative Center page the scraper depended on (see issues #18/#20).
-  { id: "p_5VCPJVJ", name: "ingest-gemini-food-drink" },
   { id: "p_dDCWMDJ", name: "ingest-gemini-other" },
-  { id: "p_BjC3yGQ", name: "ingest-gemini-travel" },
-  { id: "p_zAC1DvL", name: "ingest-gemini-wellness" },
-  { id: "p_ZJCrPWJ", name: "gemini-prompt-tester" },
   // --- ingestion agent-tools (transient 429s/timeouts expected — triage as INFO unless sustained) ---
   { id: "p_vQCkkGK", name: "grok-live-search" },
   { id: "p_13CNNwP", name: "search-bluesky" },

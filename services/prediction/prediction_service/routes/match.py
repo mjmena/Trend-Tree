@@ -33,7 +33,6 @@ from tt_services_lib.snowflake_client import SnowflakeClient
 
 from ..config import Settings
 from ..domain.claim import MAX_LENGTHS
-from ..domain.ledger import MERGE_VERDICT, insert_params
 from ..generation.llm import PredictionLLM
 from ..matching.decide import DEFAULT_MIN_SIMILARITY
 from ..matching.isolation import MatchingIsolationViolation
@@ -57,6 +56,7 @@ from ..matching.trends import (
     TRENDS_TABLE,
     SnowflakeTrendReader,
 )
+from ..writes import VerdictWriteFailed, write_verdicts
 
 log = logging.getLogger(__name__)
 
@@ -246,41 +246,18 @@ def match_router(
         written: set[str] = set()
         if not body.dry_run:
             table = settings.qualify("FCT_PREDICTION_VERDICT_LEDGER")
-            for verdict in result.verdicts:
-                try:
-                    rows = snowflake.execute(
-                        MERGE_VERDICT.format(table=table), insert_params(verdict)
-                    )
-                except Exception as err:
-                    # The shared client has already exhausted its retries.
-                    # Rows appended before this point stay -- the ledger is
-                    # append-only and a partial run is real history.
-                    log.exception(
-                        "verdict write failed",
-                        extra={
-                            "chain_id": chain_id,
-                            "prediction_eval_id": verdict.prediction_eval_id,
-                        },
-                    )
-                    raise HTTPException(
-                        status_code=502,
-                        detail=(
-                            f"verdict write failed after {len(written)} of "
-                            f"{len(result.verdicts)} row(s) landed; the ledger keeps them. "
-                            f"Re-firing with chain_id={chain_id!r} re-runs the compare step "
-                            "and MERGEs into the rows this run already wrote."
-                        ),
-                    ) from err
-                if rows > 0:
-                    written.add(verdict.prediction_eval_id)
-                else:
-                    log.info(
-                        "verdict write was a no-op (this evaluation is already in the ledger)",
-                        extra={
-                            "chain_id": chain_id,
-                            "prediction_eval_id": verdict.prediction_eval_id,
-                        },
-                    )
+            try:
+                written = set(
+                    write_verdicts(snowflake, table, result.verdicts, chain_id=chain_id).written
+                )
+            except VerdictWriteFailed as err:
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        f"{err} Re-firing with chain_id={chain_id!r} re-runs the compare step "
+                        "and MERGEs into the rows this run already wrote."
+                    ),
+                ) from err
 
         return MatchResponse(
             chain_id=chain_id,
