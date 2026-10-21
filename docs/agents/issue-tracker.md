@@ -5,8 +5,11 @@ live in **GitHub** (`mjmena/Trend-Tree` — this repo is the board's exception t
 Bitbucket workspace). **Long-form agent docs — PRDs, wayfinder maps, ADRs — live in this
 repo**, linked from their JIRA issue.
 
-JIRA is reached through the **Atlassian MCP tools** — there is no `jira` CLI here. GitHub
-PR and repo operations go through the `gh` CLI.
+**Transport.** Single-issue JIRA operations (read, comment, transition, edit) use the
+**Atlassian MCP tools**. Bulk reads and batch writes use the REST scripts —
+`board-standing/scripts/board-read.sh` and `wayfinder-ops/scripts/wayfinder.sh` — because
+the MCP ships full descriptions whatever `fields` says and truncates at 100 results. Keep
+those scripts on REST. GitHub PR and repo operations go through the `gh` CLI.
 
 - **cloudId:** `bce2b7e6-0609-4ded-9cf6-4744a7739271` (`mcclatchy.atlassian.net`)
 - **Project:** `CRMA` · **Board:** `1626`
@@ -46,17 +49,19 @@ and the component wins. Do not scope on them.
   file on GitHub. It is **not** a Confluence page. The Stories a later `to-tickets` run
   produces link **under that Epic** (set the Story's parent / Epic Link to the Epic key;
   fall back to `createIssueLink` if the parent field is unavailable).
+- **`implement` / `implement-spec`** → **Implementation and release flow** below: one
+  Story per `/implement` run, one Epic per `/implement-spec` run.
 - **`triage` roles → JIRA labels** (see `triage-labels.md`). `/triage` must also read
   **Triage operations** below before it buckets or closes anything — two of its default
   readings are wrong on this board.
 
 ## Implementation and release flow
 
-**One story = one feature branch = one PR.** There are no integration branches and no epic
-branches — an Epic is a JIRA grouping, never a branch. The epic-integrated
-`epic-orchestrator` model was retired 2026-09-20 and the skill no longer exists. An
-`epic/<key>` branch you find is a leftover, not a convention — see **Branches the retired
-epic model left behind** below.
+**One story = one feature branch = one PR.** This is the default. The one exception is a
+`/implement-spec` run, which builds a whole Epic on one integration branch — see
+**Spec implementation** below. (An `epic/<key>` branch is a leftover of the retired
+`epic-orchestrator` model, not a convention — see **Branches the retired epic model left
+behind** below.)
 
 ### Implement
 
@@ -80,6 +85,32 @@ Parallel work is parallel sessions: one worktree per story, each on its own bran
 ending in its own PR. Dependencies need no extra machinery — a blocked story stays off the
 frontier until its blocker merges.
 
+### Spec implementation
+
+Used by `/implement-spec`. The **spec** is the Epic's `docs/prd/<slug>.md`; the **tickets**
+are the Epic's child Stories, with the native **`Blocks`** link as the task graph.
+
+- **Launch from the repo's shared checkout, never from inside a worktree.** A session in a
+  worktree pins every subagent to that worktree, so implementers cannot build, test, or
+  commit in their own. `git worktree add` still succeeds, so the failure shows only after
+  stories are claimed. `/clear` does not remove the pin; start a new session.
+- **Integration branch:** `spec/CRMA-<epic>-<slug>`, cut from `production`. The Epic key in
+  the name makes JIRA's dev panel link it.
+- **Frontier:** `wayfinder.sh --repo "$PWD" frontier CRMA-<epic>` — it reads any parent,
+  not only a map, and filters out blocked children (script path in **Wayfinding
+  operations**).
+- **Claim before dispatch:** `wayfinder.sh --repo "$PWD" claim CRMA-<n>` for each story,
+  before its implementer starts. A story with no claim looks free to every other session.
+- **Implementer branch:** `CRMA-<n>-<short-slug>`, cut from the integration branch tip.
+- **Merger subagent:** merges story branches into the integration branch only. Nothing
+  reaches `production` before the human merge — a commit there **is** a Pipedream deploy.
+- **PR:** one PR from the integration branch to `production`, titled
+  `CRMA-<epic>: <summary>`, opened as a draft after the first merge
+  (`gh pr create --draft`; `gh pr ready` at the end). List every story key in the
+  description so JIRA links each one.
+- **Close:** this tracker closes work through PRs. The run ends at PR ready-for-review.
+  A human reviews and merges, and on merge transitions the Epic and every Story to Done.
+
 ### Release
 
 **There is no promotion PR here.** Repos on the standard pipeline promote `staging` → `main`;
@@ -98,7 +129,9 @@ ends at the running workflow or the serving Cloud Run revision, never at the mer
 ### Branches the retired epic model left behind
 
 Two `epic/<key>` branches predate the 2026-09-20 retirement. They are **legacy, not
-corrupt** — read them as history, and never cut a new one.
+corrupt** — read them as history, and never cut a new one. A `spec/<key>-<slug>` branch is
+different: it is the live integration branch of an `/implement-spec` run (see **Spec
+implementation**).
 
 | Branch | State | Disposition |
 | --- | --- | --- |
@@ -106,7 +139,7 @@ corrupt** — read them as history, and never cut a new one.
 | `epic/CRMA-761` | open as **PR #113** against `production`, tip 2026-08-25 | grandfathered |
 
 `epic/CRMA-761` is the only live one. Its PR bundles a whole wave of stories, which the
-one-story-one-PR rule above forbids from now on. It is **grandfathered under the old
+one-story-one-PR rule above allows now only inside an `/implement-spec` run. It is **grandfathered under the old
 model**: finish it as the epic PR it already is, or split it into per-story PRs. That is a
 maintainer decision. Do not split it unasked, and do not read it as a precedent.
 
@@ -131,7 +164,8 @@ maintainer decision. Do not split it unasked, and do not read it as a precedent.
   > *This was generated by AI during triage.*
   ```
 - **Apply / remove labels**: `editJiraIssue` on the `labels` field.
-- **Claim**: `editJiraIssue` setting `assignee`. **Assign first** — it is the claim lock.
+- **Claim**: `wayfinder.sh --repo "$PWD" claim <key>` — assign yourself **and** transition
+  to In Progress. Status is the claim the frontier reads; the assignee only says whose it is.
 - **Move status**: `transitionJiraIssue`. CRMA transition ids (all transitions are global,
   so any status is reachable from any status): Backlog `11`, Selected for Development `21`,
   In Progress `31`, Done `41`. For any other project, re-fetch with
@@ -158,20 +192,15 @@ is `ready-for-human`.
 
 ## Board query cookbook
 
-Ready-made JQL for the queries agents run most. Everything is scoped to `project = CRMA`,
-and every one wants compact output — **always pass `responseContentFormat: "markdown"`**
-(see **List / search issues** above for why field-narrowing is not the lever).
+Ready-made JQL for the queries agents run most. On the MCP, **always pass
+`responseContentFormat: "markdown"`** (see **List / search issues** above). The scripts
+named in **Transport** run the same JQL over REST.
 
-> **Exception: `/board-standing` does not use the MCP tools at all.** Its whole read is
-> `skills/board-standing/scripts/board-read.sh`, curl against the Jira REST API, because
-> REST honours `fields` (the MCP ships full descriptions regardless) and pages past 100.
-> The JQL below still describes what it asks for; the transport differs. Don't "fix" it
-> back onto the MCP tools.
-
-- **`ready-for-agent` frontier** — all agent-ready work board-wide (`board-standing`
-  surfaces it as each effort's takeable set):
+- **`ready-for-agent` frontier** — this repo's agent-ready work (`/board-standing`
+  surfaces it as each effort's takeable set; drop the component clause for board-wide):
   ```
-  project = CRMA AND labels = ready-for-agent AND statusCategory != Done ORDER BY created ASC
+  project = CRMA AND component = trend-tree AND labels = ready-for-agent
+    AND statusCategory != Done ORDER BY created ASC
   ```
 - **My claimed, in-progress work:**
   ```
@@ -290,14 +319,11 @@ the prose.
   Story** — Story and Task both sit at JIRA hierarchy level 0, so a Task map cannot
   parent a Story (`createJiraIssue` fails with *"Please select valid parent issue"*).
   Sub-task is level -1 and parents correctly, which keeps `parent = <map-key>` working.
-  Verified 2026-07-19 on CRMA-55.
 - **Blocking**: the native **`Blocks`** issue link — the canonical, UI-visible edge, so
   the frontier renders in JIRA's own dependency view. Create it with `createIssueLink`
   (`getIssueLinkTypes` for the id). A ticket is unblocked when every issue that blocks it
   is Done. Any prose `## Blocked by` line in a body **must** be backed by a real link.
-- **Claim**: the claim marker is **In Progress**, not the assignee. Both get set,
-  but status is what the frontier reads — an assignee alone left 5 CRMA tickets
-  parked in Backlog and invisible to the frontier for weeks.
+- **Claim**: `wayfinder.sh claim` — see **Conventions → Claim**.
 
 ### The operations are a script, not a procedure
 
@@ -307,8 +333,10 @@ the prose.
   frontier <map-key>                 takeable set as TSV, blockers filtered
   chart    <map-key> <tickets.json>  every child + every Blocks edge, one call
   claim    <ticket-key>              assign + In Progress
-  resolve  <ticket> <answer.md> --decided "<line>" [--binds "<…>"]
-                                     comment, close, append to map file, commit
+  resolve  <ticket> <answer.md> --decided "<line>"
+                                     comment, close, append to map file, commit,
+                                     mirror the index to the map's description
+  mirror   <map-key>                 backfill that mirror for an existing map
 ```
 
 `chart --dry-run` prints what it would create; the ticket-spec format is in that
@@ -316,34 +344,37 @@ skill's `SKILL.md`. `resolve` measures the map file and prints the compaction
 rules itself when they apply — **compaction never runs on the save path**.
 
 **If the script is missing**, link it and re-run:
-`ln -s ~/claude-skills/skills/wayfinder-ops ~/.claude/skills/wayfinder-ops`.
+`ln -s ~/dev/claude-skills/skills/wayfinder-ops ~/.claude/skills/wayfinder-ops`.
 Until then fall back to the MCP calls in **Board query cookbook** — correct, and
 much slower.
-
-Everything else stays on the MCP, where it works: reading one issue, an ad-hoc
-comment, an ad-hoc transition all run below 2% failure. The script exists only for
-bulk reads (the MCP ships full descriptions regardless of `fields` and failed
-34.6% of wayfinder's searches), batch writes, and map bodies that outgrew the
-32,767-character description cap.
 
 ### Index discipline
 
 The map file is uncapped; that is **not** licence for a longer map. The body is
 loaded **in full, once per session**, so its size is a tax every future session
-pays before doing any work. Measured across 28 CRMA maps, a body grows **~1,986
-characters per closed decision** — about 5,000 tokens at ten decisions.
+pays before doing any work — about 2,000 characters per closed decision when
+entries restate what `## Standing constraints` already carries.
 
-One line per closed ticket, in two named parts:
+One line per closed ticket:
 
 ```markdown
 - [<closed ticket title>](link) — **Decided:** <the answer, one line>
-  **Binds:** <what downstream work this constrains — or `nothing further`>
 ```
 
-`Binds` is what makes zooming optional: it states the constraint a later ticket
-must honour, which is the only reason that ticket needs the entry at all. **Amend
-by rewriting the line, not appending to it** — git tracks what changed better than
-a parenthetical can.
+A decision that constrains later work writes that constraint into
+**`## Standing constraints`**, in binding present tense, in the **same edit** —
+`resolve` commits the whole file, so the constraint and the index line land in
+one commit. The constraints section is what makes zooming optional: it answers
+"what binds me right now?" without opening any closed ticket. **Amend a
+constraint by rewriting it, not appending to it** — git tracks what changed
+better than a parenthetical can. Maps written earlier still carry per-entry
+`Binds:` lines; compaction demotes them, and nothing new is written in that
+shape.
+
+The map Task's JIRA description mirrors this index below a marker line, for
+reading from JIRA. `wayfinder.sh` rewrites that block whole on every `resolve`
+— never edit it by hand, and never treat it as the source: the file is
+canonical.
 
 ### Research subagents
 
