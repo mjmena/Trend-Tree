@@ -27,10 +27,11 @@
 -- services/lib/scrape_normalize.mjs — "one bad record never fails the
 -- whole job: a partial pull beats no pull."
 --
--- NAME DRIFT. The live object is MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT;
--- sql/fct_signals.sql declares it unprefixed as
--- TASK_PROMOTE_SIGNALS_TO_FCT. The same split exists for the trend-signals
--- task. This migration targets the name that actually runs.
+-- TASK NAME. The live object is MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT.
+-- When this migration was written, sql/fct_signals.sql still declared it
+-- unprefixed; that file was reconciled to the live name in CRMA-1030. The
+-- same split still exists for the trend-signals task. This migration
+-- targets the name that actually runs.
 --
 -- OWNERSHIP TRAP — read before re-running. CREATE OR REPLACE TASK here does
 -- NOT preserve the task's owner. Running it in a session whose CURRENT_ROLE

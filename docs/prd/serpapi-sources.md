@@ -209,7 +209,7 @@ advance. If the check fails, that platform comes out.
 - **Dedup.** Before the write, the ingester skips any video whose ID already exists in
   `METADATA.video_id` for `SOURCE_NAME = 'tiktok'`, and any duplicate within the same run.
 - **Row shape.** One signal per kept video, written through the shared `MERGE … ON SIGNAL_ID` into
-  `STG_EXTERNAL_SIGNALS`. `TASK_PROMOTE_SIGNALS_TO_FCT` moves it to `FCT_SIGNALS`; that task and
+  `STG_EXTERNAL_SIGNALS`. `MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT` moves it to `FCT_SIGNALS`; that task and
   the shared MERGE do not change.
 
   | Column | Value |
@@ -316,7 +316,7 @@ advance. If the check fails, that platform comes out.
 - **Reddit on the incumbent Gemini decider.** The incumbent path keeps `[exploding_topics]`.
 - **The typed Jev decider itself.** It is the CRMA-1214 map's work; this spec only adds an adapter
   to it.
-- **Changes to `sourceFamilyOf()`, the shared MERGE, `TASK_PROMOTE_SIGNALS_TO_FCT`, or the
+- **Changes to `sourceFamilyOf()`, the shared MERGE, `MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT`, or the
   dashboard's publisher mapping.** All already handle `tiktok`.
 - **A Reddit or provider-neutral oracle ledger.** Rejected in ADR-0004's amendment.
 - **Surfacing Reddit corroboration in ATLAS.**

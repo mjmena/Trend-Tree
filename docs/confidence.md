@@ -51,7 +51,7 @@ Each model gets a different prompt and a different angle. Every proposed signal 
 
 Each ingester runs on its own cron schedule, configured in the Pipedream UI (not in git). Check the workflow's trigger panel in Pipedream for current cadence. The separate `gtrends-poller-p_13CN9KG` workflow, which populated `FCT_TREND_GTRENDS_DAILY`, was removed on 2026-09-25 (CRMA-1313). It never counted as a producer, because it did not write to `STG_EXTERNAL_SIGNALS`.
 
-All nine producers write to the same staging table. A 5-minute Snowflake task (`TASK_PROMOTE_SIGNALS_TO_FCT`) promotes rows to `FCT_SIGNALS` and embeds a 1024-dim vector for clustering.
+All nine producers write to the same staging table. A 5-minute Snowflake task (`MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT`) promotes rows to `FCT_SIGNALS` and embeds a 1024-dim vector for clustering.
 
 ### URL validation
 
