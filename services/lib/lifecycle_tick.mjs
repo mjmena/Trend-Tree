@@ -10,15 +10,16 @@ import {
 
 const BATCHES = "MCC_RAW.MARKETING_DEV.STG_LIFECYCLE_BATCHES";
 
-const Q_IN_FLIGHT = `SELECT BATCH_NAME, CHAIN_ID, HEAT_BASES FROM ${BATCHES}
+const Q_IN_FLIGHT = `SELECT BATCH_NAME, CHAIN_ID, HEAT_BASES, BUDGET_EXHAUSTED,
+  DATEDIFF(second, SUBMITTED_AT, CURRENT_TIMESTAMP()) AS AGE_S FROM ${BATCHES}
 WHERE STATE = 'SUBMITTED'
 ORDER BY SUBMITTED_AT DESC
 LIMIT 1`;
 
 // SUBMITTED_AT and EVALUATED_AT both come from CURRENT_TIMESTAMP() in this
 // session, so the comparison stays in one time zone.
-const INSERT_BATCH = `INSERT INTO ${BATCHES} (BATCH_NAME, CHAIN_ID, TREND_IDS, HEAT_BASES, SUBMITTED_AT, STATE, UPDATED_AT)
-SELECT ?, ?, PARSE_JSON(?), PARSE_JSON(?), CURRENT_TIMESTAMP(), 'SUBMITTED', CURRENT_TIMESTAMP()`;
+const INSERT_BATCH = `INSERT INTO ${BATCHES} (BATCH_NAME, CHAIN_ID, TREND_IDS, HEAT_BASES, BUDGET_EXHAUSTED, SUBMITTED_AT, STATE, UPDATED_AT)
+SELECT ?, ?, PARSE_JSON(?), PARSE_JSON(?), ?, CURRENT_TIMESTAMP(), 'SUBMITTED', CURRENT_TIMESTAMP()`;
 
 const UPDATE_STATE = `UPDATE ${BATCHES} SET STATE = ?, UPDATED_AT = CURRENT_TIMESTAMP() WHERE BATCH_NAME = ?`;
 
@@ -68,55 +69,101 @@ LIMIT ${limit}`;
 
 const GRPC_CANCELLED = 1;
 const INLINE_LIMIT_BYTES = 20 * 1024 * 1024;
+const TIMEOUT_SECONDS = 6 * 3600;
+const MIN_OUTPUT_TOKENS = 8192;
+const TOOL_WORDS = /propose_lifecycle_decision|query_trend_|query_signal_|query_lifecycle_/;
 
 export async function runTick({ query, gemini, cap = 200, now = () => new Date() }) {
   const prompts = await query(PROMPTS_SQL);
+  refuseBadPrompt(prompts);
   const summary = {};
+  let retries = 0;
 
   const [inFlight] = await query(Q_IN_FLIGHT);
   if (inFlight) {
-    const batch = await gemini.getBatch(inFlight.BATCH_NAME);
+    const name = inFlight.BATCH_NAME;
+    const batch = await gemini.getBatch(name);
     if (batch.state === "BATCH_STATE_PENDING" || batch.state === "BATCH_STATE_RUNNING") {
-      return { waiting: inFlight.BATCH_NAME, state: batch.state };
+      if (Number(inFlight.AGE_S) < TIMEOUT_SECONDS) return { waiting: name, state: batch.state };
+      await gemini.cancelBatch(name);
+      await close({ query, batchName: name, state: "CANCELLED", status: "TIMEOUT" });
+      summary.cancelled = name;
+    } else if (batch.state === "BATCH_STATE_FAILED" || batch.state === "BATCH_STATE_EXPIRED") {
+      await close({ query, batchName: name, state: "FAILED", status: "ERROR", error: batch.state });
+      summary.failed = name;
+    } else if (batch.state === "BATCH_STATE_SUCCEEDED") {
+      const heatBases = typeof inFlight.HEAT_BASES === "string" ? JSON.parse(inFlight.HEAT_BASES) : (inFlight.HEAT_BASES || {});
+      summary.collected = await collect({
+        query, gemini, prompts, batchName: name, heatBases, entries: batch.entries, at: now(),
+        status: inFlight.BUDGET_EXHAUSTED ? "BUDGET_EXHAUSTED" : "OK",
+      });
+      retries = summary.collected.retries;
+    } else {
+      throw new Error(`lifecycle: ${name} is ${batch.state}, which this job does not handle`);
     }
-    if (batch.state !== "BATCH_STATE_SUCCEEDED") {
-      throw new Error(`lifecycle: ${inFlight.BATCH_NAME} is ${batch.state}, which this job does not handle yet`);
-    }
-    const heatBases = typeof inFlight.HEAT_BASES === "string" ? JSON.parse(inFlight.HEAT_BASES) : (inFlight.HEAT_BASES || {});
-    summary.collected = await collect({ query, batchName: inFlight.BATCH_NAME, heatBases, entries: batch.entries, at: now() });
   }
 
-  summary.submitted = await submit({ query, gemini, prompts, cap });
+  summary.submitted = await submit({ query, gemini, prompts, limit: cap - retries });
   return summary;
 }
 
-async function collect({ query, batchName, heatBases, entries, at }) {
+function refuseBadPrompt(prompts) {
+  const { params } = mustGet(loadPrompts(prompts), JOB_SYSTEM_PROMPT_KEY);
+  if (!(params.per_call_max_tokens >= MIN_OUTPUT_TOKENS)) {
+    throw new Error(`lifecycle: per_call_max_tokens is ${params.per_call_max_tokens}, below ${MIN_OUTPUT_TOKENS}`);
+  }
+  const tool = renderSystemPrompt(prompts, {}, JOB_SYSTEM_PROMPT_KEY).match(TOOL_WORDS);
+  if (tool) throw new Error(`lifecycle: the rendered prompt still names the tool ${tool[0]}`);
+}
+
+// A batch that ends without a collect: no tokens are known, so the cost row is zero.
+async function close({ query, batchName, state, status, error = null }) {
+  await query(INSERT_COST, [JOB_MODEL, 0, 0, 0, 0, 0, status, error, batchName]);
+  await query(UPDATE_STATE, [state, batchName]);
+}
+
+async function collect({ query, gemini, prompts, batchName, heatBases, entries, at, status }) {
   const applied = new Set((await query(Q_ALREADY_APPLIED, [batchName])).map((r) => r.TREND_ID));
   const decisions = [];
   const errors = [];
+  const toRetry = [];
   const usage = { prompt: 0, candidates: 0, thoughts: 0, cost: 0 };
-  for (const e of entries) {
-    const key = e.metadata?.key;
-    if (e.error) {
-      if (e.error.code !== GRPC_CANCELLED) errors.push(`${key}: error ${e.error.code} ${e.error.message || ""}`.trim());
-      continue;
-    }
-    const u = e.response?.usageMetadata || {};
+  const decide = (key, response, batch) => {
+    const u = response?.usageMetadata || {};
     usage.prompt += u.promptTokenCount || 0;
     usage.candidates += u.candidatesTokenCount || 0;
     usage.thoughts += u.thoughtsTokenCount || 0;
-    usage.cost += entryCost(u, { batch: true, at });
-    if (applied.has(key)) continue;
-    const heatBase = heatBases[key];
-    if (typeof heatBase !== "number") {
+    usage.cost += entryCost(u, { batch, at });
+    if (applied.has(key)) return undefined;
+    return buildDecision({
+      trendId: key, heatBase: heatBases[key], batchName, sessionId: `lcy-sess-${randomUUID()}`, response, batch, at,
+    });
+  };
+
+  for (const e of entries) {
+    const key = e.metadata?.key;
+    if (e.error?.code === GRPC_CANCELLED || applied.has(key)) continue;
+    if (typeof heatBases[key] !== "number") {
       errors.push(`${key}: no heat_base on the batch row`);
       continue;
     }
-    const decision = buildDecision({
-      trendId: key, heatBase, batchName, sessionId: `lcy-sess-${randomUUID()}`, response: e.response, at,
-    });
+    const decision = e.error ? null : decide(key, e.response, true);
     if (decision) decisions.push(decision);
-    else errors.push(`${key}: answer is not JSON`);
+    else toRetry.push({ key, why: e.error ? `error ${e.error.code} ${e.error.message || ""}`.trim() : "answer is not JSON" });
+  }
+
+  if (toRetry.length) {
+    const { requests } = await buildRequests({ query, prompts, ids: toRetry.map((r) => r.key) });
+    for (const [i, { key, why }] of toRetry.entries()) {
+      let failure = "answer is not JSON";
+      try {
+        const decision = decide(key, await gemini.generateContent({ model: JOB_MODEL, request: requests[i].request }), false);
+        if (decision) { decisions.push(decision); continue; }
+      } catch (err) {
+        failure = err.message;
+      }
+      errors.push(`${key}: ${why}, and the retry: ${failure}`);
+    }
   }
 
   let receipt = null;
@@ -126,17 +173,16 @@ async function collect({ query, batchName, heatBases, entries, at }) {
   }
   await query(INSERT_COST, [
     JOB_MODEL, usage.prompt, usage.candidates, usage.thoughts, entries.length,
-    Math.round(usage.cost * 1e6) / 1e6, "OK", errors.length ? errors.join("; ").slice(0, 2000) : null, batchName,
+    Math.round(usage.cost * 1e6) / 1e6, status, errors.length ? errors.join("; ").slice(0, 2000) : null, batchName,
   ]);
   await query(UPDATE_STATE, ["COLLECTED", batchName]);
-  return { batch: batchName, entries: entries.length, applied: decisions.length, skipped: applied.size, errors: errors.length, receipt };
+  return {
+    batch: batchName, entries: entries.length, applied: decisions.length, skipped: applied.size,
+    retries: toRetry.length, errors: errors.length, receipt,
+  };
 }
 
-async function submit({ query, gemini, prompts, cap }) {
-  if (cap === 0) return null;
-  const ids = (await query(dueSql(cap))).map((r) => r.TREND_ID);
-  if (!ids.length) return null;
-
+async function buildRequests({ query, prompts, ids }) {
   const names = Object.keys(SET_QUERIES);
   const results = await Promise.all(names.map((q) => query(SET_QUERIES[q], [JSON.stringify(ids)])));
   const grouped = names.map((q, k) => groupByTrend(results[k], CONTEXT_FIELDS[q].key));
@@ -155,11 +201,23 @@ async function submit({ query, gemini, prompts, cap }) {
       params,
     });
   });
+  return { requests, heatBases };
+}
+
+async function submit({ query, gemini, prompts, limit }) {
+  if (limit <= 0) return null;
+  // One row past the limit tells whether the cap cut the due set.
+  const due = (await query(dueSql(limit + 1))).map((r) => r.TREND_ID);
+  const ids = due.slice(0, limit);
+  if (!ids.length) return null;
+
+  const { requests, heatBases } = await buildRequests({ query, prompts, ids });
   const bytes = Buffer.byteLength(JSON.stringify(requests));
   if (bytes >= INLINE_LIMIT_BYTES) throw new Error(`lifecycle: batch payload is ${bytes} bytes, over the 20 MB inline limit`);
 
   const chainId = `lcy-chain-${randomUUID()}`;
   const { name } = await gemini.submitBatch({ model: JOB_MODEL, displayName: chainId, requests });
-  await query(INSERT_BATCH, [name, chainId, JSON.stringify(ids), JSON.stringify(heatBases)]);
-  return { batch: name, chain_id: chainId, trends: ids.length };
+  const budgetExhausted = due.length > limit;
+  await query(INSERT_BATCH, [name, chainId, JSON.stringify(ids), JSON.stringify(heatBases), budgetExhausted]);
+  return { batch: name, chain_id: chainId, trends: ids.length, budget_exhausted: budgetExhausted };
 }

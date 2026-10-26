@@ -1,0 +1,35 @@
+{
+  "displayName": "trend-tree-lifecycle: failed or silent",
+  "combiner": "OR",
+  "documentation": {
+    "content": "The lifecycle job failed an execution or has not completed one in 3 h. Runbook: services/lifecycle/README.md, section \"When the alert fires\" (https://github.com/mjmena/Trend-Tree/blob/production/services/lifecycle/README.md#when-the-alert-fires).",
+    "mimeType": "text/markdown"
+  },
+  "alertStrategy": { "autoClose": "86400s" },
+  "conditions": [
+    {
+      "displayName": "trend-tree-lifecycle execution failed",
+      "conditionThreshold": {
+        "filter": "metric.type=\"run.googleapis.com/job/completed_execution_count\" AND resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"trend-tree-lifecycle\" AND metric.labels.result=\"failed\"",
+        "aggregations": [
+          { "alignmentPeriod": "300s", "perSeriesAligner": "ALIGN_SUM", "crossSeriesReducer": "REDUCE_SUM" }
+        ],
+        "comparison": "COMPARISON_GT",
+        "thresholdValue": 0,
+        "duration": "0s",
+        "trigger": { "count": 1 }
+      }
+    },
+    {
+      "displayName": "trend-tree-lifecycle completed no execution for 3 h",
+      "conditionAbsent": {
+        "filter": "metric.type=\"run.googleapis.com/job/completed_execution_count\" AND resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"trend-tree-lifecycle\"",
+        "aggregations": [
+          { "alignmentPeriod": "300s", "perSeriesAligner": "ALIGN_SUM", "crossSeriesReducer": "REDUCE_SUM" }
+        ],
+        "duration": "10800s",
+        "trigger": { "count": 1 }
+      }
+    }
+  ]
+}
