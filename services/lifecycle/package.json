@@ -1,0 +1,16 @@
+{
+  "name": "trend-tree-lifecycle",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Lifecycle agent as a Cloud Run job: set-based context parity test.",
+  "scripts": {
+    "parity": "node parity.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "snowflake-sdk": "^2.2.0"
+  }
+}
