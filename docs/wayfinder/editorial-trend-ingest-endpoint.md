@@ -136,9 +136,11 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   promotion gate and the promotion agent's verdict do not stand between a valid request and
   a trend. ([CRMA-1425](https://mcclatchy.atlassian.net/browse/CRMA-1425), 2026-10-26.)
 - **A request carries one or more URLs, and each URL becomes a linked signal.** Each URL
-  enters as a normal signal row with a link in `FCT_TREND_SIGNALS`, after the same
-  post-verification the discovery agents' URLs pass. A request with no URL, or with no URL
-  that resolves, fails as invalid input. That failure is validation, not a judgment of the
+  enters as a normal signal row with a link in `FCT_TREND_SIGNALS`, after the dead-URL
+  check from discovery's `canonicalize_and_validate`. Only a provably dead or malformed URL
+  drops; a 401, 403, 429, 5xx or timeout passes with `unverified: true`. Discovery's
+  freshness and title-relevance filters do not apply. A request with no URL, or with every
+  URL dropped, fails as invalid input. That failure is validation, not a judgment of the
   trend. (CRMA-1425, 2026-10-26.)
 - **A duplicate returns the matching live trend, never a second row.** The person's URL
   attaches to that trend as a new linked signal. (CRMA-1425, 2026-10-26.)
@@ -163,12 +165,12 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   with `decision_category` `EDITORIAL`, for `PROMOTE_NEW` and `MERGE_INTO_EXISTING`
   alike. A trend's origin is the category on its `PROMOTE_NEW` row, so a nomination that
   merges into a discovered trend leaves that trend discovered. A new nullable
-  `FCT_PROMOTION_LEDGER.NOMINATION` VARIANT holds `{nominated_by, wording}`, with the
+  `FCT_PROMOTION_LEDGER.NOMINATION` VARIANT holds `{nominated_by, brief}`, with the
   person's text verbatim. The time is `DECIDED_AT`. The proc's `log_audit` must write the
   column. Nothing goes on `FCT_TRENDS`. The dashboard does not join `STG_TREND_CANDIDATES`.
   ([CRMA-1430](https://mcclatchy.atlassian.net/browse/CRMA-1430), 2026-10-26.)
 - **`DT_TREND_DASHBOARD` exposes `TREND_ORIGIN` (`DISCOVERED` | `EDITORIAL`) and nothing
-  else about the nomination.** `nominated_by` and `wording` stay off the dashboard. The
+  else about the nomination.** `nominated_by` and `brief` stay off the dashboard. The
   spec changes `docs/dashboard/data-contract.md` and its ATLAS Confluence mirror.
   (CRMA-1430, 2026-10-26.)
 - **No scorer reads the origin.** `HEAT_INDEX`, `PREDICTION_SCORE` and the opportunity
@@ -178,8 +180,8 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   (CRMA-1430, 2026-10-26.)
 - **The endpoint is its own Cloud Run service under `services/`.** It is deployed by
   `services/deploy.sh` in `mcc-crm-automations` / `us-east4`, and it is not a route on
-  `trend-tree-ecomm-agent` or the prediction service. It serves one write route plus
-  `/health`. ([CRMA-1431](https://mcclatchy.atlassian.net/browse/CRMA-1431), 2026-10-26.)
+  `trend-tree-ecomm-agent` or the prediction service. It serves an accept route, a
+  task-handler route, and `/health` (amended by CRMA-1432). ([CRMA-1431](https://mcclatchy.atlassian.net/browse/CRMA-1431), 2026-10-26.)
 - **ATLAS calls with a static API key, not a Google ID token.** The service binds
   `allUsers` to `roles/run.invoker` (the `harbor-api` pattern) and rejects a missing or
   wrong `X-Api-Key` header with 401, compared in constant time, before any work. A new
@@ -209,8 +211,8 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   `FCT_TREND_LIFECYCLE_LEDGER`. The endpoint is the second writer of that ledger.
   (CRMA-1638, 2026-10-26.)
 - **The judgment runs before any write, and a failed judgment is retried.** A failure,
-  a timeout, or a `trend_id` outside the pool never falls back to `PROMOTE_NEW`. CRMA-1432
-  decides where the retry runs; the driver leans toward Cloud Tasks. Both `EDITORIAL`
+  a timeout, or a `trend_id` outside the pool never falls back to `PROMOTE_NEW`. Cloud
+  Tasks retries the task handler (CRMA-1432). Both `EDITORIAL`
   ledger rows carry `max_neighbor_sim`, `considered_neighbors` and the judge's rationale.
   (CRMA-1638, 2026-10-26.)
 - **The lifecycle agent does not read the origin.** An editorial trend gets the same
@@ -222,6 +224,37 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   daily cap. The service's `deploy.env` sets `MAX_INSTANCES=2` and keeps the default
   concurrency, so Cloud Run refuses overflow with its own 429. The spec adds no code for
   it. ([CRMA-1640](https://mcclatchy.atlassian.net/browse/CRMA-1640), 2026-10-26.)
+- **The endpoint is asynchronous, and ATLAS never waits for the outcome.** The accept route
+  checks `X-Api-Key`, validates the body, runs the dead-URL check, enqueues one Cloud Tasks
+  task named by `nomination_id`, and returns `202 {nomination_id}` with any dropped URLs.
+  The editorial trend shows up in the list later. The endpoint has no status route.
+  ([CRMA-1432](https://mcclatchy.atlassian.net/browse/CRMA-1432), 2026-10-26.)
+- **The request carries four required fields: `nomination_id`, `brief`, `urls` (1 to 10),
+  `nominated_by`.** `brief` is the person's free-text description of the trend, not a
+  name. It has no cap of its own; the service caps the body at 64 KB. The request has no
+  `rationale`, no `category` and no `dry_run`. The contract has no test path: the ATLAS
+  team stubs the endpoint against the contract. (CRMA-1432, 2026-10-26.)
+- **`nomination_id` is the idempotency key and the candidate's ID.** ATLAS generates it
+  once per form submission. Cloud Tasks refuses a second task with the same name, and the
+  candidate row keyed on it guards after that window. A task that finds its candidate
+  without a ledger row resumes at `PROC_PROMOTION_APPLY`. A reused key with different
+  content gets 202, and the first content wins. A second person who nominates the same
+  trend inside the 2-to-3-minute vector window can still create a second trend; that gap
+  is accepted. (CRMA-1432, 2026-10-26.)
+- **The task handler runs the work and Cloud Tasks owns the retry.** The task handler runs
+  the sameness judgment, `MERGE_EXTERNAL_SIGNALS`, the candidate insert and
+  `PROC_PROMOTION_APPLY`, and returns non-2xx on any failure so Cloud Tasks retries with
+  backoff. It accepts only a Google OIDC token from the queue's service account
+  (`google_oidc_verifier` in `services/lib/tt_services_lib`). It has no retry loop of its
+  own. (CRMA-1432, 2026-10-26.)
+- **The contract has five statuses.** `202` accepted (a repeat also gets 202); `400`
+  malformed body; `401` missing or wrong key; `422 {urls: [{url, reason}]}` when every URL
+  drops; `429` (Cloud Run overflow) or `503` (enqueue failed, nothing written), which ATLAS
+  retries with the same `nomination_id`. (CRMA-1432, 2026-10-26.)
+- **The audit agent counts editorial candidates with no promotion-ledger row older than one
+  hour.** That count catches a task that exhausted its retries and the inert candidate from
+  ADR-0011. The contract adds no dead-letter queue and no callback to ATLAS.
+  (CRMA-1432, 2026-10-26.)
 
 ## Decisions so far
 
@@ -256,14 +289,17 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 
 - [Decide: whether the endpoint needs a rate limit or a budget](https://mcclatchy.atlassian.net/browse/CRMA-1640) — **Decided:** No rate limit and no daily cap; deploy.env sets MAX_INSTANCES=2 so Cloud Run refuses overflow with its own 429; the vector-window double-promote on retry goes to CRMA-1432
 
+- [Decide: the request and response contract for the endpoint](https://mcclatchy.atlassian.net/browse/CRMA-1432) — **Decided:** Asynchronous: ATLAS sends nomination_id, brief, urls and nominated_by, gets 202 after the key, body and dead-URL checks, and a Cloud Tasks task named by nomination_id does the work; no status route, no dry_run
+
 ## Not yet specified
 
 <!-- The fog of war: in-scope decisions you can tell are coming but cannot yet
      phrase precisely. The test is whether you can state the question NOW — not
      whether you can answer it. Graduates into tickets as the frontier advances. -->
 
-- **Who names the trend.** Whether the person's wording becomes the [trend name], the
-  [trend topic], or only an input to enrichment. The [trend name] freezes at first
+- **Who names the trend.** The person sends a `brief`, not a name (CRMA-1432), so
+  enrichment names the trend. Still open: whether enrichment reads the `brief` at all, and
+  whether the brief shapes the [trend topic]. The [trend name] freezes at first
   enrichment (ADR-0001), so the first writer wins.
 
 ## Out of scope
@@ -283,3 +319,7 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   It is a lifecycle-rubric gap, not an editorial-trend gap
   ([CRMA-1639](https://mcclatchy.atlassian.net/browse/CRMA-1639)); filed for triage as
   [CRMA-1655](https://mcclatchy.atlassian.net/browse/CRMA-1655).
+- **A view of a person's own nominations in ATLAS.** A nomination that matches a
+  discovered trend leaves no visible mark, so the person finds it by searching the list.
+  A "your nominations" view needs a `nomination_id` → `TREND_ID` link on the dashboard and
+  is a later effort ([CRMA-1432](https://mcclatchy.atlassian.net/browse/CRMA-1432)).
