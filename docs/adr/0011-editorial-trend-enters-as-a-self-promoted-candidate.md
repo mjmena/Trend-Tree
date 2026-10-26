@@ -25,7 +25,9 @@ Three facts about the pipeline constrained where such a trend can enter:
 
 ## Decision
 
-The endpoint takes three steps for each request:
+The endpoint takes three steps for each request. Before step 1, it judges whether the
+editorial trend duplicates a live trend, and it writes nothing until that judgment
+succeeds ([CRMA-1638](https://mcclatchy.atlassian.net/browse/CRMA-1638)).
 
 1. It merges the person's URLs into `STG_EXTERNAL_SIGNALS` through
    `MERGE_EXTERNAL_SIGNALS`, after post-verification. It passes one `AGENT_SESSION_ID`
