@@ -264,6 +264,19 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   even after the trend gains `attributed` links. The spec adds this rule to §7.6 of
   `docs/prediction-pillar-strategy.md`, beside the hint segmentation of §8.
   (CRMA-1643, 2026-10-26.)
+- **The enrichment agent names an editorial trend.** The endpoint never writes a trend
+  name; the name freezes at first enrichment (ADR-0001).
+  ([CRMA-1658](https://mcclatchy.atlassian.net/browse/CRMA-1658), 2026-10-26.)
+- **The brief goes verbatim into the candidate's `REASONING`, and enrichment does not read
+  the brief.** The duplicate judgment's embedding reads the first 800 characters of
+  `REASONING`. Enrichment reads the topic and the linked signals, as for any trend, and
+  does not change. (CRMA-1658, 2026-10-26.)
+- **A tool-free Gemini call writes the trend topic.** It writes at most 200 characters, in
+  the register of distillation's topics, from the brief and the URL titles. It runs in the
+  task handler before the duplicate judgment, because the judgment embeds the topic. A
+  failure returns non-2xx and Cloud Tasks retries it. The prompt is a new
+  `DIM_LLM_PROMPT` key, with its migration and audit-manifest entry. (CRMA-1658,
+  2026-10-26.)
 
 ## Decisions so far
 
@@ -302,16 +315,14 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 
 - [Decide: whether an editorial trend may resolve a white-space prediction](https://mcclatchy.atlassian.net/browse/CRMA-1643) — **Decided:** An editorial trend may resolve a white-space prediction; the matcher does not read the origin; the track record reports those hits as a separate group, derived from the PROMOTE_NEW row, that never changes
 
+- [Decide: who writes the trend topic and the trend name for an editorial trend](https://mcclatchy.atlassian.net/browse/CRMA-1658) — **Decided:** The enrichment agent names the trend; a tool-free Gemini call writes the topic from the brief before the duplicate judgment; the brief goes verbatim into REASONING and enrichment does not read it
+
 ## Not yet specified
 
 <!-- The fog of war: in-scope decisions you can tell are coming but cannot yet
      phrase precisely. The test is whether you can state the question NOW — not
      whether you can answer it. Graduates into tickets as the frontier advances. -->
 
-- **Who names the trend.** The person sends a `brief`, not a name (CRMA-1432), so
-  enrichment names the trend. Still open: whether enrichment reads the `brief` at all, and
-  whether the brief shapes the [trend topic]. The [trend name] freezes at first
-  enrichment (ADR-0001), so the first writer wins.
 
 ## Out of scope
 
