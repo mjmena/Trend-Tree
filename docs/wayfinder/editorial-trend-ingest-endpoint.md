@@ -150,6 +150,23 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   fails, the endpoint returns an error and leaves the inert candidate in place.
   ([ADR-0011](../adr/0011-editorial-trend-enters-as-a-self-promoted-candidate.md),
   [CRMA-1429](https://mcclatchy.atlassian.net/browse/CRMA-1429), 2026-10-26.)
+- **The promotion ledger records the origin.** The endpoint calls `PROC_PROMOTION_APPLY`
+  with `decision_category` `EDITORIAL`, for `PROMOTE_NEW` and `MERGE_INTO_EXISTING`
+  alike. A trend's origin is the category on its `PROMOTE_NEW` row, so a nomination that
+  merges into a discovered trend leaves that trend discovered. A new nullable
+  `FCT_PROMOTION_LEDGER.NOMINATION` VARIANT holds `{nominated_by, wording}`, with the
+  person's text verbatim. The time is `DECIDED_AT`. The proc's `log_audit` must write the
+  column. Nothing goes on `FCT_TRENDS`. The dashboard does not join `STG_TREND_CANDIDATES`.
+  ([CRMA-1430](https://mcclatchy.atlassian.net/browse/CRMA-1430), 2026-10-26.)
+- **`DT_TREND_DASHBOARD` exposes `TREND_ORIGIN` (`DISCOVERED` | `EDITORIAL`) and nothing
+  else about the nomination.** `nominated_by` and `wording` stay off the dashboard. The
+  spec changes `docs/dashboard/data-contract.md` and its ATLAS Confluence mirror.
+  (CRMA-1430, 2026-10-26.)
+- **No scorer reads the origin.** `HEAT_INDEX`, `PREDICTION_SCORE` and the opportunity
+  score treat an editorial trend like any trend. The endpoint writes the candidate's
+  `CONFIDENCE` and `SPECIFICITY_SCORE` as NULL, and the heat formula falls back to 0.5.
+  The audit agent adds a count of `EDITORIAL` promotions next to `q_et_rescue`.
+  (CRMA-1430, 2026-10-26.)
 
 ## Decisions so far
 
@@ -173,6 +190,8 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 - [Decide: whether the pipeline may search for evidence for an editorial trend](https://mcclatchy.atlassian.net/browse/CRMA-1426) — **Decided:** A search may add rows for an editorial trend, but they link to it only through attribution, whoever authored the claim; the person's own URLs are the one direct door; no scout agent and no ADR
 
 - [Decide: where an editorial trend enters the pipeline](https://mcclatchy.atlassian.net/browse/CRMA-1429) — **Decided:** An editorial trend enters as a candidate with no verdict that the endpoint promotes itself through PROC_PROMOTION_APPLY (PROMOTE_NEW, or MERGE_INTO_EXISTING for a duplicate); ADR-0011
+
+- [Decide: how an editorial trend stays distinguishable from a discovered trend](https://mcclatchy.atlassian.net/browse/CRMA-1430) — **Decided:** The promotion ledger records the origin (DECISION_CATEGORY EDITORIAL plus a NOMINATION column); the dashboard exposes only TREND_ORIGIN; no scorer reads the origin
 
 ## Not yet specified
 
