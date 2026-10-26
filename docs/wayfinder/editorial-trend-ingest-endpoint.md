@@ -202,9 +202,6 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 - **Who names the trend.** Whether the person's wording becomes the [trend name], the
   [trend topic], or only an input to enrichment. The [trend name] freezes at first
   enrichment (ADR-0001), so the first writer wins.
-- **Interaction with the prediction pillar.** Whether an editorial trend may match a
-  [white-space prediction] and resolve it. A person who nominates a predicted trend could
-  make the prediction track record look better than it is.
 
 ## Out of scope
 
