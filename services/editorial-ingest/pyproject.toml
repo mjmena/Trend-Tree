@@ -8,6 +8,12 @@ dependencies = [
     "uvicorn[standard]>=0.34",
     "pydantic>=2.9",
     "google-auth>=2.35",
+    # tt_services_lib's own deps (snowflake_client, auth, gemini): the image
+    # vendors only what this file lists.
+    "snowflake-connector-python>=3.14",
+    "cryptography>=43",
+    "tenacity>=9.0",
+    "pyjwt>=2.9",
     # google.auth.transport.requests (OIDC certs fetch, Cloud Tasks REST) needs it.
     "requests>=2.32",
 ]

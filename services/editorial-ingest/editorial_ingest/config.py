@@ -16,10 +16,28 @@ DEFAULT_QUEUE = "trend-tree-editorial-ingest"
 # The identity Cloud Tasks signs the handler's OIDC token as. The handler
 # accepts no other email: with allUsers ingress there is no edge check.
 DEFAULT_TASK_SERVICE_ACCOUNT = "crm-runtime@mcc-crm-automations.iam.gserviceaccount.com"
+# The dispatcher workflow (dispatcher-p_8rCBgnl): sources -> enrichment -> write.
+DEFAULT_DISPATCHER_URL = "https://eoqf5zok2vcvael.m.pipedream.net"
 
 
 class ConfigError(RuntimeError):
     """Settings that cannot serve traffic. Raised at startup, never per request."""
+
+
+@dataclass(frozen=True)
+class SnowflakeSettings:
+    """tt_services_lib.snowflake_client.SnowflakeSettings. Every statement is
+    fully qualified, so database/schema are only the connection's defaults."""
+
+    account: str
+    user: str
+    role: str
+    warehouse: str
+    database: str
+    schema: str
+    authenticator: str  # externalbrowser locally; keypair on Cloud Run
+    private_key_path: str
+    private_key: str  # PEM, from Secret Manager on Cloud Run
 
 
 @dataclass(frozen=True)
@@ -34,12 +52,19 @@ class Settings:
     queue: str
     task_service_account: str
     port: int
+    snowflake: SnowflakeSettings
+    gemini_api_key: str
+    dispatcher_url: str
 
     def validate_for_server(self) -> None:
         if not self.api_key.strip():
             raise ConfigError("EDITORIAL_API_KEY is empty: every caller would be refused")
         if not self.service_url.startswith("https://"):
             raise ConfigError("EDITORIAL_SERVICE_URL must be the https:// base service URL")
+        if not self.gemini_api_key.strip():
+            raise ConfigError("EDITORIAL_GEMINI_API_KEY is empty: every task would fail")
+        if not (self.snowflake.private_key or self.snowflake.private_key_path):
+            raise ConfigError("no Snowflake key: set EDITORIAL_SNOWFLAKE_PRIVATE_KEY")
 
 
 def settings_from_env(env: Mapping[str, str] | None = None) -> Settings:
@@ -54,4 +79,17 @@ def settings_from_env(env: Mapping[str, str] | None = None) -> Settings:
             "EDITORIAL_TASKS_SERVICE_ACCOUNT", DEFAULT_TASK_SERVICE_ACCOUNT
         ),
         port=int(env.get("PORT", "8080")),
+        snowflake=SnowflakeSettings(
+            account=env.get("EDITORIAL_SNOWFLAKE_ACCOUNT", "WVB49304-MCCLATCHY_EVAL"),
+            user=env.get("EDITORIAL_SNOWFLAKE_USER", "CRMBOT_SERVICE_USER"),
+            role=env.get("EDITORIAL_SNOWFLAKE_ROLE", "MARKETING_ENGINEER"),
+            warehouse=env.get("EDITORIAL_SNOWFLAKE_WAREHOUSE", "MARKETING_WH"),
+            database=env.get("EDITORIAL_SNOWFLAKE_DATABASE", "MCC_RAW"),
+            schema=env.get("EDITORIAL_SNOWFLAKE_SCHEMA", "MARKETING_DEV"),
+            authenticator=env.get("EDITORIAL_SNOWFLAKE_AUTHENTICATOR", "externalbrowser"),
+            private_key_path=env.get("EDITORIAL_SNOWFLAKE_PRIVATE_KEY_PATH", ""),
+            private_key=env.get("EDITORIAL_SNOWFLAKE_PRIVATE_KEY", ""),
+        ),
+        gemini_api_key=env.get("EDITORIAL_GEMINI_API_KEY", ""),
+        dispatcher_url=env.get("EDITORIAL_DISPATCHER_URL", DEFAULT_DISPATCHER_URL),
     )
