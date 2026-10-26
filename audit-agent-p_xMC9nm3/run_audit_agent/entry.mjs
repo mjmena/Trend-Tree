@@ -12,7 +12,8 @@
 // self-contained file — cross-file imports fail at deploy. Cross-workflow
 // shared libs don't bundle either. Mirrors lifecycle-subagent's pattern.
 //
-// Exception: ./catalog_freshness.mjs and ./tiktok_freshness.mjs are siblings
+// Exception: ./catalog_freshness.mjs, ./tiktok_freshness.mjs and
+// ./editorial_counts.mjs (CRMA-1670) are siblings
 // in this SAME step dir (the one kind of cross-file import Pipedream's bundler
 // allows). They hold the CRMA-775 catalog-freshness and CRMA-1338
 // tiktok-freshness grading as plain, defineComponent-free modules —
@@ -24,6 +25,7 @@
 
 import { gradeCatalogFreshness, buildCatalogFreshnessBlock, applyCatalogFinding } from "./catalog_freshness.mjs";
 import { gradeTiktokFreshness, applyTiktokFinding } from "./tiktok_freshness.mjs";
+import { gradeEditorialCounts, applyEditorialFinding } from "./editorial_counts.mjs";
 
 // ─────────────────────────────────────────────────────────────────────
 // prompt_loader (canonical: agents/lib/prompt_loader.mjs)
@@ -474,7 +476,11 @@ export default defineComponent({
       `queries or ET API failures — check the promotion subagent logs for http_403 / ` +
       `timeout / "key not configured". Some rejects are healthy (ET genuinely misses); ` +
       `judge the RATIO over time, not a single day. This funnel is INFORMATIONAL — only ` +
-      `raise an alert on the structural anomalies above, not on normal reject volume.`;
+      `raise an alert on the structural anomalies above, not on normal reject volume.\n` +
+      // CRMA-1670: editorial nominations ride the same block (no new template placeholder).
+      `editorial_promotions_24h (hand-nominated candidates with PROMOTED_AT in the last 24h): ${n(etr.EDITORIAL_PROMOTIONS_24H)}\n` +
+      `editorial_stuck_candidates (not applied after 1h): ${n(etr.EDITORIAL_STUCK_CANDIDATES)} ` +
+      `(any non-zero value is already folded in as a RED alert after this loop — do not duplicate it).`;
 
     // DIM_LLM_PROMPT drift guardrail (CRMA-469). q_prompt_drift already did the
     // deterministic compare (live ACTIVE version vs. the committed manifest);
@@ -606,9 +612,13 @@ export default defineComponent({
     // (never de-escalates) overall_status, so the existing post_to_slack /
     // commit_audit_ledger non-GREEN gating picks it up with no changes.
     // CRMA-1338: same fold-in for the tiktok ingester's EMBEDDED_AT freshness.
-    const report = applyTiktokFinding(
-      applyCatalogFinding(baseReport, catalogGraded),
-      gradeTiktokFreshness(this.tiktok_freshness_rows || []),
+    // CRMA-1670: same fold-in for editorial candidates stuck without a ledger row.
+    const report = applyEditorialFinding(
+      applyTiktokFinding(
+        applyCatalogFinding(baseReport, catalogGraded),
+        gradeTiktokFreshness(this.tiktok_freshness_rows || []),
+      ),
+      gradeEditorialCounts(this.et_rescue_rows || []),
     );
 
     return {
