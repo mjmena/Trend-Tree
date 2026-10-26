@@ -479,7 +479,7 @@ export default defineComponent({
       `raise an alert on the structural anomalies above, not on normal reject volume.\n` +
       // CRMA-1670: editorial nominations ride the same block (no new template placeholder).
       `editorial_promotions_24h (hand-nominated trends, DECISION_CATEGORY='EDITORIAL'): ${n(etr.EDITORIAL_PROMOTIONS_24H)}\n` +
-      `editorial_stuck_candidates (no promotion-ledger row after 1h): ${n(etr.EDITORIAL_STUCK_CANDIDATES)} ` +
+      `editorial_stuck_candidates (not applied after 1h): ${n(etr.EDITORIAL_STUCK_CANDIDATES)} ` +
       `(any non-zero value is already folded in as a RED alert after this loop — do not duplicate it).`;
 
     // DIM_LLM_PROMPT drift guardrail (CRMA-469). q_prompt_drift already did the

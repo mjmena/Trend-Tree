@@ -41,7 +41,7 @@ export function applyEditorialFinding(report, graded) {
 
   const what = graded.stuck_candidates === null
     ? "stuck-candidate count unavailable"
-    : `${graded.stuck_candidates} editorial candidate(s) with no promotion-ledger row after 1h`;
+    : `${graded.stuck_candidates} editorial candidate(s) not applied after 1h`;
   const alert = {
     severity: "RED",
     area: "editorial",
