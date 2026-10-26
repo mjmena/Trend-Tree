@@ -183,6 +183,27 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 - **The endpoint trusts the `nominated_by` that ATLAS sends.** The key proves the caller is
   ATLAS, not which person nominated. The ledger stores the value as ATLAS's claim.
   (CRMA-1431, 2026-10-26.)
+- **An LLM judges whether an editorial trend duplicates a trend, and it judges sameness
+  only.** One Gemini 3.8 call, with no tools, reads promotion's neighbor pool: the
+  `q_compute_vectors_and_neighbors` embedding recipe, cosine ≥ 0.50 against the latest
+  `TREND_VECTOR` on `FCT_TREND_ENRICHMENT_LEDGER`, top 8. It returns `match: <trend_id>`
+  or `no match`, with a rationale. It has no `REJECT` or `DEFER`. The `trend_id` must come
+  from the pool. An empty pool skips the call and promotes a new trend. The prompt is a new
+  `DIM_LLM_PROMPT` key, with its migration and audit-manifest entry. The build confirms the
+  exact model ID. ([CRMA-1638](https://mcclatchy.atlassian.net/browse/CRMA-1638),
+  2026-10-26.)
+- **No URL match, and no match against open candidates.** A URL is evidence, not identity.
+  Promotion later merges an open candidate into the editorial trend if the two are the same.
+  (CRMA-1638, 2026-10-26.)
+- **A `RETIRED` trend can match, and the match revives it.** The lifecycle sweep skips
+  `RETIRED` trends, so the endpoint writes a `RESURGENT` row to
+  `FCT_TREND_LIFECYCLE_LEDGER`. The endpoint is the second writer of that ledger.
+  (CRMA-1638, 2026-10-26.)
+- **The judgment runs before any write, and a failed judgment is retried.** A failure,
+  a timeout, or a `trend_id` outside the pool never falls back to `PROMOTE_NEW`. CRMA-1432
+  decides where the retry runs; the driver leans toward Cloud Tasks. Both `EDITORIAL`
+  ledger rows carry `max_neighbor_sim`, `considered_neighbors` and the judge's rationale.
+  (CRMA-1638, 2026-10-26.)
 
 ## Decisions so far
 
@@ -210,6 +231,8 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 - [Decide: how an editorial trend stays distinguishable from a discovered trend](https://mcclatchy.atlassian.net/browse/CRMA-1430) — **Decided:** The promotion ledger records the origin (DECISION_CATEGORY EDITORIAL plus a NOMINATION column); the dashboard exposes only TREND_ORIGIN; no scorer reads the origin
 
 - [Decide: where the endpoint runs and who may call it](https://mcclatchy.atlassian.net/browse/CRMA-1431) — **Decided:** The endpoint is its own Cloud Run service; ATLAS prod calls it with a static X-Api-Key (allUsers ingress, key checked in the app); dev ATLAS gets no key; nominated_by is trusted
+
+- [Decide: how the endpoint detects that an editorial trend duplicates a live trend](https://mcclatchy.atlassian.net/browse/CRMA-1638) — **Decided:** Gemini 3.8 judges sameness only (match or no match) over promotion's neighbor pool; no URL match; open candidates ignored; a RETIRED match revives the trend; a failed judgment is retried, never falls back to a new trend
 
 ## Not yet specified
 
