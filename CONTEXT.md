@@ -51,7 +51,7 @@ The provenance of a `FCT_TREND_SIGNALS` row attaching a signal to a trend — ei
 _Avoid_: `'evidence'` — documented as a planned third kind in `sql/fct_trend_signals.sql:9-33` but never implemented. The enrichment agent's typed citation pool lives in `FCT_TREND_ENRICHMENT_LEDGER.PAYLOAD:evidence`, not in the link table; the lifecycle-attribution agent replaced the original "enrichment-writes-evidence" plan.
 
 **Editorial trend**:
-A trend that a person nominates by hand — a strategist or an editor, from ATLAS — instead of a trend that the pipeline discovers from [signal]s. "Editorial" names the origin, a human judgment; it does not name a subject area or a newsroom desk.
+A trend that a person nominates by hand — a strategist or an editor, from ATLAS — instead of a trend that the pipeline discovers from [signal]s. "Editorial" names the origin, a human judgment; it does not name a subject area or a newsroom desk. A valid nomination always becomes a trend (or returns the live trend it duplicates), and it always carries at least one source URL from the person, which becomes a linked [signal].
 _Avoid_: reading it as the Trend Hunter CMS entity — the Product Growth Squad uses the same phrase for a different thing (see [Flagged ambiguities]); "manual trend" and "nominated trend" (considered and rejected 2026-10-06).
 
 **Trend topic**:
