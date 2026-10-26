@@ -478,7 +478,7 @@ export default defineComponent({
       `judge the RATIO over time, not a single day. This funnel is INFORMATIONAL — only ` +
       `raise an alert on the structural anomalies above, not on normal reject volume.\n` +
       // CRMA-1670: editorial nominations ride the same block (no new template placeholder).
-      `editorial_promotions_24h (hand-nominated trends, DECISION_CATEGORY='EDITORIAL'): ${n(etr.EDITORIAL_PROMOTIONS_24H)}\n` +
+      `editorial_promotions_24h (hand-nominated candidates with PROMOTED_AT in the last 24h): ${n(etr.EDITORIAL_PROMOTIONS_24H)}\n` +
       `editorial_stuck_candidates (not applied after 1h): ${n(etr.EDITORIAL_STUCK_CANDIDATES)} ` +
       `(any non-zero value is already folded in as a RED alert after this loop — do not duplicate it).`;
 

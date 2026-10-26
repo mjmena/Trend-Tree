@@ -4,13 +4,13 @@
 // (same grade-and-fold shape). It imports no other sibling.
 //
 // Both counts come from two extra q_et_rescue columns:
-//   EDITORIAL_PROMOTIONS_24H   — FCT_PROMOTION_LEDGER rows with
-//                                DECISION_CATEGORY='EDITORIAL' in the last 24h.
-//   EDITORIAL_STUCK_CANDIDATES — editorial candidates (VERDICT IS NULL; only
-//                                the editorial endpoint writes those) older than
-//                                1h with no FCT_PROMOTION_LEDGER row: a Cloud
-//                                Task that exhausted its retries, or the inert
-//                                candidate from ADR-0011.
+//   EDITORIAL_PROMOTIONS_24H   — editorial candidates (AGENT_SESSION_ID =
+//                                CANDIDATE_ID = nomination_id) whose
+//                                PROMOTED_AT is in the last 24h.
+//   EDITORIAL_STUCK_CANDIDATES — editorial candidates older than 1h with
+//                                PROMOTED_AT NULL: a Cloud Task that exhausted
+//                                its retries, or the inert candidate from
+//                                ADR-0011.
 // Any stuck candidate grades RED deterministically; there is no dead-letter
 // queue, so this audit is the only place such a nomination gets noticed.
 
@@ -46,7 +46,7 @@ export function applyEditorialFinding(report, graded) {
     severity: "RED",
     area: "editorial",
     summary: `Editorial nominations stuck: ${what}`,
-    evidence: `STG_TREND_CANDIDATES VERDICT IS NULL AND CREATED_AT < now-1h with no FCT_PROMOTION_LEDGER row: ` +
+    evidence: `STG_TREND_CANDIDATES editorial (AGENT_SESSION_ID = CANDIDATE_ID) with PROMOTED_AT NULL AND CREATED_AT < now-1h: ` +
       `${graded.stuck_candidates}; EDITORIAL promotions 24h: ${graded.promotions_24h}`,
   };
   const line = `🔴 *Editorial*: ${what}`;
