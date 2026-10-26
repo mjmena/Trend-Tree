@@ -10,7 +10,8 @@ dependencies = [
     "google-auth>=2.35",
     # tt_services_lib's own deps (snowflake_client, auth, gemini): the image
     # vendors only what this file lists.
-    "snowflake-connector-python>=3.14",
+    # <5: 5.x ships only manylinux_2_28 wheels, and deploy.sh cross-installs for manylinux2014.
+    "snowflake-connector-python>=3.14,<5",
     "cryptography>=43",
     "tenacity>=9.0",
     "pyjwt>=2.9",
