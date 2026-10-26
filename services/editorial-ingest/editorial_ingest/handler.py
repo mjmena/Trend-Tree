@@ -99,12 +99,16 @@ LIMIT {MAX_NEIGHBORS}
 """
 
 
+def url_titles(task: dict[str, Any]) -> list[str]:
+    return [u["title"] for u in task["urls"] if u.get("title")]
+
+
 def judge_sameness(
     snowflake: SnowflakeClient, llm: PredictionLLM, topic: str, task: dict[str, Any]
 ) -> tuple[Judgment, dict[str, Any]]:
     """Does the nomination duplicate a live trend? Raises TaskError on any
     failure: a failed judgment never falls back to PROMOTE_NEW."""
-    titles = [u["title"] for u in task["urls"] if u.get("title")][:3]
+    titles = url_titles(task)[:3]
     pool = snowflake.query(
         NEIGHBOR_SQL, {"text": f"{topic} | {task['brief'][:800]} | {', '.join(titles)}"}
     )
@@ -167,6 +171,7 @@ def handle_nomination(
         if candidate.get("DEDUP_OF_TREND_ID"):
             # The proc committed but the task died before the RESURGENT row.
             mark_resurgent(snowflake, nid, candidate["DEDUP_OF_TREND_ID"])
+        # A crash between the proc commit and the dispatcher POST is covered by promotion's daily re-dispatch (CRMA-1032), not here.
         return {"status": "done", "trend_id": candidate.get("PROMOTED_TO")}
 
     topic_usage: dict[str, Any] = {}
@@ -202,7 +207,7 @@ def write_topic(
     snowflake: SnowflakeClient, llm: PredictionLLM, task: dict[str, Any]
 ) -> tuple[str, dict[str, Any]]:
     user = json.dumps(
-        {"brief": task["brief"], "url_titles": [u["title"] for u in task["urls"] if u.get("title")]}
+        {"brief": task["brief"], "url_titles": url_titles(task)}
     )
     resp = llm.complete(system=_prompt(snowflake, TOPIC_PROMPT_KEY), user=user)
     try:
