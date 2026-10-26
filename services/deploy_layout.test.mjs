@@ -42,11 +42,14 @@ function load(name) {
     entrypoint: envValue("ENTRYPOINT") ?? "server.mjs",
     envValue,
     dockerDirective,
-    lock: JSON.parse(read("package-lock.json")),
+    runtime: envValue("RUNTIME") ?? "node",
+    lock: envValue("RUNTIME") === "python" ? null : JSON.parse(read("package-lock.json")),
   };
 }
 
 const UNITS = [load("ecomm-agent"), load("scrape-gateway"), load("catalog-sync"), load("tiktok-ingest")];
+// RUNTIME=python services (CRMA-1667): deploy.sh's Python branch.
+const PY_UNITS = [load("editorial-ingest")];
 
 test("crane --workdir is parameterized on the unit name", () => {
   assert.match(deploySh, /--workdir "\/app\/services\/\$NAME"/);
@@ -203,4 +206,69 @@ test("scrape-gateway: deploy.env names the provisioned Web Unlocker zone", () =>
   assert.ok(zone, "deploy.env must declare BD_WEB_UNLOCKER_ZONE");
   assert.equal(zone, "trend_tree_scoping");
   assert.doesNotMatch(zone, /REPLACE_ME/, "the placeholder was never replaced");
+});
+
+// ---------------------------------------------------------------------------
+// RUNTIME=python (CRMA-1667): the crane staging must match the Dockerfile's
+// /app/{vendor,tt_services_lib,<pkg>} layout, as for the Node units above.
+// ---------------------------------------------------------------------------
+
+test("python branch: crane stages /app with tt_services_lib and runs python -m <pkg>.server", () => {
+  assert.match(deploySh, /BASE_IMAGE:-python:3\.12-slim/);
+  assert.match(deploySh, /cp -R "\$REPO_ROOT\/services\/lib\/tt_services_lib" "\$CTX\/app\/tt_services_lib"/);
+  assert.match(deploySh, /cp -R "\$SVC_DIR\/\$PY_PACKAGE" "\$CTX\/app\/\$PY_PACKAGE"/);
+  assert.match(deploySh, /--python-platform x86_64-manylinux2014/);
+  assert.match(deploySh, /--target "\$CTX\/app\/vendor"/);
+  assert.match(deploySh, /--workdir \/app \\/);
+  assert.match(deploySh, /--env PYTHONPATH=\/app\/vendor/);
+  assert.match(deploySh, /--entrypoint python/);
+  assert.match(deploySh, /--cmd "-m,\$\{PY_PACKAGE\}\.server"/);
+});
+
+for (const u of PY_UNITS) {
+  const pkg = u.envValue("PY_PACKAGE");
+
+  test(`${u.name}: Dockerfile matches what the python branch stages`, () => {
+    assert.ok(pkg, "deploy.env must set PY_PACKAGE");
+    const froms = [...u.dockerfile.matchAll(/^\s*FROM\s+(\S+)/gm)].map((m) => m[1]);
+    assert.equal(froms.at(-1), "python:3.12-slim");
+    assert.equal(u.dockerDirective("WORKDIR"), "/app");
+    assert.equal(u.dockerDirective("CMD"), `["python", "-m", "${pkg}.server"]`);
+    assert.match(u.dockerfile, /COPY services\/lib\/tt_services_lib \/app\/tt_services_lib/);
+    assert.ok(u.dockerfile.includes(`COPY services/${u.name}/${pkg} /app/${pkg}`));
+    assert.match(u.dockerfile, /PYTHONPATH=\/app\/vendor/);
+    assert.ok(u.read(`${pkg}/server.py`), `services/${u.name}/${pkg}/server.py must exist`);
+  });
+
+  test(`${u.name}: the health path is not /healthz, and the app serves it`, () => {
+    const health = u.envValue("HEALTH_PATH");
+    assert.ok(health);
+    assert.notEqual(health, "/healthz", "Google's edge swallows /healthz on *.run.app");
+    assert.ok(u.read(`${pkg}/app.py`).includes(`@app.get("${health}")`));
+  });
+
+  test(`${u.name}: deploy.env names secrets rather than carrying values`, () => {
+    const secrets = u.deployEnv.match(/^SECRETS="([^"]*)"/m)?.[1] ?? "";
+    for (const pair of secrets.split(",").filter(Boolean)) {
+      assert.match(pair.trim(), /^[A-Z0-9_]+=[a-z0-9-]+:(latest|\d+)$/);
+    }
+  });
+}
+
+test("PUBLIC_INGRESS=true is the only way deploy.sh deploys unauthenticated", () => {
+  assert.match(deploySh, /ingress_flag=\(--no-allow-unauthenticated\)/);
+  assert.match(deploySh, /if \[\[ "\$\{PUBLIC_INGRESS:-false\}" == "true" \]\]; then\n\s+ingress_flag=\(--allow-unauthenticated\)/);
+  assert.match(deploySh, /"\$\{ingress_flag\[@\]\}"/);
+  assert.equal(deploySh.match(/^\s+--(no-)?allow-unauthenticated \\$/gm), null, "no hardcoded ingress flag");
+});
+
+test("only editorial-ingest sets PUBLIC_INGRESS, and it caps instances at 2", () => {
+  const publicUnits = [...UNITS, ...PY_UNITS].filter((u) => u.envValue("PUBLIC_INGRESS") !== undefined);
+  assert.deepEqual(publicUnits.map((u) => u.name), ["editorial-ingest"]);
+  const u = load("editorial-ingest");
+  assert.equal(u.envValue("PUBLIC_INGRESS"), "true");
+  assert.equal(u.envValue("MAX_INSTANCES"), "2");
+  assert.equal(u.envValue("CONCURRENCY"), undefined, "spec: keep deploy.sh's default concurrency");
+  const secrets = u.deployEnv.match(/^SECRETS="([^"]*)"/m)?.[1] ?? "";
+  assert.match(secrets, /EDITORIAL_API_KEY=editorial-ingest-api-key:latest/);
 });

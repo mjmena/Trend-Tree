@@ -1,0 +1,40 @@
+[project]
+name = "trend-tree-editorial-ingest"
+version = "0.1.0"
+description = "Editorial trend ingest endpoint (CRMA-1660): ATLAS nominates a trend, a Cloud Tasks handler promotes it. See docs/prd/editorial-trend-ingest-endpoint.md."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "pydantic>=2.9",
+    "google-auth>=2.35",
+    # google.auth.transport.requests (OIDC certs fetch, Cloud Tasks REST) needs it.
+    "requests>=2.32",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.28",
+    "ruff>=0.9",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["editorial_ingest*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# tt_services_lib is a sibling source tree, copied next to editorial_ingest in
+# the image (see Dockerfile); this gives local pytest the same shape.
+pythonpath = ["../lib", ".", "tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
