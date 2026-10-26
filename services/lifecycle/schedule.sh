@@ -1,15 +1,6 @@
 #!/usr/bin/env bash
 # The lifecycle job's hourly cron, as code.
-#
-#   services/lifecycle/schedule.sh             create-or-update the Scheduler job
-#   services/lifecycle/schedule.sh --dry-run   print the gcloud call, change nothing
-#   services/lifecycle/schedule.sh --fire      fire the cron once and show the execution it started
-#
-# A copy of services/tiktok-ingest/schedule.sh with the names, the schedule and
-# the description changed; its header explains the OAuth target and the IAM.
-#
-# Run it only at the cut-over, after the Pipedream lifecycle workflows are
-# deleted: the job and the Pipedream sweep must never both write the ledger.
+# Usage: schedule.sh [--dry-run | --fire]   (no flag: create-or-update the Scheduler job)
 set -euo pipefail
 
 PROJECT="${PROJECT:-mcc-crm-automations}"

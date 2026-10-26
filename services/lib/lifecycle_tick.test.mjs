@@ -225,6 +225,22 @@ test("re-collect after a crash writes zero ledger rows, retries nothing again, a
   assert.equal(sf.db.costs[0].STATUS, "OK");
 });
 
+for (const [label, state] of [["collect", "BATCH_STATE_SUCCEEDED"], ["close", "BATCH_STATE_FAILED"]]) {
+  test(`${label}: a crash after the state update loses the cost row, and the next tick writes none and submits`, async () => {
+    const sf = fakeSnowflake({ due: ["t1"] });
+    const gemini = fakeGemini({ state });
+    await tick(sf, gemini);
+    sf.db.failOn = /STG_AGENT_RUN_COSTS/;
+    assert.equal(await exitCode(tick(sf, gemini)), 1);
+    assert.notEqual(sf.db.batches[0].STATE, "SUBMITTED");
+
+    sf.db.due = ["t2"];
+    assert.equal(await exitCode(tick(sf, gemini)), 0);
+    assert.equal(sf.db.costs.length, 0);
+    assert.deepEqual(gemini.submitted[1].requests.map((r) => r.metadata.key), ["t2"]);
+  });
+}
+
 test("collect takes heat_base from the batch row, not from echoed request metadata", async () => {
   const sf = fakeSnowflake({ due: ["t1"] });
   const gemini = fakeGemini({ entryFor: (key) => ({ metadata: { key }, ...answer() }) });
@@ -269,7 +285,7 @@ test("a batch still pending under 6 h after submit is left alone", async () => {
   assert.equal(sf.db.costs.length, 0);
 });
 
-for (const state of ["BATCH_STATE_FAILED", "BATCH_STATE_EXPIRED"]) {
+for (const state of ["BATCH_STATE_FAILED", "BATCH_STATE_EXPIRED", "BATCH_STATE_CANCELLED", "BATCH_STATE_UNSPECIFIED"]) {
   test(`a ${state} batch is marked FAILED, costed ERROR, and the tick submits again`, async () => {
     const sf = fakeSnowflake({ due: ["t1", "t2"] });
     const gemini = fakeGemini({ state });
@@ -283,7 +299,7 @@ for (const state of ["BATCH_STATE_FAILED", "BATCH_STATE_EXPIRED"]) {
   });
 }
 
-test("a SUCCEEDED batch whose entries all carry error code 1 applies nothing and is not retried", async () => {
+test("a SUCCEEDED batch whose entries all carry error code 1 applies nothing, is not retried, and is costed TIMEOUT as CANCELLED", async () => {
   const sf = fakeSnowflake({ due: ["t1", "t2"] });
   const gemini = fakeGemini({ entryFor: () => ({ error: { code: 1, message: "The operation was cancelled." } }) });
   await tick(sf, gemini);
@@ -292,9 +308,8 @@ test("a SUCCEEDED batch whose entries all carry error code 1 applies nothing and
   assert.equal(sf.db.procCalls.length, 0);
   assert.deepEqual(gemini.retries, []);
   assertStillDue(sf, ["t1", "t2"]);
-  assert.equal(sf.db.costs[0].STATUS, "OK");
-  assert.equal(sf.db.costs[0].ERROR_MESSAGE, null);
-  assert.equal(sf.db.batches[0].STATE, "COLLECTED");
+  assert.equal(sf.db.costs[0].STATUS, "TIMEOUT");
+  assert.equal(sf.db.batches[0].STATE, "CANCELLED");
 });
 
 test("a non-JSON entry gets one standard retry; its answer is applied at standard rates", async () => {
@@ -415,6 +430,20 @@ for (const word of ["propose_lifecycle_decision", "query_trend_", "query_signal_
     assert.equal(gemini.submitted.length, 0);
   });
 }
+
+test("the job refuses to start when per_call_max_tokens is missing", async () => {
+  const { run } = refuse({ per_call_max_tokens: undefined });
+  await assert.rejects(run, /per_call_max_tokens/);
+});
+
+test("the job refuses to start when a tool word reaches the prompt through a rendered block", async () => {
+  const sf = fakeSnowflake({ due: ["t1"] });
+  const rows = [PROMPT_ROWS[0], { ...PROMPT_ROWS[1], TEMPLATE: "call query_signal_x" }];
+  const query = (sql, binds) => (/DIM_LLM_PROMPT/.test(sql) ? Promise.resolve(rows) : sf.query(sql, binds));
+  const gemini = fakeGemini();
+  await assert.rejects(runTick({ query, gemini, now: () => AT }), /query_signal_/);
+  assert.equal(gemini.submitted.length, 0);
+});
 
 test("a payload of 20 MB or more is refused before submit", async () => {
   const sf = fakeSnowflake({ due: ["t1"] });

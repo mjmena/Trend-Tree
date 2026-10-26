@@ -7,13 +7,16 @@ design is `docs/prd/lifecycle-job.md`.
 ## Operate
 
 - Deploy: `services/deploy.sh lifecycle --no-execute`. An execution writes ledger rows.
-- Schedule: `services/lifecycle/schedule.sh` (`--dry-run` prints the call). Hourly, UTC,
-  Scheduler job `trend-tree-lifecycle-hourly`.
+- Schedule: `services/lifecycle/schedule.sh` (`--dry-run` prints the call, `--fire` runs it
+  once). Hourly, UTC, Scheduler job `trend-tree-lifecycle-hourly`. Apply it only at the
+  cut-over, after the Pipedream lifecycle workflows are deleted: the job and the Pipedream
+  sweep must never both write the ledger.
 - Alert policy, applied once by hand (`services/deploy.sh` does not apply policies):
 
   ```sh
+  CHANNEL_NAME="<display name of the team's alert channel>"
   CHANNEL=$(gcloud beta monitoring channels list --project mcc-crm-automations \
-    --filter='displayName="Trend Tree alerts: mmena@mcclatchy.com"' --format='value(name)')
+    --filter="displayName=\"$CHANNEL_NAME\"" --format='value(name)')
   gcloud monitoring policies create --project mcc-crm-automations \
     --policy-from-file services/lifecycle/alert-policy.json --notification-channels "$CHANNEL"
   ```

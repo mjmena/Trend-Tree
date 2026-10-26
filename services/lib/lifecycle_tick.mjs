@@ -32,7 +32,7 @@ WHERE l.EVALUATED_AT > b.SUBMITTED_AT`;
 
 const CALL_APPLY = `CALL MCC_RAW.MARKETING_DEV.PROC_LIFECYCLE_APPLY(PARSE_JSON(?)::ARRAY, ?, TRUE)`;
 
-// NOT EXISTS: RUN_ID's primary key is not enforced, and a re-collect reaches here again.
+// NOT EXISTS: RUN_ID's primary key is not enforced.
 const INSERT_COST = `INSERT INTO MCC_RAW.MARKETING_DEV.STG_AGENT_RUN_COSTS (
   RUN_ID, CHAIN_ID, ITERATION, WORKFLOW_NAME, STARTED_AT, ENDED_AT, DURATION_MS, MODEL,
   INPUT_TOKENS, INPUT_TOKENS_CACHED, OUTPUT_TOKENS, THINKING_TOKENS,
@@ -88,9 +88,11 @@ export async function runTick({ query, gemini, cap = 200, now = () => new Date()
       await gemini.cancelBatch(name);
       await close({ query, batchName: name, state: "CANCELLED", status: "TIMEOUT" });
       summary.cancelled = name;
-    } else if (batch.state === "BATCH_STATE_FAILED" || batch.state === "BATCH_STATE_EXPIRED") {
-      await close({ query, batchName: name, state: "FAILED", status: "ERROR", error: batch.state });
-      summary.failed = name;
+    } else if (batch.state === "BATCH_STATE_SUCCEEDED" && batch.entries.length
+      && batch.entries.every((e) => e.error?.code === GRPC_CANCELLED)) {
+      // We cancelled it on timeout and crashed before recording that.
+      await close({ query, batchName: name, state: "CANCELLED", status: "TIMEOUT" });
+      summary.cancelled = name;
     } else if (batch.state === "BATCH_STATE_SUCCEEDED") {
       const heatBases = typeof inFlight.HEAT_BASES === "string" ? JSON.parse(inFlight.HEAT_BASES) : (inFlight.HEAT_BASES || {});
       summary.collected = await collect({
@@ -99,7 +101,8 @@ export async function runTick({ query, gemini, cap = 200, now = () => new Date()
       });
       retries = summary.collected.retries;
     } else {
-      throw new Error(`lifecycle: ${name} is ${batch.state}, which this job does not handle`);
+      await close({ query, batchName: name, state: "FAILED", status: "ERROR", error: batch.state });
+      summary.failed = name;
     }
   }
 
@@ -109,6 +112,7 @@ export async function runTick({ query, gemini, cap = 200, now = () => new Date()
 
 function refuseBadPrompt(prompts) {
   const { params } = mustGet(loadPrompts(prompts), JOB_SYSTEM_PROMPT_KEY);
+  // Negated so a missing value refuses too.
   if (!(params.per_call_max_tokens >= MIN_OUTPUT_TOKENS)) {
     throw new Error(`lifecycle: per_call_max_tokens is ${params.per_call_max_tokens}, below ${MIN_OUTPUT_TOKENS}`);
   }
@@ -117,9 +121,10 @@ function refuseBadPrompt(prompts) {
 }
 
 // A batch that ends without a collect: no tokens are known, so the cost row is zero.
+// State first: a crash between the two loses a cost row instead of re-closing the batch.
 async function close({ query, batchName, state, status, error = null }) {
-  await query(INSERT_COST, [JOB_MODEL, 0, 0, 0, 0, 0, status, error, batchName]);
   await query(UPDATE_STATE, [state, batchName]);
+  await query(INSERT_COST, [JOB_MODEL, 0, 0, 0, 0, 0, status, error, batchName]);
 }
 
 async function collect({ query, gemini, prompts, batchName, heatBases, entries, at, status }) {
@@ -134,7 +139,6 @@ async function collect({ query, gemini, prompts, batchName, heatBases, entries, 
     usage.candidates += u.candidatesTokenCount || 0;
     usage.thoughts += u.thoughtsTokenCount || 0;
     usage.cost += entryCost(u, { batch, at });
-    if (applied.has(key)) return undefined;
     return buildDecision({
       trendId: key, heatBase: heatBases[key], batchName, sessionId: `lcy-sess-${randomUUID()}`, response, batch, at,
     });
@@ -171,11 +175,12 @@ async function collect({ query, gemini, prompts, batchName, heatBases, entries, 
     const rows = await query(CALL_APPLY, [JSON.stringify(decisions), batchName]);
     receipt = rows?.[0]?.PROC_LIFECYCLE_APPLY ?? null;
   }
+  // State first, as in close().
+  await query(UPDATE_STATE, ["COLLECTED", batchName]);
   await query(INSERT_COST, [
     JOB_MODEL, usage.prompt, usage.candidates, usage.thoughts, entries.length,
     Math.round(usage.cost * 1e6) / 1e6, status, errors.length ? errors.join("; ").slice(0, 2000) : null, batchName,
   ]);
-  await query(UPDATE_STATE, ["COLLECTED", batchName]);
   return {
     batch: batchName, entries: entries.length, applied: decisions.length, skipped: applied.size,
     retries: toRetry.length, errors: errors.length, receipt,
