@@ -1,6 +1,6 @@
 // Lifecycle Subagent — run_subagent
 //
-// Single Gemini 3.8 Flash agent loop (CRMA-1676; was 3.1 Pro). Purely evaluative — no live HTTP tools.
+// Single Gemini 3.8 Flash agent loop. Purely evaluative — no live HTTP tools.
 // Reads pre-fetched Snowflake context (trend metrics, source metrics,
 // lifecycle history, narrative history, recent signals via flatten-join,
 // vector neighbors), computes heat_base in SQL-equivalent
@@ -285,7 +285,7 @@ function computeHeatBase({ metrics, signal_domain_counts, recent_signals }) {
 // ─────────────────────────────────────────────────────────────────────
 
 const MODEL = "gemini-3.8-flash";
-// 3.8 Flash standard (non-batch) rates, CRMA-1645: introductory until the
+// 3.8 Flash standard (non-batch) rates: introductory until the
 // price doubles on 2027-01-01. Read per call so a warm worker crosses the line.
 const ratesPerM = (now = Date.now()) =>
   now < Date.UTC(2027, 0, 1) ? { input: 0.75, output: 3.75 } : { input: 1.5, output: 7.5 };
