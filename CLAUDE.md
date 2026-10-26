@@ -44,7 +44,7 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 | `sources-p_7NCy36w` | Per-trend source-metrics fetcher — populates `FCT_TREND_SOURCE_METRICS` |
 | `enrichment-p_xMC995w` | Single Gemini 3.1 Pro agent loop — produces the canonical enrichment record. Its `run_name_reviewer` step is one of three remaining Anthropic callers; see **Anthropic callers** below |
 | `write-p_o7CWa2K` | Persists enrichment to `FCT_TREND_ENRICHMENT_LEDGER` (append-only ledger; the legacy `DIM_TREND_ENRICHMENT` was retired in the 2026-04-28 agent-owned-ledgers refactor) |
-| `lifecycle-agent-p_JZCz73w` + `lifecycle-subagent-p_gYC562o` | Gemini 3.1 Pro lifecycle agent. Sweeps every hour, re-evaluates trend status (NEW/GROWING/STABLE/DECLINING/DORMANT/RESURGENT/RETIRED) → `FCT_TREND_LIFECYCLE_LEDGER` |
+| `lifecycle-agent-p_JZCz73w` + `lifecycle-subagent-p_gYC562o` | Gemini 3.8 Flash lifecycle agent (CRMA-1676). Sweeps every hour, re-evaluates trend status (NEW/GROWING/STABLE/DECLINING/DORMANT/RESURGENT/RETIRED) → `FCT_TREND_LIFECYCLE_LEDGER` |
 | `lifecycle-attribution-agent-p_KwCoaap` + `lifecycle-attribution-subagent-p_PACe77B` | Gemini 3.1 Pro attribution agent. Hourly cron sweeps active trends and dispatches subagents that attribute newly-ingested candidate signals to existing trends → appends `FCT_TREND_SIGNALS` links (grows a trend's evidence pool over time). |
 | `prediction-agent-p_QPCkLP1` | Deterministic emergence scorer (no LLM). Computes `PREDICTION_SCORE` (0–100), `PREDICTION_FLAG` (Emerging / Watchlist / High Potential), `PREDICTION_ELIGIBLE` across all live trends in one batch SQL run → `FCT_TREND_PREDICTION_LEDGER`. Feeds the Insights Agent Predictions Queue. Daily 14:00 UTC cron (`dc_wDuPeGB`) + manual via HTTP. Scores + writes in a single `INSERT...SELECT` (no proc). |
 | `daily-digest-p_vQCkwgV` | Email digest of recently-promoted trends |
@@ -92,7 +92,7 @@ discovery agents (every 2h) → STG_EXTERNAL_SIGNALS
                                   ↓
                           DT_TREND_DASHBOARD (15-min lag dynamic table)
 
-                          lifecycle agent (Gemini 3.1 Pro, hourly)
+                          lifecycle agent (Gemini 3.8 Flash, hourly)
                                   ↓
                           FCT_TREND_LIFECYCLE_LEDGER
                                   ↓

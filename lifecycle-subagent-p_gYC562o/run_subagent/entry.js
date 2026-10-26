@@ -1,6 +1,6 @@
 // Lifecycle Subagent — run_subagent
 //
-// Single Gemini 3.1 Pro agent loop. Purely evaluative — no live HTTP tools.
+// Single Gemini 3.8 Flash agent loop. Purely evaluative — no live HTTP tools.
 // Reads pre-fetched Snowflake context (trend metrics, source metrics,
 // lifecycle history, narrative history, recent signals via flatten-join,
 // vector neighbors), computes heat_base in SQL-equivalent
@@ -278,14 +278,17 @@ function computeHeatBase({ metrics, signal_domain_counts, recent_signals }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Gemini 3.1 Pro agent loop runtime
+// Gemini 3.8 Flash agent loop runtime
 // Reference: discovery-p_5VCPP3N/discover_gemini/entry.js (single-shot
 // generateContent). This extends the same auth + URL pattern with a
 // function-calling tool loop and round-tripped thought signatures.
 // ─────────────────────────────────────────────────────────────────────
 
-const MODEL = "gemini-3.1-pro-preview";
-const RATES_PER_M = { input: 2.0, output: 12.0 };  // sub-200k context tier
+const MODEL = "gemini-3.8-flash";
+// 3.8 Flash standard (non-batch) rates: introductory until the
+// price doubles on 2027-01-01. Read per call so a warm worker crosses the line.
+const ratesPerM = (now = Date.now()) =>
+  now < Date.UTC(2027, 0, 1) ? { input: 0.75, output: 3.75 } : { input: 1.5, output: 7.5 };
 
 const LOOP_DEFAULTS = {
   max_iterations: 8,
@@ -390,7 +393,8 @@ async function runAgentLoop({
     tokens.input += tin;
     tokens.output += tout;
     tokens.total = tokens.input + tokens.output;
-    cost_usd += (tin / 1_000_000) * RATES_PER_M.input + (tout / 1_000_000) * RATES_PER_M.output;
+    const rates = ratesPerM();
+    cost_usd += (tin / 1_000_000) * rates.input + (tout / 1_000_000) * rates.output;
 
     const candidate = (data.candidates || [])[0] || {};
     const parts = (candidate.content && candidate.content.parts) || [];

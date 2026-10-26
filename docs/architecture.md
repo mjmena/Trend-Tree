@@ -37,7 +37,7 @@ flowchart TD
     H1 -->|sync chain| H2["enrichment-p_xMC995w\nClaude Sonnet 4.6"]
     H2 -->|sync chain| H3["write-p_o7CWa2K"]
     H3 -->|INSERT| I["FCT_TREND_ENRICHMENT_LEDGER"]
-    J["lifecycle-agent-p_JZCz73w\nGemini 3.1 Pro @ 1h"] -->|"HTTP fanout"| J2["lifecycle-subagent-p_gYC562o"]
+    J["lifecycle-agent-p_JZCz73w\nGemini 3.8 Flash @ 1h"] -->|"HTTP fanout"| J2["lifecycle-subagent-p_gYC562o"]
     J2 -->|INSERT| K["FCT_TREND_LIFECYCLE_LEDGER"]
     P["prediction-agent-p_QPCkLP1\ndeterministic SQL @ daily 14:00 UTC"] -->|"INSERT...SELECT"| P2["FCT_TREND_PREDICTION_LEDGER"]
     K --> P
@@ -65,7 +65,7 @@ All workflows share network `net_5Lnie3` (required for Snowflake egress allowlis
 | `p_xMC995w` | `enrichment-p_xMC995w` | HTTP | Claude Sonnet 4.6 4-layer naming + enrichment agent | 4096 MB · 600s |
 | `p_o7CWa2K` | `write-p_o7CWa2K` | HTTP | Persists enrichment payload → FCT_TREND_ENRICHMENT_LEDGER | 2048 MB · 300s |
 | `p_JZCz73w` | `lifecycle-agent-p_JZCz73w` | cron 1h + HTTP | Sweeper: selects due trends → lifecycle subagent fanout | 8192 MB · 750s |
-| `p_gYC562o` | `lifecycle-subagent-p_gYC562o` | HTTP | Per-trend status + heat evaluation (Gemini 3.1 Pro) | 4096 MB · 600s |
+| `p_gYC562o` | `lifecycle-subagent-p_gYC562o` | HTTP | Per-trend status + heat evaluation (Gemini 3.8 Flash) | 4096 MB · 600s |
 | `p_KwCoaap` | `lifecycle-attribution-agent-p_KwCoaap` | HTTP | Attribution lifecycle agent | 4096 MB · 600s |
 | `p_PACe77B` | `lifecycle-attribution-subagent-p_PACe77B` | HTTP | Attribution lifecycle subagent | 4096 MB · 600s |
 | `p_QPCkLP1` | `prediction-agent-p_QPCkLP1` | cron daily 14:00 UTC + HTTP | Deterministic emergence scorer over all live trends → FCT_TREND_PREDICTION_LEDGER | 4096 MB · 600s |
