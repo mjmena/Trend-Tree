@@ -31,12 +31,17 @@ A locked, handoff-ready spec for the lifecycle agent as **one Cloud Run job that
 - The existing Generative Language API key submits batches (inline under 20 MB, or a JSONL file through the Files API); Vertex is not needed. Tier 1 caps enqueued tokens at 5M (3.1 Pro) and 3M (3.8 Flash), below one day's ~6.9M, and the account's tier is not checked (CRMA-1645, 2026-10-26).
 - Explicit caching works in a Gemini API batch; implicit caching there is unconfirmed (CRMA-1645, 2026-10-26).
 - After CRMA-1633 (merged 2026-10-26 05:03 UTC) the sweep picks the most overdue trends first: the 01:00 and 02:00 ET sweeps picked trends a median 2,279 h and 2,205 h overdue, 25 evals each.
+- Production's lifecycle cost leaves out thinking tokens and reads about 20% low: on the 120-trend snapshot Pro's true mean is $0.0318 per eval against $0.0256 as recorded, so 600 evals/day is about $19.10 standard and $9.55 on a Pro batch, not $15.26 / $7.63 ([CRMA-1647](https://mcclatchy.atlassian.net/browse/CRMA-1647), 2026-10-26).
+- In today's tool loop 3.8 Flash takes 3.1 turns per eval against Pro's 2.0 and resends the ~10k-token prompt each turn: mean $0.0219 per eval, $6.57/day on a batch through 2026, about $13.14/day from 2027, which is more than Pro's $9.55 (CRMA-1647, 2026-10-26).
+- Both models sometimes omit the required `status` from `propose_lifecycle_decision` (3.8 Flash 6 of 120, Pro 1 of 240); the Gemini API does not enforce the function schema's `required` list. `PROC_LIFECYCLE_APPLY` rejects such a decision, writes no ledger row and leaves `NEXT_EVAL_AT` unchanged, so the trend is re-evaluated on a later sweep (CRMA-1647, 2026-10-26).
+- On the snapshot neither model requested re-enrichment for any trend, including the 20 Pro requested it for in the prior 7 days, so the re-enrichment gate has not been tested (CRMA-1647, 2026-10-26).
 
 ## Standing constraints
 
 - The model comparison runs **offline**: a local harness, outputs to a file, no writes to `FCT_TREND_LIFECYCLE_LEDGER` and no call to `PROC_LIFECYCLE_APPLY`.
 - A candidate model is judged against **Pro's own run-to-run agreement** on one snapshot (Pro twice, candidate once), across four outputs: status, `next_eval_in_hours`, retirement proposals, re-enrichment requests.
 - The candidate is `gemini-3.8-flash`. It replaces `gemini-3.1-pro-preview` only if it clears every gate of the pass bar ([CRMA-1646](https://mcclatchy.atlassian.net/browse/CRMA-1646)) on one frozen snapshot of 120 trends in five strata: 40 status transitions, 25 DORMANT (all recent retirement proposals), 20 re-enrichment requests, 15 GROWING/DECLINING holds, 20 STABLE controls. The gates are: status exact-match agreement on the 100 hard-stratum trends ≥ the noise floor − 5 points, with the control status-change rate ≤ 2× Pro's; zero false retirement proposals, with misses ≤ the Pro-vs-Pro disagreements + 1; `next_eval_in_hours` bucket agreement (≤ 6 h / 7–24 h / > 24 h) ≥ the noise floor − 10 points, which becomes report-only if code sets the interval; and a re-enrichment request rate within 0.5×–2× of Pro's. The gates bind the request shape that ships, and a shape change means the comparison runs again on the same snapshot.
+- The snapshot and the harness are fixed: `docs/wayfinder/assets/crma-1647/` (`out/snapshot.jsonl.gz`, frozen 2026-10-26). Any re-run, including one for a new request shape, uses that snapshot and `score.mjs`, and reports a status omission as a disagreement.
 - The lifecycle status and heat may update on a **batch cadence**, not hourly. If research shows batches often take longer than 6 h, "Decide: the lifecycle job's cadence and run shape" may reopen this.
 
 ## Decisions so far
@@ -44,6 +49,8 @@ A locked, handoff-ready spec for the lifecycle agent as **one Cloud Run job that
 - [Research: Gemini Batch API facts for the lifecycle agent](https://mcclatchy.atlassian.net/browse/CRMA-1645) — **Decided:** a Gemini batch is half price on the existing API key, one call per entry; Flash candidate is 3.8 (3.7 deprecated); 600 evals/day = 7.63 USD on Pro batch, 2.82 USD on 3.8 Flash batch in 2026
 
 - [Decide: the pass bar for switching the lifecycle model](https://mcclatchy.atlassian.net/browse/CRMA-1646) — **Decided:** gemini-3.8-flash replaces Pro only if it clears four gates on 120 stratified trends: status within 5 pts of the Pro noise floor, zero false retirements, interval buckets within 10 pts, re-enrichment rate 0.5x-2x
+
+- [Build and run the offline lifecycle shadow harness](https://mcclatchy.atlassian.net/browse/CRMA-1647) — **Decided:** 3.8 Flash fails the pass bar in the tool loop: it omits the required status on 5% of trends and moves 16 of 120 re-eval intervals past 24 h; its status judgement matches Pro. It saves only 31% (6.57 vs 9.55 USD/day on a batch), and production under-records Pro cost by about 20%
 
 ## Not yet specified
 
