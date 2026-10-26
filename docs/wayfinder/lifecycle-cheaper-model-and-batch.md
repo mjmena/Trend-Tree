@@ -76,6 +76,8 @@ A locked, handoff-ready spec for the lifecycle agent as **one Cloud Run job that
 
 - [Assemble the lifecycle job spec](https://mcclatchy.atlassian.net/browse/CRMA-1652) — **Decided:** Handoff spec written at docs/prd/lifecycle-job.md: an hourly collect-then-submit tick on 3.8 Flash, set-based queries, a new lifecycle.job.system prompt key, and six spec-level choices flagged for review
 
+- [Report this map's amendments back to the fleet migration map](https://mcclatchy.atlassian.net/browse/CRMA-1653) — **Decided:** Five CRMA-429 constraints amended for lifecycle (CRMA-496, -497, -444, -535, -536), written into the fleet map file and commented on CRMA-429 and CRMA-537
+
 ## Not yet specified
 
 
