@@ -36,11 +36,14 @@ A locked, handoff-ready spec for the lifecycle agent as **one Cloud Run job that
 
 - The model comparison runs **offline**: a local harness, outputs to a file, no writes to `FCT_TREND_LIFECYCLE_LEDGER` and no call to `PROC_LIFECYCLE_APPLY`.
 - A candidate model is judged against **Pro's own run-to-run agreement** on one snapshot (Pro twice, candidate once), across four outputs: status, `next_eval_in_hours`, retirement proposals, re-enrichment requests.
+- The candidate is `gemini-3.8-flash`. It replaces `gemini-3.1-pro-preview` only if it clears every gate of the pass bar ([CRMA-1646](https://mcclatchy.atlassian.net/browse/CRMA-1646)) on one frozen snapshot of 120 trends in five strata: 40 status transitions, 25 DORMANT (all recent retirement proposals), 20 re-enrichment requests, 15 GROWING/DECLINING holds, 20 STABLE controls. The gates are: status exact-match agreement on the 100 hard-stratum trends ≥ the noise floor − 5 points, with the control status-change rate ≤ 2× Pro's; zero false retirement proposals, with misses ≤ the Pro-vs-Pro disagreements + 1; `next_eval_in_hours` bucket agreement (≤ 6 h / 7–24 h / > 24 h) ≥ the noise floor − 10 points, which becomes report-only if code sets the interval; and a re-enrichment request rate within 0.5×–2× of Pro's. The gates bind the request shape that ships, and a shape change means the comparison runs again on the same snapshot.
 - The lifecycle status and heat may update on a **batch cadence**, not hourly. If research shows batches often take longer than 6 h, "Decide: the lifecycle job's cadence and run shape" may reopen this.
 
 ## Decisions so far
 
 - [Research: Gemini Batch API facts for the lifecycle agent](https://mcclatchy.atlassian.net/browse/CRMA-1645) — **Decided:** a Gemini batch is half price on the existing API key, one call per entry; Flash candidate is 3.8 (3.7 deprecated); 600 evals/day = 7.63 USD on Pro batch, 2.82 USD on 3.8 Flash batch in 2026
+
+- [Decide: the pass bar for switching the lifecycle model](https://mcclatchy.atlassian.net/browse/CRMA-1646) — **Decided:** gemini-3.8-flash replaces Pro only if it clears four gates on 120 stratified trends: status within 5 pts of the Pro noise floor, zero false retirements, interval buckets within 10 pts, re-enrichment rate 0.5x-2x
 
 ## Not yet specified
 
