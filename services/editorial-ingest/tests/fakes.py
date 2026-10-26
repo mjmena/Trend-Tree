@@ -51,6 +51,8 @@ class RoutingFakeSnowflake:
 
     candidate: dict[str, Any] | None = None
     trend_id: str = "trend-new-1"
+    # The sameness judgment's neighbor pool (the EMBED_TEXT_1024 query's rows).
+    neighbors: list[dict[str, Any]] = field(default_factory=list)
     calls: list[tuple[str, Mapping[str, Any] | None]] = field(default_factory=list)
 
     def query(self, sql: str, params: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
@@ -65,6 +67,8 @@ class RoutingFakeSnowflake:
                 "status": "ok",
             }
             return [{"PROC_PROMOTION_APPLY": json.dumps({"results": [result]})}]
+        if "EMBED_TEXT_1024" in upper:
+            return [dict(n) for n in self.neighbors]
         if "MERGE_EXTERNAL_SIGNALS" in upper:
             return [{"MERGE_EXTERNAL_SIGNALS": json.dumps({"batches": 1, "signals": 1})}]
         if "DIM_LLM_PROMPT" in upper:
@@ -84,10 +88,13 @@ class RoutingFakeSnowflake:
 @dataclass
 class FakeLLM:
     reply: str = '{"topic": "Tinned fish boards replacing charcuterie at house parties"}'
+    fail_with: Exception | None = None
     calls: list[tuple[str, str]] = field(default_factory=list)
 
     def complete(self, *, system: str, user: str) -> LLMResponse:
         self.calls.append((system, user))
+        if self.fail_with is not None:
+            raise self.fail_with
         return LLMResponse(
             text=self.reply, model="fake-model", input_tokens=10, output_tokens=5, cost_usd=0.0
         )

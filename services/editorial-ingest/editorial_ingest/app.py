@@ -58,6 +58,7 @@ def create_app(
     queue: TaskQueue,
     snowflake: SnowflakeClient,
     llm: PredictionLLM,
+    judge_llm: PredictionLLM,
     dispatch: Dispatch,
     verify_token: TokenVerifier | None = None,
     fetch_url: Fetcher = http_fetch,
@@ -124,7 +125,9 @@ def create_app(
         caller: CallerIdentity = Depends(require_queue),  # noqa: B008
     ) -> dict[str, Any]:
         try:
-            return handle_nomination(task, snowflake=snowflake, llm=llm, dispatch=dispatch)
+            return handle_nomination(
+                task, snowflake=snowflake, llm=llm, judge_llm=judge_llm, dispatch=dispatch
+            )
         except Exception as err:
             # Non-2xx is the whole retry contract with Cloud Tasks.
             log.exception("nomination %s failed", task.get("nomination_id"))
