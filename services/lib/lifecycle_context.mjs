@@ -1,32 +1,13 @@
-// lifecycle_context.mjs — the lifecycle agent's prefetched context, for a whole
-// due set at once (CRMA-1677, spec docs/prd/lifecycle-job.md "The set-based
-// queries").
-//
-// Two halves:
-//   1. SET_QUERIES: today's 7 per-trend context queries from
-//      lifecycle-subagent-p_gYC562o/workflow.yaml, each rewritten as ONE
-//      statement over a `due` CTE built from a bound JSON array of trend ids
-//      (bind :1). A per-trend filter became a join to `due`; a per-trend
-//      `ORDER BY … LIMIT n` became `QUALIFY ROW_NUMBER() OVER (PARTITION BY
-//      TREND_ID …) <= n`. Each statement ends ORDER BY <trend key>, <today's
-//      order>, so groupByTrend() hands every trend its rows in today's order.
-//   2. computeHeatBase and the system-prompt context-block builders, copied
-//      UNCHANGED from lifecycle-subagent-p_gYC562o/run_subagent/entry.js. They
-//      are pure functions of one trend's rows. The only edit is that `now` is
-//      a parameter (default Date.now()) instead of read inline, so the parity
-//      test can render both sides at one instant.
-//
-// The Pipedream subagent keeps its own inlined copy until the cut-over
-// (CRMA-1675); keep the two in sync until then.
-//
-// Parity proof (per-trend vs set-based, char for char):
-//   cd services/lifecycle && npm ci && node parity.mjs
+// The builders below must render the same prompt as the inlined copy in
+// lifecycle-subagent-p_gYC562o/run_subagent/entry.js; services/lifecycle/parity.mjs
+// proves it. Each set query ends ORDER BY <trend key> so groupByTrend keeps per-trend order.
 
 // ─────────────────────────────────────────────────────────────────────
 // Set-based context queries
 // ─────────────────────────────────────────────────────────────────────
 
-const DUE_CTE = `due AS (SELECT VALUE::STRING AS TREND_ID FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))))`;
+// DISTINCT: a repeated id would otherwise double that trend's rows.
+const DUE_CTE = `due AS (SELECT DISTINCT VALUE::STRING AS TREND_ID FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))))`;
 
 // The publisher-domain CASE, verbatim from q_signal_domains (mirrors
 // sql/dt_trend_dashboard.sql's signal_domains CTE — keep them in sync).
@@ -70,8 +51,8 @@ const DUE_VEC_CTE = `due_vec AS (
 )`;
 
 export const SET_QUERIES = {
-  // One row per due trend. The scalar COUNT subqueries returned 0 for a trend
-  // with no rows, so their GROUP BY forms are COALESCEd back to 0.
+  // COALESCE: a trend with no rows must count 0, matching the per-trend
+  // scalar COUNT subqueries.
   metrics: `WITH ${DUE_CTE},
 lc AS (
   SELECT l.TREND_ID, NEW_STATUS AS LIFECYCLE_STATUS, NEW_HEAT AS HEAT_INDEX,
@@ -196,8 +177,8 @@ WHERE SIMILARITY >= 0.45
 QUALIFY ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY SIMILARITY DESC) <= 20
 ORDER BY TREND_ID, SIMILARITY DESC`,
 
-  // TREND_ID here is the NEIGHBOR (as today); DUE_TREND_ID is the due trend
-  // the row belongs to — group on it.
+  // TREND_ID here is the NEIGHBOR; DUE_TREND_ID is the due trend the row
+  // belongs to — group on it.
   neighbors: `WITH ${DUE_CTE},
 ${DUE_VEC_CTE},
 latest_enrichment AS (
@@ -249,7 +230,7 @@ QUALIFY ROW_NUMBER() OVER (PARTITION BY tv.TREND_ID ORDER BY SIMILARITY DESC NUL
 ORDER BY DUE_TREND_ID, SIMILARITY DESC NULLS LAST`,
 };
 
-// q_prompts, unchanged; run once per tick.
+// q_prompts verbatim; run once per tick.
 export const PROMPTS_SQL = `SELECT PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS
 FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
 WHERE IS_ACTIVE = TRUE
@@ -267,7 +248,7 @@ export function groupByTrend(rows, key = "TREND_ID") {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Moved from lifecycle-subagent-p_gYC562o/run_subagent/entry.js
+// Per-trend builders, shared with lifecycle-subagent-p_gYC562o/run_subagent/entry.js
 // ─────────────────────────────────────────────────────────────────────
 
 export function loadPrompts(rows) {
@@ -305,16 +286,11 @@ function shannonEntropyNormalized(counts) {
   return h / Math.log(vals.length);
 }
 
-// Heat formula v2 (ADR-0005): a pure measure of LINKED evidence — signals
-// attached to the trend in FCT_TREND_SIGNALS. Candidate (vector-similar but
-// unlinked) signals earn zero heat; the path for a candidate to start
-// counting is attribution, not similarity. Google Trends is not a heat
-// input — demand-side evidence lives on the opportunity-score axis.
+// Heat measures LINKED evidence only (FCT_TREND_SIGNALS). Candidate signals
+// earn zero heat until attributed; Google Trends is not a heat input.
 export function computeHeatBase({ metrics, signal_domain_counts, recent_signals }, now = Date.now()) {
-  // recency_factor: hours since the newest LINKED signal, half-life 120h.
-  // No LAST_UPDATE_AT fallback — bookkeeping timestamps are not evidence.
-  // recent_signals is the 14d linked prefetch; a trend with nothing linked
-  // in 14d would score ≤ exp(-2.8) ≈ 0.06 anyway, so no-rows → 0.
+  // No LAST_UPDATE_AT fallback: bookkeeping timestamps are not evidence.
+  // No rows in the 14d prefetch → 0; it would score ≤ exp(-2.8) anyway.
   const lastSignalTs = recent_signals[0]?.signal_timestamp
     ? new Date(recent_signals[0].signal_timestamp).getTime()
     : null;
@@ -323,7 +299,6 @@ export function computeHeatBase({ metrics, signal_domain_counts, recent_signals 
     : 0;
 
   // velocity_factor: linear in linked signals over 7d, saturating at 3.
-  // Replaces the sigmoid and its 0.34 zero-signal floor: 0 linked = 0 pts.
   const sevenD = 7 * 24 * 3600 * 1000;
   const last7dCount = recent_signals.filter((s) => {
     const ts = s.signal_timestamp ? new Date(s.signal_timestamp).getTime() : 0;
@@ -331,12 +306,9 @@ export function computeHeatBase({ metrics, signal_domain_counts, recent_signals 
   }).length;
   const velocity_factor = Math.min(1, last7dCount / 3);
 
-  // breadth_factor: log-publishers × shannon entropy across distinct linked
-  // publisher domains ACTIVE IN THE LAST 21 DAYS (q_signal_domains windows
-  // the counts — cumulative breadth was an age counter). Anchored so 6
-  // active domains (observed windowed max) with even distribution = 1.0.
-  // Publisher extraction mirrors sql/dt_trend_dashboard.sql's signal_domains
-  // CTE — keep them in sync.
+  // Counts are windowed to 21d so breadth is not an age counter. 6 even
+  // domains (observed windowed max) = 1.0. Publisher extraction mirrors
+  // sql/dt_trend_dashboard.sql's signal_domains CTE — keep them in sync.
   const distinct = Object.values(signal_domain_counts).filter(v => v > 0).length;
   const log_score = distinct === 0
     ? 0
@@ -416,11 +388,7 @@ export function buildTrendContext({
     enrichment_version: metricsRow.ENRICHMENT_VERSION,
   };
 
-  // Per-domain signal counts attached to this trend (from q_signal_domains).
-  // Drives breadth_factor via Shannon entropy in computeHeatBase. Counts come
-  // from FCT_TREND_SIGNALS (both 'supporting' and 'attributed' LINK_KINDs),
-  // windowed to signals active in the last 21 days (ADR-0005), with each
-  // signal mapped to a canonical publisher domain.
+  // Counts cover both 'supporting' and 'attributed' LINK_KINDs.
   const signal_domain_counts = Object.fromEntries(
     (signal_domain_rows || [])
       .filter((r) => r.DOMAIN && Number(r.SIGNAL_COUNT) > 0)
@@ -470,9 +438,8 @@ export function buildTrendContext({
     similarity: Number(r.SIMILARITY || 0),
   }));
 
-  // Heat v2 (ADR-0005): heat is computed from LINKED signals only.
-  // Candidate signals stay in the prompt as a growth hint but earn zero
-  // heat points — no merge. recent_signals arrives newest-first from SQL.
+  // Candidate signals stay in the prompt as a growth hint only; they are not
+  // merged into heat. recent_signals arrives newest-first from SQL.
   const { heat_base, components } = computeHeatBase({
     metrics, signal_domain_counts, recent_signals,
   }, now);
@@ -480,18 +447,17 @@ export function buildTrendContext({
   // Raw linked-evidence metrics for the agent's heat context block. The
   // status rubric keys on these (never on modified heat — anti-feedback
   // rule): linked n7 vs prior week, active publishers, days silent.
-  const _now = now;
   const _7d = 7 * 24 * 3600 * 1000;
   const _24h = 24 * 3600 * 1000;
   const linkedTs = recent_signals
     .map(s => (s.signal_timestamp ? new Date(s.signal_timestamp).getTime() : 0))
     .filter(ts => ts > 0);
-  const last7dCount = linkedTs.filter(ts => (_now - ts) <= _7d).length;
-  const priorWeekCount = linkedTs.filter(ts => (_now - ts) > _7d).length; // 14d prefetch − last 7d
-  const last24hCount = linkedTs.filter(ts => (_now - ts) <= _24h).length;
+  const last7dCount = linkedTs.filter(ts => (now - ts) <= _7d).length;
+  const priorWeekCount = linkedTs.filter(ts => (now - ts) > _7d).length; // 14d prefetch − last 7d
+  const last24hCount = linkedTs.filter(ts => (now - ts) <= _24h).length;
   const newestLinkedTs = linkedTs.length ? Math.max(...linkedTs) : null;
   const daysSilent = newestLinkedTs !== null
-    ? ((_now - newestLinkedTs) / (24 * 3600 * 1000)).toFixed(1)
+    ? ((now - newestLinkedTs) / (24 * 3600 * 1000)).toFixed(1)
     : null;
   const activeDomains = Object.values(signal_domain_counts).filter(v => v > 0).length;
   // lifecycle_history is sorted newest-first by the SQL query.

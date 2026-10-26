@@ -1,13 +1,10 @@
-// Lifecycle — Snowflake access (CRMA-1677).
-//
-// A copy of services/catalog-sync/snowflake.mjs: `snowflake-sdk` resolves
-// from the importing file's own node_modules, and services/lib/ has none, so
-// a shared driver module cannot live there.
+// A copy of services/catalog-sync/snowflake.mjs: `snowflake-sdk` resolves from
+// the importing file's own node_modules, and services/lib/ has none.
 
 import snowflake from "snowflake-sdk";
 
-// The driver logs every statement at INFO by default, which would put each
-// batch MERGE — the whole catalog's text — into Cloud Logging.
+// The driver logs every statement at INFO by default; the set queries are
+// long, and their full text would flood the log.
 snowflake.configure({ logLevel: "ERROR" });
 
 export function connect(opts) {

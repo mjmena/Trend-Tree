@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Lifecycle agent as a Cloud Run job (CRMA-1675). So far only the set-based context parity test (CRMA-1677).",
+  "description": "Lifecycle agent as a Cloud Run job: set-based context parity test.",
   "scripts": {
     "parity": "node parity.mjs"
   },

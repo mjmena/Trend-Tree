@@ -1,8 +1,5 @@
-// Tests for computeHeatBase in the lifecycle context module (CRMA-1677).
-// Each test isolates one factor of the heat v2 formula (ADR-0005):
-//   25*recency + 25*velocity + 40*breadth + 10*confidence
+// Each test isolates one factor of 25*recency + 25*velocity + 40*breadth + 10*confidence.
 // Expected values are worked by hand, not recomputed with the formula.
-// Run: scripts/test_services_lib.sh
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { computeHeatBase } from "./lifecycle_context.mjs";
