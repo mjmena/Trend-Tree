@@ -141,6 +141,15 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   ([CRMA-1426](https://mcclatchy.atlassian.net/browse/CRMA-1426), 2026-10-26.)
 - **No scout agent.** Enrichment's existing tool loop gives an editorial trend its first
   context. The spec adds no new agent to search for evidence. (CRMA-1426, 2026-10-26.)
+- **An editorial trend enters as a candidate that the endpoint promotes itself.** The
+  endpoint merges the URLs through `MERGE_EXTERNAL_SIGNALS` with its own
+  `AGENT_SESSION_ID`, inserts a `STG_TREND_CANDIDATES` row with `VERDICT` NULL and the
+  same session ID, and calls `PROC_PROMOTION_APPLY`: `PROMOTE_NEW` plus a dispatcher POST
+  for a new trend, `MERGE_INTO_EXISTING` and no dispatch for a duplicate.
+  `PROC_PROMOTION_APPLY` stays the only writer of `FCT_TRENDS`. If the promotion call
+  fails, the endpoint returns an error and leaves the inert candidate in place.
+  ([ADR-0011](../adr/0011-editorial-trend-enters-as-a-self-promoted-candidate.md),
+  [CRMA-1429](https://mcclatchy.atlassian.net/browse/CRMA-1429), 2026-10-26.)
 
 ## Decisions so far
 
@@ -163,31 +172,20 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 
 - [Decide: whether the pipeline may search for evidence for an editorial trend](https://mcclatchy.atlassian.net/browse/CRMA-1426) — **Decided:** A search may add rows for an editorial trend, but they link to it only through attribution, whoever authored the claim; the person's own URLs are the one direct door; no scout agent and no ADR
 
+- [Decide: where an editorial trend enters the pipeline](https://mcclatchy.atlassian.net/browse/CRMA-1429) — **Decided:** An editorial trend enters as a candidate with no verdict that the endpoint promotes itself through PROC_PROMOTION_APPLY (PROMOTE_NEW, or MERGE_INTO_EXISTING for a duplicate); ADR-0011
+
 ## Not yet specified
 
 <!-- The fog of war: in-scope decisions you can tell are coming but cannot yet
      phrase precisely. The test is whether you can state the question NOW — not
      whether you can answer it. Graduates into tickets as the frontier advances. -->
 
-- **How a duplicate is detected.** The outcome is fixed: a match returns the live trend.
-  The match method is open, and it depends on where an editorial trend enters the
-  pipeline. The promotion agent already merges duplicate candidates, and nothing matches a
-  direct row. An open candidate that matches is also unsettled.
-- **How an editorial trend gains more evidence, or leaves.** An editorial trend starts with
-  one or more supplied URLs, so it is not a zero-signal row. But the lifecycle rubric allows
-  `STABLE` → `DECLINING` only with 5 or more linked signals in 14 days, and the
-  lifecycle-attribution agent does not reach new trends. So an editorial trend with one URL
-  can still stay `STABLE` forever. Search rows cannot fill the gap directly (CRMA-1426), so
-  more evidence comes only through attribution, and attribution is about 11 weeks behind.
-  The exit rule waits on the entry point.
 - **Who names the trend.** Whether the person's wording becomes the [trend name], the
   [trend topic], or only an input to enrichment. The [trend name] freezes at first
   enrichment (ADR-0001), so the first writer wins.
 - **Interaction with the prediction pillar.** Whether an editorial trend may match a
   [white-space prediction] and resolve it. A person who nominates a predicted trend could
   make the prediction track record look better than it is.
-- **Cost and volume limits.** Whether the endpoint needs a rate limit or a budget per
-  editorial trend. Waits on the entry point, which sets the cost of one request.
 
 ## Out of scope
 
