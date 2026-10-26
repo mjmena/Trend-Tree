@@ -24,7 +24,11 @@
 #
 # Ingress is `--no-allow-unauthenticated` per CRMA-441: callers (the CRMA-778
 # Cloud Scheduler poller, and a human curl) present a Google OIDC token and
-# Cloud Run validates it against a run.invoker binding.
+# Cloud Run validates it against a run.invoker binding. The one exception is a
+# deploy.env with PUBLIC_INGRESS=true, which deploys `--allow-unauthenticated`
+# (allUsers -> run.invoker, the harbor-api pattern) for a service that
+# authenticates every route itself. Only editorial-ingest sets it (CRMA-1667);
+# services/deploy_layout.test.mjs fails if another deploy.env does.
 #
 # That binding is SELF-SERVICE, not an admin ask — an earlier version of this
 # comment said otherwise and was wrong. CRMA-441's admin ask was for a new
@@ -57,6 +61,13 @@
 # image, and the smoke test is one real execution (`jobs execute --wait`) —
 # which is only acceptable because a job deployed here must be idempotent.
 # Rollback is a redeploy of the prior image; the script prints that command.
+#
+# RUNTIME=python in deploy.env (CRMA-1667) builds a FastAPI service instead of
+# a Node one: services/lib/tt_services_lib and services/<name>/$PY_PACKAGE are
+# staged under /app, the service's pyproject deps are cross-installed with uv
+# into /app/vendor as linux/amd64 wheels, and the image runs
+# `python -m $PY_PACKAGE.server` on python:3.12-slim. Same layout as
+# services/prediction (which keeps its own deploy script). Services only.
 #
 # Usage:
 #   services/deploy.sh ecomm-agent                 full flow
@@ -107,6 +118,15 @@ for v in "${REQUIRED_VARS[@]}"; do
   [[ -n "${!v:-}" ]] || { echo "services/$NAME/deploy.env is missing $v" >&2; exit 2; }
 done
 ENTRYPOINT="${ENTRYPOINT:-server.mjs}"
+RUNTIME="${RUNTIME:-node}"
+case "$RUNTIME" in
+  node) ;;
+  python)
+    [[ "$KIND" == "service" ]] || { echo "services/$NAME/deploy.env: RUNTIME=python supports KIND=service only" >&2; exit 2; }
+    [[ -n "${PY_PACKAGE:-}" ]] || { echo "services/$NAME/deploy.env is missing PY_PACKAGE" >&2; exit 2; }
+    ;;
+  *) echo "services/$NAME/deploy.env: RUNTIME must be 'node' or 'python', got '$RUNTIME'" >&2; exit 2 ;;
+esac
 
 cd "$REPO_ROOT"
 
@@ -148,7 +168,12 @@ IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}/${SERVICE}:${GIT_SHA}"
 # checked against each other by services/deploy_layout.test.mjs.
 # ---------------------------------------------------------------------------
 CRANE="${CRANE:-crane}"
-BASE_IMAGE="${BASE_IMAGE:-node:22-slim}"
+UV="${UV:-uv}"
+if [[ "$RUNTIME" == "python" ]]; then
+  BASE_IMAGE="${BASE_IMAGE:-python:3.12-slim}"
+else
+  BASE_IMAGE="${BASE_IMAGE:-node:22-slim}"
+fi
 
 if [[ "$BUILD" == "1" ]]; then
   command -v "$CRANE" >/dev/null || {
@@ -160,18 +185,39 @@ if [[ "$BUILD" == "1" ]]; then
   CTX="$(mktemp -d -t "${SERVICE}-ctx.XXXXXX")"
   trap 'rm -rf "$CTX"' EXIT
 
-  # Mirror the Dockerfile's layout exactly: /app/services/{lib,<name>} with
-  # production node_modules inside the service dir.
-  mkdir -p "$CTX/app/services"
-  cp -R "$REPO_ROOT/services/lib" "$CTX/app/services/lib"
-  mkdir -p "$CTX/app/services/$NAME"
-  # Copy the service's own files, but never a local node_modules — it is
-  # reinstalled from the lockfile below so the image can't inherit dev deps
-  # or a half-stale local tree.
-  (cd "$SVC_DIR" && tar --exclude=node_modules -cf - .) | tar -C "$CTX/app/services/$NAME" -xf -
+  if [[ "$RUNTIME" == "python" ]]; then
+    command -v "$UV" >/dev/null || {
+      echo "uv not found. Install it or set UV=/path/to/uv." >&2
+      exit 1
+    }
+    # Mirror the Dockerfile: /app/{vendor,tt_services_lib,$PY_PACKAGE}.
+    mkdir -p "$CTX/app"
+    cp -R "$REPO_ROOT/services/lib/tt_services_lib" "$CTX/app/tt_services_lib"
+    cp -R "$SVC_DIR/$PY_PACKAGE" "$CTX/app/$PY_PACKAGE"
+    find "$CTX/app" -name __pycache__ -type d -prune -exec rm -rf {} +
 
-  log "Installing production dependencies from the lockfile..."
-  npm ci --omit=dev --prefix "$CTX/app/services/$NAME"
+    # Cross-install: the dev Mac is arm64, the image linux/amd64. Every
+    # dependency ships manylinux wheels, so this resolves without a compiler.
+    log "Installing linux/amd64 wheels from pyproject.toml..."
+    "$UV" pip install \
+      --python-platform x86_64-manylinux2014 \
+      --python-version 3.12 \
+      --target "$CTX/app/vendor" \
+      "$SVC_DIR" >/dev/null
+  else
+    # Mirror the Dockerfile's layout exactly: /app/services/{lib,<name>} with
+    # production node_modules inside the service dir.
+    mkdir -p "$CTX/app/services"
+    cp -R "$REPO_ROOT/services/lib" "$CTX/app/services/lib"
+    mkdir -p "$CTX/app/services/$NAME"
+    # Copy the service's own files, but never a local node_modules — it is
+    # reinstalled from the lockfile below so the image can't inherit dev deps
+    # or a half-stale local tree.
+    (cd "$SVC_DIR" && tar --exclude=node_modules -cf - .) | tar -C "$CTX/app/services/$NAME" -xf -
+
+    log "Installing production dependencies from the lockfile..."
+    npm ci --omit=dev --prefix "$CTX/app/services/$NAME"
+  fi
 
   log "Appending layer onto ${BASE_IMAGE} and pushing..."
   tar -C "$CTX" -cf "$CTX/layer.tar" app
@@ -199,13 +245,24 @@ if [[ "$BUILD" == "1" ]]; then
   if [[ "$KIND" == "service" ]]; then
     port_env=(--env "PORT=${PORT}")
   fi
-  "$CRANE" mutate "$WITH_LAYER" -t "$IMAGE" \
-    --workdir "/app/services/$NAME" \
-    --env NODE_ENV=production \
-    ${port_env[@]+"${port_env[@]}"} \
-    --user node \
-    --entrypoint node \
-    --cmd "$ENTRYPOINT"
+  if [[ "$RUNTIME" == "python" ]]; then
+    "$CRANE" mutate "$WITH_LAYER" -t "$IMAGE" \
+      --workdir /app \
+      --env PYTHONPATH=/app/vendor \
+      --env PYTHONUNBUFFERED=1 \
+      --env PYTHONDONTWRITEBYTECODE=1 \
+      ${port_env[@]+"${port_env[@]}"} \
+      --entrypoint python \
+      --cmd "-m,${PY_PACKAGE}.server"
+  else
+    "$CRANE" mutate "$WITH_LAYER" -t "$IMAGE" \
+      --workdir "/app/services/$NAME" \
+      --env NODE_ENV=production \
+      ${port_env[@]+"${port_env[@]}"} \
+      --user node \
+      --entrypoint node \
+      --cmd "$ENTRYPOINT"
+  fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -264,6 +321,12 @@ if [[ "$KIND" == "job" ]]; then
   exit 0
 fi
 
+# PUBLIC_INGRESS=true binds allUsers to run.invoker; see the header comment.
+ingress_flag=(--no-allow-unauthenticated)
+if [[ "${PUBLIC_INGRESS:-false}" == "true" ]]; then
+  ingress_flag=(--allow-unauthenticated)
+fi
+
 deploy_step() {
   local traffic_flag="$1"  # "--no-traffic", or "" on a first-ever create
   # shellcheck disable=SC2086 -- traffic_flag is either empty or one flag token
@@ -275,7 +338,7 @@ deploy_step() {
     --min-instances "${MIN_INSTANCES:-0}" --max-instances "${MAX_INSTANCES:-5}" \
     --concurrency "${CONCURRENCY:-10}" \
     --timeout "$TIMEOUT" --port "$PORT" \
-    --no-allow-unauthenticated \
+    "${ingress_flag[@]}" \
     $traffic_flag --tag candidate \
     ${secrets_flag[@]+"${secrets_flag[@]}"} \
     --env-vars-file "$ENV_FILE"
@@ -316,7 +379,8 @@ CANDIDATE_REVISION="$(gcloud run services describe "$SERVICE" --region "$REGION"
   --format 'value(status.latestCreatedRevisionName)')"
 
 # ---------------------------------------------------------------------------
-# 5. Smoke test — authenticated, because ingress is not public.
+# 5. Smoke test — authenticated, because ingress is not public (a public
+# service ignores the bearer, so the same probe works for it).
 # ---------------------------------------------------------------------------
 log "Smoke-testing ${CANDIDATE_URL}${HEALTH_PATH} (authenticated)..."
 
