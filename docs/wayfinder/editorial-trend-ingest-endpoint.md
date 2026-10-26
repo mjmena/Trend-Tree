@@ -133,6 +133,14 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   trend. (CRMA-1425, 2026-10-26.)
 - **A duplicate returns the matching live trend, never a second row.** The person's URL
   attaches to that trend as a new linked signal. (CRMA-1425, 2026-10-26.)
+- **A search never links its rows straight back to the claim that prompted it.** This
+  holds whoever authored the claim. A row an agent search tool finds for an editorial
+  trend may enter `FCT_SIGNALS`, but it links to the trend only through attribution. Only
+  the person's own URLs link at ingest. The evidence purity entry in `CONTEXT.md`
+  carries the rule.
+  ([CRMA-1426](https://mcclatchy.atlassian.net/browse/CRMA-1426), 2026-10-26.)
+- **No scout agent.** Enrichment's existing tool loop gives an editorial trend its first
+  context. The spec adds no new agent to search for evidence. (CRMA-1426, 2026-10-26.)
 
 ## Decisions so far
 
@@ -153,6 +161,8 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 
 - [Decide: what ingesting an editorial trend guarantees](https://mcclatchy.atlassian.net/browse/CRMA-1425) — **Decided:** Ingesting guarantees a trend on ATLAS: no judgment rejects it, the person supplies one or more URLs that become linked signals, and a duplicate returns the matching live trend
 
+- [Decide: whether the pipeline may search for evidence for an editorial trend](https://mcclatchy.atlassian.net/browse/CRMA-1426) — **Decided:** A search may add rows for an editorial trend, but they link to it only through attribution, whoever authored the claim; the person's own URLs are the one direct door; no scout agent and no ADR
+
 ## Not yet specified
 
 <!-- The fog of war: in-scope decisions you can tell are coming but cannot yet
@@ -167,8 +177,9 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   one or more supplied URLs, so it is not a zero-signal row. But the lifecycle rubric allows
   `STABLE` → `DECLINING` only with 5 or more linked signals in 14 days, and the
   lifecycle-attribution agent does not reach new trends. So an editorial trend with one URL
-  can still stay `STABLE` forever. The scout agent proposal (CRMA-1426) is one path to more
-  evidence. The exit rule waits on the entry point.
+  can still stay `STABLE` forever. Search rows cannot fill the gap directly (CRMA-1426), so
+  more evidence comes only through attribution, and attribution is about 11 weeks behind.
+  The exit rule waits on the entry point.
 - **Who names the trend.** Whether the person's wording becomes the [trend name], the
   [trend topic], or only an input to enrichment. The [trend name] freezes at first
   enrichment (ADR-0001), so the first writer wins.
