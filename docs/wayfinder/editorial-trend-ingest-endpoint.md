@@ -218,6 +218,10 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   normal attribution sweep, with no priority, so its first `attributed` link can take
   about 18 hours. The spec changes neither the lifecycle agent nor the attribution agent.
   ([CRMA-1639](https://mcclatchy.atlassian.net/browse/CRMA-1639), 2026-10-26.)
+- **The endpoint has no rate limit and no budget.** It has no limit per caller and no
+  daily cap. The service's `deploy.env` sets `MAX_INSTANCES=2` and keeps the default
+  concurrency, so Cloud Run refuses overflow with its own 429. The spec adds no code for
+  it. ([CRMA-1640](https://mcclatchy.atlassian.net/browse/CRMA-1640), 2026-10-26.)
 
 ## Decisions so far
 
@@ -249,6 +253,8 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 - [Decide: how the endpoint detects that an editorial trend duplicates a live trend](https://mcclatchy.atlassian.net/browse/CRMA-1638) — **Decided:** Gemini 3.8 judges sameness only (match or no match) over promotion's neighbor pool; no URL match; open candidates ignored; a RETIRED match revives the trend; a failed judgment is retried, never falls back to a new trend
 
 - [Decide: how an editorial trend gains evidence and leaves STABLE](https://mcclatchy.atlassian.net/browse/CRMA-1639) — **Decided:** No exit rule and no attribution priority for an editorial trend; the lifecycle agent does not read the origin; since CRMA-1459 attribution reaches every trend about every 18 hours; the low-evidence STABLE gap is out of scope (CRMA-1655)
+
+- [Decide: whether the endpoint needs a rate limit or a budget](https://mcclatchy.atlassian.net/browse/CRMA-1640) — **Decided:** No rate limit and no daily cap; deploy.env sets MAX_INSTANCES=2 so Cloud Run refuses overflow with its own 429; the vector-window double-promote on retry goes to CRMA-1432
 
 ## Not yet specified
 
