@@ -1,0 +1,1093 @@
+{
+  "drawn_at": "2026-10-26T07:50:28.379Z",
+  "sizes": {
+    "dormant": 25,
+    "reenrich": 20,
+    "gd_hold": 15,
+    "change": 40,
+    "control": 20
+  },
+  "short": [],
+  "trends": [
+    {
+      "trend_id": "a098a91f-630a-46c3-ada0-c87da1b7d6ba",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "e6870cec-33b7-4873-a6d0-fb0300bf5e34",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "08f45690-2b38-4a3b-8724-37d49f9d2f11",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "83fab0be-518d-4cc6-8b52-82d00cadde8c",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "d35979eb-0254-4b8e-ba32-41c1a9f4f5b7",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "3578a6f8-c0b7-4ad6-8393-80268f4c54c0",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "8a082081-3276-43b5-b104-99ab3837cdf4",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "687cd942-10ae-41e9-8f5d-bf6a197c3ca5",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "d781c8dd-eda4-44b6-bc33-9c632941021b",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "d58f8ada-6be3-4365-bd65-7a7da88991da",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "6fa17d11-597c-469b-8580-246ed30ec6f8",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "e767126e-a4ee-4847-99bb-6a7a15becf00",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "dfe7aea3-3883-446e-93cf-f93542c6b9be",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "0cec1e70-b9cc-45d7-841f-b4ca9ae8811a",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "844b52ec-012a-4d5b-b628-401491d6b43d",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "99a5b632-0502-486e-b1fe-d87ec7ca0695",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "9ff11688-d2f6-4747-a321-4adb756b125e",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "fd93a299-93de-420c-870e-2aa33fcedf4c",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "feb39eba-ca41-42d3-973a-d3ac979dfbc5",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "f445fc2f-dd3b-439f-a44e-5a2339a8e8da",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": true,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "b44e93a0-0a33-4c62-9284-76c2d33563d8",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "b894a46d-0c3a-4f11-867f-d139389f7175",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "f385306b-6251-4bc4-94d5-8e71fd56d36c",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "6399816e-b98d-4334-857f-54d1084f6963",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "f75f909c-aec5-4734-b40e-33678b096b68",
+      "stratum": "dormant",
+      "current_status": "DORMANT",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "7f13dba0-52b6-4a97-ab30-07538327a18e",
+      "stratum": "reenrich",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": true,
+      "evals_7d": 30
+    },
+    {
+      "trend_id": "0d291db0-87d6-460b-a8c0-9bcf0b3b5bf7",
+      "stratum": "reenrich",
+      "current_status": "GROWING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": true,
+      "evals_7d": 27
+    },
+    {
+      "trend_id": "5f7d2023-f617-4820-bde1-cfa0cc0cae40",
+      "stratum": "reenrich",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": false,
+      "evals_7d": 24
+    },
+    {
+      "trend_id": "1895f949-e8a0-4466-bb6b-e9cb2f0101b0",
+      "stratum": "reenrich",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": false,
+      "evals_7d": 24
+    },
+    {
+      "trend_id": "6603b47b-a765-48c3-bbad-6e6ce433a000",
+      "stratum": "reenrich",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": true,
+      "evals_7d": 30
+    },
+    {
+      "trend_id": "a4b1a4d7-4525-461b-a0a3-e0efd9b54042",
+      "stratum": "reenrich",
+      "current_status": "GROWING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": true,
+      "evals_7d": 30
+    },
+    {
+      "trend_id": "5d8c79bc-c79f-4713-9ff2-bf6c1038b2b0",
+      "stratum": "reenrich",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": true,
+      "evals_7d": 27
+    },
+    {
+      "trend_id": "c8a82820-0dcb-418b-8bfa-d2e97dfc4784",
+      "stratum": "reenrich",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": true,
+      "evals_7d": 26
+    },
+    {
+      "trend_id": "a1c2c095-576d-4c92-9c72-b8e4661d5b79",
+      "stratum": "reenrich",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": false,
+      "evals_7d": 23
+    },
+    {
+      "trend_id": "d59f7a8b-b089-48c9-be80-e1135f8443f4",
+      "stratum": "reenrich",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": true,
+      "evals_7d": 30
+    },
+    {
+      "trend_id": "33407616-20ca-4abf-9e5a-8f1685214ca0",
+      "stratum": "reenrich",
+      "current_status": "GROWING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": true,
+      "evals_7d": 28
+    },
+    {
+      "trend_id": "cb9b76c3-6e1a-4421-b850-3d3a6845fe78",
+      "stratum": "reenrich",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": true,
+      "evals_7d": 30
+    },
+    {
+      "trend_id": "e60982b3-3b0f-4895-94aa-44a138ec9b4c",
+      "stratum": "reenrich",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": true,
+      "evals_7d": 32
+    },
+    {
+      "trend_id": "4e16cc41-1d0c-489f-b35d-d1473045430f",
+      "stratum": "reenrich",
+      "current_status": "GROWING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": false,
+      "evals_7d": 33
+    },
+    {
+      "trend_id": "d9da93d3-f9fc-43c5-a0e9-cb6923109fcc",
+      "stratum": "reenrich",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "b230c6bd-abe5-44e1-af0e-dda5a2c935fe",
+      "stratum": "reenrich",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": true,
+      "evals_7d": 29
+    },
+    {
+      "trend_id": "5192b9cd-b7aa-4cd7-830a-f3f75d8d04e2",
+      "stratum": "reenrich",
+      "current_status": "GROWING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": false,
+      "evals_7d": 33
+    },
+    {
+      "trend_id": "be15261f-b150-408d-b515-0683ee8f29e8",
+      "stratum": "reenrich",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": true,
+      "evals_7d": 22
+    },
+    {
+      "trend_id": "960361db-c485-4046-8c6e-46b6c4f33c52",
+      "stratum": "reenrich",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": false,
+      "evals_7d": 24
+    },
+    {
+      "trend_id": "e161e469-d348-4d44-857f-42ff3ee13a33",
+      "stratum": "reenrich",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": true,
+      "status_change_7d": true,
+      "evals_7d": 30
+    },
+    {
+      "trend_id": "bec25a1b-dbe6-40e0-bc9a-6540830872b3",
+      "stratum": "gd_hold",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 28
+    },
+    {
+      "trend_id": "2b875814-e173-4755-88e6-29cd2f9e1ac3",
+      "stratum": "gd_hold",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 32
+    },
+    {
+      "trend_id": "1c9cb3f8-8799-4d0a-ac19-9281e5f08af3",
+      "stratum": "gd_hold",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 30
+    },
+    {
+      "trend_id": "7458e128-4d0a-40fc-8d6d-876b9f0a241f",
+      "stratum": "gd_hold",
+      "current_status": "GROWING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 25
+    },
+    {
+      "trend_id": "c1e764d9-d902-43c9-a1dc-0091a82d2105",
+      "stratum": "gd_hold",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 27
+    },
+    {
+      "trend_id": "11710282-9a81-4394-a42f-f827ed54ba17",
+      "stratum": "gd_hold",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 27
+    },
+    {
+      "trend_id": "49b02c63-a7b1-4f39-957d-05ca67dbe6e7",
+      "stratum": "gd_hold",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 30
+    },
+    {
+      "trend_id": "10b4b7a3-7176-4398-b4da-4973cbb920b8",
+      "stratum": "gd_hold",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 30
+    },
+    {
+      "trend_id": "3f3882f5-3bcc-4586-8bde-91c4597050c8",
+      "stratum": "gd_hold",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 27
+    },
+    {
+      "trend_id": "0c38ca40-ad6a-4c9b-befa-f41b841625ff",
+      "stratum": "gd_hold",
+      "current_status": "GROWING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 29
+    },
+    {
+      "trend_id": "971f85f1-bf34-4350-985e-20af6865138f",
+      "stratum": "gd_hold",
+      "current_status": "GROWING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 32
+    },
+    {
+      "trend_id": "43c26bcf-5ff3-4b06-8497-0f666969185f",
+      "stratum": "gd_hold",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 27
+    },
+    {
+      "trend_id": "a771ad92-0d53-4c03-998a-c226858e390c",
+      "stratum": "gd_hold",
+      "current_status": "GROWING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 27
+    },
+    {
+      "trend_id": "fc99fae3-d991-4f8d-a720-96f2ab1ceeaa",
+      "stratum": "gd_hold",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 31
+    },
+    {
+      "trend_id": "dd134f80-a4e4-4b97-bc8d-09d69af3209b",
+      "stratum": "gd_hold",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 25
+    },
+    {
+      "trend_id": "eac46ca4-b41f-493c-8bd3-520fa8f25948",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 28
+    },
+    {
+      "trend_id": "ee3c13b8-4354-4582-a9e5-108804414733",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 16
+    },
+    {
+      "trend_id": "c410637e-b1cf-44e9-b713-eabce7e54262",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "11c96187-2e83-43e2-ab76-045239975c66",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 12
+    },
+    {
+      "trend_id": "59c42280-6294-45de-b6fc-630f5adb61fe",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 8
+    },
+    {
+      "trend_id": "fb8d34b8-b0cc-47cf-98ce-09e6c5ccae96",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "8c10da2b-cdd8-4fbe-b8be-2e90cdaac98c",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 29
+    },
+    {
+      "trend_id": "f7f1f130-de13-47cb-9eb1-564299a44b7d",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 28
+    },
+    {
+      "trend_id": "48ffe662-62de-4201-b0a8-a6e78826232a",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 30
+    },
+    {
+      "trend_id": "4517b57a-9465-4ea9-94a6-04e8c9194db6",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 22
+    },
+    {
+      "trend_id": "c51f1620-a832-4f13-a443-a7df03bf6a99",
+      "stratum": "change",
+      "current_status": "GROWING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "a0601bbb-6a96-4aab-a11d-bfe12b058bf3",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "0fb5defb-3f2e-4aea-a46c-2ed40ffa3e87",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 27
+    },
+    {
+      "trend_id": "4ca3b46f-5d32-419f-88a2-11ef933d1d26",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 24
+    },
+    {
+      "trend_id": "2c35973b-3cc7-4b53-a828-a9904641b8c5",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 33
+    },
+    {
+      "trend_id": "3207fcb6-fbdd-43d1-8f31-ea089583bf33",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 15
+    },
+    {
+      "trend_id": "008ad729-c0de-4004-9d63-58c124e40a5a",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 25
+    },
+    {
+      "trend_id": "ade65428-3ea9-4582-8769-1205088b386e",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "d4d33b9c-c8df-4f08-b14b-b8d6400b3c35",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "9197eb6c-6b7e-41f9-bff7-ef729e2111d5",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 23
+    },
+    {
+      "trend_id": "8a6a4167-2b60-4334-9137-18587719f6ad",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 25
+    },
+    {
+      "trend_id": "64eb71d7-31e1-470c-b00e-490f1701b86b",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 30
+    },
+    {
+      "trend_id": "bde9084f-56c3-46bb-bed4-3190c9433c94",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 14
+    },
+    {
+      "trend_id": "f5fc1053-e992-41d5-92f1-e8546ccc9851",
+      "stratum": "change",
+      "current_status": "GROWING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 28
+    },
+    {
+      "trend_id": "10c09dbb-75eb-4b90-aa98-a09f7d3eb984",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 26
+    },
+    {
+      "trend_id": "902d4b31-9074-4f52-bb01-db11e25a0e2f",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "8564038f-2737-4983-a03f-bc4e2f977eb0",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 22
+    },
+    {
+      "trend_id": "9806f853-8c06-4a8f-bb31-73de00c5cd39",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 31
+    },
+    {
+      "trend_id": "cb336143-63d1-4c26-bf2f-65a909a52eca",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 21
+    },
+    {
+      "trend_id": "f515dac7-8d04-4c28-b535-533e511d0fea",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 19
+    },
+    {
+      "trend_id": "63bd866c-1350-4386-8ced-d6976cd2c887",
+      "stratum": "change",
+      "current_status": "GROWING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 24
+    },
+    {
+      "trend_id": "fe868f01-f1e9-4e28-835c-625fe524ea06",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 24
+    },
+    {
+      "trend_id": "c44436b6-525a-4588-ac4b-feed35229de5",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 27
+    },
+    {
+      "trend_id": "98118ee2-e647-4b81-bc18-14d02e85677c",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "24811e7a-ee0f-45f8-8171-b5e09b9532f1",
+      "stratum": "change",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 27
+    },
+    {
+      "trend_id": "f4f09301-2441-4698-9477-4741fccb5caf",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 29
+    },
+    {
+      "trend_id": "09364687-2900-4818-9267-796951be89a7",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 30
+    },
+    {
+      "trend_id": "9119c1ac-2b68-4af7-a806-062a5ac7c97b",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 29
+    },
+    {
+      "trend_id": "4ef78a12-94bc-48c5-b2d3-56526757ef97",
+      "stratum": "change",
+      "current_status": "DECLINING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 29
+    },
+    {
+      "trend_id": "214bc030-b2cd-4d28-a2ea-d159718a6488",
+      "stratum": "change",
+      "current_status": "GROWING",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": true,
+      "evals_7d": 29
+    },
+    {
+      "trend_id": "e5f70676-9b60-4840-97b3-3b59ab1a31a5",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 24
+    },
+    {
+      "trend_id": "38c195af-04b3-4838-9eb6-5d32e24032c0",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 15
+    },
+    {
+      "trend_id": "636db3d3-1b8a-454a-a994-b2e26089b33c",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 24
+    },
+    {
+      "trend_id": "d7e7d4a1-1486-408f-8918-3b1b53acd129",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "8a433596-cc31-4ad9-a74d-125732fca106",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 23
+    },
+    {
+      "trend_id": "554d9407-f53d-4a1f-9d1e-c50c641638e7",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 13
+    },
+    {
+      "trend_id": "daf612be-573e-424a-adba-31a04a4bb783",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 24
+    },
+    {
+      "trend_id": "9cc8b8a7-165a-4d21-866b-9c78b83bcaf5",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 24
+    },
+    {
+      "trend_id": "1a8e78ed-916a-408f-95b2-e76cd317c258",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 24
+    },
+    {
+      "trend_id": "dac2b3a1-fa3a-40d2-8a0d-f1ae1a09ec21",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 24
+    },
+    {
+      "trend_id": "f005c6ac-bec1-481e-b971-85add8e6918a",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 23
+    },
+    {
+      "trend_id": "0ffc82fd-32a4-4166-83e6-a7c5c3b2f882",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "2190acfa-0e83-4894-b560-d06a1662d71d",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 16
+    },
+    {
+      "trend_id": "2d494632-3ee7-4a7e-8a91-b241268da92d",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 16
+    },
+    {
+      "trend_id": "db5005e8-a9b2-4478-a2ba-6575ba510095",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 23
+    },
+    {
+      "trend_id": "f18890aa-930a-49ca-839b-1b3bed78b4eb",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "892504d6-ed01-487b-a234-9987ceff08da",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 1
+    },
+    {
+      "trend_id": "6cbb63c6-7cb0-4870-8c85-4393549c1def",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 23
+    },
+    {
+      "trend_id": "212c397b-6871-4d25-bc09-792ca5dfd3de",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 24
+    },
+    {
+      "trend_id": "3d598333-d30f-475c-ae23-10d515d7bee5",
+      "stratum": "control",
+      "current_status": "STABLE",
+      "retirement_proposal_7d": false,
+      "re_enrichment_7d": false,
+      "status_change_7d": false,
+      "evals_7d": 23
+    }
+  ]
+}

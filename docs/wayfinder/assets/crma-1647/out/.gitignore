@@ -1,0 +1,3 @@
+# 8 MB; the committed copy is snapshot.jsonl.gz. run.mjs and score.mjs read the
+# plain file, so restore it first: gunzip -k snapshot.jsonl.gz
+snapshot.jsonl
