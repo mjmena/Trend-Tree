@@ -4,7 +4,7 @@ Three routes:
 
 - ``POST /nominations`` -- the accept route ATLAS calls with ``X-Api-Key``.
 - ``POST /tasks/nominations`` -- the task handler; only Cloud Tasks' OIDC
-  token from the queue's service account gets in. CRMA-1668 adds its work.
+  token from the queue's service account gets in. Its work is handler.py.
 - ``GET /health`` -- the deploy smoke probe (not /healthz: Google's edge
   swallows that path on *.run.app).
 
@@ -15,17 +15,23 @@ from __future__ import annotations
 
 import hmac
 import json
-from typing import Annotated
+import logging
+from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Body, Depends, FastAPI, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError
 from tt_services_lib.auth import CallerIdentity, TokenVerifier, require_caller_dependency
+from tt_services_lib.gemini import PredictionLLM
+from tt_services_lib.snowflake_client import SnowflakeClient
 
 from .config import ConfigError, Settings
+from .handler import Dispatch, handle_nomination
 from .tasks import EnqueueError, TaskQueue
 from .urls import Fetcher, check_urls, http_fetch
+
+log = logging.getLogger(__name__)
 
 MAX_BODY_BYTES = 64 * 1024
 TASK_HANDLER_PATH = "/tasks/nominations"
@@ -50,6 +56,9 @@ def create_app(
     settings: Settings,
     *,
     queue: TaskQueue,
+    snowflake: SnowflakeClient,
+    llm: PredictionLLM,
+    dispatch: Dispatch,
     verify_token: TokenVerifier | None = None,
     fetch_url: Fetcher = http_fetch,
 ) -> FastAPI:
@@ -110,8 +119,15 @@ def create_app(
         return caller
 
     @app.post(TASK_HANDLER_PATH)
-    def handle_task(caller: CallerIdentity = Depends(require_queue)) -> dict[str, bool]:  # noqa: B008
-        # shortcut: no work yet; CRMA-1668 adds topic, sameness, signals, candidate, promotion.
-        return {"ok": True}
+    def handle_task(
+        task: dict[str, Any] = Body(...),  # noqa: B008 - our own accept route wrote it
+        caller: CallerIdentity = Depends(require_queue),  # noqa: B008
+    ) -> dict[str, Any]:
+        try:
+            return handle_nomination(task, snowflake=snowflake, llm=llm, dispatch=dispatch)
+        except Exception as err:
+            # Non-2xx is the whole retry contract with Cloud Tasks.
+            log.exception("nomination %s failed", task.get("nomination_id"))
+            raise HTTPException(status_code=500, detail=f"task failed: {err}") from err
 
     return app

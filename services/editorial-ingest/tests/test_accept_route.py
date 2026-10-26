@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 
-from fakes import FakeTaskQueue, fake_fetch
+from fakes import FakeLLM, FakeTaskQueue, RoutingFakeSnowflake, fake_fetch
 from fastapi.testclient import TestClient
 
 from editorial_ingest.app import create_app
@@ -25,6 +25,9 @@ def _client(queue=None, statuses=None):
     app = create_app(
         settings,
         queue=queue if queue is not None else FakeTaskQueue(),
+        snowflake=RoutingFakeSnowflake(),
+        llm=FakeLLM(),
+        dispatch=lambda trend_id: None,
         fetch_url=fake_fetch(statuses or {}),
         verify_token=lambda token, audience: {},
     )

@@ -23,8 +23,16 @@
 --     "max_neighbor_sim":     0.83,
 --     "considered_neighbors": [...],
 --     "tokens":               {"input": 3000, "output": 800},
---     "cost_usd":             0.04
+--     "cost_usd":             0.04,
+--     "nomination":           {"nominated_by": "...", "brief": "..."}  // editorial only
 --   }
+--
+-- decision_category EDITORIAL (CRMA-1668): the editorial-ingest service's
+-- decisions on a hand-nominated candidate. Their `nomination` lands verbatim in
+-- FCT_PROMOTION_LEDGER.NOMINATION (NULL for every other caller). Deploy order:
+-- sql/alter_fct_promotion_ledger_add_nomination.sql FIRST -- log_audit
+-- swallows insert errors, so this proc against a ledger without the column
+-- would silently stop writing ledger rows for every caller.
 --
 -- MERGE_INTO_CANDIDATE: emitted by run_lead_agent when intra-batch clustering
 -- finds two candidates that are near-dupes of each other. The "leader" gets
@@ -124,7 +132,8 @@ def log_audit(session, audit_row):
                  DISTILLATION_VERDICT, OVERRODE_VERDICT,
                  MAX_NEIGHBOR_SIM, CONSIDERED_NEIGHBORS,
                  CLUSTER_SIZE, SOURCE_COUNT, CONFIDENCE,
-                 RATIONALE, MODEL_USED, INPUT_TOKENS, OUTPUT_TOKENS, COST_ESTIMATE)
+                 RATIONALE, MODEL_USED, INPUT_TOKENS, OUTPUT_TOKENS, COST_ESTIMATE,
+                 NOMINATION)
             SELECT {sql_str(audit_row.get('candidate_id'))},
                    {sql_str(audit_row.get('chain_id'))},
                    {int(audit_row.get('iteration') or 1)},
@@ -142,7 +151,8 @@ def log_audit(session, audit_row):
                    {sql_str(audit_row.get('model_used') or 'claude-sonnet-4-6')},
                    {int(in_tok) if in_tok is not None else 'NULL'},
                    {int(out_tok) if out_tok is not None else 'NULL'},
-                   {float(audit_row['cost_usd']) if audit_row.get('cost_usd') is not None else 'NULL'}
+                   {float(audit_row['cost_usd']) if audit_row.get('cost_usd') is not None else 'NULL'},
+                   {sql_json(audit_row.get('nomination'))}
         """).collect()
     except Exception:
         # Audit-log failure must not crash the whole batch.
@@ -385,6 +395,7 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
             'model_used':           d.get('model_used'),
             'tokens':               tokens,
             'cost_usd':             cost_usd,
+            'nomination':           d.get('nomination'),
         }
 
         # Guardrail: drop anything not in the allow-list

@@ -9,6 +9,8 @@ discovery: the spec's "timeout" is a network timeout, which passes.
 
 from __future__ import annotations
 
+import html
+import re
 import urllib.error
 import urllib.request
 from collections.abc import Callable, Iterable
@@ -57,10 +59,19 @@ ACCESS_DENIED_CODES = frozenset({401, 403, 405, 406, 429, 451})
 MAX_URL_LENGTH = 2048
 USER_AGENT = "Mozilla/5.0 (compatible; Trend-Tree/1.0; +https://github.com/mjmena/Trend-Tree)"
 FETCH_TIMEOUT_S = 8
+MAX_BODY_BYTES = 65536
+MAX_TITLE_CHARS = 300
+_META_TITLE = re.compile(
+    r"<meta[^>]+(?:property|name)=[\"'](?:og:title|twitter:title)[\"'][^>]*?"
+    r"content=[\"']([^\"']+)",
+    re.IGNORECASE,
+)
+_TITLE_TAG = re.compile(r"<title[^>]*>([^<]+)</title>", re.IGNORECASE)
 
-# (url) -> (final url after redirects, HTTP status). Raises on a network
-# error or timeout, which the check treats as unverified, not dead.
-Fetcher = Callable[[str], tuple[str, int]]
+# (url) -> (final url after redirects, HTTP status, page title or None).
+# Raises on a network error or timeout, which the check treats as unverified,
+# not dead. The title feeds the task handler's topic call (it never re-fetches).
+Fetcher = Callable[[str], tuple[str, int, str | None]]
 
 
 def strip_and_normalize(raw: str) -> str | None:
@@ -108,25 +119,39 @@ def _usable(canonical: str | None) -> bool:
     )
 
 
-def http_fetch(url: str) -> tuple[str, int]:
-    """GET with redirects followed; the body is never read."""
+def page_title(head: str) -> str | None:
+    """og:title / twitter:title, else <title>, as discovery's fetchArticleMeta
+    reads them (its JSON-LD headline fallback is not ported)."""
+    match = _META_TITLE.search(head) or _TITLE_TAG.search(head)
+    if not match:
+        return None
+    title = " ".join(html.unescape(match.group(1)).split())
+    return title[:MAX_TITLE_CHARS] or None
+
+
+def http_fetch(url: str) -> tuple[str, int, str | None]:
+    """GET with redirects followed; on a 2xx, the first 64 KB give the title."""
     req = urllib.request.Request(
         url, headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml"}
     )
     try:
         with urllib.request.urlopen(req, timeout=FETCH_TIMEOUT_S) as resp:  # noqa: S310
-            return resp.geturl(), resp.status
+            try:
+                title = page_title(resp.read(MAX_BODY_BYTES).decode("utf-8", errors="replace"))
+            except OSError:  # a body read that times out still leaves a live URL
+                title = None
+            return resp.geturl(), resp.status, title
     except urllib.error.HTTPError as err:
-        return err.geturl() or url, err.code
+        return err.geturl() or url, err.code, None
 
 
 def check_url(raw: str, fetch: Fetcher) -> dict[str, Any]:
     """One URL's verdict: ``{url, reason}`` when dropped, else
-    ``{url, canonical, http_status, status_class, unverified}``."""
+    ``{url, canonical, http_status, status_class, unverified, title}``."""
     if not _usable(strip_and_normalize(raw)):
         return {"url": raw, "reason": "malformed"}  # never fetched
     try:
-        final_url, status = fetch(raw)
+        final_url, status, title = fetch(raw)
     except Exception:  # noqa: BLE001 - network error / timeout: soft-keep, as discovery does
         canonical = strip_and_normalize(raw)
         return {
@@ -135,6 +160,7 @@ def check_url(raw: str, fetch: Fetcher) -> dict[str, Any]:
             "http_status": 0,
             "status_class": "transient",
             "unverified": True,
+            "title": None,
         }
     canonical = strip_and_normalize(final_url or raw)
     if not _usable(canonical):
@@ -148,6 +174,7 @@ def check_url(raw: str, fetch: Fetcher) -> dict[str, Any]:
         "http_status": status,
         "status_class": status_class,
         "unverified": status_class != "ok",
+        "title": title,
     }
 
 
