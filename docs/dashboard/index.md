@@ -61,7 +61,7 @@ Names and category are **frozen at first enrichment** so cards don't quietly ren
 
 ### 4. Track — how talked about is this right now?
 
-Every hour, a **lifecycle agent** (Gemini 3.1 Pro) re-evaluates every live trend against recent signal flow, publisher breadth, and the trend's own history. Two numbers come out:
+Every hour, a **lifecycle agent** (Gemini 3.8 Flash) re-evaluates every live trend against recent signal flow, publisher breadth, and the trend's own history. Two numbers come out:
 
 - **`HEAT_INDEX`** (0–100) — how much is this trend being talked about right now. Smoothed so a single quiet hour doesn't crater a hot trend.
 - **`LIFECYCLE_STATUS`** — the trend's overall trajectory: `NEW` / `GROWING` / `STABLE` / `DECLINING` / `DORMANT` / `RESURGENT` / `RETIRED`.
