@@ -83,6 +83,20 @@ steps:
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
           WHERE EVALUATED_AT > DATEADD(hour, -1, CURRENT_TIMESTAMP())
         ),
+        lifecycle_overdue AS (
+          -- MINUTES_SINCE_LAST = worst lateness past the due time
+          SELECT 'lifecycle' AS AREA, 'overdue_6h' AS KEY,
+                 COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
+                 MAX(TIMESTAMPDIFF(MINUTE, COALESCE(lc.NEXT_EVAL_AT, DATEADD(hour, 24, t.PROMOTED_AT)), CURRENT_TIMESTAMP())) AS MINUTES_SINCE_LAST
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+          LEFT JOIN (
+            SELECT TREND_ID, NEW_STATUS, NEXT_EVAL_AT
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) = 1
+          ) lc ON lc.TREND_ID = t.TREND_ID
+          WHERE COALESCE(lc.NEW_STATUS, 'NEW') != 'RETIRED'
+            AND COALESCE(lc.NEXT_EVAL_AT, DATEADD(hour, 24, t.PROMOTED_AT)) < DATEADD(hour, -6, CURRENT_TIMESTAMP())
+        ),
         distillation_pending AS (
           -- MINUTES_SINCE_LAST = age of the oldest pending candidate
           SELECT 'distillation' AS AREA, 'pending_oldest_hours' AS KEY,
@@ -107,6 +121,7 @@ steps:
         UNION ALL SELECT * FROM enrichment_initial
         UNION ALL SELECT * FROM lifecycle_24h
         UNION ALL SELECT * FROM lifecycle_1h
+        UNION ALL SELECT * FROM lifecycle_overdue
         UNION ALL SELECT * FROM distillation_pending
         UNION ALL SELECT * FROM distillation_processed
       query: |-
@@ -172,6 +187,20 @@ steps:
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
           WHERE EVALUATED_AT > DATEADD(hour, -1, CURRENT_TIMESTAMP())
         ),
+        lifecycle_overdue AS (
+          -- MINUTES_SINCE_LAST = worst lateness past the due time
+          SELECT 'lifecycle' AS AREA, 'overdue_6h' AS KEY,
+                 COUNT(*) AS COUNT_24H, NULL::FLOAT AS BASELINE_7D_DAILY_AVG,
+                 MAX(TIMESTAMPDIFF(MINUTE, COALESCE(lc.NEXT_EVAL_AT, DATEADD(hour, 24, t.PROMOTED_AT)), CURRENT_TIMESTAMP())) AS MINUTES_SINCE_LAST
+          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+          LEFT JOIN (
+            SELECT TREND_ID, NEW_STATUS, NEXT_EVAL_AT
+            FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+            QUALIFY ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) = 1
+          ) lc ON lc.TREND_ID = t.TREND_ID
+          WHERE COALESCE(lc.NEW_STATUS, 'NEW') != 'RETIRED'
+            AND COALESCE(lc.NEXT_EVAL_AT, DATEADD(hour, 24, t.PROMOTED_AT)) < DATEADD(hour, -6, CURRENT_TIMESTAMP())
+        ),
         distillation_pending AS (
           -- MINUTES_SINCE_LAST = age of the oldest pending candidate
           SELECT 'distillation' AS AREA, 'pending_oldest_hours' AS KEY,
@@ -196,6 +225,7 @@ steps:
         UNION ALL SELECT * FROM enrichment_initial
         UNION ALL SELECT * FROM lifecycle_24h
         UNION ALL SELECT * FROM lifecycle_1h
+        UNION ALL SELECT * FROM lifecycle_overdue
         UNION ALL SELECT * FROM distillation_pending
         UNION ALL SELECT * FROM distillation_processed
     params: []

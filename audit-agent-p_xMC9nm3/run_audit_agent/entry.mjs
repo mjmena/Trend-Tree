@@ -12,8 +12,8 @@
 // self-contained file — cross-file imports fail at deploy. Cross-workflow
 // shared libs don't bundle either. Mirrors lifecycle-subagent's pattern.
 //
-// Exception: ./catalog_freshness.mjs, ./tiktok_freshness.mjs and
-// ./editorial_counts.mjs (CRMA-1670) are siblings
+// Exception: ./catalog_freshness.mjs, ./tiktok_freshness.mjs,
+// ./editorial_counts.mjs (CRMA-1670) and ./lifecycle_overdue.mjs are siblings
 // in this SAME step dir (the one kind of cross-file import Pipedream's bundler
 // allows). They hold the CRMA-775 catalog-freshness and CRMA-1338
 // tiktok-freshness grading as plain, defineComponent-free modules —
@@ -26,6 +26,7 @@
 import { gradeCatalogFreshness, buildCatalogFreshnessBlock, applyCatalogFinding } from "./catalog_freshness.mjs";
 import { gradeTiktokFreshness, applyTiktokFinding } from "./tiktok_freshness.mjs";
 import { gradeEditorialCounts, applyEditorialFinding } from "./editorial_counts.mjs";
+import { gradeLifecycleOverdue, applyLifecycleOverdueFinding } from "./lifecycle_overdue.mjs";
 
 // ─────────────────────────────────────────────────────────────────────
 // prompt_loader (canonical: agents/lib/prompt_loader.mjs)
@@ -613,12 +614,15 @@ export default defineComponent({
     // commit_audit_ledger non-GREEN gating picks it up with no changes.
     // CRMA-1338: same fold-in for the tiktok ingester's EMBEDDED_AT freshness.
     // CRMA-1670: same fold-in for editorial candidates stuck without a ledger row.
-    const report = applyEditorialFinding(
-      applyTiktokFinding(
-        applyCatalogFinding(baseReport, catalogGraded),
-        gradeTiktokFreshness(this.tiktok_freshness_rows || []),
+    const report = applyLifecycleOverdueFinding(
+      applyEditorialFinding(
+        applyTiktokFinding(
+          applyCatalogFinding(baseReport, catalogGraded),
+          gradeTiktokFreshness(this.tiktok_freshness_rows || []),
+        ),
+        gradeEditorialCounts(this.et_rescue_rows || []),
       ),
-      gradeEditorialCounts(this.et_rescue_rows || []),
+      gradeLifecycleOverdue(freshnessRows),
     );
 
     return {
