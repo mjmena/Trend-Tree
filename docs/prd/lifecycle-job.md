@@ -385,8 +385,10 @@ any of them in review.
 
 - Pricing for 3.8 Flash doubles on 2027-01-01 (CRMA-1645). The one-request shape still lands
   near $4/day.
-- This spec amends two CRMA-429 constraints for lifecycle: the lead + subagent pair runs as a
-  Gemini batch, not an in-process worker pool (CRMA-536); and the cut-over has no rollback
-  window (CRMA-444). It also writes one cost row per batch, not per run (CRMA-535).
-  "Report this map's amendments back to the fleet migration map" (CRMA-1653) carries these to
-  CRMA-429 and CRMA-537.
+- This spec amends five CRMA-429 constraints for lifecycle: the lead + subagent pair runs as a
+  Gemini batch, not an in-process worker pool (CRMA-536); the cut-over has no rollback window
+  (CRMA-444); it writes one cost row per batch, not per run, and adds a 3 h absence condition
+  (CRMA-535); it is a batch Job, not an agent-loop scaling posture (CRMA-496); and its
+  runaway guard is the 200-trend cap, with no `budget_usd` and no rate alert (CRMA-497).
+  "Report this map's amendments back to the fleet migration map" (CRMA-1653) wrote these into
+  the CRMA-429 map file and commented them on CRMA-429 and CRMA-537.
