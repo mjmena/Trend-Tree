@@ -1,0 +1,479 @@
+-- CRMA-1669 (spec CRMA-1660): DT_TREND_DASHBOARD gains TREND_ORIGIN
+-- ('DISCOVERED' | 'EDITORIAL'), from the DECISION_CATEGORY on the trend's
+-- PROMOTE_NEW row in FCT_PROMOTION_LEDGER.
+--
+-- This file is the single deployable statement: the CREATE below is a
+-- verbatim copy of the one in sql/dt_trend_dashboard.sql (the canonical
+-- definition and its changelog). Keep the two identical.
+--
+-- Apply by hand, in this order:
+--   1. USE ROLE MARKETING_ENGINEER;  -- the only role with CREATE DYNAMIC TABLE
+--      on MCC_PRESENTATION.TREND_AGENT. The table lands owned by
+--      MCC_PRESENTATION_TREND_AGENT_SFULL, which refreshes fine.
+--   2. Run the CREATE statement below. COPY GRANTS keeps the SELECT grants
+--      to ADVERTISING_ENGINEER and MCC_PRESENTATION_TREND_AGENT_SR.
+--   3. ALTER DYNAMIC TABLE MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD REFRESH;
+--      (INITIALIZE = ON_SCHEDULE leaves it empty until the first refresh.)
+--   4. Check: every trend reads DISCOVERED and the row count is unchanged
+--      (644 before this change; compare with SELECT COUNT(*) FROM FCT_TRENDS).
+--      Expect ROWS = FCT_TRENDS_ROWS, DISCOVERED = ROWS, OTHER = 0:
+--
+--      SELECT COUNT(*)                                              AS ROWS,
+--             COUNT_IF(TREND_ORIGIN = 'DISCOVERED')                 AS DISCOVERED,
+--             COUNT_IF(TREND_ORIGIN IS DISTINCT FROM 'DISCOVERED')  AS OTHER,
+--             (SELECT COUNT(*) FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS) AS FCT_TRENDS_ROWS
+--      FROM MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD;
+--
+--   5. SHOW DYNAMIC TABLES LIKE 'DT_TREND_DASHBOARD' IN SCHEMA MCC_PRESENTATION.TREND_AGENT;
+--      confirm owner and that SHOW GRANTS ON TABLE still lists the SELECT grants.
+
+CREATE OR REPLACE DYNAMIC TABLE MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD
+  TARGET_LAG = '15 minutes'
+  WAREHOUSE = TREND_AGENT_WH
+  REFRESH_MODE = AUTO
+  INITIALIZE = ON_SCHEDULE
+  COPY GRANTS
+AS
+WITH latest_lifecycle AS (
+    SELECT TREND_ID,
+           NEW_STATUS         AS LIFECYCLE_STATUS,
+           NEW_HEAT           AS HEAT_INDEX,
+           NEW_HEAT_SMOOTHED  AS HEAT_INDEX_SMOOTHED,
+           EVALUATED_AT       AS LAST_EVAL_AT,
+           DECISION_PAYLOAD:retirement_reason::STRING AS RETIREMENT_REASON
+    FROM (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
+      FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
+    ) WHERE rn = 1
+),
+latest_prediction AS (
+    -- Latest prediction-agent row per trend. Additive columns for the
+    -- Predictions Queue UI. ISOLATED from HEAT_INDEX / LIFECYCLE_STATUS —
+    -- not read by any scoring path, only surfaced for the frontend.
+    SELECT TREND_ID,
+           PREDICTION_SCORE,
+           PREDICTION_FLAG,
+           PREDICTION_ELIGIBLE
+    FROM (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) AS rn
+      FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_PREDICTION_LEDGER
+    ) WHERE rn = 1
+),
+latest_enrichment AS (
+    SELECT r.TREND_ID, r.WRITTEN_AT AS ENRICHED_AT,
+           r.PAYLOAD:trend_name_b2b::STRING       AS TREND_NAME_B2B,
+           r.PAYLOAD:trend_name_b2c::STRING       AS TREND_NAME_B2C,
+           r.PAYLOAD:category::STRING             AS CATEGORY,
+           r.PAYLOAD:subcategory::STRING          AS SUBCATEGORY,
+           r.PAYLOAD:category_confidence::FLOAT   AS CATEGORY_CONFIDENCE,
+           (r.PAYLOAD:category_confidence::FLOAT < 0.6) AS LOW_CONFIDENCE_FLAG,
+           r.PAYLOAD:summary_short::STRING        AS SUMMARY_SHORT,
+           r.PAYLOAD:summary_long::STRING         AS SUMMARY_LONG,
+           -- New records emit `social_narrative` as the structured array.
+           -- Legacy records emit `social_narrative_v2` as the array and put a string preview in `social_narrative`.
+           -- Prefer v2 first to keep the array shape consistent across both eras.
+           COALESCE(r.PAYLOAD:social_narrative_v2, r.PAYLOAD:social_narrative) AS SOCIAL_NARRATIVE,
+           r.PAYLOAD:cultural_drivers             AS CULTURAL_DRIVERS,
+           r.PAYLOAD:seasonal_relevance           AS SEASONAL_RELEVANCE,
+           r.PAYLOAD:geographic_hotspots          AS GEOGRAPHIC_HOTSPOTS,
+           COALESCE(r.PAYLOAD:evidence, r.PAYLOAD:social_proof) AS EVIDENCE,
+           -- Legacy columns kept for front-end backward compat during cutover.
+           -- Steeple consumers read these column names directly. EVIDENCE supersedes
+           -- SOCIAL_PROOF + VOICE_OF_CUSTOMER going forward; remove these once
+           -- consumers have migrated to filter the typed pool by `type`.
+           r.PAYLOAD:social_proof                 AS SOCIAL_PROOF,
+           r.PAYLOAD:voice_of_customer            AS VOICE_OF_CUSTOMER,
+           r.PAYLOAD:vibe_shift::STRING           AS VIBE_SHIFT,
+           r.PAYLOAD:name_candidates_considered   AS NAME_CANDIDATES_CONSIDERED,
+           r.PAYLOAD:name_reviewer                AS NAME_REVIEWER,
+           r.PAYLOAD:originally_surfaced_at::TIMESTAMP_NTZ AS ORIGINALLY_SURFACED_AT
+    FROM (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) AS rn
+      FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+    ) r WHERE r.rn = 1
+),
+evidence_split AS (
+    -- Pre-bucket the typed pool for the dashboard.
+    -- COALESCE on `type` (new schema) and `source_type` (legacy social_proof rows)
+    -- so legacy rows are grouped on their old enum until they re-enrich.
+    SELECT
+      le.TREND_ID,
+      ARRAY_COMPACT(ARRAY_AGG(
+        CASE WHEN COALESCE(f.value:type::STRING, f.value:source_type::STRING) IN ('news', 'commerce')
+             THEN f.value END
+      )) AS GENERAL_EVIDENCE,
+      ARRAY_COMPACT(ARRAY_AGG(
+        CASE WHEN COALESCE(f.value:type::STRING, f.value:source_type::STRING) = 'social'
+             THEN f.value END
+      )) AS SOCIAL_EVIDENCE,
+      ARRAY_COMPACT(ARRAY_AGG(
+        CASE WHEN COALESCE(f.value:type::STRING, f.value:source_type::STRING)
+                  IN ('reference', 'search_volume', 'video', 'other')
+             THEN f.value END
+      )) AS OTHER_EVIDENCE
+    FROM latest_enrichment le, LATERAL FLATTEN(input => le.EVIDENCE, OUTER => TRUE) f
+    GROUP BY le.TREND_ID
+),
+signal_domains AS (
+    -- Best-effort canonical domain per FCT_SIGNALS row, lowercased + 'www.'
+    -- stripped. Self-domain platforms hard-code; news + discovery sources
+    -- extract from METADATA. Vertex grounding-redirect URLs from
+    -- agent_gemini_discovery resolve to NULL — the redirect host isn't a
+    -- meaningful publisher, so it drops out of COUNT(DISTINCT) without
+    -- removing the signal from cluster_size.
+    SELECT
+        SIGNAL_ID,
+        CASE
+            -- Self-domain platforms (signal == one platform's domain)
+            WHEN SOURCE_NAME = 'wikimedia'             THEN 'wikipedia.org'
+            WHEN SOURCE_NAME = 'amazon_trends'         THEN 'amazon.com'
+            WHEN SOURCE_NAME = 'tiktok'                THEN 'tiktok.com'
+            WHEN SOURCE_NAME = 'pinterest'             THEN 'pinterest.com'
+            WHEN SOURCE_NAME = 'bluesky'               THEN 'bsky.app'
+            WHEN SOURCE_NAME = 'google_trends_explore' THEN 'trends.google.com'
+            WHEN SOURCE_NAME = 'grok_live'             THEN 'x.com'
+            -- News + discovery sources (extract from METADATA)
+            WHEN SOURCE_NAME = 'gdelt'
+                THEN LOWER(REGEXP_REPLACE(METADATA:domain::STRING, '^www\\.', ''))
+            WHEN SOURCE_NAME LIKE 'gemini\\_%' ESCAPE '\\'
+                -- gemini_food_drink / gemini_other / gemini_travel / gemini_wellness
+                -- (vertical-sharded discovery) emit metadata.source_name as the publisher.
+                THEN LOWER(METADATA:source_name::STRING)
+            WHEN SOURCE_NAME LIKE 'agent\\_%\\_discovery' ESCAPE '\\' THEN
+                CASE
+                    -- Vertex grounding-redirect URLs aren't meaningful publishers.
+                    WHEN METADATA:canonical_url::STRING LIKE '%vertexaisearch.cloud.google.com%'
+                        THEN NULL
+                    ELSE LOWER(REGEXP_REPLACE(
+                        REGEXP_SUBSTR(METADATA:canonical_url::STRING, 'https?://([^/]+)', 1, 1, 'e', 1),
+                        '^www\\.', ''))
+                END
+            WHEN SOURCE_NAME = 'google_trends_rss'
+                -- Post-2026-05-27 flatten: one row per article, publisher
+                -- normalized at ingest. Old-shape rows (pre-flatten + the
+                -- 95k legacy unbackfilled) lack METADATA:publisher and yield
+                -- NULL — same as today's behavior.
+                THEN LOWER(METADATA:publisher::STRING)
+            ELSE NULL
+        END AS DOMAIN
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS
+),
+trend_aggregates AS (
+    -- Live counts derived from FCT_TREND_SIGNALS (both LINK_KIND='supporting'
+    -- from MARKETING_TASK_PROMOTE_TREND_SIGNALS and 'attributed' from
+    -- lifecycle-attribution-agent-p_KwCoaap). Replaces the prior
+    -- FCT_PROMOTION_LEDGER SUM, which never grew post-promotion (no
+    -- MERGE_INTO_EXISTING decisions have ever fired). DISTINCT_SOURCE_COUNT
+    -- counts unique domains, not source-name vocabulary, so cross-publisher
+    -- breadth is reflected accurately.
+    SELECT ts.TREND_ID,
+           COUNT(DISTINCT ts.SIGNAL_ID) AS TOTAL_CLUSTER_SIZE,
+           COUNT(DISTINCT sd.DOMAIN)    AS DISTINCT_SOURCE_COUNT
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
+    LEFT JOIN signal_domains sd ON sd.SIGNAL_ID = ts.SIGNAL_ID
+    GROUP BY ts.TREND_ID
+),
+top_signals AS (
+    -- First 5 EVIDENCE entries per trend with type IN news/commerce/social,
+    -- preserving the order the agent emitted them. Reference / search_volume /
+    -- video are excluded — those are background, not "what defined the cluster".
+    SELECT TREND_ID,
+           ARRAY_AGG(OBJECT_CONSTRUCT(
+               -- EVIDENCE entries from agent emit `claim` (their one-sentence summary of why
+               -- this URL is relevant), not raw `title`. Surface as `title` for backward
+               -- compatibility with the previous TOP_SIGNALS shape.
+               'title',  COALESCE(EV:title::STRING, EV:claim::STRING),
+               'url',    EV:url::STRING,
+               'source', EV:source::STRING
+           )) WITHIN GROUP (ORDER BY ORIG_IDX) AS TOP_SIGNALS
+    FROM (
+        SELECT le.TREND_ID,
+               f.index AS ORIG_IDX,
+               f.value AS EV,
+               ROW_NUMBER() OVER (PARTITION BY le.TREND_ID ORDER BY f.index) AS RN
+        FROM latest_enrichment le, LATERAL FLATTEN(input => le.EVIDENCE, OUTER => TRUE) f
+        WHERE COALESCE(f.value:type::STRING, f.value:source_type::STRING) IN ('news', 'commerce', 'social')
+    )
+    WHERE RN <= 5
+    GROUP BY TREND_ID
+),
+macro_tags AS (
+    SELECT TREND_ID,
+           ARRAY_AGG(MACROTREND_NAME) WITHIN GROUP (ORDER BY RELEVANCE_SCORE DESC) AS MACROTREND_TAGS
+    FROM MCC_PRESENTATION.TREND_AGENT.MAP_TREND_MACROTRENDS
+    GROUP BY TREND_ID
+),
+trend_vectors AS (
+    -- Latest enrichment vector per trend, scoped to FCT_TRENDS members so
+    -- RELATED_IDs always resolve to a valid dashboard row.
+    SELECT TREND_ID, TREND_VECTOR
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
+    WHERE TREND_VECTOR IS NOT NULL
+      AND TREND_ID IN (SELECT TREND_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS)
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY WRITTEN_AT DESC) = 1
+),
+pairwise_similarity AS (
+    -- Top-5 most similar neighbours per trend, threshold ≥ 0.65.
+    SELECT
+        a.TREND_ID                                                                        AS TREND_ID,
+        b.TREND_ID                                                                        AS RELATED_ID,
+        ROUND(VECTOR_COSINE_SIMILARITY(a.TREND_VECTOR, b.TREND_VECTOR)::FLOAT, 4)         AS SCORE
+    FROM trend_vectors a
+    JOIN trend_vectors b
+      ON a.TREND_ID != b.TREND_ID
+     AND VECTOR_COSINE_SIMILARITY(a.TREND_VECTOR, b.TREND_VECTOR) >= 0.65
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY a.TREND_ID
+        ORDER BY VECTOR_COSINE_SIMILARITY(a.TREND_VECTOR, b.TREND_VECTOR) DESC
+    ) <= 5
+),
+related_trends AS (
+    SELECT
+        ps.TREND_ID,
+        ARRAY_AGG(
+            OBJECT_CONSTRUCT(
+                'trend_id',   ps.RELATED_ID,
+                'trend_name', COALESCE(ft.TREND_NAME_B2C, ft.TREND_NAME_B2B, re.TREND_NAME_B2C, re.TREND_NAME_B2B, ft.TREND_TOPIC),
+                'category',   COALESCE(ft.CATEGORY, re.CATEGORY),
+                'similarity', ps.SCORE
+            )
+        ) WITHIN GROUP (ORDER BY ps.SCORE DESC) AS RELATED_TRENDS
+    FROM pairwise_similarity ps
+    LEFT JOIN latest_enrichment re ON re.TREND_ID = ps.RELATED_ID
+    LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS ft ON ft.TREND_ID = ps.RELATED_ID
+    GROUP BY ps.TREND_ID
+),
+latest_content_match_chain AS (
+    -- CRMA-452: "latest generation" pointer into FCT_TREND_CONTENT_MATCHES_
+    -- LEDGER, same pattern as DT_TREND_CONNECTIONS' CHAIN_ID lookup.
+    SELECT CHAIN_ID
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_CONTENT_MATCHES_LEDGER
+    QUALIFY ROW_NUMBER() OVER (ORDER BY COMPUTED_AT DESC) = 1
+),
+nearest_content AS (
+    -- Top-N nearest published-content matches per trend (already capped +
+    -- threshold-gated by the recompute task, so no re-filtering needed
+    -- here — see task_recompute_content_matches.sql). A trend absent from
+    -- the latest chain (nothing cleared MATCH_THRESHOLD, or newer than the
+    -- last recompute) simply has no row here and NEAREST_CONTENT reads
+    -- NULL downstream.
+    SELECT
+        m.TREND_ID,
+        ARRAY_AGG(
+            OBJECT_CONSTRUCT(
+                'content_id',     m.CONTENT_ID,
+                'headline',       m.HEADLINE,
+                'published_date', m.PUBLISHED_DATE,
+                'score',          m.SCORE
+            )
+        ) WITHIN GROUP (ORDER BY m.MATCH_RANK) AS NEAREST_CONTENT
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_CONTENT_MATCHES_LEDGER m
+    JOIN latest_content_match_chain c ON c.CHAIN_ID = m.CHAIN_ID
+    GROUP BY m.TREND_ID
+),
+latest_sourcing AS (
+    -- CRMA-779: the latest sourcing-run header per trend. Same windowed-latest
+    -- idiom as latest_lifecycle / latest_prediction above.
+    --
+    -- PROC_SOURCING_APPLY mutates this header in place exactly once
+    -- (running -> matched|no_match|failed), so "latest header" is the run whose
+    -- state the dashboard reports — including the transient 'running' and the
+    -- terminal 'failed'. Telling 'failed' apart from 'no_match' and from
+    -- 'not sourced' in one SELECT is the whole reason the ledger records
+    -- computed-but-empty results (see fct_trend_sourcing_ledger.sql), so those
+    -- states are surfaced rather than filtered. A failed retry therefore
+    -- supersedes an earlier matched run until the next tick re-sources the
+    -- trend, which is the intended read of "latest".
+    --
+    -- SOURCING_RUN_ID is a deterministic tiebreak on identical STARTED_AT, so
+    -- an incremental refresh can't flip between two rows.
+    SELECT SOURCING_RUN_ID, TREND_ID, STATUS, COMPLETED_AT
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_LEDGER
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY TREND_ID
+        -- NULLS LAST because STARTED_AT is DEFAULT, not NOT NULL, and Snowflake
+        -- sorts NULLS FIRST on DESC — a header written with an explicit null
+        -- STARTED_AT would otherwise win "latest" forever.
+        ORDER BY STARTED_AT DESC NULLS LAST, SOURCING_RUN_ID DESC
+    ) = 1
+),
+sourced_products AS (
+    -- Selector PICKS of the latest run only, ordered by retrieval geometry
+    -- (SEMANTIC_SCORE desc — the presentation order the candidates table
+    -- deliberately stores no rank column for). Rejects (SELECTED = FALSE) are
+    -- excluded on purpose: they are calibration evidence for re-tuning the
+    -- retrieval threshold, not something to show an operator.
+    --
+    -- OBJECT_CONSTRUCT_KEEP_NULL, not the plain OBJECT_CONSTRUCT used by
+    -- nearest_content / top_signals above: the _AT_MATCH snapshots are
+    -- legitimately null (a catalog row can lack a price, an image, or an
+    -- availability flag), and plain OBJECT_CONSTRUCT would silently DROP those
+    -- keys, giving consumers a per-row-variable object shape. Keeping the keys
+    -- makes the entry shape fixed and the absence explicit.
+    --
+    -- 'tier' rides on each entry because CATALOG_PRODUCT_ID is only unique
+    -- within (TIER, CATALOG_PRODUCT_ID) — it is part of product identity, not a
+    -- fourth dashboard column.
+    SELECT
+        ls.TREND_ID,
+        ARRAY_AGG(
+            OBJECT_CONSTRUCT_KEEP_NULL(
+                'tier',                   c.TIER,
+                'catalog_product_id',     c.CATALOG_PRODUCT_ID,
+                'product_handle',         c.PRODUCT_HANDLE,
+                'product_title',          c.PRODUCT_TITLE,
+                'product_type',           c.PRODUCT_TYPE,
+                'vendor',                 c.VENDOR,
+                'product_url',            c.PRODUCT_URL,
+                'price_at_match',         c.PRICE_AT_MATCH,
+                'image_url_at_match',     c.IMAGE_URL_AT_MATCH,
+                'available_at_match',     c.AVAILABLE_AT_MATCH,
+                'semantic_score',         c.SEMANTIC_SCORE,
+                'reasoned_fit',           c.REASONED_FIT,
+                'reasoned_fit_rationale', c.REASONED_FIT_RATIONALE
+            )
+        ) WITHIN GROUP (ORDER BY c.SEMANTIC_SCORE DESC NULLS LAST,
+                        c.CATALOG_PRODUCT_ID) AS SOURCED_PRODUCTS
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_CANDIDATES c
+    JOIN latest_sourcing ls
+      ON ls.SOURCING_RUN_ID = c.SOURCING_RUN_ID
+     AND ls.TREND_ID        = c.TREND_ID
+    WHERE c.SELECTED = TRUE
+    GROUP BY ls.TREND_ID
+),
+trend_origin AS (
+    -- CRMA-1669: a trend's origin is the category on its PROMOTE_NEW row.
+    -- Earliest row wins (an errored apply also logs a row; same category),
+    -- AUDIT_ID is the deterministic tiebreak.
+    SELECT TARGET_TREND_ID AS TREND_ID,
+           IFF(DECISION_CATEGORY = 'EDITORIAL', 'EDITORIAL', 'DISCOVERED') AS TREND_ORIGIN
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_PROMOTION_LEDGER
+    WHERE DECISION = 'PROMOTE_NEW' AND TARGET_TREND_ID IS NOT NULL
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY TARGET_TREND_ID ORDER BY DECIDED_AT, AUDIT_ID) = 1
+),
+trend_base AS (
+    -- Sourced from FCT_TRENDS only. Legacy FCT_TREND_METRICS union removed
+    -- 2026-04-28 to test dashboard scoped exclusively to agent-promoted trends.
+    SELECT
+        t.TREND_ID,
+        t.TREND_TOPIC,
+        COALESCE(agg.TOTAL_CLUSTER_SIZE,    0) AS TOTAL_CLUSTER_SIZE,
+        COALESCE(agg.DISTINCT_SOURCE_COUNT, 0) AS DISTINCT_SOURCE_COUNT,
+        lc.LIFECYCLE_STATUS,
+        COALESCE(lc.HEAT_INDEX_SMOOTHED, lc.HEAT_INDEX) AS TREND_HEAT_INDEX,
+        t.DETECTED_AT,
+        t.LAST_UPDATE_AT,
+        lc.LAST_EVAL_AT                           AS LAST_LIFECYCLE_EVAL_AT,
+        lc.RETIREMENT_REASON,
+        'fct_trends'                              AS TREND_SOURCE
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
+    LEFT JOIN latest_lifecycle    lc  ON lc.TREND_ID  = t.TREND_ID
+    LEFT JOIN trend_aggregates    agg ON agg.TREND_ID = t.TREND_ID
+)
+SELECT
+    tb.TREND_ID,
+    -- Prefer the new singular TREND_NAME (post-2026-05-27 cutover); fall
+    -- back through legacy B2C/B2B columns for trends not yet re-enriched
+    -- under the singular-name agent, then through the latest enrichment
+    -- ledger's B2C/B2B (covers in-flight migration), then trend topic.
+    COALESCE(t.TREND_NAME, t.TREND_NAME_B2C, t.TREND_NAME_B2B, e.TREND_NAME_B2C, e.TREND_NAME_B2B, tb.TREND_TOPIC) AS TREND_NAME,
+    COALESCE(t.TREND_NAME_B2B, e.TREND_NAME_B2B)                          AS TREND_NAME_B2B,
+    COALESCE(t.CATEGORY,       e.CATEGORY)                                AS CATEGORY,
+    COALESCE(t.SUBCATEGORY,    e.SUBCATEGORY)                             AS SUBCATEGORY,
+    e.CATEGORY_CONFIDENCE,
+    e.LOW_CONFIDENCE_FLAG,
+    e.SUMMARY_SHORT,
+    e.SUMMARY_LONG,
+    ROUND(COALESCE(tb.TREND_HEAT_INDEX, 0), 1)                            AS HEAT_INDEX,
+    -- Prediction-agent additive columns. Isolated from HEAT_INDEX by design;
+    -- read by the Insights Agent Predictions Queue only.
+    pred.PREDICTION_SCORE,
+    pred.PREDICTION_FLAG,
+    COALESCE(pred.PREDICTION_ELIGIBLE, FALSE)                              AS PREDICTION_ELIGIBLE,
+    tb.TOTAL_CLUSTER_SIZE,
+    tb.DISTINCT_SOURCE_COUNT,
+    tb.DISTINCT_SOURCE_COUNT                                               AS DISTINCT_PUBLISHER_COUNT,
+    tb.LIFECYCLE_STATUS,
+    tb.LIFECYCLE_STATUS                                                    AS VELOCITY_DIRECTION,
+    tb.LAST_LIFECYCLE_EVAL_AT,
+    tb.RETIREMENT_REASON,
+    tb.TREND_SOURCE,
+    -- CRMA-1669: never null — a trend with no PROMOTE_NEW row reads DISCOVERED.
+    COALESCE(tor.TREND_ORIGIN, 'DISCOVERED')                               AS TREND_ORIGIN,
+    COALESCE(e.ORIGINALLY_SURFACED_AT, tb.DETECTED_AT)                     AS ORIGINALLY_SURFACED_AT,
+
+    -- KEY_DATA_POINTS is always an empty array since CRMA-1313 retired the
+    -- gtrends-poller that fed it. The column stays so the UI contract holds.
+    ARRAY_CONSTRUCT()                                                     AS KEY_DATA_POINTS,
+
+    e.SOCIAL_NARRATIVE,
+    e.CULTURAL_DRIVERS,
+    e.SEASONAL_RELEVANCE,
+    e.GEOGRAPHIC_HOTSPOTS,
+    e.EVIDENCE,
+    -- Pre-bucketed typed pool for dashboard sections.
+    es.GENERAL_EVIDENCE,
+    es.SOCIAL_EVIDENCE,
+    es.OTHER_EVIDENCE,
+    -- Legacy columns for front-end backward compat. Remove once consumers
+    -- have migrated to EVIDENCE (filter by type for proof / VoC / etc.).
+    e.SOCIAL_PROOF,
+    e.VOICE_OF_CUSTOMER,
+    e.VIBE_SHIFT,
+    e.NAME_CANDIDATES_CONSIDERED,
+    e.NAME_REVIEWER,
+    ts.TOP_SIGNALS,
+    mt.MACROTREND_TAGS,
+    r.RELATED_TRENDS,
+    e.ENRICHED_AT,
+
+    -- 2026-06-08 (#37): canonical trend embedding for the Hunter B2C feed
+    -- recommender (distances / clusters / per-user aggregate vectors). Reuses
+    -- the trend_vectors CTE already built for RELATED_TRENDS — same "latest
+    -- enrichment vector, scoped to live FCT_TRENDS" semantics — so this is
+    -- purely additive (no new scan). Model encoded in the wire-facing name so
+    -- it's self-documenting; the underlying ledger column stays TREND_VECTOR
+    -- (no rename → no repo/prod drift). Only the 1024-dim trend-concept space
+    -- is exposed; the 768-dim arctic-embed-m-v1.5 GSC space stays internal.
+    --
+    -- API note (Marcelo): consumers must select columns EXPLICITLY — never
+    -- SELECT * — so this ~4KB/row vector doesn't ride into ATLAS payloads that
+    -- don't need it.
+    --
+    -- Scale note: the real cliff is the O(n²) pairwise cosine in
+    -- pairwise_similarity (~100M VECTOR_COSINE_SIMILARITY calls/refresh at
+    -- ~10k trends), NOT vector storage. Flag for a future VECTOR_SEARCH/ANN
+    -- migration. Not a today problem at ~200 trends.
+    tv.TREND_VECTOR                                                       AS TREND_VECTOR_ARCTIC_EMBED_L_V2_0,
+
+    -- 2026-08-18 (CRMA-452): top-N nearest published-content matches, see
+    -- the nearest_content CTE + fct_trend_content_matches_ledger.sql.
+    nc.NEAREST_CONTENT,
+
+    -- 2026-08-21 (CRMA-779): trend-to-product sourcing, from the latest
+    -- sourcing header per trend. SOURCING_STATUS is COALESCEd so a trend with
+    -- no header reads 'not_sourced' and NEVER null — null would re-open the
+    -- exact "did this run and find nothing, or never run?" ambiguity the
+    -- ledger exists to close. SOURCED_PRODUCTS is null (not []) when the
+    -- latest run picked nothing — and while a re-source is in flight, since a
+    -- fresh header opens as 'running' with no candidate rows yet — matching
+    -- NEAREST_CONTENT / RELATED_TRENDS' null-when-absent convention. SOURCED_AT is when that run completed, so
+    -- staleness is visible; it is null while a run is still 'running' and for
+    -- a trend that has never been sourced.
+    COALESCE(ls.STATUS, 'not_sourced')                                    AS SOURCING_STATUS,
+    sp.SOURCED_PRODUCTS,
+    ls.COMPLETED_AT                                                       AS SOURCED_AT
+
+FROM trend_base tb
+LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t  ON tb.TREND_ID = t.TREND_ID
+LEFT JOIN latest_enrichment e                         ON tb.TREND_ID = e.TREND_ID
+LEFT JOIN evidence_split es                           ON tb.TREND_ID = es.TREND_ID
+LEFT JOIN top_signals ts                              ON tb.TREND_ID = ts.TREND_ID
+LEFT JOIN macro_tags mt                               ON tb.TREND_ID = mt.TREND_ID
+LEFT JOIN related_trends r                            ON tb.TREND_ID = r.TREND_ID
+LEFT JOIN trend_vectors tv                            ON tb.TREND_ID = tv.TREND_ID
+LEFT JOIN latest_prediction pred                      ON tb.TREND_ID = pred.TREND_ID
+LEFT JOIN nearest_content nc                          ON tb.TREND_ID = nc.TREND_ID
+LEFT JOIN latest_sourcing ls                          ON tb.TREND_ID = ls.TREND_ID
+LEFT JOIN sourced_products sp                         ON tb.TREND_ID = sp.TREND_ID
+LEFT JOIN trend_origin tor                            ON tb.TREND_ID = tor.TREND_ID;
