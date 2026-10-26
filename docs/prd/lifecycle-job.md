@@ -1,4 +1,4 @@
-<!-- prd: lifecycle-job · epic: see JIRA remote link · map: CRMA-1644 -->
+<!-- prd: lifecycle-job · epic: CRMA-1675 · map: CRMA-1644 -->
 
 # PRD: The lifecycle agent as one Cloud Run job that sends a Gemini batch
 
