@@ -27,6 +27,7 @@ def _client(queue=None, statuses=None):
         queue=queue if queue is not None else FakeTaskQueue(),
         snowflake=RoutingFakeSnowflake(),
         llm=FakeLLM(),
+        judge_llm=FakeLLM(),
         dispatch=lambda trend_id: None,
         fetch_url=fake_fetch(statuses or {}),
         verify_token=lambda token, audience: {},

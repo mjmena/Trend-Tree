@@ -1,12 +1,15 @@
-"""POST /tasks/nominations -- the task handler (CRMA-1667 auth, CRMA-1668 work).
+"""POST /tasks/nominations -- the task handler (CRMA-1667 auth, CRMA-1668 work,
+CRMA-1671 sameness).
 
-The spec's one fake-based test for this ticket is the resume path; the
-no-match path itself is proven live (a real nomination of a new trend)."""
+The spec's fake-based tests: the resume path, and a failed sameness judgment.
+The no-match and match paths themselves are proven live."""
 
 from __future__ import annotations
 
+import pytest
 from fakes import FakeLLM, FakeTaskQueue, RoutingFakeSnowflake, fake_fetch
 from fastapi.testclient import TestClient
+from tt_services_lib.gemini import TransientLLMError
 
 from editorial_ingest.app import create_app
 from editorial_ingest.config import settings_from_env
@@ -40,13 +43,14 @@ def _verify(token: str, audience: str) -> dict:
     return {"iss": "https://accounts.google.com", "aud": audience, "email": emails[token]}
 
 
-def _client(snowflake=None, dispatched=None):
+def _client(snowflake=None, dispatched=None, judge_llm=None):
     settings = settings_from_env({"EDITORIAL_API_KEY": "k", "EDITORIAL_SERVICE_URL": SERVICE_URL})
     app = create_app(
         settings,
         queue=FakeTaskQueue(),
         snowflake=snowflake or RoutingFakeSnowflake(),
         llm=FakeLLM(),
+        judge_llm=judge_llm or FakeLLM(),
         dispatch=(dispatched if dispatched is not None else []).append,
         fetch_url=fake_fetch({}),
         verify_token=_verify,
@@ -94,3 +98,33 @@ def test_a_task_that_finds_its_candidate_unpromoted_resumes_at_promotion():
     assert snowflake.statements("MERGE_EXTERNAL_SIGNALS") == []
     assert snowflake.statements("INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES") == []
     assert dispatched == ["trend-new-1"]
+
+
+NEIGHBOR = {
+    "TREND_ID": "trend-old-1",
+    "TREND_TOPIC": "Tinned fish served as a party board",
+    "SUMMARY_SHORT": "Conservas boards at house parties.",
+    "LIFECYCLE_STATUS": "STABLE",
+    "SIMILARITY": 0.81,
+}
+
+
+@pytest.mark.parametrize(
+    "judge",
+    [
+        FakeLLM(fail_with=TransientLLMError("gemini 503")),
+        FakeLLM(reply='{"match": "trend-not-in-pool", "rationale": "same trend"}'),
+    ],
+    ids=["judge-error", "out-of-pool-trend-id"],
+)
+def test_a_failed_sameness_judgment_answers_non_2xx_and_writes_nothing(judge):
+    # Never a fallback to PROMOTE_NEW: a fault must not mint a duplicate trend.
+    snowflake = RoutingFakeSnowflake(neighbors=[NEIGHBOR])
+    resp = _client(snowflake, judge_llm=judge).post(
+        "/tasks/nominations", json=TASK, headers=QUEUE_AUTH
+    )
+    assert resp.status_code >= 400
+    assert judge.calls, "the pool was not empty, so the judge must have been asked"
+    assert snowflake.statements("MERGE_EXTERNAL_SIGNALS") == []
+    assert snowflake.statements("INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES") == []
+    assert snowflake.statements("PROC_PROMOTION_APPLY") == []
