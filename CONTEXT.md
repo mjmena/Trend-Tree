@@ -54,6 +54,10 @@ _Avoid_: `'evidence'` — documented as a planned third kind in `sql/fct_trend_s
 A trend that a person nominates by hand — a strategist or an editor, from ATLAS — instead of a trend that the pipeline discovers from [signal]s. "Editorial" names the origin, a human judgment; it does not name a subject area or a newsroom desk. A valid nomination always becomes a trend (or returns the live trend it duplicates), and it always carries at least one source URL from the person, which becomes a linked [signal].
 _Avoid_: reading it as the Trend Hunter CMS entity — the Product Growth Squad uses the same phrase for a different thing (see [Flagged ambiguities]); "manual trend" and "nominated trend" (considered and rejected 2026-10-06).
 
+**Trend origin**:
+How a trend first came to exist: `DISCOVERED` (the pipeline found it from [signal]s) or `EDITORIAL` (a person nominated it — an [editorial trend]). Fixed by the act that created the trend, so a later nomination of an existing trend never changes it. Origin describes provenance only; no score reads it (CRMA-1430).
+_Avoid_: "source" (means a signal's source family here); treating a nomination that matched a live trend as making that trend editorial.
+
 **Trend topic**:
 The trend's raw identity string — coined at promotion time by Cortex. Lives in `FCT_TRENDS.TREND_TOPIC`. **Identity** — frozen at promotion, never re-derived, audience is the pipeline (grouping/deduplication), not strategists. Strategists see [trend name] on ATLAS, not [trend topic]. Topic survives as the last-resort fallback when no enrichment has produced a name yet.
 _Avoid_: conflating with [trend name] — they share a table but serve different audiences and freeze at different lifecycle points.
