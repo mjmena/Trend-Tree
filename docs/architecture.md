@@ -138,7 +138,7 @@ Input: `POST { "trend_id": "<uuid>" }`. Output: `enrichment_output`, `agent_tele
 
 ### lifecycle-agent-p_JZCz73w (sweeper)
 
-Selects trends due for re-evaluation (`NEXT_LIFECYCLE_EVAL_AT <= NOW`, ordered by heat DESC, capped by `sweep_cap`). Fans out to `lifecycle-subagent-p_gYC562o` in parallel (10 workers, 240s timeout per call).
+Selects trends due for re-evaluation (`NEXT_LIFECYCLE_EVAL_AT <= NOW`, most overdue first so cold trends are not starved (CRMA-1633), capped by `sweep_cap`). Fans out to `lifecycle-subagent-p_gYC562o` in parallel (10 workers, 240s timeout per call).
 
 Each subagent evaluates one trend:
 - Re-checks Google Trends interest, signal recency, source breadth
