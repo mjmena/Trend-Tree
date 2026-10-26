@@ -1,0 +1,129 @@
+{
+  "labels": {
+    "a": "pro-a",
+    "b": "pro-b",
+    "c": "flash-1req-note"
+  },
+  "trends_scored": 120,
+  "trends_missing_a_run": 0,
+  "gates": {
+    "status": {
+      "n": 100,
+      "floor": 99,
+      "candidate": 97.5,
+      "control_change_rate": {
+        "pro": 0,
+        "candidate": 0
+      },
+      "pass": true
+    },
+    "retirement": {
+      "false_proposals": [],
+      "misses": [
+        "d781c8dd-eda4-44b6-bc33-9c632941021b",
+        "e767126e-a4ee-4847-99bb-6a7a15becf00"
+      ],
+      "pro_disagreements": 0,
+      "pass": false
+    },
+    "interval_bucket": {
+      "n": 120,
+      "floor": 100,
+      "candidate": 95,
+      "pass": true
+    },
+    "re_enrichment": {
+      "rate": {
+        "pro": 0,
+        "candidate": 0
+      },
+      "ratio": null,
+      "per_trend_agreement": {
+        "n": 120,
+        "floor": 100,
+        "candidate": 98.3
+      },
+      "pass": true
+    }
+  },
+  "all_gates_pass": false,
+  "status_by_stratum": [
+    {
+      "stratum": "dormant",
+      "n": 25,
+      "floor": 100,
+      "candidate": 92
+    },
+    {
+      "stratum": "reenrich",
+      "n": 20,
+      "floor": 100,
+      "candidate": 100
+    },
+    {
+      "stratum": "gd_hold",
+      "n": 15,
+      "floor": 100,
+      "candidate": 100
+    },
+    {
+      "stratum": "change",
+      "n": 40,
+      "floor": 97.5,
+      "candidate": 98.8
+    },
+    {
+      "stratum": "control",
+      "n": 20,
+      "floor": 100,
+      "candidate": 100
+    }
+  ],
+  "costs": [
+    {
+      "label": "pro-a",
+      "model": "gemini-3.1-pro-preview",
+      "mean_usd": 0.0318,
+      "median_usd": 0.0313,
+      "median_usd_as_production_records": 0.0256,
+      "median_batch_usd": 0.0156,
+      "per_day_600_batch_usd": 9.55,
+      "median_input_tokens": 11591.5,
+      "median_output_tokens": 201,
+      "median_thinking_tokens": 427.5,
+      "mean_turns": 2,
+      "no_emission": 0,
+      "budget_stops": 0
+    },
+    {
+      "label": "pro-b",
+      "model": "gemini-3.1-pro-preview",
+      "mean_usd": 0.0319,
+      "median_usd": 0.0311,
+      "median_usd_as_production_records": 0.0255,
+      "median_batch_usd": 0.0156,
+      "per_day_600_batch_usd": 9.58,
+      "median_input_tokens": 11591.5,
+      "median_output_tokens": 200,
+      "median_thinking_tokens": 445.5,
+      "mean_turns": 2,
+      "no_emission": 0,
+      "budget_stops": 0
+    },
+    {
+      "label": "flash-1req-note",
+      "model": "gemini-3.8-flash",
+      "mean_usd": 0.0069,
+      "median_usd": 0.0064,
+      "median_usd_as_production_records": 0.004,
+      "median_batch_usd": 0.0032,
+      "per_day_600_batch_usd": 2.08,
+      "median_input_tokens": 4606,
+      "median_output_tokens": 136,
+      "median_thinking_tokens": 579,
+      "mean_turns": 1,
+      "no_emission": 2,
+      "budget_stops": 0
+    }
+  ]
+}
