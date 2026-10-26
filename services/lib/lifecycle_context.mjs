@@ -230,11 +230,21 @@ QUALIFY ROW_NUMBER() OVER (PARTITION BY tv.TREND_ID ORDER BY SIMILARITY DESC NUL
 ORDER BY DUE_TREND_ID, SIMILARITY DESC NULLS LAST`,
 };
 
-// q_prompts verbatim; run once per tick.
+// q_prompts plus the job's own system key; run once per tick.
 export const PROMPTS_SQL = `SELECT PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS
 FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
 WHERE IS_ACTIVE = TRUE
-  AND PROMPT_KEY IN ('lifecycle.subagent.system', 'lifecycle.subagent.decision_rubric')`;
+  AND PROMPT_KEY IN ('lifecycle.subagent.system', 'lifecycle.subagent.decision_rubric', 'lifecycle.job.system')`;
+
+// Set query name -> buildTrendContext input field, and the grouping key.
+export const CONTEXT_FIELDS = {
+  metrics: { field: "metrics_rows", key: "TREND_ID" },
+  signal_domains: { field: "signal_domain_rows", key: "TREND_ID" },
+  lifecycle_history: { field: "lifecycle_history_rows", key: "TREND_ID" },
+  recent_signals: { field: "recent_signal_rows", key: "TREND_ID" },
+  candidate_signals: { field: "candidate_signal_rows", key: "TREND_ID" },
+  neighbors: { field: "neighbor_rows", key: "DUE_TREND_ID" },
+};
 
 // Rows of one set-based query -> Map(trend_id -> rows), keeping row order.
 export function groupByTrend(rows, key = "TREND_ID") {
@@ -541,13 +551,106 @@ Status heat factor is FIXED and applied at commit: GROWING/RESURGENT +10%, STABL
 }
 
 // prompts_rows (PROMPTS_SQL) + one trend's blocks -> the rendered system prompt.
-export function renderSystemPrompt(prompts_rows, blocks) {
+export function renderSystemPrompt(prompts_rows, blocks, systemKey = SYSTEM_PROMPT_KEY) {
   const loaded = loadPrompts(prompts_rows);
-  const systemPrompt = mustGet(loaded, SYSTEM_PROMPT_KEY);
+  const systemPrompt = mustGet(loaded, systemKey);
   const rubric = mustGet(loaded, RUBRIC_PROMPT_KEY);
 
   return render(systemPrompt.template, {
     decision_rubric: rubric.template,
     ...blocks,
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// The job's one-request shape: request building, decision building, cost
+// ─────────────────────────────────────────────────────────────────────
+
+export const JOB_MODEL = "gemini-3.8-flash";
+export const JOB_SYSTEM_PROMPT_KEY = "lifecycle.job.system";
+
+// propose_lifecycle_decision's input_schema, verbatim from
+// lifecycle-subagent-p_gYC562o/run_subagent/entry.js.
+export const DECISION_SCHEMA = {
+  type: "object",
+  properties: {
+    status: {
+      type: "string",
+      enum: ["NEW", "GROWING", "STABLE", "DECLINING", "DORMANT", "RESURGENT", "RETIRED"],
+      description: "The lifecycle state to commit. RETIRED requires two-cycle confirm — see system prompt.",
+    },
+    retirement_reason: { type: "string", description: "Required if status='RETIRED'." },
+    next_eval_in_hours: { type: "number", description: "Commit clamps to [1, 168]." },
+    request_re_enrichment: {
+      type: "boolean",
+      description: "True if narrative is stale enough to warrant a fresh enrichment run. Owned by enrichment workflow.",
+    },
+    re_enrichment_reason: {
+      type: "string",
+      description: "Why narrative refresh is warranted (e.g., 'new gdelt source type appeared, narrative still social-only').",
+    },
+    reasoning: { type: "string", description: "≤500 chars defending the decision." },
+  },
+  required: ["status", "next_eval_in_hours", "reasoning"],
+};
+
+// Standard per-million rates; a batch bills half. Flash doubles on 2027-01-01.
+const STANDARD_RATES = { input: 0.75, output: 3.75 };
+const PRICE_DOUBLES_AT = Date.parse("2027-01-01T00:00:00Z");
+
+export function entryCost(usage = {}, { batch = true, at = new Date() } = {}) {
+  const scale = (batch ? 0.5 : 1) * (at.getTime() >= PRICE_DOUBLES_AT ? 2 : 1);
+  const output = (usage.candidatesTokenCount || 0) + (usage.thoughtsTokenCount || 0);
+  const usd = ((usage.promptTokenCount || 0) * STANDARD_RATES.input + output * STANDARD_RATES.output) * scale / 1e6;
+  return Math.round(usd * 1e6) / 1e6;
+}
+
+export const clampNextEval = (hours) => Math.min(168, Math.max(6, hours));
+
+// One trend's rendered system prompt -> its inline batch request. heat_base
+// rides in the metadata because collect needs it and the batch row holds only ids.
+export function buildBatchRequest({ trendId, status, heatBase, systemPrompt, params = {} }) {
+  return {
+    metadata: { key: trendId, heat_base: heatBase },
+    request: {
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [{
+        role: "user",
+        parts: [{
+          text: `Evaluate trend ${trendId}. Current status is ${status}. ` +
+            `Use the prefetched context to decide the new status, heat modifier, and any description update. ` +
+            `Return your final answer as one JSON object.`,
+        }],
+      }],
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: DECISION_SCHEMA,
+        maxOutputTokens: params.per_call_max_tokens,
+        thinkingConfig: { thinkingLevel: params.thinking_level },
+        temperature: 1.0,
+      },
+    },
+  };
+}
+
+// One generateContent response -> the decision object PROC_LIFECYCLE_APPLY
+// takes, or null when the answer is not JSON.
+export function buildDecision({ trendId, heatBase, batchName, sessionId, response, batch = true, at = new Date() }) {
+  const candidate = response?.candidates?.[0];
+  const text = (candidate?.content?.parts || []).filter((p) => !p.thought && typeof p.text === "string").map((p) => p.text).join("");
+  let decision;
+  try { decision = JSON.parse(text); } catch { return null; }
+  if (!decision || typeof decision !== "object") return null;
+  const usage = response.usageMetadata || {};
+  const thinking = usage.thoughtsTokenCount || 0;
+  return {
+    trend_id: trendId,
+    agent_session_id: sessionId,
+    chain_id: batchName,
+    heat_base: heatBase,
+    lifecycle_decision: { ...decision, next_eval_in_hours: clampNextEval(decision.next_eval_in_hours) },
+    llm_token_usage: { input: usage.promptTokenCount || 0, output: (usage.candidatesTokenCount || 0) + thinking, thinking },
+    llm_cost_estimate: entryCost(usage, { batch, at }),
+    agent_telemetry: { model: JOB_MODEL, turns: 1, stop_reason: candidate?.finishReason, tool_call_count: 0 },
+  };
 }

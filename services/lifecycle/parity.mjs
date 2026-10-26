@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { connect, execute, destroy } from "./snowflake.mjs";
 import {
-  SET_QUERIES, PROMPTS_SQL, groupByTrend, buildTrendContext, renderSystemPrompt,
+  SET_QUERIES, PROMPTS_SQL, CONTEXT_FIELDS as FIELDS, groupByTrend, buildTrendContext, renderSystemPrompt,
 } from "../lib/lifecycle_context.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -36,16 +36,6 @@ const PER_TREND = {
 };
 const DUE_SQL = stepQuery("lifecycle-agent-p_JZCz73w", "q_select_due_trends")
   .replace("{{steps.normalize_event.$return_value.sweep_cap}}", String(N));
-
-// Query name -> buildTrendContext input field, and the grouping key.
-const FIELDS = {
-  metrics: { field: "metrics_rows", key: "TREND_ID" },
-  signal_domains: { field: "signal_domain_rows", key: "TREND_ID" },
-  lifecycle_history: { field: "lifecycle_history_rows", key: "TREND_ID" },
-  recent_signals: { field: "recent_signal_rows", key: "TREND_ID" },
-  candidate_signals: { field: "candidate_signal_rows", key: "TREND_ID" },
-  neighbors: { field: "neighbor_rows", key: "DUE_TREND_ID" },
-};
 
 function firstDiff(a, b) {
   let i = 0;

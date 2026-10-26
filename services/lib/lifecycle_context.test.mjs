@@ -2,7 +2,7 @@
 // Expected values are worked by hand, not recomputed with the formula.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeHeatBase } from "./lifecycle_context.mjs";
+import { buildDecision, clampNextEval, computeHeatBase, entryCost } from "./lifecycle_context.mjs";
 
 const NOW = Date.parse("2026-10-26T12:00:00Z");
 const hoursAgo = (h) => new Date(NOW - h * 3600 * 1000).toISOString();
@@ -53,4 +53,49 @@ test("heat_base weights the factors 25/25/40/10 and rounds to one decimal", () =
   const six = { a: 1, b: 1, c: 1, d: 1, e: 1, f: 1 };
   // 25*1 + 25*(1/3) + 40*1 + 10*0.8 = 81.333
   assert.equal(heat({ confidence: 0.8, domains: six, signalAgesH: [0] }).heat_base, 81.3);
+});
+
+test("next_eval_in_hours is clamped to [6, 168] before the proc call", () => {
+  assert.equal(clampNextEval(2), 6);
+  assert.equal(clampNextEval(24), 24);
+  assert.equal(clampNextEval(500), 168);
+});
+
+test("entry cost bills thinking tokens at the output rate, at batch rates", () => {
+  const usage = { promptTokenCount: 10_000, candidatesTokenCount: 1_000, thoughtsTokenCount: 2_000 };
+  // 10k × $0.375/M + 3k × $1.875/M
+  assert.equal(entryCost(usage, { batch: true, at: new Date("2026-11-01") }), 0.009375);
+  // standard: 10k × $0.75/M + 3k × $3.75/M
+  assert.equal(entryCost(usage, { batch: false, at: new Date("2026-11-01") }), 0.01875);
+  // Flash prices double on 2027-01-01.
+  assert.equal(entryCost(usage, { batch: true, at: new Date("2027-01-02") }), 0.01875);
+});
+
+test("a batch entry becomes the decision object PROC_LIFECYCLE_APPLY documents", () => {
+  const d = buildDecision({
+    trendId: "t1",
+    heatBase: 42.3,
+    batchName: "batches/abc",
+    sessionId: "lcy-sess-1",
+    response: {
+      candidates: [{ finishReason: "STOP", content: { parts: [{ text: '{"status":"STABLE","next_eval_in_hours":200,"reasoning":"r"}' }] } }],
+      usageMetadata: { promptTokenCount: 10_000, candidatesTokenCount: 1_000, thoughtsTokenCount: 2_000 },
+    },
+    at: new Date("2026-11-01"),
+  });
+  assert.deepEqual(d, {
+    trend_id: "t1",
+    agent_session_id: "lcy-sess-1",
+    chain_id: "batches/abc",
+    heat_base: 42.3,
+    lifecycle_decision: { status: "STABLE", next_eval_in_hours: 168, reasoning: "r" },
+    llm_token_usage: { input: 10_000, output: 3_000, thinking: 2_000 },
+    llm_cost_estimate: 0.009375,
+    agent_telemetry: { model: "gemini-3.8-flash", turns: 1, stop_reason: "STOP", tool_call_count: 0 },
+  });
+});
+
+test("an answer that is not JSON builds no decision", () => {
+  const response = { candidates: [{ content: { parts: [{ text: "Sure! Here is" }] } }], usageMetadata: {} };
+  assert.equal(buildDecision({ trendId: "t1", heatBase: 1, batchName: "b", sessionId: "s", response }), null);
 });

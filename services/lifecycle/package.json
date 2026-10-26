@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Lifecycle agent as a Cloud Run job: set-based context parity test.",
+  "description": "Lifecycle agent as a Cloud Run job: one tick submits or collects one Gemini batch.",
+  "main": "tick.mjs",
   "scripts": {
+    "start": "node tick.mjs",
     "parity": "node parity.mjs"
   },
   "engines": {
