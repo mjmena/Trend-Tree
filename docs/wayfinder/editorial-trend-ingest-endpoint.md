@@ -255,6 +255,15 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   hour.** That count catches a task that exhausted its retries and the inert candidate from
   ADR-0011. The contract adds no dead-letter queue and no callback to ATLAS.
   (CRMA-1432, 2026-10-26.)
+- **An editorial trend may resolve a white-space prediction.** The matcher treats it like
+  any trend and does not read the origin. The spec changes nothing in the prediction
+  service. ([CRMA-1643](https://mcclatchy.atlassian.net/browse/CRMA-1643), 2026-10-26.)
+- **The track record reports hits on editorial trends as a separate group, derived at read
+  time.** It follows `MATCHED_TREND_ID` to the trend's `PROMOTE_NEW` row and reads its
+  `DECISION_CATEGORY`. The verdict ledger stores nothing new. The group never changes,
+  even after the trend gains `attributed` links. The spec adds this rule to §7.6 of
+  `docs/prediction-pillar-strategy.md`, beside the hint segmentation of §8.
+  (CRMA-1643, 2026-10-26.)
 
 ## Decisions so far
 
@@ -290,6 +299,8 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 - [Decide: whether the endpoint needs a rate limit or a budget](https://mcclatchy.atlassian.net/browse/CRMA-1640) — **Decided:** No rate limit and no daily cap; deploy.env sets MAX_INSTANCES=2 so Cloud Run refuses overflow with its own 429; the vector-window double-promote on retry goes to CRMA-1432
 
 - [Decide: the request and response contract for the endpoint](https://mcclatchy.atlassian.net/browse/CRMA-1432) — **Decided:** Asynchronous: ATLAS sends nomination_id, brief, urls and nominated_by, gets 202 after the key, body and dead-URL checks, and a Cloud Tasks task named by nomination_id does the work; no status route, no dry_run
+
+- [Decide: whether an editorial trend may resolve a white-space prediction](https://mcclatchy.atlassian.net/browse/CRMA-1643) — **Decided:** An editorial trend may resolve a white-space prediction; the matcher does not read the origin; the track record reports those hits as a separate group, derived from the PROMOTE_NEW row, that never changes
 
 ## Not yet specified
 
