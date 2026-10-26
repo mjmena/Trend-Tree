@@ -167,6 +167,22 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   `CONFIDENCE` and `SPECIFICITY_SCORE` as NULL, and the heat formula falls back to 0.5.
   The audit agent adds a count of `EDITORIAL` promotions next to `q_et_rescue`.
   (CRMA-1430, 2026-10-26.)
+- **The endpoint is its own Cloud Run service under `services/`.** It is deployed by
+  `services/deploy.sh` in `mcc-crm-automations` / `us-east4`, and it is not a route on
+  `trend-tree-ecomm-agent` or the prediction service. It serves one write route plus
+  `/health`. ([CRMA-1431](https://mcclatchy.atlassian.net/browse/CRMA-1431), 2026-10-26.)
+- **ATLAS calls with a static API key, not a Google ID token.** The service binds
+  `allUsers` to `roles/run.invoker` (the `harbor-api` pattern) and rejects a missing or
+  wrong `X-Api-Key` header with 401, compared in constant time, before any work. A new
+  `deploy.env` switch (`PUBLIC_INGRESS=true`), set by this service only, makes
+  `deploy.sh` pass `--allow-unauthenticated`. (CRMA-1431, 2026-10-26.)
+- **One key, and only prod ATLAS holds it.** The key lives in Secret Manager in
+  `mcc-crm-automations`, and ATLAS prod (`insights-agent-504817`) keeps a copy. Dev ATLAS
+  gets no key. Rotation is a manual swap coordinated with the ATLAS team; the service
+  accepts one key at a time. (CRMA-1431, 2026-10-26.)
+- **The endpoint trusts the `nominated_by` that ATLAS sends.** The key proves the caller is
+  ATLAS, not which person nominated. The ledger stores the value as ATLAS's claim.
+  (CRMA-1431, 2026-10-26.)
 
 ## Decisions so far
 
@@ -192,6 +208,8 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 - [Decide: where an editorial trend enters the pipeline](https://mcclatchy.atlassian.net/browse/CRMA-1429) — **Decided:** An editorial trend enters as a candidate with no verdict that the endpoint promotes itself through PROC_PROMOTION_APPLY (PROMOTE_NEW, or MERGE_INTO_EXISTING for a duplicate); ADR-0011
 
 - [Decide: how an editorial trend stays distinguishable from a discovered trend](https://mcclatchy.atlassian.net/browse/CRMA-1430) — **Decided:** The promotion ledger records the origin (DECISION_CATEGORY EDITORIAL plus a NOMINATION column); the dashboard exposes only TREND_ORIGIN; no scorer reads the origin
+
+- [Decide: where the endpoint runs and who may call it](https://mcclatchy.atlassian.net/browse/CRMA-1431) — **Decided:** The endpoint is its own Cloud Run service; ATLAS prod calls it with a static X-Api-Key (allUsers ingress, key checked in the app); dev ATLAS gets no key; nominated_by is trusted
 
 ## Not yet specified
 
