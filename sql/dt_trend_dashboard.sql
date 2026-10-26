@@ -82,6 +82,14 @@
 -- gone and KEY_DATA_POINTS is always an empty array. The column stays so the
 -- UI contract holds. FCT_TREND_GTRENDS_DAILY is kept as history but no longer
 -- read by this dynamic table.
+--
+-- 2026-10-26 (CRMA-1669 trend origin): additive TREND_ORIGIN column
+-- ('DISCOVERED' | 'EDITORIAL'), read from the DECISION_CATEGORY on the
+-- trend's PROMOTE_NEW row in FCT_PROMOTION_LEDGER (stays inside
+-- MCC_PRESENTATION; no STG_TREND_CANDIDATES join, nothing added to
+-- FCT_TRENDS). A nomination that merges into a discovered trend writes a
+-- MERGE_INTO_EXISTING row, not PROMOTE_NEW, so that trend stays DISCOVERED.
+-- Deploy this file as-is (one statement), see the CRMA-1669 PR.
 
 CREATE OR REPLACE DYNAMIC TABLE MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD
   TARGET_LAG = '15 minutes'
@@ -397,6 +405,16 @@ sourced_products AS (
     WHERE c.SELECTED = TRUE
     GROUP BY ls.TREND_ID
 ),
+trend_origin AS (
+    -- CRMA-1669: a trend's origin is the category on its PROMOTE_NEW row.
+    -- Earliest row wins (an errored apply also logs a row; same category),
+    -- AUDIT_ID is the deterministic tiebreak.
+    SELECT TARGET_TREND_ID AS TREND_ID,
+           IFF(DECISION_CATEGORY = 'EDITORIAL', 'EDITORIAL', 'DISCOVERED') AS TREND_ORIGIN
+    FROM MCC_PRESENTATION.TREND_AGENT.FCT_PROMOTION_LEDGER
+    WHERE DECISION = 'PROMOTE_NEW' AND TARGET_TREND_ID IS NOT NULL
+    QUALIFY ROW_NUMBER() OVER (PARTITION BY TARGET_TREND_ID ORDER BY DECIDED_AT, AUDIT_ID) = 1
+),
 trend_base AS (
     -- Sourced from FCT_TRENDS only. Legacy FCT_TREND_METRICS union removed
     -- 2026-04-28 to test dashboard scoped exclusively to agent-promoted trends.
@@ -444,6 +462,8 @@ SELECT
     tb.LAST_LIFECYCLE_EVAL_AT,
     tb.RETIREMENT_REASON,
     tb.TREND_SOURCE,
+    -- CRMA-1669: never null — a trend with no PROMOTE_NEW row reads DISCOVERED.
+    COALESCE(tor.TREND_ORIGIN, 'DISCOVERED')                               AS TREND_ORIGIN,
     COALESCE(e.ORIGINALLY_SURFACED_AT, tb.DETECTED_AT)                     AS ORIGINALLY_SURFACED_AT,
 
     -- KEY_DATA_POINTS is always an empty array since CRMA-1313 retired the
@@ -519,4 +539,5 @@ LEFT JOIN trend_vectors tv                            ON tb.TREND_ID = tv.TREND_
 LEFT JOIN latest_prediction pred                      ON tb.TREND_ID = pred.TREND_ID
 LEFT JOIN nearest_content nc                          ON tb.TREND_ID = nc.TREND_ID
 LEFT JOIN latest_sourcing ls                          ON tb.TREND_ID = ls.TREND_ID
-LEFT JOIN sourced_products sp                         ON tb.TREND_ID = sp.TREND_ID;
+LEFT JOIN sourced_products sp                         ON tb.TREND_ID = sp.TREND_ID
+LEFT JOIN trend_origin tor                            ON tb.TREND_ID = tor.TREND_ID;

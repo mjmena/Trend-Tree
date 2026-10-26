@@ -286,6 +286,15 @@ horizon band. It is never stored:
 inside that grace window flips the grade to Early–Late. No enum change is needed —
 the §6 status set and its "direction is derived, never stored" rule both hold.
 
+**Editorial trends are a separate group.** The track record reports hits on
+editorial trends (nominated by an editor, not discovered by the pipeline) apart from
+the rest, so the pipeline's own calibration stays honest. The group is derived at read
+time: follow the verdict's `MATCHED_TREND_ID` to that trend's `PROMOTE_NEW` row in
+`FCT_PROMOTION_LEDGER` and read its category (`EDITORIAL` → editorial group; the same
+fact `DT_TREND_DASHBOARD.TREND_ORIGIN` exposes). The verdict ledger stores nothing new.
+A trend's group never changes, even after it gains `attributed` links. No track-record
+query exists yet, so this rule binds the first one written.
+
 ### 7.7 Queue-exit semantics: demotion is not removal — saturation is
 
 - **Internal coverage demotes only**: "act now" → "watch/covered," still visible on

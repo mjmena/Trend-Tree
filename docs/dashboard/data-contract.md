@@ -5,7 +5,7 @@
 
 **Purpose:** The full column schema, type, meaning, and an example value for the two dynamic tables the downstream platforms read.
 
-**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`), `sql/task_recompute_content_matches.sql` (+ `sql/fct_trend_content_matches_ledger.sql`), `sql/fct_trend_sourcing_ledger.sql` (+ `sql/fct_trend_sourcing_candidates.sql`). This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-09-28.
+**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`), `sql/task_recompute_content_matches.sql` (+ `sql/fct_trend_content_matches_ledger.sql`), `sql/fct_trend_sourcing_ledger.sql` (+ `sql/fct_trend_sourcing_candidates.sql`). This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-10-26.
 
 **Example values are real, pulled 2026-06-08** — mostly from the live trend **Hyper-Tactile Interiors** (`c51f1620-a832-4f13-a443-a7df03bf6a99`). A few fields that are null for that trend (geographic hotspots, macrotrend tags, the social-evidence object) use a populated row from another live trend to show the shape. Column names and types are authoritative.
 
@@ -174,6 +174,7 @@ This is the vector-match **substrate** only — it does not yet feed a Content G
 | `LAST_LIFECYCLE_EVAL_AT` | TIMESTAMP | When lifecycle last evaluated this trend. | `2026-06-08T09:10:12Z` |
 | `RETIREMENT_REASON` | VARCHAR | Why a RETIRED trend was retired. `NULL` otherwise. | `null` |
 | `TREND_SOURCE` | VARCHAR | Provenance of the trend row. | `fct_trends` |
+| `TREND_ORIGIN` | VARCHAR | How the trend entered the pipeline: `DISCOVERED` (promoted from clustered signals) or `EDITORIAL` (nominated by an editor). Read from the category on the trend's `PROMOTE_NEW` row in `FCT_PROMOTION_LEDGER`; never null, and it never changes after promotion. A nomination that merges into an existing discovered trend leaves that trend `DISCOVERED`. No score (`HEAT_INDEX`, `PREDICTION_SCORE`) reads it. | `DISCOVERED` |
 
 ### Deprecated columns
 
