@@ -7,7 +7,10 @@ CREATE TABLE IF NOT EXISTS MCC_RAW.MARKETING_DEV.STG_LIFECYCLE_BATCHES (
   CHAIN_ID      VARCHAR(64)   NOT NULL,              -- lcy-chain-<uuid>, also the displayName
   TREND_IDS     ARRAY         NOT NULL,
   HEAT_BASES    VARIANT,                             -- {trend_id: heat_base} computed at submit
+  BUDGET_EXHAUSTED BOOLEAN,                          -- the cap cut the due set this batch came from
   SUBMITTED_AT  TIMESTAMP_NTZ NOT NULL,
   STATE         VARCHAR(16)   NOT NULL,              -- SUBMITTED | COLLECTED | FAILED | CANCELLED
   UPDATED_AT    TIMESTAMP_NTZ NOT NULL
 );
+
+ALTER TABLE MCC_RAW.MARKETING_DEV.STG_LIFECYCLE_BATCHES ADD COLUMN IF NOT EXISTS BUDGET_EXHAUSTED BOOLEAN;

@@ -1,4 +1,4 @@
-// Gemini Batch API client: direct fetch(), no SDK, on the Generative Language API.
+// Gemini Batch API client, plus the standard generateContent a retry uses: direct fetch(), no SDK.
 
 const API = "https://generativelanguage.googleapis.com/v1beta";
 
@@ -29,6 +29,14 @@ export function createGeminiBatchClient({ apiKey, fetch = globalThis.fetch }) {
         state: op.metadata?.state,
         entries: op.metadata?.output?.inlinedResponses?.inlinedResponses ?? op.response?.inlinedResponses?.inlinedResponses ?? [],
       };
+    },
+
+    async cancelBatch(name) {
+      await call("POST", `${name}:cancel`);
+    },
+
+    generateContent({ model, request }) {
+      return call("POST", `models/${model}:generateContent`, request);
     },
   };
 }

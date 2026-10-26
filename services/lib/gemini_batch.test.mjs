@@ -40,3 +40,21 @@ test("a non-2xx answer throws with the status", async () => {
   const client = createGeminiBatchClient({ apiKey: "k", fetch: f.fetch });
   await assert.rejects(client.getBatch("batches/abc"), /GET batches\/abc -> 429/);
 });
+
+test("cancelBatch posts to the batch's :cancel", async () => {
+  const f = fakeFetch(200, {});
+  const client = createGeminiBatchClient({ apiKey: "k", fetch: f.fetch });
+  await client.cancelBatch("batches/abc");
+  assert.equal(f.calls[0].url, "https://generativelanguage.googleapis.com/v1beta/batches/abc:cancel");
+  assert.equal(f.calls[0].init.method, "POST");
+});
+
+test("generateContent posts one standard request and returns the response", async () => {
+  const response = { candidates: [{ content: { parts: [{ text: "{}" }] } }], usageMetadata: { promptTokenCount: 1 } };
+  const f = fakeFetch(200, response);
+  const client = createGeminiBatchClient({ apiKey: "k", fetch: f.fetch });
+  const request = { contents: [{ role: "user", parts: [{ text: "hi" }] }] };
+  assert.deepEqual(await client.generateContent({ model: "gemini-3.8-flash", request }), response);
+  assert.equal(f.calls[0].url, "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent");
+  assert.deepEqual(JSON.parse(f.calls[0].init.body), request);
+});
