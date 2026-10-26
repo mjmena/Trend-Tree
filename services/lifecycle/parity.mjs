@@ -1,6 +1,6 @@
 // Renders each due trend's system prompt from the per-trend workflow.yaml queries
 // and from SET_QUERIES at one instant; exits 1 on any char difference. Read-only.
-//   cd services/lifecycle && npm ci && node parity.mjs [N=20]
+//   cd services/lifecycle && npm ci && SNOWFLAKE_ACCOUNT=… SNOWFLAKE_USER=… node parity.mjs [N=20]
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
