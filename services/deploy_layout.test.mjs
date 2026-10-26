@@ -47,7 +47,7 @@ function load(name) {
   };
 }
 
-const UNITS = [load("ecomm-agent"), load("scrape-gateway"), load("catalog-sync"), load("tiktok-ingest")];
+const UNITS = [load("ecomm-agent"), load("scrape-gateway"), load("catalog-sync"), load("tiktok-ingest"), load("lifecycle")];
 // RUNTIME=python services (CRMA-1667): deploy.sh's Python branch.
 const PY_UNITS = [load("editorial-ingest")];
 
@@ -186,6 +186,19 @@ test("tiktok-ingest: deploys as a job with one retry, and names its secrets with
     "SNOWFLAKE_PRIVATE_KEY=snowflake-private-key:latest",
   ]);
   assert.doesNotMatch(u.deployEnv, /api_key=|SERPAPI_API_KEY:/, "deploy.env must never hold a key value");
+});
+
+test("lifecycle: deploys as a job with one retry, a 1500 s timeout, the 200-trend cap and its two secrets", () => {
+  const u = load("lifecycle");
+  assert.equal(u.kind, "job");
+  assert.equal(u.envValue("MAX_RETRIES"), "1");
+  assert.equal(u.envValue("TIMEOUT"), "1500");
+  assert.match(u.deployEnv, /^LIFECYCLE_BATCH_CAP: '200'$/m);
+  const secrets = u.deployEnv.match(/^SECRETS="([^"]*)"/m)?.[1] ?? "";
+  assert.deepEqual(secrets.split(",").sort(), [
+    "GEMINI_API_KEY=generic-gemini-api-key:latest",
+    "SNOWFLAKE_PRIVATE_KEY=snowflake-private-key:latest",
+  ]);
 });
 
 // brightdata-api-key is new to the project, and `gcloud run deploy` fails
