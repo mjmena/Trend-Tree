@@ -23,6 +23,13 @@ A locked, handoff-ready spec for the lifecycle agent as **one Cloud Run job that
 - The four lifecycle tools (`query_trend_neighbors`, `query_signal_velocity`, `query_lifecycle_history`, `propose_lifecycle_decision`) only read data the workflow prefetched; none calls a live API (`run_subagent/entry.js`, 2026-10-26).
 - The agent picks `next_eval_in_hours`; `PROC_LIFECYCLE_APPLY` clamps it to [1, 168] and writes `NEXT_EVAL_AT` (`sql/proc_lifecycle_apply.sql`, 2026-10-26).
 - There is no shadow mode. `WRITE_LIVE` is deprecated and every ledger insert is canonical; `dry_run` skips the LLM call (`sql/proc_lifecycle_apply.sql`, `run_subagent/entry.js`, 2026-10-26).
+- `gemini-3.7-flash` was deprecated 2026-10-08; Google routes its calls to `gemini-3.8-flash`, so the Flash candidate is **3.8 Flash** ([CRMA-1645](https://mcclatchy.atlassian.net/browse/CRMA-1645), 2026-10-26).
+- A Gemini batch costs 50% of standard. Per 1M tokens, in / out, thinking billed as output: 3.1 Pro $2 / $12 standard, $1 / $6 batch (prompts up to 200k); 3.8 Flash $0.75 / $3.75 standard, $0.375 / $1.875 batch, doubling on 2027-01-01 (CRMA-1645, 2026-10-26).
+- At 600 evals/day and the baseline token counts: 3.1 Pro $15.26 standard, $7.63 batch; 3.8 Flash batch $2.82 through 2026, $5.64 from 2027 (CRMA-1645, 2026-10-26).
+- A Gemini batch targets 24 h and usually finishes much sooner; a batch still pending after 48 h expires with no results; Google publishes no typical spread (CRMA-1645, 2026-10-26).
+- Each batch entry is one call: `responseSchema` and tools are supported, `thinkingConfig` is likely but not confirmed, and a multi-turn tool loop needs one batch round per turn (CRMA-1645, 2026-10-26).
+- The existing Generative Language API key submits batches (inline under 20 MB, or a JSONL file through the Files API); Vertex is not needed. Tier 1 caps enqueued tokens at 5M (3.1 Pro) and 3M (3.8 Flash), below one day's ~6.9M, and the account's tier is not checked (CRMA-1645, 2026-10-26).
+- Explicit caching works in a Gemini API batch; implicit caching there is unconfirmed (CRMA-1645, 2026-10-26).
 - After CRMA-1633 (merged 2026-10-26 05:03 UTC) the sweep picks the most overdue trends first: the 01:00 and 02:00 ET sweeps picked trends a median 2,279 h and 2,205 h overdue, 25 evals each.
 
 ## Standing constraints
@@ -32,6 +39,8 @@ A locked, handoff-ready spec for the lifecycle agent as **one Cloud Run job that
 - The lifecycle status and heat may update on a **batch cadence**, not hourly. If research shows batches often take longer than 6 h, "Decide: the lifecycle job's cadence and run shape" may reopen this.
 
 ## Decisions so far
+
+- [Research: Gemini Batch API facts for the lifecycle agent](https://mcclatchy.atlassian.net/browse/CRMA-1645) — **Decided:** a Gemini batch is half price on the existing API key, one call per entry; Flash candidate is 3.8 (3.7 deprecated); 600 evals/day = 7.63 USD on Pro batch, 2.82 USD on 3.8 Flash batch in 2026
 
 ## Not yet specified
 
