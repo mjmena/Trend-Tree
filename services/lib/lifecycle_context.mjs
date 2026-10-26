@@ -230,7 +230,7 @@ QUALIFY ROW_NUMBER() OVER (PARTITION BY tv.TREND_ID ORDER BY SIMILARITY DESC NUL
 ORDER BY DUE_TREND_ID, SIMILARITY DESC NULLS LAST`,
 };
 
-// q_prompts plus the job's own system key; run once per tick.
+// The subagent prompts plus the job's own system key; run once per tick.
 export const PROMPTS_SQL = `SELECT PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS
 FROM MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
 WHERE IS_ACTIVE = TRUE
@@ -569,8 +569,6 @@ export function renderSystemPrompt(prompts_rows, blocks, systemKey = SYSTEM_PROM
 export const JOB_MODEL = "gemini-3.8-flash";
 export const JOB_SYSTEM_PROMPT_KEY = "lifecycle.job.system";
 
-// propose_lifecycle_decision's input_schema, verbatim from
-// lifecycle-subagent-p_gYC562o/run_subagent/entry.js.
 export const DECISION_SCHEMA = {
   type: "object",
   properties: {
@@ -580,7 +578,7 @@ export const DECISION_SCHEMA = {
       description: "The lifecycle state to commit. RETIRED requires two-cycle confirm — see system prompt.",
     },
     retirement_reason: { type: "string", description: "Required if status='RETIRED'." },
-    next_eval_in_hours: { type: "number", description: "Commit clamps to [1, 168]." },
+    next_eval_in_hours: { type: "number", description: "Commit clamps to [6, 168]." },
     request_re_enrichment: {
       type: "boolean",
       description: "True if narrative is stale enough to warrant a fresh enrichment run. Owned by enrichment workflow.",
@@ -607,11 +605,10 @@ export function entryCost(usage = {}, { batch = true, at = new Date() } = {}) {
 
 export const clampNextEval = (hours) => Math.min(168, Math.max(6, hours));
 
-// One trend's rendered system prompt -> its inline batch request. heat_base
-// rides in the metadata because collect needs it and the batch row holds only ids.
-export function buildBatchRequest({ trendId, status, heatBase, systemPrompt, params = {} }) {
+// One trend's rendered system prompt -> its inline batch request.
+export function buildBatchRequest({ trendId, status, systemPrompt, params = {} }) {
   return {
-    metadata: { key: trendId, heat_base: heatBase },
+    metadata: { key: trendId },
     request: {
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: [{

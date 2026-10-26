@@ -1,14 +1,5 @@
-# trend-tree-lifecycle image — a Cloud Run JOB.
-#
-# BUILD CONTEXT IS THE REPO ROOT, not this directory — the job imports the
-# shared services/lib/ modules:
-#
-#   docker build --platform linux/amd64 \
-#     -f services/lifecycle/Dockerfile \
-#     -t trend-tree-lifecycle .
-#
-# services/deploy.sh drives the real build (daemon-free, via crane) and must
-# stage the same layout; services/deploy_layout.test.mjs checks the two agree.
+# Build context is the repo root so the job can import services/lib/.
+# services/deploy_layout.test.mjs checks deploy.sh stages the same layout.
 
 FROM node:22-slim AS deps
 WORKDIR /deps

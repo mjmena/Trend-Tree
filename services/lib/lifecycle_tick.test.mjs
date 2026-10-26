@@ -26,7 +26,7 @@ function fakeSnowflake({ due = [], failOn = null } = {}) {
     if (/DIM_LLM_PROMPT/.test(sql)) return PROMPT_ROWS;
     if (/NEXT_LIFECYCLE_EVAL_AT/.test(sql)) return db.due.slice(0, Number(sql.match(/LIMIT (\d+)/)[1])).map((id) => ({ TREND_ID: id }));
     if (/^INSERT INTO \S+STG_LIFECYCLE_BATCHES/.test(sql)) {
-      db.batches.push({ BATCH_NAME: binds[0], CHAIN_ID: binds[1], TREND_IDS: JSON.parse(binds[2]), SUBMITTED_AT: db.clock, STATE: "SUBMITTED" });
+      db.batches.push({ BATCH_NAME: binds[0], CHAIN_ID: binds[1], TREND_IDS: JSON.parse(binds[2]), HEAT_BASES: binds[3] === undefined ? undefined : JSON.parse(binds[3]), SUBMITTED_AT: db.clock, STATE: "SUBMITTED" });
       return [];
     }
     if (/^UPDATE \S+STG_LIFECYCLE_BATCHES/.test(sql)) {
@@ -108,7 +108,7 @@ test("submit: the due trends go out as one keyed batch on gemini-3.8-flash, and 
   assert.equal(req.tools, undefined);
 
   assert.equal(sf.db.batches.length, 1);
-  assert.deepEqual(sf.db.batches[0], { BATCH_NAME: "batches/b1", CHAIN_ID: b.displayName, TREND_IDS: ["t1", "t2"], SUBMITTED_AT: sf.db.batches[0].SUBMITTED_AT, STATE: "SUBMITTED" });
+  assert.deepEqual(sf.db.batches[0], { BATCH_NAME: "batches/b1", CHAIN_ID: b.displayName, TREND_IDS: ["t1", "t2"], HEAT_BASES: { t1: 5, t2: 5 }, SUBMITTED_AT: sf.db.batches[0].SUBMITTED_AT, STATE: "SUBMITTED" });
   assert.match(b.displayName, /^lcy-chain-/);
   assert.equal(sf.db.ledger.length, 0, "submit moves no NEXT_EVAL_AT");
 });
@@ -216,4 +216,24 @@ test("cancelled and unparseable entries leave their trends due and are named on 
   assert.deepEqual(sf.db.procCalls[0].decisions.map((d) => d.trend_id), ["t1"]);
   assert.equal(sf.db.costs[0].STATUS, "OK");
   assert.equal(sf.db.costs[0].ERROR_MESSAGE, "t3: answer is not JSON");
+});
+
+test("collect takes heat_base from the batch row, not from echoed request metadata", async () => {
+  const sf = fakeSnowflake({ due: ["t1"] });
+  const gemini = fakeGemini({ entryFor: (key) => ({ metadata: { key }, ...answer() }) });
+  await tick(sf, gemini);
+  sf.db.batches[0].HEAT_BASES.t1 = 37.5;
+  await tick(sf, gemini, { cap: 0 });
+  assert.equal(sf.db.procCalls[0].decisions[0].heat_base, 37.5);
+});
+
+test("a trend missing from the batch row's heat bases gets no decision and stays due", async () => {
+  const sf = fakeSnowflake({ due: ["t1", "t2"] });
+  const gemini = fakeGemini();
+  await tick(sf, gemini);
+  delete sf.db.batches[0].HEAT_BASES.t2;
+  await tick(sf, gemini, { cap: 0 });
+  assert.deepEqual(sf.db.procCalls[0].decisions.map((d) => d.trend_id), ["t1"]);
+  assert.deepEqual(sf.db.due, ["t2"]);
+  assert.equal(sf.db.costs[0].ERROR_MESSAGE, "t2: no heat_base on the batch row");
 });
