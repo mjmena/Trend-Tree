@@ -2,7 +2,7 @@
 // four gates CRMA-1646 decided, and report cost per eval for each model.
 //
 //   node docs/wayfinder/assets/crma-1647/score.mjs [--a=pro-a] [--b=pro-b] [--c=flash]
-//   → out/report.md, out/metrics.json
+//   → out/report.md, out/metrics.json  (--out=report-x writes out/report-x.md + out/report-x.json)
 //
 // Definitions (CRMA-1646, plus the readings this file had to pick):
 //   noise floor     agreement between Pro run A and Pro run B
@@ -23,6 +23,7 @@ import { fileURLToPath } from "node:url";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const arg = (k, d) => process.argv.find((a) => a.startsWith(`--${k}=`))?.split("=")[1] ?? d;
 const LABELS = { a: arg("a", "pro-a"), b: arg("b", "pro-b"), c: arg("c", "flash") };
+const OUT = arg("out", null);
 const HARD = new Set(["dormant", "reenrich", "gd_hold", "change"]);
 
 function load(label) {
@@ -125,7 +126,7 @@ const metrics = {
   all_gates_pass: g1pass && g2pass && g3pass && g4pass,
   status_by_stratum: strata, costs,
 };
-writeFileSync(join(HERE, "out", "metrics.json"), JSON.stringify(metrics, null, 2));
+writeFileSync(join(HERE, "out", OUT ? `${OUT}.json` : "metrics.json"), JSON.stringify(metrics, null, 2));
 
 const yes = (b) => (b ? "**pass**" : "**FAIL**");
 const md = `# CRMA-1647 shadow comparison: ${LABELS.c} vs Pro
@@ -155,5 +156,5 @@ ${strata.map((s) => `| ${s.stratum} | ${s.n} | ${s.floor}% | ${s.candidate}% |`)
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 ${costs.map((c) => `| ${c.label} | ${c.model} | $${c.mean_usd} | $${c.median_usd} | $${c.median_usd_as_production_records} | $${c.median_batch_usd} | $${c.per_day_600_batch_usd} | ${c.median_input_tokens} | ${c.median_output_tokens} | ${c.median_thinking_tokens} | ${c.mean_turns} | ${c.no_emission} | ${c.budget_stops} |`).join("\n")}
 `;
-writeFileSync(join(HERE, "out", "report.md"), md);
+writeFileSync(join(HERE, "out", OUT ? `${OUT}.md` : "report.md"), md);
 console.log(md);
