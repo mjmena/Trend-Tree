@@ -73,7 +73,6 @@ A locked, handoff-ready spec for the lifecycle agent as **one Cloud Run job that
 
 - The set-based port of the subagent's 7 queries (`q_metrics`, `q_signal_domains`, `q_lifecycle_history`, `q_recent_signals`, `q_candidate_signals`, `q_neighbors`, `q_prompts`): once per run for all due trends, not once per trend.
 - The `DIM_LLM_PROMPT` migration for a one-request prompt, with the audit manifest bump in `q_prompt_drift`.
-- The cut-over: shadow window and close under CRMA-429's window-close rule, then deactivating `lifecycle-agent-p_JZCz73w` and `lifecycle-subagent-p_gYC562o`.
 
 ## Out of scope
 
