@@ -59,18 +59,27 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 - **A trend with no linked signals stays `STABLE` and never retires.** The lifecycle agent
   sets `NEW` for 24 hours, then `STABLE`. The rubric allows `STABLE` → `DECLINING` only with
   at least 5 linked signals in 14 days, and `DORMANT` is reachable only from `DECLINING`.
-  All 19 are `STABLE` at 15 to 39 days old.
+  On 2026-10-06 all 19 were `STABLE` at 15 to 39 days old. On 2026-10-26, after
+  attribution reached them, 9 of the 20 rescues have linked signals and some are
+  `GROWING` or `DECLINING`; 11 still have none.
   _Source: CRMA-1427 findings, `lifecycle-subagent-p_gYC562o` prompt version 7 and
-  Snowflake, 2026-10-06._
+  Snowflake, 2026-10-06; re-measured 2026-10-26 (CRMA-1639)._
 - **The enrichment chain completes for a trend with no linked signals.** All 19 have a full
   `initial` enrichment record, written 2 to 3 minutes after promotion, with 3 to 6 evidence
   items. Every step that reads `FCT_TREND_SIGNALS` proceeds on an empty result.
   _Source: CRMA-1427 findings, code read and Snowflake, 2026-10-06._
-- **The lifecycle-attribution agent does not reach a new trend in practice.** A trend is
-  eligible as soon as it has a `TREND_VECTOR`, and promotion writes one from `TREND_TOPIC`.
-  But 0 of the 192 trends promoted since 2026-07-20 has an `attributed` link. The reason is
-  an inference: the sweep works a queue that is about 11 weeks behind.
-  _Source: CRMA-1427 findings, Snowflake, 2026-10-06._
+- **The lifecycle-attribution agent reaches every live trend about every 18 hours.** A
+  trend is eligible as soon as it has a `TREND_VECTOR`. Since CRMA-1459 (2026-10-16) each
+  hourly run sweeps one block of 30 trends in hash order, over 541 eligible trends.
+  October trends got their first `attributed` link after a median of 39 hours, and 42 of
+  60 have one. This replaces an earlier line that read "does not reach a new trend": that
+  was starvation in the old sweep order, which CRMA-1459 fixed.
+  _Source: `lifecycle-attribution-agent-p_KwCoaap/workflow.yaml` on `production`,
+  Snowflake, 2026-10-26 (CRMA-1639)._
+- **Most live trends are `STABLE` with little evidence.** 490 of 644 trends are `STABLE`,
+  with a median of 1 linked signal in 14 days. 389 of them are under the 5-signal floor
+  that `STABLE` → `DECLINING` needs.
+  _Source: Snowflake, 2026-10-26 (CRMA-1639)._
 - **A trend with no linked signals is never `PREDICTION_ELIGIBLE`, and shows 0 for
   `DISTINCT_PUBLISHER_COUNT` and `TOTAL_CLUSTER_SIZE`.** No audit query counts such trends.
   _Source: CRMA-1427 findings, 2026-10-06._
@@ -204,6 +213,11 @@ The map stops before the build. When no decision remains, `/to-spec` writes
   decides where the retry runs; the driver leans toward Cloud Tasks. Both `EDITORIAL`
   ledger rows carry `max_neighbor_sim`, `considered_neighbors` and the judge's rationale.
   (CRMA-1638, 2026-10-26.)
+- **The lifecycle agent does not read the origin.** An editorial trend gets the same
+  rubric as any trend, with no exit rule of its own. It gains evidence only through the
+  normal attribution sweep, with no priority, so its first `attributed` link can take
+  about 18 hours. The spec changes neither the lifecycle agent nor the attribution agent.
+  ([CRMA-1639](https://mcclatchy.atlassian.net/browse/CRMA-1639), 2026-10-26.)
 
 ## Decisions so far
 
@@ -234,6 +248,8 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 
 - [Decide: how the endpoint detects that an editorial trend duplicates a live trend](https://mcclatchy.atlassian.net/browse/CRMA-1638) — **Decided:** Gemini 3.8 judges sameness only (match or no match) over promotion's neighbor pool; no URL match; open candidates ignored; a RETIRED match revives the trend; a failed judgment is retried, never falls back to a new trend
 
+- [Decide: how an editorial trend gains evidence and leaves STABLE](https://mcclatchy.atlassian.net/browse/CRMA-1639) — **Decided:** No exit rule and no attribution priority for an editorial trend; the lifecycle agent does not read the origin; since CRMA-1459 attribution reaches every trend about every 18 hours; the low-evidence STABLE gap is out of scope (CRMA-1655)
+
 ## Not yet specified
 
 <!-- The fog of war: in-scope decisions you can tell are coming but cannot yet
@@ -256,3 +272,8 @@ The map stops before the build. When no decision remains, `/to-spec` writes
 - **The PGS link between a Trend Hunter CMS editorial trend and an analytical trend.** That
   is the other meaning of the phrase (PGS-664, PGS-908) and belongs to the Product Growth
   Squad.
+- **A low-evidence trend can never leave `STABLE` or retire.** The rubric needs 5 linked
+  signals in 14 days for `STABLE` → `DECLINING`, so 389 trends of every origin are stuck.
+  It is a lifecycle-rubric gap, not an editorial-trend gap
+  ([CRMA-1639](https://mcclatchy.atlassian.net/browse/CRMA-1639)); filed for triage as
+  [CRMA-1655](https://mcclatchy.atlassian.net/browse/CRMA-1655).
