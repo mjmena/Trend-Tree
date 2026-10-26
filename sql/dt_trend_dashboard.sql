@@ -89,7 +89,7 @@
 -- MCC_PRESENTATION; no STG_TREND_CANDIDATES join, nothing added to
 -- FCT_TRENDS). A nomination that merges into a discovered trend writes a
 -- MERGE_INTO_EXISTING row, not PROMOTE_NEW, so that trend stays DISCOVERED.
--- Deployed via sql/migrate_dt_trend_dashboard_add_trend_origin.sql.
+-- Deploy this file as-is (one statement), see the CRMA-1669 PR.
 
 CREATE OR REPLACE DYNAMIC TABLE MCC_PRESENTATION.TREND_AGENT.DT_TREND_DASHBOARD
   TARGET_LAG = '15 minutes'
