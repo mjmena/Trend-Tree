@@ -270,5 +270,5 @@ test("only editorial-ingest sets PUBLIC_INGRESS, and it caps instances at 2", ()
   assert.equal(u.envValue("MAX_INSTANCES"), "2");
   assert.equal(u.envValue("CONCURRENCY"), undefined, "spec: keep deploy.sh's default concurrency");
   const secrets = u.deployEnv.match(/^SECRETS="([^"]*)"/m)?.[1] ?? "";
-  assert.match(secrets, /EDITORIAL_API_KEY=editorial-ingest-api-key:latest/);
+  assert.match(secrets, /EDITORIAL_API_KEY=atlas-trend-tree-api-key:latest/);
 });
