@@ -229,7 +229,7 @@ def seed_lifecycle_v0(session, trend_id):
     #           + 10*confidence
     # log_score = (log2(n) - 0.5) / (log2(10) - 0.5), clamped to [0,1].
     # Velocity needs no baseline term: a fresh trend has none, so the
-    # acceleration form reduces to min(1, n/3) (CRMA-1685).
+    # acceleration form reduces to min(1, n/3).
     session.sql(f"""
         INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER (
             TREND_ID, EVALUATED_AT, AGENT_SESSION_ID,

@@ -7,7 +7,7 @@
 
 **Scale** — 0–100. Higher means more broadly validated. The value shown is the **smoothed** value (preferred); when a freshly-promoted trend hasn't been smoothed yet, the raw value is shown as a fallback. Rounded to one decimal place.
 
-**What feeds it** — Heat is fully deterministic (formula v2, ADR-0005). The lifecycle subagent's code computes a `heat_base` from the signals **linked** to the trend in `FCT_TREND_SIGNALS` (link kinds `supporting` / `attributed`). Vector-similar-but-unlinked "candidate" signals earn zero points — a candidate starts counting only once the attribution agent links it. The agent's judgment enters exactly once: the lifecycle **status** it chooses applies a fixed factor (below). There is no free-form agent modifier anymore, and Google Trends is not a heat input (demand-side evidence lives on the opportunity-score axis).
+**What feeds it** — Heat is fully deterministic (formula v2, ADR-0005). The lifecycle job's code computes a `heat_base` from the signals **linked** to the trend in `FCT_TREND_SIGNALS` (link kinds `supporting` / `attributed`). Vector-similar-but-unlinked "candidate" signals earn zero points — a candidate starts counting only once the attribution agent links it. The agent's judgment enters exactly once: the lifecycle **status** it chooses applies a fixed factor (below). There is no free-form agent modifier anymore, and Google Trends is not a heat input (demand-side evidence lives on the opportunity-score axis).
 
 **The formula** (must match `services/lib/lifecycle_context.mjs:computeHeatBase()` and `PROC_LIFECYCLE_APPLY`; velocity and the breadth anchor changed in CRMA-1685, ADR-0012):
 

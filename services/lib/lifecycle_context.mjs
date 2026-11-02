@@ -321,16 +321,15 @@ export function computeHeatBase({ metrics, signal_domain_counts, recent_signals 
     ? Math.exp(-Math.max(0, (now - lastSignalTs) / (3600 * 1000)) / 120)
     : 0;
 
-  // velocity_factor: acceleration of linked signals over the trend's own
-  // weekly baseline (days 8-35), so a steady attribution flow scores ~0.
-  // With no baseline it reduces to min(1, n7/3). Counts are uncapped SQL
+  // velocity_factor: acceleration over the trend's own weekly baseline
+  // (days 8-35), so a steady attribution flow scores ~0. Uncapped SQL
   // counts, not the 30-row recent_signals prefetch.
   const n7 = Number(metrics?.linked_7d || 0);
   const baseline = Number(metrics?.linked_prior_28d || 0) / 4;
   const velocity_factor = Math.min(1, Math.max(0, (n7 - baseline) / Math.max(3, baseline)));
 
   // Counts are windowed to 21d so breadth is not an age counter. 10 even
-  // domains = 1.0 (re-anchored from 6 after CRMA-1459 raised attribution). Publisher extraction mirrors
+  // domains = 1.0. Publisher extraction mirrors
   // sql/dt_trend_dashboard.sql's signal_domains CTE — keep them in sync.
   const distinct = Object.values(signal_domain_counts).filter(v => v > 0).length;
   const log_score = distinct === 0
