@@ -22,7 +22,7 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 - **Do not add a `package.json` at the repo root** — Pipedream's GitHub sync watches the root. Node dependencies live in the service's own directory.
 - `services/ecomm-agent` — the ecomm (trend-to-product sourcing) agent, `POST /source {trend_id}` + `GET /health` (not `/healthz`: Google's edge intercepts that path). See [`docs/prd/trend-to-product-sourcing.md`](docs/prd/trend-to-product-sourcing.md).
 - `services/tiktok-ingest` — Cloud Run **job** `trend-tree-tiktok-ingest` (CRMA-1337). SerpApi `google_short_videos` over a fixed seed list → `gemini-3.7-flash` title filter (`DIM_LLM_PROMPT` `ingestion.tiktok.filter`) → `SOURCE_NAME = 'tiktok'` rows via `MERGE_EXTERNAL_SIGNALS`. Max 50 SerpApi calls per run on the shared `dev@trendhunter.com` plan. Run by hand with `gcloud run jobs execute trend-tree-tiktok-ingest --region us-east4 --project mcc-crm-automations --wait`.
-- `services/lifecycle` — Cloud Run **job** `trend-tree-lifecycle` (CRMA-1682), the replacement for the two lifecycle Pipedream workflows. Each execution is one tick: collect the in-flight Gemini batch (`gemini-3.8-flash`, tracked in `STG_LIFECYCLE_BATCHES`) through `PROC_LIFECYCLE_APPLY` if it finished, then submit the due trends (up to `LIFECYCLE_BATCH_CAP`) as the next one. Not deployed or scheduled until the cut-over (`docs/prd/lifecycle-job.md` on the wayfinder branch); do not execute it against production before then.
+- `services/lifecycle` — Cloud Run **job** `trend-tree-lifecycle` (CRMA-1682), the replacement for the two lifecycle Pipedream workflows. Each execution is one tick: collect the in-flight Gemini batch (`gemini-3.8-flash`, tracked in `STG_LIFECYCLE_BATCHES`) through `PROC_LIFECYCLE_APPLY` if it finished, then submit the due trends (up to `LIFECYCLE_BATCH_CAP`) as the next one. Live since the 2026-10-26 cut-over: Scheduler job `trend-tree-lifecycle-hourly` (managed by its `schedule.sh`) runs it hourly, UTC, and it is the only writer of `FCT_TREND_LIFECYCLE_LEDGER`. Batch cost lands in `STG_AGENT_RUN_COSTS` under `WORKFLOW_NAME = 'trend-tree-lifecycle'`; `STATUS = BUDGET_EXHAUSTED` means more trends were due than the cap, not a failure. Operate and alert runbook: `services/lifecycle/README.md`.
 - `services/catalog-sync` — Cloud Run **job** `trend-tree-catalog-sync` (CRMA-777): sweeps the public Shopify storefront `products.json` feed into `DIM_CATALOG_PRODUCT` daily at 09:00 UTC (Scheduler job `trend-tree-catalog-sync-daily`, managed by its `schedule.sh`). `deploy.env` sets `KIND=job`, which sends `services/deploy.sh` down its job path: deploy, then one real execution as the smoke test.
 
 ## Workflow defaults
@@ -45,7 +45,6 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 | `sources-p_7NCy36w` | Per-trend source-metrics fetcher — populates `FCT_TREND_SOURCE_METRICS` |
 | `enrichment-p_xMC995w` | Single Gemini 3.1 Pro agent loop — produces the canonical enrichment record. Its `run_name_reviewer` step is one of three remaining Anthropic callers; see **Anthropic callers** below |
 | `write-p_o7CWa2K` | Persists enrichment to `FCT_TREND_ENRICHMENT_LEDGER` (append-only ledger; the legacy `DIM_TREND_ENRICHMENT` was retired in the 2026-04-28 agent-owned-ledgers refactor) |
-| `lifecycle-agent-p_JZCz73w` + `lifecycle-subagent-p_gYC562o` | Gemini 3.8 Flash lifecycle agent (CRMA-1676). Sweeps every hour, re-evaluates trend status (NEW/GROWING/STABLE/DECLINING/DORMANT/RESURGENT/RETIRED) → `FCT_TREND_LIFECYCLE_LEDGER` |
 | `lifecycle-attribution-agent-p_KwCoaap` + `lifecycle-attribution-subagent-p_PACe77B` | Gemini 3.1 Pro attribution agent. Hourly cron sweeps active trends and dispatches subagents that attribute newly-ingested candidate signals to existing trends → appends `FCT_TREND_SIGNALS` links (grows a trend's evidence pool over time). |
 | `prediction-agent-p_QPCkLP1` | Deterministic emergence scorer (no LLM). Computes `PREDICTION_SCORE` (0–100), `PREDICTION_FLAG` (Emerging / Watchlist / High Potential), `PREDICTION_ELIGIBLE` across all live trends in one batch SQL run → `FCT_TREND_PREDICTION_LEDGER`. Feeds the Insights Agent Predictions Queue. Daily 14:00 UTC cron (`dc_wDuPeGB`) + manual via HTTP. Scores + writes in a single `INSERT...SELECT` (no proc). |
 | `daily-digest-p_vQCkwgV` | Email digest of recently-promoted trends |
@@ -54,6 +53,7 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 
 **Deactivated** (kept in repo for rollback / reference):
 - `ingestion/tiktok-p_yKCm9Am` — Creative Center hashtag scraper, scrapped 2026-06-09. TikTok retired the scraped page (301 → "TikTok One Creative Suite"; the `creative_radar_api` XHR is gone), and the hashtag-level output never met the distillation specificity rubric anyway (#18). The discovery workflow's Grok lane covers the TikTok cultural niche. TikTok now enters through `services/tiktok-ingest` (SerpApi, CRMA-1337) instead; this workflow stays off.
+- `lifecycle-agent-p_JZCz73w` + `lifecycle-subagent-p_gYC562o` — the Pipedream lifecycle sweep (re-evaluates trend status NEW/GROWING/STABLE/DECLINING/DORMANT/RESURGENT/RETIRED → `FCT_TREND_LIFECYCLE_LEDGER`), off since the 2026-10-26 cut-over to `services/lifecycle`. The workflows still exist in Pipedream. Never turn them back on while the Cloud Run job is scheduled: the two must never both write the ledger.
 
 > The `gtrends-poller-p_13CN9KG` workflow (daily Google Trends interest fetcher → `FCT_TREND_GTRENDS_DAILY`) was broken and has been **removed** from the repo (CRMA-1313, 2026-09-25). `FCT_TREND_GTRENDS_DAILY` stays in Snowflake as history; `DT_TREND_DASHBOARD.KEY_DATA_POINTS` is now always an empty array. The live `search-google-trends` agent tool is a separate component and stays.
 
@@ -93,7 +93,7 @@ discovery agents (every 2h) → STG_EXTERNAL_SIGNALS
                                   ↓
                           DT_TREND_DASHBOARD (15-min lag dynamic table)
 
-                          lifecycle agent (Gemini 3.8 Flash, hourly)
+                          lifecycle job (Cloud Run, Gemini 3.8 Flash batch, hourly)
                                   ↓
                           FCT_TREND_LIFECYCLE_LEDGER
                                   ↓
