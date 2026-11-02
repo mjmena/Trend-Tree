@@ -227,7 +227,9 @@ def seed_lifecycle_v0(session, trend_id):
     #
     # heat_base = 25*1 + 25*min(1, signal_count/3) + 40*log_score(sources)
     #           + 10*confidence
-    # log_score = (log2(n) - 0.5) / (log2(6) - 0.5), clamped to [0,1].
+    # log_score = (log2(n) - 0.5) / (log2(10) - 0.5), clamped to [0,1].
+    # Velocity needs no baseline term: a fresh trend has none, so the
+    # acceleration form reduces to min(1, n/3) (CRMA-1685).
     session.sql(f"""
         INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER (
             TREND_ID, EVALUATED_AT, AGENT_SESSION_ID,
@@ -253,7 +255,7 @@ def seed_lifecycle_v0(session, trend_id):
                     + 25.0 * LEAST(1.0, COALESCE(ARRAY_SIZE(c.SUPPORTING_SIGNAL_IDS), 0) / 3.0)
                     + 40.0 * LEAST(1.0, GREATEST(0.0,
                         (LOG(2, GREATEST(COALESCE(ARRAY_SIZE(OBJECT_KEYS(c.SOURCE_BREAKDOWN)), 0), 1)) - 0.5)
-                        / (LOG(2, 6) - 0.5)
+                        / (LOG(2, 10) - 0.5)
                     ))
                     + 10.0 * COALESCE(c.CONFIDENCE, 0.5)
                 )), 1) AS heat_base

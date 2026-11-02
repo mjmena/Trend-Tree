@@ -3,13 +3,13 @@
 
 # HEAT_INDEX
 
-**At a glance** — How well-validated the trend is right now, measured **only from evidence actually linked to it**. Reflects how broadly multiple [publishers](../glossary.md) covered it in the last three weeks, how recent the linked activity is, and how sustained the linked signal volume is. Smoothed hour-to-hour so the number doesn't jump around.
+**At a glance** — How well-validated the trend is right now, measured **only from evidence actually linked to it**. Reflects how broadly multiple [publishers](../glossary.md) covered it in the last three weeks, how recent the linked activity is, and whether the linked signal flow is accelerating against the trend's own recent baseline. Smoothed hour-to-hour so the number doesn't jump around.
 
 **Scale** — 0–100. Higher means more broadly validated. The value shown is the **smoothed** value (preferred); when a freshly-promoted trend hasn't been smoothed yet, the raw value is shown as a fallback. Rounded to one decimal place.
 
 **What feeds it** — Heat is fully deterministic (formula v2, ADR-0005). The lifecycle subagent's code computes a `heat_base` from the signals **linked** to the trend in `FCT_TREND_SIGNALS` (link kinds `supporting` / `attributed`). Vector-similar-but-unlinked "candidate" signals earn zero points — a candidate starts counting only once the attribution agent links it. The agent's judgment enters exactly once: the lifecycle **status** it chooses applies a fixed factor (below). There is no free-form agent modifier anymore, and Google Trends is not a heat input (demand-side evidence lives on the opportunity-score axis).
 
-**The formula** (must match `lifecycle-subagent-p_gYC562o/run_subagent/entry.js:computeHeatBase()` and `PROC_LIFECYCLE_APPLY`):
+**The formula** (must match `services/lib/lifecycle_context.mjs:computeHeatBase()` and `PROC_LIFECYCLE_APPLY`; velocity and the breadth anchor changed in CRMA-1685, ADR-0012):
 
 ```
 heat_base = 25*recency + 25*velocity + 40*breadth + 10*confidence
@@ -22,36 +22,40 @@ status_factor: GROWING +10 | RESURGENT +10 | STABLE 0 | NEW 0 | DECLINING −10 
 | Factor | Pts (of 100) | What it measures |
 |---|---:|---|
 | recency | 25 | Time since the newest **linked** signal — half-life 120h; 0 when nothing linked in 14d (no bookkeeping-timestamp fallback) |
-| velocity | 25 | Linked signals in the last 7 days — linear, saturating at 3/wk; 0 linked = 0 pts |
+| velocity | 25 | **Acceleration** of linked signals: `clamp((n7 − baseline) / max(3, baseline), 0, 1)`, where `n7` = linked signals in the last 7 days and `baseline` = linked signals 8–35 days ago ÷ 4 (per week). A steady flow scores ~0; doubling the baseline earns full points. With no baseline (a new trend) it equals `min(1, n7/3)` |
 | **breadth** | **40** | Cross-publisher resonance in the **last 21 days** — log of distinct active publishers × Shannon entropy |
 | confidence | 10 | Promotion-agent confidence (0–1) |
 
-**Breadth — the dominant term.** Heat above ~65 is impossible without broad *current* publisher coverage. Breadth counts distinct publisher domains with a linked signal in the last 21 days (cumulative all-time breadth measured "how old," not "how validated right now"), anchored so 6 evenly-distributed active domains earn the full 40 pts:
+**Breadth — the dominant term.** Heat above ~65 is impossible without broad *current* publisher coverage. Breadth counts distinct publisher domains with a linked signal in the last 21 days (cumulative all-time breadth measured "how old," not "how validated right now"), anchored so 10 evenly-distributed active domains earn the full 40 pts (re-anchored from 6 in CRMA-1685, after the CRMA-1459 attribution sweep raised linked volume about 5×):
 
 | active publishers, last 21d (even dist.) | breadth pts (of 40) |
 |---:|---:|
 | 1 | 0 |
-| 2 | 10 |
-| 3 | 21 |
-| 4 | 29 |
-| 5 | 35 |
-| 6+ | 40 |
+| 2 | 7 |
+| 3 | 15 |
+| 4 | 21 |
+| 5 | 26 |
+| 6 | 30 |
+| 8 | 35 |
+| 10+ | 40 |
 
 A lopsided distribution (e.g., 8 of 10 signals from one publisher) earns proportionally less — the Shannon entropy multiplier shrinks the score. See the [glossary](../glossary.md) for what counts as a Publisher vs. a Source.
 
 **Smoothing** — One-sided EWMA with α=0.5: each new observation contributes 50%, the prior smoothed value retains 50%. Heat converges to a changed baseline in about 3 cycles (~3 hours given the hourly sweeper).
 
-**Worked example** — A GROWING trend with 3 active publishers (even distribution) in the last 21 days, 4 linked signals in the last 7 days, a 2-day-old newest linked signal, and confidence 0.6:
+**Worked example** — A GROWING trend with 3 active publishers (even distribution) in the last 21 days, 4 linked signals in the last 7 days, 4 linked signals 8–35 days ago (baseline 1/wk), a 2-day-old newest linked signal, and confidence 0.6:
 
 ```
-recency    = 25 × exp(-48/120)   ≈ 16.8
-velocity   = 25 × min(1, 4/3)    = 25.0
-breadth    = 40 × log_score(3)×1 ≈ 20.8
-confidence = 10 × 0.6            =  6.0
-─────────────────────────────────────────
-heat_base                        ≈ 68.6
-new_heat   = 68.6 × 1.10         ≈ 75.4   (GROWING +10%)
+recency    = 25 × exp(-48/120)            ≈ 16.8
+velocity   = 25 × clamp((4−1)/max(3,1))   = 25.0
+breadth    = 40 × log_score(3)×1          ≈ 15.4
+confidence = 10 × 0.6                     =  6.0
+──────────────────────────────────────────────────
+heat_base                                 ≈ 63.1
+new_heat   = 63.1 × 1.10                  ≈ 69.4   (GROWING +10%)
 ```
+
+The same trend with a steady 4/wk flow for the past month (16 linked signals 8–35 days ago) scores velocity 0, so `heat_base` ≈ 38.1.
 
 **What "good" looks like** — Bands are descriptive vignettes anchored on live data at the v2 cutover (2026-07-10: median ≈ 11, ~78% of trends land 0–30 — that is the honest shape of linked evidence). They are **absolute, not percentile guarantees** — a trend's number never changes because *other* trends changed:
 

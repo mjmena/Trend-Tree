@@ -6,10 +6,10 @@ import { buildDecision, clampNextEval, computeHeatBase, entryCost } from "./life
 
 const NOW = Date.parse("2026-10-26T12:00:00Z");
 const hoursAgo = (h) => new Date(NOW - h * 3600 * 1000).toISOString();
-const heat = ({ confidence, domains = {}, signalAgesH = [] } = {}) =>
+const heat = ({ confidence, domains = {}, signalAgesH = [], n7 = 0, prior28 = 0 } = {}) =>
   computeHeatBase(
     {
-      metrics: { confidence },
+      metrics: { confidence, linked_7d: n7, linked_prior_28d: prior28 },
       signal_domain_counts: domains,
       recent_signals: signalAgesH.map((h) => ({ signal_timestamp: hoursAgo(h) })),
     },
@@ -23,24 +23,40 @@ test("recency decays with a 120h half-life from the newest linked signal", () =>
   assert.equal(heat({ signalAgesH: [] }).components.recency_factor, 0);
 });
 
-test("velocity is linear in linked signals over 7 days and saturates at 3", () => {
-  assert.equal(heat({ signalAgesH: [] }).components.velocity_factor, 0);
-  assert.equal(heat({ signalAgesH: [1] }).components.velocity_factor, 0.333);
-  assert.equal(heat({ signalAgesH: [1, 2, 3] }).components.velocity_factor, 1);
-  assert.equal(heat({ signalAgesH: [1, 2, 3, 4, 5, 6] }).components.velocity_factor, 1);
-  // 8 days old is outside the window
-  assert.equal(heat({ signalAgesH: [1, 192] }).components.velocity_factor, 0.333);
+test("velocity with no baseline is linear in n7 and saturates at 3", () => {
+  assert.equal(heat({}).components.velocity_factor, 0);
+  assert.equal(heat({ n7: 1 }).components.velocity_factor, 0.333);
+  assert.equal(heat({ n7: 3 }).components.velocity_factor, 1);
+  assert.equal(heat({ n7: 6 }).components.velocity_factor, 1);
 });
 
-test("breadth is log-publishers times entropy, 1.0 at 6 even domains", () => {
+test("velocity is acceleration over the weekly baseline of days 8-35", () => {
+  // steady flow: 17/wk now, 68 over the prior 4 weeks = 17/wk baseline
+  assert.equal(heat({ n7: 17, prior28: 68 }).components.velocity_factor, 0);
+  // slowing down never goes negative
+  assert.equal(heat({ n7: 2, prior28: 40 }).components.velocity_factor, 0);
+  // baseline 8/wk, n7 12: (12 - 8) / 8 = 0.5
+  assert.equal(heat({ n7: 12, prior28: 32 }).components.velocity_factor, 0.5);
+  // doubling the baseline earns full points
+  assert.equal(heat({ n7: 16, prior28: 32 }).components.velocity_factor, 1);
+  // a baseline below 3/wk divides by 3: (4 - 1) / 3 = 1
+  assert.equal(heat({ n7: 4, prior28: 4 }).components.velocity_factor, 1);
+  // baseline 2/wk: (3 - 2) / 3 = 0.333
+  assert.equal(heat({ n7: 3, prior28: 8 }).components.velocity_factor, 0.333);
+});
+
+test("breadth is log-publishers times entropy, 1.0 at 10 even domains", () => {
   assert.equal(heat({ domains: {} }).components.breadth_factor, 0);
   assert.equal(heat({ domains: { "a.com": 9 } }).components.breadth_factor, 0);
+  const ten = Object.fromEntries("abcdefghij".split("").map((k) => [k, 2]));
+  assert.equal(heat({ domains: ten }).components.breadth_factor, 1);
+  // 6 even domains: (log2(6) - 0.5) / (log2(10) - 0.5) = 2.085 / 2.822 = 0.739
   const six = { a: 2, b: 2, c: 2, d: 2, e: 2, f: 2 };
-  assert.equal(heat({ domains: six }).components.breadth_factor, 1);
-  // 2 even domains: (log2(2) - 0.5) / (log2(6) - 0.5) = 0.5 / 2.085 = 0.240
-  assert.equal(heat({ domains: { a: 4, b: 4 } }).components.breadth_factor, 0.24);
-  // 3:1 split: entropy 0.811, so 0.2398 * 0.811 = 0.195
-  assert.equal(heat({ domains: { a: 3, b: 1 } }).components.breadth_factor, 0.195);
+  assert.equal(heat({ domains: six }).components.breadth_factor, 0.739);
+  // 2 even domains: (log2(2) - 0.5) / (log2(10) - 0.5) = 0.5 / 2.822 = 0.177
+  assert.equal(heat({ domains: { a: 4, b: 4 } }).components.breadth_factor, 0.177);
+  // 3:1 split: entropy 0.811, so 0.1772 * 0.811 = 0.144
+  assert.equal(heat({ domains: { a: 3, b: 1 } }).components.breadth_factor, 0.144);
 });
 
 test("confidence comes from the trend, defaulting to 0.5 when missing", () => {
@@ -50,9 +66,9 @@ test("confidence comes from the trend, defaulting to 0.5 when missing", () => {
 });
 
 test("heat_base weights the factors 25/25/40/10 and rounds to one decimal", () => {
-  const six = { a: 1, b: 1, c: 1, d: 1, e: 1, f: 1 };
+  const ten = Object.fromEntries("abcdefghij".split("").map((k) => [k, 1]));
   // 25*1 + 25*(1/3) + 40*1 + 10*0.8 = 81.333
-  assert.equal(heat({ confidence: 0.8, domains: six, signalAgesH: [0] }).heat_base, 81.3);
+  assert.equal(heat({ confidence: 0.8, domains: ten, signalAgesH: [0], n7: 1 }).heat_base, 81.3);
 });
 
 test("next_eval_in_hours is clamped to [6, 168] before the proc call", () => {
