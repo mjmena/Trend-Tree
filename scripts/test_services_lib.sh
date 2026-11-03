@@ -12,4 +12,4 @@ cd "$(dirname "$0")/.."
 # CRMA-985 put in that subdirectory would otherwise be silently untested.
 exec node --test services/lib/*.test.mjs services/lib/sources/*.test.mjs \
   services/lib/normalize/*.test.mjs services/scrape-gateway/*.test.mjs \
-  services/deploy_layout.test.mjs
+  services/deploy_layout.test.mjs services/deploy_describe.test.mjs
