@@ -105,6 +105,13 @@ ENV_FILE_SRC="$SVC_DIR/deploy.env"
 
 log() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
 
+# One EXIT trap for every temp path: a second `trap ... EXIT` replaces the
+# first, which once left $CTX (and the registry token inside it) on disk.
+trap 'rm -rf "${CTX:-}" "${ENV_FILE:-}"' EXIT
+
+# shellcheck source=prediction/deploy/lib.sh
+source "$REPO_ROOT/services/prediction/deploy/lib.sh"
+
 # shellcheck disable=SC1090
 source "$ENV_FILE_SRC"
 
@@ -183,7 +190,6 @@ if [[ "$BUILD" == "1" ]]; then
 
   log "Staging ${IMAGE} (linux/amd64, context = repo root, base = ${BASE_IMAGE})..."
   CTX="$(mktemp -d -t "${SERVICE}-ctx.XXXXXX")"
-  trap 'rm -rf "$CTX"' EXIT
 
   if [[ "$RUNTIME" == "python" ]]; then
     command -v "$UV" >/dev/null || {
@@ -269,7 +275,6 @@ fi
 # 4. Dark deploy.
 # ---------------------------------------------------------------------------
 ENV_FILE="$(mktemp -t "${SERVICE}-env.XXXXXX.yaml")"
-trap 'rm -f "$ENV_FILE"' EXIT
 printf '%s\n' "${ENV_VARS:-}" > "$ENV_FILE"
 
 # An `[[ ... ]] && arr=(...)` one-liner would return 1 when SECRETS is empty
@@ -344,8 +349,12 @@ deploy_step() {
     --env-vars-file "$ENV_FILE"
 }
 
-SERVICE_EXISTS="$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT" \
-  --format 'value(metadata.name)' 2>/dev/null || true)"
+# Empty only when gcloud says the service does not exist. A describe that
+# merely failed must abort: the not-exist branch deploys WITHOUT --no-traffic.
+if ! SERVICE_EXISTS="$(resolve_service_url "$SERVICE" "$REGION" "$PROJECT")"; then
+  echo "Aborting: could not determine whether ${SERVICE} exists in ${PROJECT}/${REGION} (gcloud's error is above)." >&2
+  exit 1
+fi
 
 # Whichever revision is serving 100% right now — captured BEFORE the dark
 # deploy, and read from the flattened traffic list rather than traffic[0],
