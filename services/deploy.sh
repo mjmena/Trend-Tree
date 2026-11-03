@@ -105,9 +105,10 @@ ENV_FILE_SRC="$SVC_DIR/deploy.env"
 
 log() { printf '\n\033[1;36m▸ %s\033[0m\n' "$*"; }
 
-# One EXIT trap for every temp path: a second `trap ... EXIT` replaces the
-# first, which once left $CTX (and the registry token inside it) on disk.
-trap 'rm -rf "${CTX:-}" "${ENV_FILE:-}"' EXIT
+# One EXIT trap for every temp path: a second `trap ... EXIT` would replace it.
+# Cleared first so a value inherited from the caller's shell is never deleted.
+CTX="" ENV_FILE=""
+trap 'rm -rf "$CTX" "$ENV_FILE"' EXIT
 
 # shellcheck source=prediction/deploy/lib.sh
 source "$REPO_ROOT/services/prediction/deploy/lib.sh"

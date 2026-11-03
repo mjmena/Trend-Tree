@@ -1,10 +1,5 @@
-// services/deploy.sh end to end against fake gcloud / crane / npm (CRMA-1454).
-//
-// A failed `gcloud run services describe` (expired credentials, a network
-// error, an API 500) used to read as "the service does not exist", which sends
-// deploy.sh down the bootstrap branch: a deploy WITHOUT --no-traffic, so an
-// unprobed revision serves 100% before the smoke test runs. The script runs
-// from a throwaway git repo so its clean-tree check passes whatever state this
+// services/deploy.sh end to end against fake gcloud / crane / npm. It runs from
+// a throwaway git repo so its clean-tree check passes whatever state this
 // checkout is in.
 
 import { test } from "node:test";
@@ -86,7 +81,7 @@ test("a failed describe aborts before any deploy", () => {
   assert.match(proc.stderr, /Reauthentication failed/);
 });
 
-test("the build context and env file are removed when the script exits", () => {
+test("no temp file or build context remains after an aborted run", () => {
   const { leftovers } = runDeploy({
     describe: "echo 'ERROR: (gcloud.run.services.describe) Reauthentication failed.' >&2; exit 1",
   });
