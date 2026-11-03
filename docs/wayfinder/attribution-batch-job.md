@@ -37,6 +37,8 @@ A locked, handoff-ready spec, `docs/prd/attribution-job.md`, for the attribution
 
 ## Decisions so far
 
+- [Measure: the attribution agent's real cost per day](https://mcclatchy.atlassian.net/browse/CRMA-1687) — **Decided:** today's Pro tool loop costs $18.02/day ($0.0250/eval × 720); the one-request shape on a Gemini batch costs $4.91/day on Pro and $2.18/day on 3.8 Flash through 2026 ($4.35 from 2027)
+
 ## Not yet specified
 
 - **The cut-over.** Probably copies CRMA-1674 (delete the two workflows by hand, a capped first execution, then `schedule.sh`), but it waits on the model and cadence decisions.
