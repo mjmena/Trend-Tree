@@ -80,6 +80,7 @@ EXECUTE AS CALLER
 AS
 $$
 import json
+import uuid
 
 ALLOWED_DECISIONS = {'PROMOTE_NEW', 'MERGE_INTO_EXISTING', 'MERGE_INTO_CANDIDATE', 'REJECT', 'DEFER'}
 
@@ -411,16 +412,34 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
             session.sql("BEGIN").collect()
 
             if decision == 'PROMOTE_NEW':
+                # Claim before minting: a concurrent run holding the same
+                # candidate, or a candidate_id that does not exist, updates
+                # 0 rows and raises, so one candidate never mints two trends.
+                new_tid = str(uuid.uuid4())
+                upd = session.sql(f"""
+                    UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
+                    SET PROMOTED_AT = CURRENT_TIMESTAMP(),
+                        PROMOTED_TO = {sql_str(new_tid)},
+                        PROMOTION_DECIDED_BY = {sql_str(chain_id)},
+                        ET_CORROBORATION = {sql_json(et_corr)},
+                        ET_WAS_SECOND_SOURCE = {('TRUE' if et_second else 'FALSE')}
+                    WHERE CANDIDATE_ID = {sql_str(cid)}
+                      AND PROMOTED_AT IS NULL
+                      AND REJECTED_AT IS NULL
+                """).collect()
+                # First column of an UPDATE result is "number of rows updated".
+                if not (upd[0][0] if upd else 0):
+                    raise ValueError(f'candidate {cid} not found or already promoted/rejected')
+                audit_row['target_trend_id'] = new_tid
+
                 # Insert new FCT_TRENDS row; copy candidate fields.
-                # New TREND_ID assigned by UUID_STRING(); captured via the
-                # candidate update so we can audit it.
-                rs = session.sql(f"""
+                session.sql(f"""
                     INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS (
                         TREND_ID, CANDIDATE_ID, TREND_TOPIC, AGENT_SESSION_ID, CHAIN_ID,
                         DETECTED_AT, LAST_UPDATE_AT, PROMOTED_AT, GTRENDS_KEYWORD
                     )
                     SELECT
-                        UUID_STRING(),
+                        {sql_str(new_tid)},
                         c.CANDIDATE_ID,
                         COALESCE({sql_str(topic)}, c.TOPIC),
                         c.AGENT_SESSION_ID,
@@ -435,25 +454,6 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                         ), ' "''\n\r\t')
                     FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
                     WHERE c.CANDIDATE_ID = {sql_str(cid)}
-                """).collect()
-
-                # Look up the TREND_ID we just generated (only one row per candidate)
-                tid_rs = session.sql(f"""
-                    SELECT TREND_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS
-                    WHERE CANDIDATE_ID = {sql_str(cid)}
-                    ORDER BY PROMOTED_AT DESC LIMIT 1
-                """).collect()
-                new_tid = tid_rs[0][0] if tid_rs else None
-                audit_row['target_trend_id'] = new_tid
-
-                session.sql(f"""
-                    UPDATE MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES
-                    SET PROMOTED_AT = CURRENT_TIMESTAMP(),
-                        PROMOTED_TO = {sql_str(new_tid)},
-                        PROMOTION_DECIDED_BY = {sql_str(chain_id)},
-                        ET_CORROBORATION = {sql_json(et_corr)},
-                        ET_WAS_SECOND_SOURCE = {('TRUE' if et_second else 'FALSE')}
-                    WHERE CANDIDATE_ID = {sql_str(cid)}
                 """).collect()
 
                 # Seed the agent-owned ledgers so the new trend is immediately
