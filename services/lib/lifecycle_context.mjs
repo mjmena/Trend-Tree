@@ -93,6 +93,16 @@ src AS (
     ON c.CANDIDATE_ID = dt.CANDIDATE_ID OR c.DEDUP_OF_TREND_ID = d.TREND_ID,
   LATERAL FLATTEN(INPUT => OBJECT_KEYS(c.SOURCE_BREAKDOWN)) k
   GROUP BY d.TREND_ID
+),
+vel AS (
+  SELECT ts.TREND_ID,
+    COUNT(DISTINCT IFF(s.SIGNAL_TIMESTAMP >  DATEADD(day, -7, CURRENT_TIMESTAMP()), s.SIGNAL_ID, NULL)) AS LINKED_7D,
+    COUNT(DISTINCT IFF(s.SIGNAL_TIMESTAMP <= DATEADD(day, -7, CURRENT_TIMESTAMP()), s.SIGNAL_ID, NULL)) AS LINKED_PRIOR_28D
+  FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
+  JOIN due d ON d.TREND_ID = ts.TREND_ID
+  JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS s ON s.SIGNAL_ID = ts.SIGNAL_ID
+  WHERE s.SIGNAL_TIMESTAMP > DATEADD(day, -35, CURRENT_TIMESTAMP())
+  GROUP BY ts.TREND_ID
 )
 SELECT
   t.TREND_ID, t.TREND_TOPIC, t.GTRENDS_KEYWORD,
@@ -101,6 +111,8 @@ SELECT
   c.CONFIDENCE, c.SPECIFICITY_SCORE,
   COALESCE(cs.TOTAL_CLUSTER_SIZE, 0) AS TOTAL_CLUSTER_SIZE,
   COALESCE(src.DISTINCT_SOURCE_COUNT, 0) AS DISTINCT_SOURCE_COUNT,
+  COALESCE(vel.LINKED_7D, 0) AS LINKED_7D,
+  COALESCE(vel.LINKED_PRIOR_28D, 0) AS LINKED_PRIOR_28D,
   lc.LIFECYCLE_STATUS, lc.HEAT_INDEX AS TREND_HEAT_INDEX,
   lc.HEAT_INDEX_SMOOTHED AS TREND_HEAT_INDEX_SMOOTHED,
   lc.LAST_EVAL_AT AS LAST_LIFECYCLE_EVAL_AT,
@@ -115,6 +127,7 @@ LEFT JOIN e   ON e.TREND_ID   = t.TREND_ID
 LEFT JOIN ev  ON ev.TREND_ID  = t.TREND_ID
 LEFT JOIN cs  ON cs.TREND_ID  = t.TREND_ID
 LEFT JOIN src ON src.TREND_ID = t.TREND_ID
+LEFT JOIN vel ON vel.TREND_ID = t.TREND_ID
 LEFT JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c ON c.CANDIDATE_ID = t.CANDIDATE_ID
 ORDER BY t.TREND_ID`,
 
@@ -308,21 +321,20 @@ export function computeHeatBase({ metrics, signal_domain_counts, recent_signals 
     ? Math.exp(-Math.max(0, (now - lastSignalTs) / (3600 * 1000)) / 120)
     : 0;
 
-  // velocity_factor: linear in linked signals over 7d, saturating at 3.
-  const sevenD = 7 * 24 * 3600 * 1000;
-  const last7dCount = recent_signals.filter((s) => {
-    const ts = s.signal_timestamp ? new Date(s.signal_timestamp).getTime() : 0;
-    return ts > 0 && (now - ts) <= sevenD;
-  }).length;
-  const velocity_factor = Math.min(1, last7dCount / 3);
+  // velocity_factor: acceleration over the trend's own weekly baseline
+  // (days 8-35), so a steady attribution flow scores ~0. Uncapped SQL
+  // counts, not the 30-row recent_signals prefetch.
+  const n7 = Number(metrics?.linked_7d || 0);
+  const baseline = Number(metrics?.linked_prior_28d || 0) / 4;
+  const velocity_factor = Math.min(1, Math.max(0, (n7 - baseline) / Math.max(3, baseline)));
 
-  // Counts are windowed to 21d so breadth is not an age counter. 6 even
-  // domains (observed windowed max) = 1.0. Publisher extraction mirrors
+  // Counts are windowed to 21d so breadth is not an age counter. 10 even
+  // domains = 1.0. Publisher extraction mirrors
   // sql/dt_trend_dashboard.sql's signal_domains CTE — keep them in sync.
   const distinct = Object.values(signal_domain_counts).filter(v => v > 0).length;
   const log_score = distinct === 0
     ? 0
-    : Math.min(1, Math.max(0, Math.log2(distinct) - 0.5) / (Math.log2(6) - 0.5));
+    : Math.min(1, Math.max(0, Math.log2(distinct) - 0.5) / (Math.log2(10) - 0.5));
   const entropy = shannonEntropyNormalized(signal_domain_counts);
   const breadth_factor = log_score * entropy;
 
@@ -380,6 +392,8 @@ export function buildTrendContext({
     lifecycle_status: metricsRow.LIFECYCLE_STATUS,
     total_cluster_size: metricsRow.TOTAL_CLUSTER_SIZE,
     distinct_source_count: metricsRow.DISTINCT_SOURCE_COUNT,
+    linked_7d: Number(metricsRow.LINKED_7D || 0),
+    linked_prior_28d: Number(metricsRow.LINKED_PRIOR_28D || 0),
     confidence: metricsRow.CONFIDENCE,
     specificity_score: metricsRow.SPECIFICITY_SCORE,
     trend_heat_index: metricsRow.TREND_HEAT_INDEX,

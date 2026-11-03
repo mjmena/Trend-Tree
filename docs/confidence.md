@@ -65,7 +65,7 @@ Discovery URLs are validated before insert. Observed hallucination rate ~2% (≈
 
 ### Formula
 
-Fully deterministic (**formula v2, ADR-0005**). Computed by the lifecycle subagent's `computeHeatBase()` in [lifecycle-subagent-p_gYC562o/run_subagent/entry.js](../lifecycle-subagent-p_gYC562o/run_subagent/entry.js); the clamp + status factor are applied downstream in `sql/proc_lifecycle_apply.sql`:
+Fully deterministic (**formula v2, ADR-0005**). Computed by `computeHeatBase()` in [services/lib/lifecycle_context.mjs](../services/lib/lifecycle_context.mjs) (the Cloud Run lifecycle job; velocity and the breadth anchor changed in CRMA-1685, ADR-0012); the clamp + status factor are applied downstream in `sql/proc_lifecycle_apply.sql`:
 
 ```
 heat_base         = 25·recency + 25·velocity + 40·breadth + 10·confidence
@@ -82,8 +82,8 @@ Heat is measured **only from evidence actually linked to the trend** in `FCT_TRE
 | Factor | Weight | What it captures |
 |---|---|---|
 | **Recency** | 25 | Exponential decay on the newest **linked** signal's age. Half-life 120 hours (~5 days). 0 when nothing linked in 14d. |
-| **Velocity** | 25 | Linked signals in the last 7 days — linear, saturating at 3/week. 0 linked = 0 pts. |
-| **Breadth** | 40 | **Dominant term.** Cross-publisher resonance in the last 21 days — log of distinct active publishers × Shannon entropy. 6 evenly-distributed active domains earn the full 40. |
+| **Velocity** | 25 | Acceleration of linked signals: last 7 days against the weekly baseline of days 8–35, `clamp((n7 − baseline) / max(3, baseline), 0, 1)`. A steady flow scores ~0 (CRMA-1685). |
+| **Breadth** | 40 | **Dominant term.** Cross-publisher resonance in the last 21 days — log of distinct active publishers × Shannon entropy. 10 evenly-distributed active domains earn the full 40 (6 before CRMA-1685). |
 | **Confidence** | 10 | The `CONFIDENCE` field from `FCT_TRENDS`, set at promotion time. |
 
 ### Status factor (replaces the old LLM modifier)

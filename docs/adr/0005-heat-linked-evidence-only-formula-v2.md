@@ -1,6 +1,6 @@
 # Heat measures linked evidence only: formula v2
 
-**Status:** accepted (2026-07-10)
+**Status:** accepted (2026-07-10). Velocity and the breadth anchor amended by ADR-0012 (2026-11-02).
 
 ## Context
 
