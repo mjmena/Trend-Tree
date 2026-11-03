@@ -1,5 +1,13 @@
 // Distillation — acquire_signal_ids
 //
+// Claims the pool, then reads back only what this run claimed (CRMA-1448).
+// The single UPDATE stamps unclaimed rows with this run's claim id
+// `claim-<epoch ms>-<uuid>`; a concurrent run's UPDATE cannot re-stamp
+// them, and each run dispatches only the rows carrying its own claim id, so
+// two overlapping runs never send the same signal to Gemini. settle_claims
+// turns the claim into the run's session id once candidates are committed;
+// PROC_RELEASE_STALE_SIGNAL_CLAIMS frees a claim only after 30 min.
+//
 // Threshold-gated unclaimed signal ID fetch. Polls every 30-60 min; exits
 // early if fewer than 150 unclaimed discovery signals are available —
 // $.flow.exit() is a clean non-error termination, no cursor update, and the
@@ -30,6 +38,7 @@
 // discovery throughput dips. 150 reflects the realistic external-pull
 // floor (bluesky + google_trends + amazon + gemini verticals).
 
+import { randomUUID } from "crypto";
 import snowflake from "snowflake-sdk";
 
 const WINDOW_HOURS = 168; // 7 days
@@ -77,36 +86,55 @@ export default defineComponent({
       role: "MARKETING_ENGINEER",
     });
 
+    const claim_id = `claim-${Date.now()}-${randomUUID()}`;
     try {
+      await execute(
+        conn,
+        `UPDATE MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
+         SET AGENT_SESSION_ID = ?
+         WHERE COALESCE(AGENT_SESSION_ID, '') = ''
+           AND SIGNAL_ID IN (
+             WITH unclaimed AS (
+               SELECT SIGNAL_ID,
+                      INGESTED_AT,
+                      ROW_NUMBER() OVER (
+                        PARTITION BY SOURCE_NAME ORDER BY INGESTED_AT DESC
+                      ) AS rn_in_source
+               FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
+               WHERE INGESTED_AT > DATEADD(hour, -${WINDOW_HOURS}, CURRENT_TIMESTAMP())
+                 AND COALESCE(AGENT_SESSION_ID, '') = ''
+                 AND COALESCE(METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
+             )
+             SELECT SIGNAL_ID
+             FROM unclaimed
+             WHERE rn_in_source <= ${PER_SOURCE_CAP}
+             ORDER BY INGESTED_AT DESC
+             LIMIT ${POOL_LIMIT}
+           )`,
+        [claim_id],
+      );
       const rows = await execute(
         conn,
-        `WITH unclaimed AS (
-           SELECT SIGNAL_ID,
-                  INGESTED_AT,
-                  ROW_NUMBER() OVER (
-                    PARTITION BY SOURCE_NAME ORDER BY INGESTED_AT DESC
-                  ) AS rn_in_source
-           FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
-           WHERE INGESTED_AT > DATEADD(hour, -${WINDOW_HOURS}, CURRENT_TIMESTAMP())
-             AND COALESCE(AGENT_SESSION_ID, '') = ''
-             AND COALESCE(METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
-         )
-         SELECT SIGNAL_ID
-         FROM unclaimed
-         WHERE rn_in_source <= ${PER_SOURCE_CAP}
-         ORDER BY INGESTED_AT DESC
-         LIMIT ${POOL_LIMIT}`,
-        [],
+        `SELECT SIGNAL_ID FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
+         WHERE AGENT_SESSION_ID = ?
+         ORDER BY INGESTED_AT DESC`,
+        [claim_id],
       );
       const ids = (Array.isArray(rows) ? rows : []).map((r) => r.SIGNAL_ID).filter(Boolean);
 
       if (ids.length < MIN_POOL) {
-        $.flow.exit(`Only ${ids.length} unclaimed signals available — waiting for ${MIN_POOL}`);
+        await execute(
+          conn,
+          `UPDATE MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS SET AGENT_SESSION_ID = NULL WHERE AGENT_SESSION_ID = ?`,
+          [claim_id],
+        );
+        return $.flow.exit(`Only ${ids.length} unclaimed signals available — waiting for ${MIN_POOL}`);
       }
 
-      console.log(`acquire_signal_ids: ${ids.length} unclaimed signals ready`);
-      $.export("$summary", `${ids.length} signal IDs acquired`);
+      console.log(`acquire_signal_ids: ${ids.length} signals claimed as ${claim_id}`);
+      $.export("$summary", `${ids.length} signal IDs claimed`);
       return {
+        claim_id,
         signal_ids_json: JSON.stringify(ids),
         signal_ids: ids,
         count: ids.length,

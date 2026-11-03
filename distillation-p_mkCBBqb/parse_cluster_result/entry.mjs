@@ -34,6 +34,7 @@ export default defineComponent({
       max_signal_ts: null,
       chain_id: meta.chain_id || null,
       agent_session_id: meta.agent_session_id || null,
+      keep_claims_as: "", // settle_claims releases the claim so the signals go back in the pool
       error: error || null,
     });
 
@@ -77,6 +78,7 @@ export default defineComponent({
       stop_reason: body.stop_reason || "unknown",
       tokens: body.tokens || { input: 0, output: 0, total: 0 },
       final_text: body.final_text || "",
+      keep_claims_as: meta.agent_session_id, // settle_claims makes the claim permanent under the session id
       error: null,
     };
 
