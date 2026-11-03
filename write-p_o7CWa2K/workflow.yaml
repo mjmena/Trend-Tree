@@ -46,7 +46,7 @@ steps:
       value: |-
         CALL MCC_RAW.MARKETING_DEV.PROC_ENRICHMENT_APPLY(
           '{{steps.trigger.event.body.trend_id}}',
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$),
+          PARSE_JSON(:1),
           NULL::ARRAY,
           NULL::VARCHAR,
           NULL::VARCHAR,
@@ -59,7 +59,7 @@ steps:
       query: |-
         CALL MCC_RAW.MARKETING_DEV.PROC_ENRICHMENT_APPLY(
           '{{steps.trigger.event.body.trend_id}}',
-          PARSE_JSON($${{steps.compute_scores.$return_value.payload_json}}$$),
+          PARSE_JSON(:1),
           NULL::ARRAY,
           NULL::VARCHAR,
           NULL::VARCHAR,
@@ -69,7 +69,8 @@ steps:
           {{steps.trigger.event.body.llm_output.llm_token_usage.total.output}}::NUMBER,
           {{steps.compute_scores.$return_value.llm_cost_estimate}}::FLOAT
         )
-      params: []
+      params:
+      - "{{steps.compute_scores.$return_value.payload_json}}"
 - namespace: respond
   runtime: nodejs20.x
   uses: "./respond/entry.js"
