@@ -17,12 +17,16 @@ A locked, handoff-ready spec, `docs/prd/attribution-job.md`, for the attribution
 ## Established facts
 
 - The attribution subagent is a `gemini-3.1-pro-preview` tool loop: `max_iterations` 6, `budget_usd` 0.04 per trend. Its two tools do no work: `filter_candidates` filters the pool `q_candidate_signals` already fetched, and `commit_attributions` only stores the answer (`lifecycle-attribution-subagent-p_PACe77B/run_subagent/entry.js`, 2026-11-03).
-- Attribution writes no cost row: its only write is the `FCT_TREND_SIGNALS` insert, and `STG_AGENT_RUN_COSTS` has no attribution rows over 30 days (2026-11-03). The upper limit is about 720 evals/day × 0.04 USD ≈ 29 USD/day.
+- Attribution writes no cost row: its only write is the `FCT_TREND_SIGNALS` insert, and `STG_AGENT_RUN_COSTS` has no attribution rows over 30 days (2026-11-03).
 - The insert has a `NOT EXISTS` guard on `(TREND_ID, SIGNAL_ID)`, so a repeated apply links nothing twice (`workflow.yaml` step `commit_attributions`, 2026-11-03).
 - The candidate pool is at most 20 signals with cosine ≥ 0.35 to the trend vector, embedded in the last `lookback_hours` (default 72), not already linked to the trend (`q_candidate_signals`, 2026-11-03).
 - The sweep is an hourly round-robin over a stable `HASH(TREND_ID)` order, `sweep_cap` 30 (max 100), dispatched at concurrency 6 (CRMA-1459; `q_select_active_trends`, `dispatch_to_subagents/entry.js`, 2026-11-03).
 - 571 trends are eligible (an enrichment `TREND_VECTOR`, status not RETIRED or DORMANT), so one cycle is ceil(571 / 30) = 20 h (2026-11-03).
-- Over the last 30 days the agent added 3,731 `attributed` links across 435 trends; the last one landed 2026-11-02 11:38 (2026-11-03).
+- Over the last 30 days the agent added 3,731 `attributed` links across 435 trends. It is live: 116–316 links a day from 2026-10-16 to 2026-11-02, about 0.28 per eval (2026-11-03).
+- 569 of 573 eligible trends have a non-empty candidate pool and the median pool is the full 20, so nearly all 720 evals/day make a paid call (2026-11-03).
+- Today's tool loop costs **$0.0250 per eval, $18.02/day** on Pro with thinking billed; production's own formula leaves thinking out and would record $0.0177. The loop takes 1.98 turns: `commit_attributions`, then a closing turn that resends the ~4k-token prompt (8,086 input tokens per eval). 1 of 50 evals hit `MAX_TOKENS` under the 2048-token per-call cap and committed nothing ([CRMA-1687](https://mcclatchy.atlassian.net/browse/CRMA-1687), 2026-11-03).
+- In the one-request shape (3,401 input tokens, no tools, `commit_attributions`' schema as `responseSchema`): Pro $0.0136 per eval, $9.82/day standard, **$4.91/day on a Gemini batch**; `gemini-3.8-flash` $0.0060 per eval, $4.35/day standard, **$2.18/day on a batch through 2026**, $4.35/day from 2027-01-01 (CRMA-1687, 2026-11-03).
+- On the same 50 frozen trends the replayed Pro loop linked 2 signals, Pro one-request 14 and Flash one-request 8; production's rate predicts about 14. The loop replay's link rate is not trusted, so the comparison must check it before it uses a loop run as a baseline (CRMA-1687, 2026-11-03).
 - The prompts are `DIM_LLM_PROMPT` keys `signal.attribution.system` and `signal.attribution.rubric` (`q_prompts`, 2026-11-03).
 
 ## Standing constraints
