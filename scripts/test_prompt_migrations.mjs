@@ -1,7 +1,6 @@
-// CRMA-1452: every DIM_LLM_PROMPT deactivation in sql/ must be bounded by
-// VERSION, or re-running the migration deactivates the version it just
-// inserted and leaves the prompt key with no active row.
-// Run: node scripts/test_prompt_migrations.mjs
+// Every DIM_LLM_PROMPT deactivation in sql/ must be bounded by VERSION, or
+// re-running the migration deactivates the version it just inserted and
+// leaves the prompt key with no active row.
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 
