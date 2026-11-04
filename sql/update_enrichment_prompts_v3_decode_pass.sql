@@ -333,7 +333,8 @@ When proposing an alternate, you may either (a) sharpen the first beat to name t
 
 UPDATE MCC_RAW.MARKETING_DEV.DIM_LLM_PROMPT
 SET IS_ACTIVE = FALSE
-WHERE PROMPT_KEY = 'enrichment.reviewer.system';
+WHERE PROMPT_KEY = 'enrichment.reviewer.system'
+  AND VERSION <= 2;
 
 -- Verification queries (uncomment to run):
 -- SELECT PROMPT_KEY, VERSION, MODEL, IS_ACTIVE, LENGTH(TEMPLATE) AS LEN

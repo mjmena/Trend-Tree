@@ -396,7 +396,7 @@ Active prompt keys in `DIM_LLM_PROMPT` (`IS_ACTIVE = TRUE`):
 | `lifecycle.subagent.decision_rubric` v2 | Gemini 3.1 Pro | |
 | `enrichment.system` | Claude Sonnet 4.6 | Only active Anthropic prompt |
 
-To activate a new version without a code deploy: `UPDATE DIM_LLM_PROMPT SET IS_ACTIVE = FALSE WHERE PROMPT_KEY = '...' AND IS_ACTIVE = TRUE`, then `INSERT` the new version with `IS_ACTIVE = TRUE`.
+To activate a new version without a code deploy: `UPDATE DIM_LLM_PROMPT SET IS_ACTIVE = FALSE WHERE PROMPT_KEY = '...' AND IS_ACTIVE = TRUE AND VERSION < N`, then `INSERT` version N with `IS_ACTIVE = TRUE`, guarded by `NOT EXISTS (... VERSION = N)`. The `VERSION < N` bound is what makes a re-run safe: without it a second run deactivates N and the guarded insert adds nothing back, leaving the key with no active row (CRMA-1452). `node scripts/test_prompt_migrations.mjs` checks every `sql/` deactivation carries a VERSION bound.
 
 ---
 
