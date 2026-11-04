@@ -1,4 +1,4 @@
-// CRMA-1448: a distillation run dispatches only the signals it claimed, and
+// A distillation run dispatches only the signals it claimed, and
 // releases only its own claims.
 // Run: node --test scripts/test_distillation_claims.mjs
 import assert from "node:assert/strict";

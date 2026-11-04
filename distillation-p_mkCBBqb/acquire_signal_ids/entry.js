@@ -1,12 +1,8 @@
 // Distillation — acquire_signal_ids
 //
-// Claims the pool, then reads back only what this run claimed (CRMA-1448).
-// The single UPDATE stamps unclaimed rows with this run's claim id
-// `claim-<epoch ms>-<uuid>`; a concurrent run's UPDATE cannot re-stamp
-// them, and each run dispatches only the rows carrying its own claim id, so
-// two overlapping runs never send the same signal to Gemini. settle_claims
-// turns the claim into the run's session id once candidates are committed;
-// PROC_RELEASE_STALE_SIGNAL_CLAIMS frees a claim only after 30 min.
+// Stamps unclaimed rows `claim-<epoch ms>-<uuid>` and dispatches only rows with
+// that stamp, so overlapping runs never share a signal. settle_claims makes it
+// permanent; PROC_RELEASE_STALE_SIGNAL_CLAIMS frees it after 45 min.
 //
 // Threshold-gated unclaimed signal ID fetch. Polls every 30-60 min; exits
 // early if fewer than 150 unclaimed discovery signals are available —

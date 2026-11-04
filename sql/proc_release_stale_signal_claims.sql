@@ -1,20 +1,9 @@
--- Procedure: Release in-flight distillation claims whose run died
--- (CRMA-1448).
+-- Procedure: Release distillation claims whose run died before settling.
 -- Database: MCC_RAW.MARKETING_DEV
 --
--- distillation's acquire_signal_ids claims its pool with a stamp
--- 'claim-<epoch ms>-<uuid>' BEFORE the 6-10 min cluster-agent suspend.
--- settle_claims, at the end of the run, either turns the claim into the
--- run's 'sess-' session id (candidates committed, including a run that
--- proposed 0 -- its signals were seen and stay consumed) or releases it
--- (cluster agent timed out or errored). A claim that is still a 'claim-'
--- stamp 30 min after it was made belongs to a run that died before
--- settling (the suspend timeout is 20 min), so it is released here.
---
--- Only touches 'claim-%' stamps. A younger claim belongs to a run still
--- in flight and is never released, so overlapping runs cannot free each
--- other's claims. 'sess-' (settled distillation), 'enr-sess-' (enrichment)
--- and 'revisit-' stamps are permanent and out of scope.
+-- Frees only 'claim-<epoch ms>-<uuid>' stamps older than 45 min: claim to
+-- settle can take ~12.5 min (lambda) + 20 min (suspend), and a suspend timeout
+-- cancels the run without settling. 'sess-', 'enr-sess-', 'revisit-' are permanent.
 --
 -- Usage:
 --   CALL MCC_RAW.MARKETING_DEV.PROC_RELEASE_STALE_SIGNAL_CLAIMS();
@@ -32,7 +21,7 @@ BEGIN
     SET AGENT_SESSION_ID = NULL
     WHERE AGENT_SESSION_ID LIKE 'claim-%'
       AND COALESCE(TRY_TO_NUMBER(SPLIT_PART(AGENT_SESSION_ID, '-', 2)), 0)
-          < DATE_PART(epoch_millisecond, CURRENT_TIMESTAMP()) - 30 * 60 * 1000;
+          < DATE_PART(epoch_millisecond, CURRENT_TIMESTAMP()) - 45 * 60 * 1000;
 
     released_count := SQLROWCOUNT;
 

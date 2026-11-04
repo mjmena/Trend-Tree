@@ -95,12 +95,12 @@ Processes a 24h rolling window of unclaimed signals. Calls `PROC_CLUSTER_SIGNAL_
 Key steps:
 1. `normalize_event` — coerces trigger payload into a standard run context (`cursor_name`, `chain_id`, `agent_session_id`, `iteration`)
 2. `respond_accepted` — 202 ack to the HTTP caller before the suspend
-3. `q_release_stale_claims` — calls `PROC_RELEASE_STALE_SIGNAL_CLAIMS` to free `claim-` stamps older than 30 min (runs that died before settling)
+3. `q_release_stale_claims` — calls `PROC_RELEASE_STALE_SIGNAL_CLAIMS` to free `claim-` stamps older than 45 min (runs that died or timed out before settling)
 4. `acquire_signal_ids` — claims the unclaimed signal pool with this run's `claim-<epoch ms>-<uuid>` stamp, then reads back only the rows carrying it (CRMA-1448)
 5. `q_cluster_signals` — calls `PROC_CLUSTER_SIGNAL_SUBSET` to annotate signals with `cluster_id` hints
 6. `dispatch_to_cluster_agent` + `parse_cluster_result` — suspend/resume call to the shared cluster agent (`p_YyC89Ke`)
 7. `commit_candidates` — INSERT into `STG_TREND_CANDIDATES`
-8. `settle_claims` — turns the run's claim into its `sess-` session id (permanent, even with 0 candidates), or releases it if the cluster agent timed out or errored
+8. `settle_claims` — turns the run's claim into its `sess-` session id (permanent, even with 0 candidates), or releases it if the cluster agent returned an error (a suspend timeout cancels the run, so the proc frees that claim)
 9. `update_cursor` — MERGE checkpoint into `STG_DISTILLATION_CURSOR`
 
 ### promotion-p_xMC99jg (lead)
@@ -296,7 +296,7 @@ All LLM prompts live in `DIM_LLM_PROMPT` (keyed by `PROMPT_KEY`, versioned by `V
 
 ### Snowflake checkpointing
 
-`STG_DISTILLATION_CURSOR` stores the per-cursor watermark (last signal timestamp, cost metrics, iteration count). Each distillation run reads the cursor at start and writes it at end. If a run dies mid-flight, its `claim-` stamps outlive the 30-min window and `PROC_RELEASE_STALE_SIGNAL_CLAIMS` returns them to the pool; a run still in flight keeps its claims.
+`STG_DISTILLATION_CURSOR` stores the per-cursor watermark (last signal timestamp, cost metrics, iteration count). Each distillation run reads the cursor at start and writes it at end. If a run dies mid-flight, its `claim-` stamps outlive the 45-min window and `PROC_RELEASE_STALE_SIGNAL_CLAIMS` returns them to the pool; a run still in flight keeps its claims.
 
 ---
 

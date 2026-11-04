@@ -34,7 +34,7 @@ export default defineComponent({
       max_signal_ts: null,
       chain_id: meta.chain_id || null,
       agent_session_id: meta.agent_session_id || null,
-      keep_claims_as: "", // settle_claims releases the claim so the signals go back in the pool
+      keep_claims_as: "", // settle_claims releases the claim; a suspend timeout cancels the run, so the proc frees it instead
       error: error || null,
     });
 

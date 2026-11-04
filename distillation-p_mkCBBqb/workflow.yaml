@@ -181,11 +181,11 @@ steps:
       value: |-
         UPDATE MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
         SET AGENT_SESSION_ID = NULLIF(:2, '')
-        WHERE AGENT_SESSION_ID = :1
+        WHERE AGENT_SESSION_ID = :1 AND :1 LIKE 'claim-%'
       query: |-
         UPDATE MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
         SET AGENT_SESSION_ID = NULLIF(:2, '')
-        WHERE AGENT_SESSION_ID = :1
+        WHERE AGENT_SESSION_ID = :1 AND :1 LIKE 'claim-%'
       params:
       - "{{steps.acquire_signal_ids.$return_value.claim_id}}"
       - "{{steps.parse_cluster_result.$return_value.keep_claims_as}}"
