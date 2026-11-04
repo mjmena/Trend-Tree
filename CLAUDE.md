@@ -53,9 +53,10 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 
 **Deactivated** (kept in repo for rollback / reference):
 - `ingestion/tiktok-p_yKCm9Am` — Creative Center hashtag scraper, scrapped 2026-06-09. TikTok retired the scraped page (301 → "TikTok One Creative Suite"; the `creative_radar_api` XHR is gone), and the hashtag-level output never met the distillation specificity rubric anyway (#18). The discovery workflow's Grok lane covers the TikTok cultural niche. TikTok now enters through `services/tiktok-ingest` (SerpApi, CRMA-1337) instead; this workflow stays off.
-- `lifecycle-agent-p_JZCz73w` + `lifecycle-subagent-p_gYC562o` — the Pipedream lifecycle sweep (re-evaluates trend status NEW/GROWING/STABLE/DECLINING/DORMANT/RESURGENT/RETIRED → `FCT_TREND_LIFECYCLE_LEDGER`), off since the 2026-10-26 cut-over to `services/lifecycle`. The workflows still exist in Pipedream. Never turn them back on while the Cloud Run job is scheduled: the two must never both write the ledger.
 
 > The `gtrends-poller-p_13CN9KG` workflow (daily Google Trends interest fetcher → `FCT_TREND_GTRENDS_DAILY`) was broken and has been **removed** from the repo (CRMA-1313, 2026-09-25). `FCT_TREND_GTRENDS_DAILY` stays in Snowflake as history; `DT_TREND_DASHBOARD.KEY_DATA_POINTS` is now always an empty array. The live `search-google-trends` agent tool is a separate component and stays.
+
+> The Pipedream lifecycle sweep, `lifecycle-agent-p_JZCz73w` + `lifecycle-subagent-p_gYC562o` (and its `sources/lifecycle-cron` timer), has been **removed** from the repo (CRMA-1681). `services/lifecycle` replaced it at the 2026-10-26 cut-over and is the only writer of `FCT_TREND_LIFECYCLE_LEDGER`. If either workflow still exists in Pipedream, never turn it on: two writers would both write the ledger.
 
 > The legacy `llm-enrichment-p_YyC86Zo` (3-LLM cascade, replaced by `enrichment-p_xMC995w` on 2026-04-27) has been **removed** from the repo — no longer kept for rollback.
 

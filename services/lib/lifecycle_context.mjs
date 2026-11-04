@@ -1,6 +1,4 @@
-// The builders below must render the same prompt as the inlined copy in
-// lifecycle-subagent-p_gYC562o/run_subagent/entry.js; services/lifecycle/parity.mjs
-// proves it. Each set query ends ORDER BY <trend key> so groupByTrend keeps per-trend order.
+// Each set query ends ORDER BY <trend key> so groupByTrend keeps per-trend order.
 
 // ─────────────────────────────────────────────────────────────────────
 // Set-based context queries
@@ -271,7 +269,7 @@ export function groupByTrend(rows, key = "TREND_ID") {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Per-trend builders, shared with lifecycle-subagent-p_gYC562o/run_subagent/entry.js
+// Per-trend builders
 // ─────────────────────────────────────────────────────────────────────
 
 export function loadPrompts(rows) {
