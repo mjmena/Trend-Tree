@@ -427,8 +427,8 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                       AND PROMOTED_AT IS NULL
                       AND REJECTED_AT IS NULL
                 """).collect()
-                # First column of an UPDATE result is "number of rows updated".
-                if not (upd[0][0] if upd else 0):
+                rows_updated = upd[0][0] if upd else 0
+                if not rows_updated:
                     raise ValueError(f'candidate {cid} not found or already promoted/rejected')
                 audit_row['target_trend_id'] = new_tid
 

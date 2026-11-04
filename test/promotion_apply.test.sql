@@ -1,9 +1,6 @@
--- PROC_PROMOTION_APPLY must promote a candidate at most once, and must error
--- on a missing candidate. CALLs the live proc, so run it after deploying the
--- proc. Fixtures are 'zztest-promotion-%' and are deleted before the final
--- assertion, so no test trend lingers. The last statement divides by zero on
--- any failed check.
---   ./test/run_promotion_apply_tests.sh
+-- CALLs the live proc, so deploy the proc first. Fixtures are deleted before
+-- the final assertion so a failing run still cleans up; that assertion
+-- divides by zero on any failed check so snow sql exits non-zero.
 
 USE SCHEMA MCC_PRESENTATION.TREND_AGENT;
 
