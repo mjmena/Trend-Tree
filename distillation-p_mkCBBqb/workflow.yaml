@@ -41,29 +41,6 @@ steps:
     snowflake:
       authProvisionId: apn_yghdQYJ
     signal_ids_json: "{{steps.acquire_signal_ids.$return_value.signal_ids_json}}"
-- namespace: claim_window_signals
-  runtime: nodejs20.x
-  uses: snowflake-execute-sql-query@0.2.3
-  props:
-    snowflake:
-      authProvisionId: apn_yghdQYJ
-    sql:
-      value: |-
-        UPDATE MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
-        SET AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
-        WHERE s.AGENT_SESSION_ID IS NULL
-          AND s.SIGNAL_ID IN (
-            SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1)))
-          )
-      query: |-
-        UPDATE MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
-        SET AGENT_SESSION_ID = '{{steps.normalize_event.$return_value.agent_session_id}}'
-        WHERE s.AGENT_SESSION_ID IS NULL
-          AND s.SIGNAL_ID IN (
-            SELECT VALUE::STRING FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1)))
-          )
-      params:
-      - "{{steps.acquire_signal_ids.$return_value.signal_ids_json}}"
 - namespace: dispatch_to_cluster_agent
   runtime: nodejs20.x
   uses: "./dispatch_to_cluster_agent/entry.js"
@@ -194,6 +171,24 @@ steps:
         WHERE :1 != '[]'
       params:
       - "{{steps.parse_cluster_result.$return_value.candidates_json}}"
+- namespace: settle_claims
+  runtime: nodejs20.x
+  uses: snowflake-execute-sql-query@0.2.3
+  props:
+    snowflake:
+      authProvisionId: apn_yghdQYJ
+    sql:
+      value: |-
+        UPDATE MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
+        SET AGENT_SESSION_ID = NULLIF(:2, '')
+        WHERE AGENT_SESSION_ID = :1
+      query: |-
+        UPDATE MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
+        SET AGENT_SESSION_ID = NULLIF(:2, '')
+        WHERE AGENT_SESSION_ID = :1
+      params:
+      - "{{steps.acquire_signal_ids.$return_value.claim_id}}"
+      - "{{steps.parse_cluster_result.$return_value.keep_claims_as}}"
 - namespace: update_cursor
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -261,5 +256,5 @@ steps:
     event: "{{steps.normalize_event.$return_value}}"
     agent_result: "{{steps.parse_cluster_result.$return_value}}"
     commit_result: "{{steps.commit_candidates.$return_value}}"
-    claim_signals_result: "{{steps.claim_window_signals.$return_value}}"
+    claimed_signal_count: "{{steps.acquire_signal_ids.$return_value.count}}"
 
