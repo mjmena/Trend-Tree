@@ -37,8 +37,7 @@ flowchart TD
     H1 -->|sync chain| H2["enrichment-p_xMC995w\nClaude Sonnet 4.6"]
     H2 -->|sync chain| H3["write-p_o7CWa2K"]
     H3 -->|INSERT| I["FCT_TREND_ENRICHMENT_LEDGER"]
-    J["lifecycle-agent-p_JZCz73w\nGemini 3.8 Flash @ 1h"] -->|"HTTP fanout"| J2["lifecycle-subagent-p_gYC562o"]
-    J2 -->|INSERT| K["FCT_TREND_LIFECYCLE_LEDGER"]
+    J["services/lifecycle (Cloud Run job)\nGemini 3.8 Flash batch @ 1h"] -->|"PROC_LIFECYCLE_APPLY"| K["FCT_TREND_LIFECYCLE_LEDGER"]
     P["prediction-agent-p_QPCkLP1\ndeterministic SQL @ daily 14:00 UTC"] -->|"INSERT...SELECT"| P2["FCT_TREND_PREDICTION_LEDGER"]
     K --> P
     G & I & K & P2 -->|"15-min dynamic table"| L["DT_TREND_DASHBOARD"]
@@ -64,8 +63,6 @@ All workflows share network `net_5Lnie3` (required for Snowflake egress allowlis
 | `p_7NCy36w` | `sources-p_7NCy36w` | HTTP | Fetches per-source metrics → FCT_TREND_SOURCE_METRICS | 2048 MB · 300s |
 | `p_xMC995w` | `enrichment-p_xMC995w` | HTTP | Claude Sonnet 4.6 4-layer naming + enrichment agent | 4096 MB · 600s |
 | `p_o7CWa2K` | `write-p_o7CWa2K` | HTTP | Persists enrichment payload → FCT_TREND_ENRICHMENT_LEDGER | 2048 MB · 300s |
-| `p_JZCz73w` | `lifecycle-agent-p_JZCz73w` | cron 1h + HTTP | Sweeper: selects due trends → lifecycle subagent fanout | 8192 MB · 750s |
-| `p_gYC562o` | `lifecycle-subagent-p_gYC562o` | HTTP | Per-trend status + heat evaluation (Gemini 3.8 Flash) | 4096 MB · 600s |
 | `p_KwCoaap` | `lifecycle-attribution-agent-p_KwCoaap` | HTTP | Attribution lifecycle agent | 4096 MB · 600s |
 | `p_PACe77B` | `lifecycle-attribution-subagent-p_PACe77B` | HTTP | Attribution lifecycle subagent | 4096 MB · 600s |
 | `p_QPCkLP1` | `prediction-agent-p_QPCkLP1` | cron daily 14:00 UTC + HTTP | Deterministic emergence scorer over all live trends → FCT_TREND_PREDICTION_LEDGER | 4096 MB · 600s |
@@ -136,15 +133,9 @@ Single Sonnet 4.6 agent loop with 4 refinement layers:
 
 Input: `POST { "trend_id": "<uuid>" }`. Output: `enrichment_output`, `agent_telemetry`, `llm_token_usage`, `llm_cost_estimate`. Read-only on Snowflake; write-p_o7CWa2K persists downstream.
 
-### lifecycle-agent-p_JZCz73w (sweeper)
+### Lifecycle (`services/lifecycle`, not a Pipedream workflow)
 
-Selects trends due for re-evaluation (`NEXT_LIFECYCLE_EVAL_AT <= NOW`, most overdue first so cold trends are not starved (CRMA-1633), capped by `sweep_cap`). Fans out to `lifecycle-subagent-p_gYC562o` in parallel (10 workers, 240s timeout per call).
-
-Each subagent evaluates one trend:
-- Re-checks Google Trends interest, signal recency, source breadth
-- Emits `propose_lifecycle_decision` (new status + `HEAT_MODIFIER_PCT` in [-20, 20])
-- Commits via `PROC_LIFECYCLE_APPLY` → inserts into `FCT_TREND_LIFECYCLE_LEDGER`
-- Two-cycle retirement confirm: both this eval AND prior eval must propose RETIRE before status changes to RETIRED
+Since the 2026-10-26 cut-over (CRMA-1681), the Cloud Run job `trend-tree-lifecycle` evaluates lifecycle status. Cloud Scheduler runs one tick per hour. Each tick collects the finished Gemini batch through `PROC_LIFECYCLE_APPLY`, then submits the due trends as the next batch. See `services/lifecycle/README.md`.
 
 ### prediction-agent-p_QPCkLP1
 
@@ -172,8 +163,7 @@ Sources are deployed components (`dc_xxx` / `sc_xxx`) that trigger workflows ind
 | Source directory | Component type | Interval | Emits | Attached to |
 |---|---|---|---|---|
 | `discovery-cron` | `dc_xxx` × 3 (per-LLM) | Configurable per model | `{ model: "gemini"\|"grok"\|"chatgpt" }` | `discovery-p_5VCPP3N` |
-| `lifecycle-cron` | `dc_xxx` | 1h | `{ kind: "lifecycle_tick" }` | `lifecycle-agent-p_JZCz73w` |
-| `agent-http` | `sc_xxx` | HTTP | `{ body, headers, query, method }` | distillation-subagent, lifecycle-subagent |
+| `agent-http` | `sc_xxx` | HTTP | `{ body, headers, query, method }` | distillation-subagent |
 
 Deploy pattern for a new cron source:
 ```sh
@@ -260,9 +250,6 @@ Sources (p_7NCy36w)
 
 Enrichment (p_xMC995w)
   └─ bluesky, gdelt, gtrends, grok search tools (same URLs as above)
-
-Lifecycle agent (p_JZCz73w)
-  └─ lifecycle-subagent (p_gYC562o) → https://53536769d8379ab44edb7179328e9fd3.m.pipedream.net
 ```
 
 ---
@@ -271,7 +258,7 @@ Lifecycle agent (p_JZCz73w)
 
 ### Fire-and-forget fanout
 
-Used by promotion (→ dispatcher per trend) and lifecycle sweeper (→ subagent per trend). The caller fires N HTTP POSTs with a short timeout (30s) and does not await results. Errors surface in the `$errors` event stream of the downstream workflow.
+Used by promotion (→ dispatcher per trend). The caller fires N HTTP POSTs with a short timeout (30s) and does not await results. Errors surface in the `$errors` event stream of the downstream workflow.
 
 ```js
 // fanoutSubagents pattern (from subagent_client.mjs)
@@ -308,8 +295,7 @@ All LLM prompts live in `DIM_LLM_PROMPT` (keyed by `PROMPT_KEY`, versioned by `V
 | Enrichment only (sources already fetched) | `POST https://eoxadsat1xxgqa4.m.pipedream.net {"trend_id":"<uuid>"}` |
 | Fire distillation manually | `POST https://eo8lg4tmkchk2qc.m.pipedream.net {}` |
 | Fire promotion manually | `POST https://eot66usfdph5i7h.m.pipedream.net {}` |
-| Fire lifecycle for one trend | `POST https://53536769d8379ab44edb7179328e9fd3.m.pipedream.net {"trend_id":"<uuid>"}` |
-| Fire lifecycle sweeper | `POST https://23f3a2c4e5fbd681c1531592137719be.m.pipedream.net {"sweep_cap":25,"write_live":true}` |
+| Run one lifecycle tick | `gcloud run jobs execute trend-tree-lifecycle --region us-east4 --project mcc-crm-automations --wait` |
 | Fire prediction scoring run | `POST https://eoj1i9r5pdvyugj.m.pipedream.net {}` (empty body is fine; pass `{"chain_id":"..."}` to override) |
 
 All endpoints accept JSON, require `Content-Type: application/json`, and support `--max-time 600` (enrichment can take 3–5 min).

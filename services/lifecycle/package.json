@@ -6,8 +6,7 @@
   "description": "Lifecycle agent as a Cloud Run job: one tick submits or collects one Gemini batch.",
   "main": "tick.mjs",
   "scripts": {
-    "start": "node tick.mjs",
-    "parity": "node parity.mjs"
+    "start": "node tick.mjs"
   },
   "engines": {
     "node": ">=20"
