@@ -4,7 +4,7 @@
 
 ## Destination
 
-A locked, handoff-ready spec, `docs/prd/attribution-job.md`, for the attribution agent (`lifecycle-attribution-agent-p_KwCoaap` + `lifecycle-attribution-subagent-p_PACe77B`) as **one Cloud Run job that sends a Gemini batch** (one request per trend) — **or** a recorded decision not to convert, with the measured cost as the reason. Success: no eligible trend goes longer than one cycle between sweeps, at less than today's measured cost.
+A locked, handoff-ready spec, `docs/prd/attribution-job.md`, for the attribution agent (`lifecycle-attribution-agent-p_KwCoaap` + `lifecycle-attribution-subagent-p_PACe77B`) as **one Cloud Run job that sends a Gemini batch** (one request per trend). Success: no eligible trend goes longer than one cycle between sweeps, at less than today's measured cost.
 
 ## Notes
 
@@ -33,11 +33,16 @@ A locked, handoff-ready spec, `docs/prd/attribution-job.md`, for the attribution
 
 - **Attribution is its own Cloud Run job, `services/attribution`**, built on `services/lib` (`createGeminiBatchClient`, `runTick`), not a mode of `services/lifecycle`. Its cut-over is independent of the lifecycle cut-over.
 - **The cost measurement is offline.** It changes no Pipedream workflow and adds no cost row to the live subagent.
+- **The attribution agent converts.** The two Pipedream workflows are replaced, not kept: CRMA-429 requires a full Pipedream exit, and the batch shape alone cuts cost from $18.02 to $4.91/day on Pro.
+- **The job targets `gemini-3.8-flash`, gated by the pass bar.** If Flash fails the pass bar, the job ships on `gemini-3.1-pro-preview`. The conversion does not wait for a model.
+- **Links may arrive hours late.** The delay a Gemini batch adds (up to 24 h) is acceptable; the job computes the candidate pool at submit time, so a slow batch loses no link.
 - **A model is judged mainly on link precision**, against Pro's own run-to-run agreement on one frozen snapshot (Pro twice, candidate `gemini-3.8-flash` once). A false link inflates heat and nothing removes it later.
 
 ## Decisions so far
 
 - [Measure: the attribution agent's real cost per day](https://mcclatchy.atlassian.net/browse/CRMA-1687) — **Decided:** today's Pro tool loop costs $18.02/day ($0.0250/eval × 720); the one-request shape on a Gemini batch costs $4.91/day on Pro and $2.18/day on 3.8 Flash through 2026 ($4.35 from 2027)
+
+- [Decide: convert the attribution agent or leave it on Pipedream](https://mcclatchy.atlassian.net/browse/CRMA-1688) — **Decided:** convert: one Cloud Run job on a Gemini batch, targeting gemini-3.8-flash behind the pass bar with Pro as fallback; CRMA-429 requires the exit and the batch alone cuts 18.02 to 4.91 USD/day
 
 ## Not yet specified
 
