@@ -34,11 +34,34 @@ early, as a ticket on this map. The map stops before the build.
 <!-- Measured state of the world. Falsified by RE-MEASUREMENT, never by a decision.
      Every line carries its source and the date it was verified. -->
 
-- **The trend-origin tag exists in code.** `DT_TREND_DASHBOARD.TREND_ORIGIN` is `DISCOVERED` or
-  `EDITORIAL`, read from the category on the trend's `PROMOTE_NEW` row. A nomination that merges
-  into a discovered trend leaves it `DISCOVERED`.
-  _Source: `sql/dt_trend_dashboard.sql:413,466`, `docs/dashboard/data-contract.md:177`,
-  2026-11-06. Not yet verified live._
+- **The trend-origin tag is live.** `DT_TREND_DASHBOARD.TREND_ORIGIN` is `DISCOVERED` or
+  `EDITORIAL`, read from the category on the trend's `PROMOTE_NEW` row: 700 `DISCOVERED`, 1
+  `EDITORIAL`. A nomination that merges into a discovered trend leaves it `DISCOVERED`, and no
+  dashboard column marks the merge.
+  _Source: Snowflake and `sql/dt_trend_dashboard.sql:413,466`, CRMA-1720, 2026-11-10._
+- **No real editorial nomination has run.** The only two runs are the CRMA-1660 smoke tests on
+  2026-10-26 (one new trend, one merge into a live trend). Revision
+  `trend-tree-editorial-ingest-00003-vax` serves 100% of traffic, still tagged `candidate`.
+  _Source: Snowflake, Cloud Run logs, `gcloud`, CRMA-1720, 2026-11-10._
+- **Three of four outcomes read back by `nomination_id` today.** New trend and merge: the
+  `FCT_PROMOTION_LEDGER` row with `CANDIDATE_ID` = `nomination_id` gives `TARGET_TREND_ID`.
+  Merge into a `RETIRED` trend also writes a `RESURGENT` lifecycle row with `CHAIN_ID` =
+  `nomination_id` (never run live).
+  _Source: CRMA-1720 findings, 2026-11-10._
+- **Snowflake cannot tell a nomination that gave up from one that is still retrying.** The queue
+  retries up to 100 times with a 3600 s max backoff and has no dead-letter queue. A task that
+  gives up leaves nothing, or signals plus an unpromoted candidate, or a failed-attempt ledger
+  row.
+  _Source: `gcloud tasks queues describe`, code read, CRMA-1720, 2026-11-10._
+- **An `editorial` signal row already carries its `nomination_id`** in `METADATA.nomination_id`
+  (`STG_EXTERNAL_SIGNALS` and `FCT_SIGNALS`) and in `STG_EXTERNAL_SIGNALS.AGENT_SESSION_ID`. The
+  exception: a URL already ingested keeps its first-seen `METADATA`. `FCT_TREND_SIGNALS` has no
+  nomination column.
+  _Source: CRMA-1720 findings, 2026-11-10._
+- **ATLAS's role reads the presentation tables, not staging.** `TH_APIROLE` reads every
+  `MCC_PRESENTATION.TREND_AGENT` table a readback joins, but not `STG_TREND_CANDIDATES` or
+  `STG_EXTERNAL_SIGNALS`, so it cannot see a stuck candidate.
+  _Source: `SHOW GRANTS TO ROLE TH_APIROLE`, CRMA-1720, 2026-11-10._
 - **The endpoint returns only `202 {nomination_id, dropped_urls}` on success.** No route reports
   what happened after the `202`.
   _Source: `docs/prd/editorial-trend-ingest-endpoint.md` (Response table), 2026-11-06._
@@ -67,6 +90,8 @@ early, as a ticket on this map. The map stops before the build.
      - [<closed ticket title>](link) — **Decided:** <the answer, one line>
 
      `resolve` appends here. Do not hand-edit while a session is running. -->
+
+- [Research: what the live editorial-ingest path records for each nomination outcome](https://mcclatchy.atlassian.net/browse/CRMA-1720) — **Decided:** 3 of 4 outcomes read back by nomination_id via FCT_PROMOTION_LEDGER; gave-up vs retrying is invisible; signals already carry METADATA.nomination_id; no real nomination has run
 
 ## Not yet specified
 
