@@ -62,6 +62,13 @@ early, as a ticket on this map. The map stops before the build.
   `MCC_PRESENTATION.TREND_AGENT` table a readback joins, but not `STG_TREND_CANDIDATES` or
   `STG_EXTERNAL_SIGNALS`, so it cannot see a stuck candidate.
   _Source: `SHOW GRANTS TO ROLE TH_APIROLE`, CRMA-1720, 2026-11-10._
+- **The verdict comes before any write, but it is not fast today.** The handler gets the
+  new-or-merge verdict from a `gemini-3.7-flash` topic call, a Cortex embed and a
+  `gemini-3.8-flash` sameness call, before it writes anything. The two smoke-test background runs
+  took 30 s and 52 s in total. The logs do not split out the verdict steps. `POST /nominations`
+  itself answers in under 1 s.
+  _Source: `services/editorial-ingest/editorial_ingest/handler.py:41-45`, Cloud Run request logs
+  for 2026-10-26, 2026-11-10._
 - **The endpoint returns only `202 {nomination_id, dropped_urls}` on success.** No route reports
   what happened after the `202`.
   _Source: `docs/prd/editorial-trend-ingest-endpoint.md` (Response table), 2026-11-06._
@@ -78,8 +85,16 @@ early, as a ticket on this map. The map stops before the build.
 
 - **One map covers both asks.** Marcelo's outcome readback and Jason's workflow question share
   the ATLAS ↔ editorial-ingest seam. (Charting session, 2026-11-10.)
+- **ATLAS gets the verdict at once.** The person who nominates sees instant feedback on whether
+  the nomination becomes a new trend or is added to an existing trend, and to which one. Minutes
+  later is not enough. (Martin, 2026-11-10.)
 - **ATLAS polls; Trend Tree sends no callback.** (Marcelo's own terms, accepted in charting,
-  2026-11-10.)
+  2026-11-10.) "Decide: how ATLAS reads an editorial nomination's outcome" must test this against
+  the instant-verdict constraint: a verdict in the `POST /nominations` response itself would
+  replace the poll for that verdict.
+- **The workflow document waits for the verdict.** "Send Jason the editorial nomination workflow
+  document" is blocked by the two verdict tickets. Its draft (Confluence page `2494693377`,
+  unpublished) is rewritten from their answers before Martin sends it. (Martin, 2026-11-10.)
 - **The tag-or-tab display is an ATLAS decision that Jason Smith and Marcelo Freitas own.** This
   map only confirms that `TREND_ORIGIN` supports both. (Charting session, 2026-11-10.)
 
