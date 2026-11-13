@@ -22,6 +22,13 @@
 // Bearer token from API_KEY_PIPEDREAM env var (set workspace-wide via
 // Pipedream UI → Account Settings → Environment Variables. The
 // `PIPEDREAM_*` prefix is reserved by Pipedream, hence the inverted name).
+//
+// CLOUD_RUN_REGISTRY (CRMA-1670): services/ Cloud Run services have no
+// Pipedream id, so their errors come from Cloud Logging instead (sibling
+// ./cloud_run_errors.mjs, hence this file is entry.mjs). Each lands in the
+// same `workflows` pool with workflow_id "cloud_run:<service>".
+
+import { fetchCloudRunErrors } from "./cloud_run_errors.mjs";
 
 const ORG_ID = "o_qOIvyEa";
 const API_BASE = "https://api.pipedream.com/v1";
@@ -67,14 +74,19 @@ const WORKFLOW_REGISTRY = [
   { id: "p_YyC88x8", name: "search-google-trends" },
 ];
 
-async function fetchJson(url, apiKey, timeoutMs = FETCH_TIMEOUT_MS) {
+// Cloud Run services (services/<dir>/deploy.env SERVICE=). Add one when a
+// services/ service goes live. Jobs are covered by their Snowflake freshness
+// checks instead (tiktok/catalog/lifecycle).
+const GCP_PROJECT = "mcc-crm-automations";
+const CLOUD_RUN_REGISTRY = [
+  { service: "trend-tree-editorial-ingest", name: "editorial-ingest" },
+];
+
+async function fetchJson(url, init = {}, timeoutMs = FETCH_TIMEOUT_MS) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const resp = await fetch(url, {
-      headers: { Authorization: `Bearer ${apiKey}` },
-      signal: ctrl.signal,
-    });
+    const resp = await fetch(url, { ...init, signal: ctrl.signal });
     if (!resp.ok) {
       const text = await resp.text();
       return { ok: false, status: resp.status, error: text.slice(0, 400) };
@@ -120,7 +132,7 @@ export default defineComponent({
     const results = await pmap(WORKFLOW_REGISTRY, CONCURRENCY, async (w) => {
       const errors = await fetchJson(
         `${API_BASE}/workflows/${w.id}/%24errors/event_summaries?org_id=${ORG_ID}&limit=${ERRORS_LIMIT}&expand=event`,
-        apiKey,
+        { headers: { Authorization: `Bearer ${apiKey}` } },
       );
 
       const errs = (errors.ok ? errors.data?.data || [] : [])
@@ -148,6 +160,14 @@ export default defineComponent({
         fetch_error: errors.ok ? null : (errors.error || `status ${errors.status || "?"}`),
       };
     });
+    // A missing/broken GCP key shows as fetch_error on these rows, not a throw.
+    results.push(...await fetchCloudRunErrors(CLOUD_RUN_REGISTRY, {
+      project: GCP_PROJECT,
+      saKeyJson: process.env.GCP_AUDIT_SA_KEY,
+      fetchJson,
+      nowMs: Date.now(),
+      limit: ERRORS_LIMIT,
+    }));
 
     const summary = {
       org_id: ORG_ID,
