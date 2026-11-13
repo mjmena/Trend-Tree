@@ -36,6 +36,8 @@ A locked, handoff-ready spec, `docs/prd/attribution-job.md`, for the attribution
 - **The attribution agent converts.** The two Pipedream workflows are replaced, not kept: CRMA-429 requires a full Pipedream exit, and the batch shape alone cuts cost from $18.02 to $4.91/day on Pro.
 - **The job targets `gemini-3.8-flash`, gated by the pass bar.** If Flash fails the pass bar, the job ships on `gemini-3.1-pro-preview`. The conversion does not wait for a model.
 - **Links may arrive hours late.** The delay a Gemini batch adds (up to 24 h) is acceptable; the job computes the candidate pool at submit time, so a slow batch loses no link.
+- **Selection is least-recently-swept first, 30 trends per Gemini batch, one tick an hour** (CRMA-1692). A trend's last sweep is the newest `SUBMITTED_AT` of a `COLLECTED` batch that holds it. Never-swept trends go first, ties by `HASH(TREND_ID)`. A failed or cancelled batch does not count as a sweep, so its trends lead the next tick. The cap is env `ATTRIBUTION_BATCH_CAP` (default 30) in `deploy.env`. The cycle is ceil(eligible / cap) hours: 20 h at 571 trends. A tick that leaves a trend unsubmitted whose last sweep is more than 24 h old records `BUDGET_EXHAUSTED`, the signal to raise the cap. The lifecycle tick rules (one batch in flight, collect before submit, a 6 h cancel) apply unchanged. The Scheduler entry runs at minute 30, UTC, half an hour off the lifecycle tick.
+- **The candidate pool query is today's `q_candidate_signals`, unchanged:** at most 20 signals, cosine ≥ 0.35, embedded in the last 72 h, not already linked to the trend. 72 h covers the longest gap between two sweeps of one trend (a 20 h cycle plus a 6 h cancelled batch) more than twice.
 - **A model is judged by the CRMA-1689 pass bar**, in the one-request shape, on one frozen snapshot of 300 eligible trends: 150 that got an `attributed` link in the last 14 days and 150 that got none. Empty-pool trends are not scored. Pro runs twice (A, B) and the candidate once. Pro self-agreement S = mean(|A∩B|/|A|, |A∩B|/|B|). The candidate passes when its precision against a Pro run is at least S − 5 points, its recall is at least S − 25 points, and at most 2% of its answers fail to parse. A signal id outside the trend's pool counts as a false link. If A and B hold fewer than 40 links together, the result is inconclusive: enlarge the snapshot, do not decide. Precision is the strict gate because a false link inflates heat and nothing removes it later.
 
 ## Decisions so far
@@ -45,6 +47,8 @@ A locked, handoff-ready spec, `docs/prd/attribution-job.md`, for the attribution
 - [Decide: convert the attribution agent or leave it on Pipedream](https://mcclatchy.atlassian.net/browse/CRMA-1688) — **Decided:** convert: one Cloud Run job on a Gemini batch, targeting gemini-3.8-flash behind the pass bar with Pro as fallback; CRMA-429 requires the exit and the batch alone cuts 18.02 to 4.91 USD/day
 
 - [Decide: the pass bar for switching the attribution model](https://mcclatchy.atlassian.net/browse/CRMA-1689) — **Decided:** Flash replaces Pro when, on a stratified 300-trend snapshot in the one-request shape, precision is within 5 points of Pro's self-agreement, recall within 25 points, and at most 2% unparseable
+
+- [Decide: the attribution job's selection and cadence](https://mcclatchy.atlassian.net/browse/CRMA-1692) — **Decided:** hourly tick at minute 30, at most 30 trends per Gemini batch, least-recently-swept first; cycle about 20 h; 72 h lookback and the pool query unchanged
 
 ## Not yet specified
 
