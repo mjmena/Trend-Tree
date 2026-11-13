@@ -1,0 +1,17 @@
+{
+  "name": "trend-tree-attribution",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Attribution agent as a Cloud Run job: one tick collects and submits one Gemini batch.",
+  "main": "tick.mjs",
+  "scripts": {
+    "start": "node tick.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "snowflake-sdk": "^2.2.0"
+  }
+}

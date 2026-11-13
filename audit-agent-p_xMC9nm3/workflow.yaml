@@ -600,6 +600,7 @@ steps:
             ('promotion.lead.system', 1),
             ('promotion.subagent.decision_rubric', 3),
             ('promotion.subagent.system', 3),
+            ('signal.attribution.job.system', 1),
             ('signal.attribution.rubric', 3),
             ('signal.attribution.system', 1),
             ('sourcing.selector', 1)
@@ -653,6 +654,7 @@ steps:
             ('promotion.lead.system', 1),
             ('promotion.subagent.decision_rubric', 3),
             ('promotion.subagent.system', 3),
+            ('signal.attribution.job.system', 1),
             ('signal.attribution.rubric', 3),
             ('signal.attribution.system', 1),
             ('sourcing.selector', 1)
