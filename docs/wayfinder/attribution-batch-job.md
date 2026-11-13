@@ -35,7 +35,7 @@ A locked, handoff-ready spec, `docs/prd/attribution-job.md`, for the attribution
 - **Attribution is its own Cloud Run job, `services/attribution`**, built on `services/lib` (`createGeminiBatchClient`, `runTick`), not a mode of `services/lifecycle`. Its cut-over is independent of the lifecycle cut-over.
 - **The cost measurement is offline.** It changes no Pipedream workflow and adds no cost row to the live subagent.
 - **The attribution agent converts.** The two Pipedream workflows are replaced, not kept: CRMA-429 requires a full Pipedream exit, and the batch shape alone cuts cost from $18.02 to $4.91/day on Pro.
-- **The job targets `gemini-3.8-flash`, gated by the pass bar.** If Flash fails the pass bar, the job ships on `gemini-3.1-pro-preview`. The conversion does not wait for a model.
+- **The job runs on `gemini-3.1-pro-preview`, with `thinking_level` medium** (CRMA-1691). `gemini-3.8-flash` failed the pass bar on recall (CRMA-1690). A later switch to a cheaper model re-runs the CRMA-1690 comparison on the same frozen snapshot against the same bar.
 - **Links may arrive hours late.** The delay a Gemini batch adds (up to 24 h) is acceptable; the job computes the candidate pool at submit time, so a slow batch loses no link.
 - **Selection is least-recently-swept first, 30 trends per Gemini batch, one tick an hour** (CRMA-1692). A trend's last sweep is the newest `SUBMITTED_AT` of a `COLLECTED` batch that holds it. Never-swept trends go first, ties by `HASH(TREND_ID)`. A failed or cancelled batch does not count as a sweep, so its trends lead the next tick. The cap is env `ATTRIBUTION_BATCH_CAP` (default 30) in `deploy.env`. The cycle is ceil(eligible / cap) hours: 20 h at 571 trends. A tick that leaves a trend unsubmitted whose last sweep is more than 24 h old records `BUDGET_EXHAUSTED`, the signal to raise the cap. The lifecycle tick rules (one batch in flight, collect before submit, a 6 h cancel) apply unchanged. The Scheduler entry runs at minute 30, UTC, half an hour off the lifecycle tick.
 - **The candidate pool query is today's `q_candidate_signals`, unchanged:** at most 20 signals, cosine ≥ 0.35, embedded in the last 72 h, not already linked to the trend. 72 h covers the longest gap between two sweeps of one trend (a 20 h cycle plus a 6 h cancelled batch) more than twice.
@@ -52,6 +52,8 @@ A locked, handoff-ready spec, `docs/prd/attribution-job.md`, for the attribution
 - [Decide: the attribution job's selection and cadence](https://mcclatchy.atlassian.net/browse/CRMA-1692) — **Decided:** hourly tick at minute 30, at most 30 trends per Gemini batch, least-recently-swept first; cycle about 20 h; 72 h lookback and the pool query unchanged
 
 - [Build and run the offline attribution comparison in the one-request shape](https://mcclatchy.atlassian.net/browse/CRMA-1690) — **Decided:** Flash fails the pass bar on recall (60.0% vs 61.8%) with precision 91.8% and 0 unparseable; on a batch Pro costs 4.57 USD/day, Flash 2.11
+
+- [Decide: the attribution model](https://mcclatchy.atlassian.net/browse/CRMA-1691) — **Decided:** gemini-3.1-pro-preview with medium thinking: Flash failed the pass bar on recall; Pro on a batch costs 4.57 USD/day vs 18.02 today
 
 ## Not yet specified
 
