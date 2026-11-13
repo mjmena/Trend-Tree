@@ -12,7 +12,7 @@ INSERT INTO DIM_LLM_PROMPT (PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS, 
 SELECT
     'signal.attribution.job.system',
     1,
-    'gemini-3.8-flash',
+    'gemini-3.1-pro-preview',
     p.TPL,
     OBJECT_INSERT(OBJECT_INSERT(p.MODEL_PARAMS::OBJECT, 'per_call_max_tokens', 8192, TRUE), 'thinking_level', 'medium', TRUE),
     TRUE,

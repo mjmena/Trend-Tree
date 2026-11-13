@@ -101,7 +101,7 @@ test("collect links in-pool answers, drops the rest, writes one cost row, then s
     { metadata: { key: "a" }, response: answer([{ signal_id: "s1", link_type: "news" }, { signal_id: "zz", link_type: "news" }]) },
     { metadata: { key: "b" }, response: answer([]) },
   ];
-  const out = await runTick({ query, gemini, cap: 2, now: () => new Date("2026-11-13T00:00:00Z") });
+  const out = await runTick({ query, gemini, cap: 2 });
   assert.deepEqual(db.links, [{ trend_id: "a", signal_id: "s1", link_type: "news" }]);
   assert.equal(out.collected.dropped, 1);
   assert.equal(db.batches[0].STATE, "COLLECTED");

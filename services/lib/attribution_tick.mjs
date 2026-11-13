@@ -49,7 +49,7 @@ const TIMEOUT_SECONDS = 6 * 3600;
 const MIN_OUTPUT_TOKENS = 8192;
 const TOOL_WORDS = /commit_attributions|filter_candidates/;
 
-export async function runTick({ query, gemini, cap = 30, now = () => new Date() }) {
+export async function runTick({ query, gemini, cap = 30 }) {
   const prompts = await query(PROMPTS_SQL);
   refuseBadPrompt(prompts);
   const summary = {};
@@ -72,7 +72,7 @@ export async function runTick({ query, gemini, cap = 30, now = () => new Date() 
     } else if (batch.state === "BATCH_STATE_SUCCEEDED") {
       const pools = typeof inFlight.POOLS === "string" ? JSON.parse(inFlight.POOLS) : (inFlight.POOLS || {});
       summary.collected = await collect({
-        query, gemini, prompts, batchName: name, pools, entries: batch.entries, at: now(),
+        query, gemini, prompts, batchName: name, pools, entries: batch.entries,
         status: inFlight.BUDGET_EXHAUSTED ? "BUDGET_EXHAUSTED" : "OK",
       });
       retries = summary.collected.retries;
@@ -104,7 +104,7 @@ async function close({ query, batchName, state, status, error = null }) {
   await query(INSERT_COST, [JOB_MODEL, 0, 0, 0, 0, 0, status, error, batchName]);
 }
 
-async function collect({ query, gemini, prompts, batchName, pools, entries, at, status }) {
+async function collect({ query, gemini, prompts, batchName, pools, entries, status }) {
   const links = [];
   const errors = [];
   const toRetry = [];
@@ -115,7 +115,7 @@ async function collect({ query, gemini, prompts, batchName, pools, entries, at, 
     usage.prompt += u.promptTokenCount || 0;
     usage.candidates += u.candidatesTokenCount || 0;
     usage.thoughts += u.thoughtsTokenCount || 0;
-    usage.cost += entryCost(u, { model: JOB_MODEL, batch, at });
+    usage.cost += entryCost(u, { model: JOB_MODEL, batch });
     const list = parseAttributions(response);
     if (!list) return false;
     const f = filterAttributions(list, pools[key] || []);

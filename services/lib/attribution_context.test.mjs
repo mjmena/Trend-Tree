@@ -30,13 +30,10 @@ test("parseAttributions reads the JSON answer and skips thought parts", () => {
   assert.equal(parseAttributions(undefined), null);
 });
 
-test("entryCost bills thinking as output, halves a batch, and uses the model's rates", () => {
+test("entryCost bills thinking as output, halves a batch, and refuses an unpriced model", () => {
   const usage = { promptTokenCount: 1_000_000, candidatesTokenCount: 100_000, thoughtsTokenCount: 900_000 };
-  const at = new Date("2026-11-13T00:00:00Z");
-  assert.equal(entryCost(usage, { model: "gemini-3.8-flash", batch: false, at }), 4.5);
-  assert.equal(entryCost(usage, { model: "gemini-3.8-flash", batch: true, at }), 2.25);
-  assert.equal(entryCost(usage, { model: "gemini-3.8-flash", batch: true, at: new Date("2027-01-01T00:00:00Z") }), 4.5);
-  assert.equal(entryCost(usage, { model: "gemini-3.1-pro-preview", batch: true, at }), 7);
+  assert.equal(entryCost(usage, { batch: false }), 14);
+  assert.equal(entryCost(usage, { batch: true }), 7);
   assert.throws(() => entryCost(usage, { model: "gemini-9" }), /no rates/);
 });
 
