@@ -27,6 +27,7 @@ A locked, handoff-ready spec, `docs/prd/attribution-job.md`, for the attribution
 - Today's tool loop costs **$0.0250 per eval, $18.02/day** on Pro with thinking billed; production's own formula leaves thinking out and would record $0.0177. The loop takes 1.98 turns: `commit_attributions`, then a closing turn that resends the ~4k-token prompt (8,086 input tokens per eval). 1 of 50 evals hit `MAX_TOKENS` under the 2048-token per-call cap and committed nothing ([CRMA-1687](https://mcclatchy.atlassian.net/browse/CRMA-1687), 2026-11-03).
 - In the one-request shape (3,401 input tokens, no tools, `commit_attributions`' schema as `responseSchema`): Pro $0.0136 per eval, $9.82/day standard, **$4.91/day on a Gemini batch**; `gemini-3.8-flash` $0.0060 per eval, $4.35/day standard, **$2.18/day on a batch through 2026**, $4.35/day from 2027-01-01 (CRMA-1687, 2026-11-03).
 - On the same 50 frozen trends the replayed Pro loop linked 2 signals, Pro one-request 14 and Flash one-request 8; production's rate predicts about 14. The loop replay's link rate is not trusted, so the comparison must check it before it uses a loop run as a baseline (CRMA-1687, 2026-11-03).
+- On a stratified 300-trend snapshot in the one-request shape (medium thinking), Pro linked 72 and 78 signals and agreed with itself at S = 86.8%. `gemini-3.8-flash` linked 49: precision 91.8% (bar 81.8%), recall 60.0% (bar 61.8%), 0 unparseable, 0 off-pool ids. **Flash fails the pass bar on recall.** On a batch Pro costs $4.57/day and Flash $2.11/day (CRMA-1690, `docs/wayfinder/assets/crma-1690/out/report.md`, 2026-11-13).
 - The prompts are `DIM_LLM_PROMPT` keys `signal.attribution.system` and `signal.attribution.rubric` (`q_prompts`, 2026-11-03).
 
 ## Standing constraints
@@ -49,6 +50,8 @@ A locked, handoff-ready spec, `docs/prd/attribution-job.md`, for the attribution
 - [Decide: the pass bar for switching the attribution model](https://mcclatchy.atlassian.net/browse/CRMA-1689) — **Decided:** Flash replaces Pro when, on a stratified 300-trend snapshot in the one-request shape, precision is within 5 points of Pro's self-agreement, recall within 25 points, and at most 2% unparseable
 
 - [Decide: the attribution job's selection and cadence](https://mcclatchy.atlassian.net/browse/CRMA-1692) — **Decided:** hourly tick at minute 30, at most 30 trends per Gemini batch, least-recently-swept first; cycle about 20 h; 72 h lookback and the pool query unchanged
+
+- [Build and run the offline attribution comparison in the one-request shape](https://mcclatchy.atlassian.net/browse/CRMA-1690) — **Decided:** Flash fails the pass bar on recall (60.0% vs 61.8%) with precision 91.8% and 0 unparseable; on a batch Pro costs 4.57 USD/day, Flash 2.11
 
 ## Not yet specified
 
