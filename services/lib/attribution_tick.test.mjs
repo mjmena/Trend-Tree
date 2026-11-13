@@ -109,6 +109,7 @@ test("collect links in-pool answers, drops the rest, writes one cost row, then s
   assert.equal(db.costs[0].STATUS, "BUDGET_EXHAUSTED");
   assert.equal(db.costs[0].TURN_COUNT, 2);
   assert.match(db.costs[0].ERROR_MESSAGE, /1 attribution\(s\) dropped/);
+  assert.doesNotMatch(db.costs[0].ERROR_MESSAGE, /no batch entry/);
   // c was never swept, so it leads the next batch.
   assert.equal(db.batches[1].TREND_IDS[0], "c");
 });
@@ -126,6 +127,16 @@ test("a non-JSON entry gets one standard retry from the stored pool", async () =
   assert.match(gemini.g.retries[0].systemInstruction.parts[0].text, /\[s1\]/);
   assert.deepEqual(db.links, [{ trend_id: "a", signal_id: "s1", link_type: "social" }]);
   assert.equal(out.collected.retries, 1);
+});
+
+test("a requested trend missing from the results is named in ERROR_MESSAGE", async () => {
+  const { db, query } = fakeSnowflake({ eligible: ["a", "b"], pools: { a: ["s1"], b: ["s2"] } });
+  const gemini = fakeGemini();
+  await runTick({ query, gemini, cap: 2 });
+  gemini.g.state = "BATCH_STATE_SUCCEEDED";
+  gemini.g.entries = [{ metadata: { key: "a" }, response: answer([]) }];
+  await runTick({ query, gemini, cap: 0 });
+  assert.match(db.costs[0].ERROR_MESSAGE, /no batch entry for b/);
 });
 
 test("a collect run twice links nothing twice", async () => {
@@ -185,6 +196,8 @@ test("an all-empty-pool selection submits nothing and records the sweep", async 
 test("the tick refuses a prompt under 8192 output tokens or with tool wording", async () => {
   const low = [{ ...PROMPT_ROWS[0], MODEL_PARAMS: { per_call_max_tokens: 2048 } }, PROMPT_ROWS[1]];
   await assert.rejects(runTick({ query: fakeSnowflake({ prompts: low }).query, gemini: fakeGemini() }), /below 8192/);
+  const noThinking = [{ ...PROMPT_ROWS[0], MODEL_PARAMS: { per_call_max_tokens: 8192 } }, PROMPT_ROWS[1]];
+  await assert.rejects(runTick({ query: fakeSnowflake({ prompts: noThinking }).query, gemini: fakeGemini() }), /no thinking_level/);
   const tool = [{ ...PROMPT_ROWS[0], TEMPLATE: "Call commit_attributions once." }, PROMPT_ROWS[1]];
   await assert.rejects(runTick({ query: fakeSnowflake({ prompts: tool }).query, gemini: fakeGemini() }), /names the tool commit_attributions/);
 });

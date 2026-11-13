@@ -1,7 +1,6 @@
 -- One row per Gemini batch the attribution job submits; at most one is SUBMITTED.
--- A trend's last sweep is the newest SUBMITTED_AT of a COLLECTED row whose
--- TREND_IDS holds it (docs/prd/attribution-job.md, CRMA-1692). A failed or
--- cancelled batch is not a sweep, so its trends lead the next tick.
+-- A trend's last sweep is the newest SUBMITTED_AT of a COLLECTED row holding it,
+-- so the trends of a failed or cancelled batch lead the next tick.
 
 CREATE TABLE IF NOT EXISTS MCC_RAW.MARKETING_DEV.STG_ATTRIBUTION_BATCHES (
   BATCH_NAME       VARCHAR(128)  NOT NULL PRIMARY KEY,  -- batches/<id> from Google, or none-<chain id>

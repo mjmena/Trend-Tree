@@ -1,14 +1,13 @@
 // One attribution tick: collect the finished in-flight batch into
-// FCT_TREND_SIGNALS, then submit the next trends, least recently swept first.
-// I/O is injected so the tick runs against fakes in tests.
-// Spec: docs/prd/attribution-job.md.
+// FCT_TREND_SIGNALS, then submit the next trends. I/O is injected for tests.
 
 import { randomUUID } from "node:crypto";
 import {
   JOB_MODEL, JOB_SYSTEM_PROMPT_KEY, PROMPTS_SQL, SET_QUERIES,
-  buildBatchRequest, buildBlocks, entryCost, filterAttributions, groupByTrend,
-  loadPrompts, mustGet, parseAttributions, renderSystemPrompt, selectSql, toPool,
+  buildBatchRequest, buildBlocks, entryCost, filterAttributions,
+  parseAttributions, renderSystemPrompt, selectSql, toPool,
 } from "./attribution_context.mjs";
+import { groupByTrend, loadPrompts, mustGet } from "./lifecycle_context.mjs";
 
 const BATCHES = "MCC_RAW.MARKETING_DEV.STG_ATTRIBUTION_BATCHES";
 
@@ -93,6 +92,7 @@ function refuseBadPrompt(prompts) {
   if (!(params.per_call_max_tokens >= MIN_OUTPUT_TOKENS)) {
     throw new Error(`attribution: per_call_max_tokens is ${params.per_call_max_tokens}, below ${MIN_OUTPUT_TOKENS}`);
   }
+  if (!params.thinking_level) throw new Error("attribution: MODEL_PARAMS has no thinking_level");
   const tool = renderSystemPrompt(prompts, {}).match(TOOL_WORDS);
   if (tool) throw new Error(`attribution: the rendered prompt still names the tool ${tool[0]}`);
 }
@@ -110,7 +110,7 @@ async function collect({ query, gemini, prompts, batchName, pools, entries, at, 
   const toRetry = [];
   let dropped = 0;
   const usage = { prompt: 0, candidates: 0, thoughts: 0, cost: 0 };
-  const take = (key, response, batch) => {
+  const absorbEntry = (key, response, batch) => {
     const u = response?.usageMetadata || {};
     usage.prompt += u.promptTokenCount || 0;
     usage.candidates += u.candidatesTokenCount || 0;
@@ -131,7 +131,7 @@ async function collect({ query, gemini, prompts, batchName, pools, entries, at, 
       errors.push(`${key}: no pool on the batch row`);
       continue;
     }
-    if (e.error || !take(key, e.response, true)) {
+    if (e.error || !absorbEntry(key, e.response, true)) {
       toRetry.push({ key, why: e.error ? `error ${e.error.code} ${e.error.message || ""}`.trim() : "answer is not JSON" });
     }
   }
@@ -141,13 +141,16 @@ async function collect({ query, gemini, prompts, batchName, pools, entries, at, 
     for (const { key, why } of toRetry) {
       let failure = "answer is not JSON";
       try {
-        if (take(key, await gemini.generateContent({ model: JOB_MODEL, request: requests.get(key).request }), false)) continue;
+        if (absorbEntry(key, await gemini.generateContent({ model: JOB_MODEL, request: requests.get(key).request }), false)) continue;
       } catch (err) {
         failure = err.message;
       }
       errors.push(`${key}: ${why}, and the retry: ${failure}`);
     }
   }
+  const answered = new Set(entries.map((e) => e.metadata?.key));
+  const missing = Object.keys(pools).filter((k) => pools[k].length && !answered.has(k));
+  if (missing.length) errors.push(`no batch entry for ${missing.join(", ")}`);
   if (dropped) errors.push(`${dropped} attribution(s) dropped: signal not in the pool, bad link_type, or repeated`);
 
   if (links.length) await query(INSERT_LINKS, [JSON.stringify(links)]);
@@ -187,7 +190,7 @@ async function submit({ query, gemini, prompts, limit }) {
   const ids = rows.slice(0, limit).map((r) => r.TREND_ID);
   if (!ids.length) return null;
   // The cap left out a trend that was never swept or not swept for 24 h.
-  const budgetExhausted = rows.slice(limit).some((r) => r.OVERDUE === true || r.OVERDUE === "true");
+  const budgetExhausted = rows.slice(limit).some((r) => r.OVERDUE === true);
 
   const { requests, pools } = await buildRequests({ query, prompts, ids });
   const chainId = `atr-chain-${randomUUID()}`;

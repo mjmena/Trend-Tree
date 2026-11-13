@@ -1,21 +1,7 @@
--- update_prompts_attribution_job_v1.sql
---
--- CRMA-1737 (spec docs/prd/attribution-job.md "The prompt migration"): the
--- Cloud Run attribution job makes ONE structured-JSON request per trend
--- (Gemini batch), with no tools. It gets its own system prompt key,
--- signal.attribution.job.system v1, so the Pipedream loop's
--- signal.attribution.system stays untouched until the cut-over.
--- signal.attribution.rubric stays shared.
---
--- Surgical REPLACE over the live signal.attribution.system v1 TEMPLATE: the
--- three EDITS of docs/wayfinder/assets/crma-1687/run.mjs (oneShotSystem). Each
--- replaced string has its own CONTAINS guard, so a drifted source inserts
--- nothing. MODEL = the job's JOB_MODEL; MODEL_PARAMS copied with
--- per_call_max_tokens = 8192. New key: there is no prior version to
--- deactivate. Re-runnable (NOT EXISTS).
---
--- The same commit adds ('signal.attribution.job.system', 1) to the audit
--- agent's q_prompt_drift manifest (both sql.value and sql.query).
+-- signal.attribution.job.system v1: the tool-free, one-JSON-answer variant of the
+-- live signal.attribution.system v1, by guarded REPLACEs (a drifted source inserts
+-- nothing). per_call_max_tokens = 8192; thinking_level = medium, the level the
+-- Pipedream loop defaulted to and the cost estimate assumed. Re-runnable.
 
 USE DATABASE MCC_RAW;
 USE SCHEMA MARKETING_DEV;
@@ -28,7 +14,7 @@ SELECT
     1,
     'gemini-3.8-flash',
     p.TPL,
-    OBJECT_INSERT(p.MODEL_PARAMS::OBJECT, 'per_call_max_tokens', 8192, TRUE),
+    OBJECT_INSERT(OBJECT_INSERT(p.MODEL_PARAMS::OBJECT, 'per_call_max_tokens', 8192, TRUE), 'thinking_level', 'medium', TRUE),
     TRUE,
     MD5(p.TPL),
     'marty',

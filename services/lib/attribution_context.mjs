@@ -1,13 +1,8 @@
 // The attribution job's pure parts: the set-based queries, the prompt blocks,
 // one batch request per trend, the pool filter and the per-entry cost.
-// Spec: docs/prd/attribution-job.md. The blocks and the schema are copies of
-// lifecycle-attribution-subagent-p_PACe77B/run_subagent/entry.js.
 
-import { groupByTrend, loadPrompts, mustGet, render } from "./lifecycle_context.mjs";
+import { loadPrompts, mustGet, render } from "./lifecycle_context.mjs";
 
-export { groupByTrend, loadPrompts, mustGet };
-
-// CRMA-1691 decides between this and gemini-3.1-pro-preview.
 export const JOB_MODEL = "gemini-3.8-flash";
 export const JOB_SYSTEM_PROMPT_KEY = "signal.attribution.job.system";
 export const RUBRIC_PROMPT_KEY = "signal.attribution.rubric";
@@ -45,7 +40,7 @@ SELECT DISTINCT s.TREND_ID, s.LINK_TYPE
 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS s
 JOIN ids ON ids.TREND_ID = s.TREND_ID
 WHERE s.LINK_TYPE IS NOT NULL
-ORDER BY s.TREND_ID`,
+ORDER BY s.TREND_ID, s.LINK_TYPE`,
 
   candidate_signals: `WITH ${IDS_CTE},
 trend_vec AS (
@@ -73,11 +68,11 @@ WHERE VECTOR_COSINE_SIMILARITY(tv.TREND_VECTOR, ns.SIGNAL_VECTOR) >= ${SIMILARIT
     SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS x
     WHERE x.SIGNAL_ID = ns.SIGNAL_ID AND x.TREND_ID = tv.TREND_ID
   )
-QUALIFY ROW_NUMBER() OVER (PARTITION BY tv.TREND_ID ORDER BY SIMILARITY DESC) <= 20
-ORDER BY tv.TREND_ID, SIMILARITY DESC`,
+QUALIFY ROW_NUMBER() OVER (PARTITION BY tv.TREND_ID ORDER BY SIMILARITY DESC, ns.SIGNAL_ID) <= 20
+ORDER BY tv.TREND_ID, SIMILARITY DESC, ns.SIGNAL_ID`,
 };
 
-// Sweep order (CRMA-1692): never swept first, then least recently swept.
+// Sweep order: never swept first, then least recently swept.
 // LIMIT is the cap plus one, so the caller can tell whether the cap cut anything.
 export const selectSql = (limit) => `WITH latest_lifecycle AS (
   SELECT TREND_ID, NEW_STATUS AS LIFECYCLE_STATUS
@@ -105,7 +100,7 @@ WHERE COALESCE(lc.LIFECYCLE_STATUS, 'NEW') NOT IN ('RETIRED', 'DORMANT')
 ORDER BY ls.LAST_SWEPT_AT ASC NULLS FIRST, HASH(t.TREND_ID)
 LIMIT ${limit}`;
 
-// commit_attributions' input_schema, verbatim from run_subagent/entry.js.
+// The Pipedream subagent's commit_attributions input_schema.
 export const ATTRIBUTION_SCHEMA = {
   type: "object",
   properties: {
@@ -137,7 +132,7 @@ export function toPool(rows = []) {
   }));
 }
 
-/** The trend_block and candidate_signals_block, as run_subagent/entry.js renders them. */
+/** The trend_block and candidate_signals_block, as the Pipedream subagent rendered them. */
 export function buildBlocks(contextRow, sourceRows, pool) {
   const existing = (sourceRows || []).map((r) => r.LINK_TYPE).filter(Boolean);
   const trend_block =
@@ -206,7 +201,7 @@ export function parseAttributions(response) {
 
 /**
  * Keep the pairs whose signal is in the trend's pool and whose link_type is
- * allowed, once each (CRMA-1461). Returns the kept pairs and the dropped count.
+ * allowed, once each. Returns the kept pairs and the dropped count.
  */
 export function filterAttributions(list, pool) {
   const allowed = new Set(pool.map((s) => s.signal_id));
