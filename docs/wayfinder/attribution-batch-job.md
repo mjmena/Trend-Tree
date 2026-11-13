@@ -57,7 +57,6 @@ A locked, handoff-ready spec, `docs/prd/attribution-job.md`, for the attribution
 
 ## Not yet specified
 
-- **The cut-over.** Probably copies CRMA-1674 (delete the two workflows by hand, a capped first execution, then `schedule.sh`), but it waits on the model and cadence decisions.
-- **The spec.** Assembles every constraint into `docs/prd/attribution-job.md` and reports amendments back to CRMA-1644 and CRMA-429.
+Nothing. The destination is reached: `docs/prd/attribution-job.md` (2026-11-13) assembles every constraint, including the cut-over (a copy of CRMA-1674's). Epic CRMA-1736 builds it: CRMA-1737 (PR #174) and the cut-over CRMA-1738. The amendments were reported on CRMA-1644 and CRMA-429.
 
 ## Out of scope
