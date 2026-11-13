@@ -37,8 +37,7 @@ then submit the next 30 trends, least recently swept first. Each request is one
 `commit_attributions`' schema as its `responseSchema`. The batch costs half the standard price.
 
 Success: no eligible trend goes longer than one cycle (about 20 h) between sweeps, at less than
-today's $18.02/day. CRMA-1687 priced this shape at $2.18/day on `gemini-3.8-flash` through 2026
-and $4.91/day on Pro.
+today's $18.02/day. CRMA-1687 priced this shape at $4.91/day on Pro; CRMA-1690 measured $4.57/day.
 
 ## User Stories
 
@@ -64,10 +63,10 @@ and $4.91/day on Pro.
 
 ### The model
 
-- **`JOB_MODEL` is the model CRMA-1691 chose**, a code constant in
-  `services/lib/attribution_context.mjs`, as in every other agent here. The map's constraint:
-  `gemini-3.8-flash` if it passes the CRMA-1689 pass bar on the CRMA-1690 comparison,
-  `gemini-3.1-pro-preview` if it fails. The conversion does not wait for the model.
+- **`JOB_MODEL` is `gemini-3.1-pro-preview`** (CRMA-1691), a code constant in
+  `services/lib/attribution_context.mjs`, as in every other agent here. `gemini-3.8-flash` failed
+  the CRMA-1689 pass bar on the CRMA-1690 comparison: precision 91.8%, but recall 60.0% against a
+  61.8% bar. In this shape on a batch, Pro costs $4.57/day against today's $18.02/day.
 - Per-entry cost uses that model's rates: Flash $0.75 / $3.75 per million (input / output),
   doubling on 2027-01-01; Pro $2.00 / $12.00. A batch entry bills half. Output includes
   thinking tokens.
@@ -197,7 +196,8 @@ replaced string, re-runnable by `NOT EXISTS`. The replacements are the CRMA-1687
 | ``Call `commit_attributions` exactly once with the confirmed list. Pass an empty array if nothing qualifies`` | ``Return one JSON object whose `attributions` array holds the confirmed { signal_id, link_type } pairs. link_type must be one of: news \| social \| commerce \| other. Return an empty array if nothing qualifies`` |
 | ` — and commit those links so` | ` — so` |
 
-`MODEL` = `JOB_MODEL`; `MODEL_PARAMS` copied with `per_call_max_tokens` = 8192. The rubric key
+`MODEL` = `JOB_MODEL`; `MODEL_PARAMS` copied with `per_call_max_tokens` = 8192 and `thinking_level`
+= `medium` (the live row has none; medium is the loop's default and what CRMA-1690 priced). The rubric key
 `signal.attribution.rubric` stays shared. The same commit adds `('signal.attribution.job.system',
 1)` to both copies of the manifest in `audit-agent-p_xMC9nm3/workflow.yaml`'s `q_prompt_drift`.
 
