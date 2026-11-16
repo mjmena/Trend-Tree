@@ -7,7 +7,7 @@
 
 **Scale** — Text.
 
-**What feeds it** — The enrichment agent. On a trend's **first enrichment**, the agent generates candidate names per audience, scores each against a corporate-media floor (sales-deck-safe, no nsfw, no crude or insult-coded names), and **freezes the winning singular name into `FCT_TRENDS.TREND_NAME`**. Re-enrichments emit new candidates to the enrichment ledger but **cannot** change the frozen display name — this prevents trend cards from quietly renaming themselves over time.
+**What feeds it** — The enrichment agent. On a trend's **first enrichment**, the agent generates candidate names per audience, scores each against a corporate-media floor (sales-deck-safe, no nsfw, no crude or insult-coded names), and **freezes the winning singular name into `FCT_TRENDS.TREND_NAME`**. Re-enrichments emit new candidates to the enrichment ledger but **cannot** change the frozen display name — this prevents trend cards from quietly renaming themselves over time. Before the name is frozen, a separate reviewer model (Claude Sonnet 4.6) checks that someone who sees only the name can tell what the trend is, and proposes an alternate when it cannot.
 
 **How it's resolved** — The dashboard resolves the display name via a **6-level COALESCE** (source: `sql/dt_trend_dashboard.sql:304`). Level 1 is the canonical path; levels 2–6 are progressively-degraded legacy fallbacks for older rows:
 

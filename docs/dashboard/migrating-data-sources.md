@@ -3,6 +3,8 @@
 
 # 🟡 Migrating Fields — Data Sourcing (warehouse scan)
 
+> **Historical record (June 2026).** This scan is kept for reference. Its main decision, Path A (reuse the data team's article vectors), shipped as `NEAREST_CONTENT` on 2026-08-18. No migrating field built from it has shipped yet, and `FCT_TREND_GTRENDS_DAILY` is frozen since the Google Trends poller was removed on 2026-09-25.
+
 Companion to [migrating.md](migrating.md). That page scoped each migrating field's
 definition from **repo knowledge**. This page scopes the **data** for those fields from an
 actual scan of the Snowflake warehouse — what already exists, verified live, vs. what we'd

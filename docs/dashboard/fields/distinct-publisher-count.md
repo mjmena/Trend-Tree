@@ -7,7 +7,7 @@
 
 **Scale** — Integer (typically 0–50 for active trends).
 
-**What feeds it** — Every signal linked to the trend in `FCT_TREND_SIGNALS` is mapped to a publisher domain (the actual website the signal originates from, e.g., `nytimes.com`, `vox.com`, `bsky.app`). The field counts the distinct domains.
+**What feeds it** — Every signal linked to the trend in `FCT_TREND_SIGNALS` is mapped to a publisher domain where one can be identified (the actual website the signal originates from, e.g., `nytimes.com`, `vox.com`, `bsky.app`). The field counts the distinct domains. Signals with no identifiable publisher (for example Google grounding-redirect links) are left out of this count but still count toward Total Cluster Size.
 
 **Why publishers and not "sources"?** A "source" in our pipeline means the *integration* that brought the signal in (GDELT, Bluesky, etc.). A "publisher" means the actual website the signal points to. **Four GDELT articles from four different news sites count as 4 publishers, not 1.** This metric is about cross-publisher resonance — a trend picked up by 12 different publishers is more credible than one mentioned 12 times by a single outlet.
 

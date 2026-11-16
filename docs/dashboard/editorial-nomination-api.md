@@ -97,7 +97,7 @@ The endpoint fetches each URL once. It drops a URL only when the URL is provably
 | --- | --- | --- |
 | Kept | The page answers 2xx or 3xx | Kept |
 | Kept, unverified | The page answers 401, 403, 405, 406, 429 or 451, any 5xx, or does not answer in 8 seconds | Kept. Paywalled and rate-limited sources still count as evidence. |
-| Dropped, `malformed` | Not an `http`/`https` URL, no host, or longer than 2,048 characters. The endpoint does not fetch it. | Dropped |
+| Dropped, `malformed` | Not an `http`/`https` URL, no host, longer than 2,048 characters after tracking parameters are stripped, or a Google Vertex grounding-redirect link. The endpoint does not fetch it. | Dropped |
 | Dropped, `url_too_long_or_redirect` | A redirect leads to a URL that is too long or not usable | Dropped |
 | Dropped, `dead_<status>` | The page answers 400, 404, 408, 410 or 414, or another 4xx not listed above. Example: `dead_404`. | Dropped |
 

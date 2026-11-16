@@ -7,7 +7,7 @@
 
 **Scale** — Array of text labels.
 
-**What feeds it** — A separate map table, `MAP_TREND_MACROTRENDS`, which links trends to higher-level theme labels along with a `RELEVANCE_SCORE`. The dashboard returns the labels ordered by relevance, highest first. The map is populated by a separate process — _TODO: confirm whether this is currently populated, and by which workflow_.
+**What feeds it** — A separate map table, `MAP_TREND_MACROTRENDS`, which links trends to higher-level theme labels along with a `RELEVANCE_SCORE`. The dashboard returns the labels ordered by relevance, highest first. No current pipeline step writes this map, so expect the tags to be empty or out of date. Use `RELATED_TRENDS` to group similar trends.
 
 **Where it appears in ATLAS** — Card tags row; filter / facet in the trend list.
 

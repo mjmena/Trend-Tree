@@ -7,7 +7,7 @@
 
 **Scale** — Integer. No upper bound.
 
-**What feeds it** — `COUNT(*)` of rows in `FCT_TREND_SIGNALS` where `TREND_ID` matches. Includes both `LINK_KIND = 'supporting'` (signals identified at promotion time) and `LINK_KIND = 'attributed'` (signals attached after the fact by the lifecycle-attribution agent).
+**What feeds it** — Count of distinct signals in `FCT_TREND_SIGNALS` for this trend. A signal linked twice still counts once, and a trend with no linked signals shows 0. Includes both `LINK_KIND = 'supporting'` (signals identified at promotion time) and `LINK_KIND = 'attributed'` (signals attached after the fact by the lifecycle-attribution agent).
 
 **Cluster ≠ adjacent trends.** "Cluster size" here means the trend's signal pool — the evidence supporting *this* trend — not the count of other trends adjacent to it. For adjacent trends, see [`RELATED_TRENDS`](related-trends.md).
 

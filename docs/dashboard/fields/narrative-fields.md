@@ -19,7 +19,7 @@
 
 **Scale** — Text and arrays, no numeric scoring.
 
-**What feeds it** — Single Claude Sonnet 4.6 agent loop with live cultural grounding (Bluesky / GDELT / Grok live search). The agent reads the supporting signals, fetches additional cultural context, and writes all narrative fields in one pass.
+**What feeds it** — Single Gemini 3.1 Pro agent loop with live cultural grounding (Bluesky / GDELT / Grok live search). The agent reads the supporting signals, fetches additional cultural context, and writes all narrative fields in one pass.
 
 **Refresh** — Unlike names and category, narrative fields are **not** frozen — re-enrichment can update them as a trend evolves.
 

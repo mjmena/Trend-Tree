@@ -55,7 +55,7 @@ Before implementation, each field needs a real **definition**. So every section 
 
 ## 🟡 Content Gap
 
-> **Status:** Definition **locked 2026-06-12** (grill session → `CONTEXT.md` "Content gap"). Mockup still renders on ATLAS; the real version ships as the supply-side leg of the [Opportunity Score](#overall-score).
+> **Status:** Definition **locked 2026-06-12** (grill session → `CONTEXT.md` "Content gap"). Groundwork live since 2026-08-18: each trend's nearest McClatchy articles (`NEAREST_CONTENT`). The gap score itself is not built yet. Mockup still renders on ATLAS; the real version ships as the supply-side leg of the [Opportunity Score](#overall-score).
 
 **At a glance** — How uncovered the trend is in **McClatchy's own** published corpus. The supply-side *component* of white space — a gap nobody is searching for is not an opportunity.
 **Scale** — `gap_factor` 0–1 in the ledger; surfaced alongside the Opportunity Score so the "why" is visible.

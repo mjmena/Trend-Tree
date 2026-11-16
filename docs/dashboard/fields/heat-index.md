@@ -3,7 +3,7 @@
 
 # HEAT_INDEX
 
-**At a glance** — How well-validated the trend is right now, measured **only from evidence actually linked to it**. Reflects how broadly multiple [publishers](../glossary.md) covered it in the last three weeks, how recent the linked activity is, and whether the linked signal flow is accelerating against the trend's own recent baseline. Smoothed hour-to-hour so the number doesn't jump around.
+**At a glance** — How well-validated the trend is right now, measured **only from evidence actually linked to it**. Reflects how broadly multiple [publishers](../glossary.md) covered it in the last three weeks, how recent the linked activity is, and whether the linked signal flow is accelerating against the trend's own recent baseline. Smoothed from one check to the next so the number doesn't jump around.
 
 **Scale** — 0–100. Higher means more broadly validated. The value shown is the **smoothed** value (preferred); when a freshly-promoted trend hasn't been smoothed yet, the raw value is shown as a fallback. Rounded to one decimal place.
 
@@ -21,7 +21,7 @@ status_factor: GROWING +10 | RESURGENT +10 | STABLE 0 | NEW 0 | DECLINING −10 
 
 | Factor | Pts (of 100) | What it measures |
 |---|---:|---|
-| recency | 25 | Time since the newest **linked** signal — half-life 120h; 0 when nothing linked in 14d (no bookkeeping-timestamp fallback) |
+| recency | 25 | Time since the newest **linked** signal — decay constant 120h (loses about half its points every ≈83h, about 3½ days); 0 when nothing linked in 14d (no bookkeeping-timestamp fallback) |
 | velocity | 25 | **Acceleration** of linked signals: `clamp((n7 − baseline) / max(3, baseline), 0, 1)`, where `n7` = linked signals in the last 7 days and `baseline` = linked signals 8–35 days ago ÷ 4 (per week). A steady flow scores ~0; doubling the baseline earns full points. With no baseline (a new trend) it equals `min(1, n7/3)` |
 | **breadth** | **40** | Cross-publisher resonance in the **last 21 days** — log of distinct active publishers × Shannon entropy |
 | confidence | 10 | Promotion-agent confidence (0–1) |
@@ -41,7 +41,7 @@ status_factor: GROWING +10 | RESURGENT +10 | STABLE 0 | NEW 0 | DECLINING −10 
 
 A lopsided distribution (e.g., 8 of 10 signals from one publisher) earns proportionally less — the Shannon entropy multiplier shrinks the score. See the [glossary](../glossary.md) for what counts as a Publisher vs. a Source.
 
-**Smoothing** — One-sided EWMA with α=0.5: each new observation contributes 50%, the prior smoothed value retains 50%. Heat converges to a changed baseline in about 3 cycles (~3 hours given the hourly sweeper).
+**Smoothing** — One-sided EWMA with α=0.5: each new observation contributes 50%, the prior smoothed value retains 50%. Heat converges to a changed baseline in about 3 checks. The lifecycle job runs hourly, but it re-checks an active trend about every 6 hours and a dormant one about once a day, so that is roughly 18 hours for an active trend and a few days for a dormant one.
 
 **Worked example** — A GROWING trend with 3 active publishers (even distribution) in the last 21 days, 4 linked signals in the last 7 days, 4 linked signals 8–35 days ago (baseline 1/wk), a 2-day-old newest linked signal, and confidence 0.6:
 
@@ -66,9 +66,9 @@ The same trend with a steady 4/wk flow for the past month (16 linked signals 8�
 
 **Edge cases**
 
-- `NULL` is possible for trends that have never been evaluated by lifecycle (very rare — first lifecycle eval happens within an hour of promotion).
+- Heat is never blank. Promotion writes a starting heat when it creates the trend, and the dashboard shows `0` if heat is ever missing.
 - Two-cycle retirement: a trend the agent proposes to retire stays at its prior status (and the fixed factor of *that* status) for one more cycle before flipping to `RETIRED`. Heat continues to update during the proposal cycle.
-- Promotion seeds an initial heat from the same v2 formula using candidate-cluster proxies (source families for breadth, entropy assumed even); the first hourly lifecycle eval replaces it with the real per-publisher computation.
+- Promotion seeds an initial heat from the same v2 formula using candidate-cluster proxies (source families for breadth, entropy assumed even); the first lifecycle check, about 2–3 hours after promotion, replaces it with the real per-publisher computation.
 - A trend with zero linked signals in 21 days scores only the confidence term — typically ~5–7. That's by design: it's what makes cold trends visible to retirement sweeps.
 
 **Where it appears in ATLAS** — Card badge color and value; sort key for the trend list. Also feeds the prediction agent as the `inverse_heat = 100 − heat` input and the `heat_now < 70` eligibility gate — **note** that gate was calibrated against the pre-v2 compressed scale and needs re-derivation against the v2 distribution (see `docs/prediction-contract.md`).
