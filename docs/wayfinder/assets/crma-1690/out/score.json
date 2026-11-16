@@ -1,0 +1,43 @@
+{
+  "verdict": "FAIL",
+  "S": 0.8680555555555556,
+  "P": 0.9183673469387755,
+  "R": 0.6004273504273505,
+  "unparseable_rate": 0,
+  "gates": {
+    "precision": {
+      "value": 0.9183673469387755,
+      "bar": 0.8180555555555555,
+      "pass": true
+    },
+    "recall": {
+      "value": 0.6004273504273505,
+      "bar": 0.6180555555555556,
+      "pass": false
+    },
+    "unparseable": {
+      "value": 0,
+      "bar": 0.02,
+      "pass": true
+    }
+  },
+  "links": {
+    "pro-a": 72,
+    "pro-b": 78,
+    "flash": 49
+  },
+  "overlap": {
+    "ab": 65,
+    "ca": 44,
+    "cb": 46
+  },
+  "off_pool": {
+    "pro-a": 0,
+    "pro-b": 0,
+    "flash": 0
+  },
+  "link_type": {
+    "same": 77,
+    "shared": 90
+  }
+}
