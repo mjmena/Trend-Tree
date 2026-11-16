@@ -14,7 +14,7 @@
 - `EVIDENCE` — the full typed pool.
 - `GENERAL_EVIDENCE` — pre-bucketed: `news` / `commerce` entries.
 - `SOCIAL_EVIDENCE` — pre-bucketed: `social` entries.
-- `OTHER_EVIDENCE` — pre-bucketed: everything else (`reference` / `search_volume` / `video`).
+- `OTHER_EVIDENCE` — pre-bucketed: everything else (`reference` / `search_volume` / `video` / `other`).
 
 **Refresh** — Updated whenever the trend is re-enriched.
 

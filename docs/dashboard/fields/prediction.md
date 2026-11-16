@@ -14,7 +14,7 @@ A trend can have low heat and a high prediction score (early-stage, accelerating
 
 ## PREDICTION_SCORE
 
-**Scale** — 0–100. Rounded to one decimal. `NULL` for trends younger than 14 days (not enough history for clean week-over-week math).
+**Scale** — 0–100. Rounded to one decimal. `NULL` for trends younger than 14 days, or when the trend's heat history from one or two weeks ago is missing.
 
 **What feeds it** — Four equal-weighted week-over-week deltas:
 
@@ -22,8 +22,8 @@ A trend can have low heat and a high prediction score (early-stage, accelerating
 |---|---|
 | Velocity acceleration | Is the trend's heat **accelerating** week over week, not just growing? |
 | Inverse heat | Lower current heat = higher score (predictions favor trends that haven't peaked) |
-| Source diversity expansion | Number of distinct publishers picked up the trend in the last 7d vs the prior 7d |
-| Cluster formation | Number of signals linked to the trend in the last 7d vs the prior 7d |
+| Source diversity expansion | Number of publishers that linked to the trend for the first time in the last 7 days |
+| Cluster formation | Number of signals linked to the trend for the first time in the last 7 days |
 
 **How it's computed** — Each input is clamped to its operating range, normalized to [0, 100], then averaged with 25% weight each. See [`prediction-flow.md`](../../prediction-flow.md) for the full formula.
 
@@ -39,12 +39,11 @@ A trend can have low heat and a high prediction score (early-stage, accelerating
 
 1. `HEAT_INDEX < 70` (not already peaked)
 2. Positive velocity acceleration (actually accelerating)
-3. Positive source-diversity delta (publisher breadth expanding)
-4. Positive signal-count delta (cluster forming)
-5. Trend age ≥ 14 days (enough history)
-6. Score in the top 30% of all scored trends today (dynamic percentile)
+3. At least one new publisher **or** at least one new linked signal in the last 7 days (real growth)
+4. Trend age ≥ 14 days (enough history)
+5. Score in the top 30% of all scored trends today (dynamic percentile)
 
-The strict conjunction can legitimately produce **zero eligible trends** on days when the trend population is broadly decelerating — by design, the Predictions Queue stays empty rather than surfacing flat trends.
+On a typical day about 15–20% of scored trends are eligible. The list can shrink on days when most trends are slowing down; by design, the Predictions Queue stays short rather than surfacing flat trends.
 
 **Where it appears in ATLAS** — Prediction badge on each trend card (when `PREDICTION_FLAG` is non-null). `PREDICTION_ELIGIBLE` gates inclusion in the dedicated Predictions Queue route, which is a separate UI surface from ATLAS.
 

@@ -26,7 +26,7 @@ The short answer: **we don't ask AI what's trending. We collect raw data from th
 
 ### 1. Listen — raw signals from real platforms
 
-The pipeline continuously ingests from ~14 sources: Bluesky posts, GDELT news articles, Google Trends curves, Amazon trending products, and more. Some sources run continuously; others run on a schedule. Every article, post, or data point that clears basic quality checks becomes one signal — a single, verifiable row tied to a real URL.
+The pipeline continuously ingests from ~14 sources: Bluesky posts, GDELT news articles, Google Trends curves, Amazon trending products, and more. Some sources run continuously; others run on a schedule. Every article, post, or data point that clears basic quality checks becomes one signal — a single, verifiable row tied to a real URL. TikTok videos arrive once a day through Google search, and an editor can add URLs by nominating a trend from ATLAS.
 
 We also run three discovery agents (Gemini, Grok, ChatGPT) that proactively search the public web every 2 hours for emerging patterns and return URLs. Every URL a discovery agent finds is post-verified for resolvability before it enters the pipeline — we don't ingest an agent's interpretation of a topic, we ingest the underlying content it pointed to.
 
@@ -45,13 +45,13 @@ Candidates that don't pass are automatically rejected without any LLM involvemen
 
 Candidates that pass the gate are handed to a **promotion agent** (Gemini 3.1 Pro), which evaluates the full cluster — source breakdown, distillation confidence, specificity, and whether anything semantically similar already exists as a live trend. The agent decides: promote as a new trend, defer for more evidence, merge into an existing trend, or reject.
 
-**A trend that appears on ATLAS cleared both the structural gate and the LLM judgment layer.** That's what `ORIGINALLY_SURFACED_AT` marks — the moment both passed.
+**A trend that appears on ATLAS cleared both the structural gate and the LLM judgment layer.** That's what `ORIGINALLY_SURFACED_AT` marks — the moment both passed. The one exception is an **editorial trend**: a person nominated it from ATLAS with source URLs, so it skips both, and its `TREND_ORIGIN` reads `EDITORIAL`.
 
 > See the [glossary](glossary.md) for the **candidate** vs **trend** distinction.
 
 ### 3. Profile — AI interpretation on a verified foundation
 
-Once a trend is promoted, an **enrichment agent** (Claude Sonnet 4.6) writes the card: the canonical trend name, category, summary, cultural drivers, seasonal relevance, geographic hotspots, and an evidence pool. The agent starts from the signal cluster that already cleared the gate — it's reasoning about something real, not speculating from scratch. It can also run live searches during profiling to pull in additional grounding, and any URLs it finds are added back to the trend's signal record.
+Once a trend is promoted, an **enrichment agent** (Gemini 3.1 Pro, with a Claude Sonnet 4.6 reviewer that checks the name) writes the card: the canonical trend name, category, summary, cultural drivers, seasonal relevance, geographic hotspots, and an evidence pool. The agent starts from the signal cluster that already cleared the gate — it's reasoning about something real, not speculating from scratch. It can also run live searches during profiling to pull in additional grounding, and any URLs it finds are added back to the trend's signal record.
 
 The narrative fields (summary, cultural drivers, etc.) are AI-written interpretation. The **evidence pool is the paper trail** — the real signals and sources that grounded the agent's analysis. If a claim in the summary looks off, the evidence pool is where to check.
 
@@ -61,7 +61,7 @@ Names and category are **frozen at first enrichment** so cards don't quietly ren
 
 ### 4. Track — how talked about is this right now?
 
-Every hour, a **lifecycle agent** (Gemini 3.8 Flash) re-evaluates every live trend against recent signal flow, publisher breadth, and the trend's own history. Two numbers come out:
+Every hour, a **lifecycle agent** (Gemini 3.8 Flash) re-checks the live trends that are due (about every 6 hours for an active trend, about once a day for a dormant one) against recent signal flow, publisher breadth, and the trend's own history. Two numbers come out:
 
 - **`HEAT_INDEX`** (0–100) — how much is this trend being talked about right now. Smoothed so a single quiet hour doesn't crater a hot trend.
 - **`LIFECYCLE_STATUS`** — the trend's overall trajectory: `NEW` / `GROWING` / `STABLE` / `DECLINING` / `DORMANT` / `RESURGENT` / `RETIRED`.
@@ -74,7 +74,7 @@ Heat reflects current volume and momentum. Lifecycle reflects the shape of the t
 
 Once a day, a **prediction agent** scores every live trend on week-over-week deltas: heat acceleration, base volume, source diversity expansion, and cluster growth. The result is a `PREDICTION_SCORE` (0–100) and a `PREDICTION_FLAG` (`Emerging` / `Watchlist` / `High Potential`).
 
-Prediction is distinct from heat: heat says *how active is this now*, prediction says *is this trend still building or has it peaked*. Trends flagged `Emerging` or `High Potential` appear in the Predictions Queue.
+Prediction is distinct from heat: heat says *how active is this now*, prediction says *is this trend still building or has it peaked*. Trends marked eligible (`PREDICTION_ELIGIBLE`) appear in the Predictions Queue, whatever their flag.
 
 → See [prediction deep dive](fields/prediction.md).
 
@@ -153,7 +153,8 @@ Every score in this table is on a **0–100 scale unless otherwise noted**. The 
 | `ENRICHED_AT` | When the current enrichment payload was written | timestamp | Enrichment agent |
 | `LAST_LIFECYCLE_EVAL_AT` | When lifecycle last evaluated this trend | timestamp | Lifecycle agent (hourly) |
 | `RETIREMENT_REASON` | Why a `RETIRED` trend was retired | text | Lifecycle agent |
-| `TREND_SOURCE` | Discovery vs distillation provenance for the trend | enum | Promotion agent |
+| `TREND_SOURCE` | Internal constant (`fct_trends`); ignore it and read `TREND_ORIGIN`. | string | — |
+| `TREND_ORIGIN` | How the trend first came to exist: `DISCOVERED` or `EDITORIAL`. Never blank; never changes. | enum | Promotion ledger |
 
 ### 🟡 Migrating from the Insights Agent backend
 
