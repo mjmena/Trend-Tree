@@ -155,3 +155,73 @@ def test_promotion_replay_recovers_the_committed_candidate_without_recreating_a_
         "target_trend_id": "committed-trend",
         "status": "ok",
     }
+
+
+def test_expired_worker_cannot_prepare_or_promote_even_before_another_worker_claims(tmp_path):
+    import pytest
+
+    from editorial_ingest.handler import Judgment, TaskError, apply_promotion
+
+    database = ProcedureDatabase(tmp_path / "receipts.db")
+    store = SnowflakeNominationStore(database)
+    task = {"nomination_id": "nom-1", "urls": [], "brief": "A topic", "nominated_by": "editor"}
+    store.accept(task, [])
+    store.claim("nom-1", "expired")
+    store.save_plan("nom-1", "expired", {"topic": "A topic"})
+    database.advance(961)
+    with pytest.raises(ValueError, match="ownership lost"):
+        store.prepare("nom-1", "expired", [])
+    with pytest.raises(TaskError, match="ownership lost"):
+        apply_promotion(database, task, "A topic", Judgment(), {}, owner="expired")
+    assert store.reconcile_missing("nom-1").status == "failed"
+
+
+def test_failed_revival_keeps_committed_target_and_recovers_on_retry(tmp_path):
+    database = ProcedureDatabase(tmp_path / "receipts.db")
+    with database.connect() as conn:
+        conn.execute("""INSERT INTO STG_TREND_CANDIDATES
+                     (CANDIDATE_ID, TOPIC, PROMOTED_AT, PROMOTED_TO, DEDUP_OF_TREND_ID)
+                     VALUES ('nom-1', 'A topic', CURRENT_TIMESTAMP,
+                             'existing-trend', 'existing-trend')""")
+    store = SnowflakeNominationStore(database)
+    store.accept({"nomination_id": "nom-1", "urls": []}, [])
+    store.claim("nom-1", "worker")
+    interrupted = store.attempt_failed("nom-1", "worker")
+    assert interrupted.status == "pending"
+    assert interrupted.trend_id == "existing-trend"
+    assert "was updated" in interrupted.error["message"]
+    recovered = store.reconcile_missing("nom-1")
+    assert (recovered.status, recovered.trend_id, recovered.error) == (
+        "merged",
+        "existing-trend",
+        None,
+    )
+
+
+def test_database_connections_are_reused_per_thread_without_blocking_other_threads():
+    from threading import Barrier, get_ident
+
+    from editorial_ingest.outcomes import ThreadLocalSnowflakeClient
+
+    entered = Barrier(2)
+
+    class Connection:
+        def __init__(self):
+            self.owner = get_ident()
+
+        def query(self, sql, params=None):
+            assert get_ident() == self.owner
+            if sql == "first":
+                entered.wait(timeout=5)
+            return [{"connection": id(self)}]
+
+    client = ThreadLocalSnowflakeClient(Connection)
+
+    def read_twice(_):
+        return client.query("first"), client.query("second")
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(read_twice, range(2)))
+    assert results[0][0] == results[0][1]
+    assert results[1][0] == results[1][1]
+    assert results[0][0] != results[1][0]

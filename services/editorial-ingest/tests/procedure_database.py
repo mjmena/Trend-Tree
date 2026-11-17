@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 SQL_PATH = Path(__file__).resolve().parents[3] / "sql" / "stg_editorial_nominations.sql"
@@ -56,6 +57,7 @@ class Session:
 class ProcedureDatabase:
     def __init__(self, path):
         self.path = path
+        self.now = datetime.now(UTC)
         with self.connect() as conn:
             conn.executescript("""
                 CREATE TABLE STG_EDITORIAL_NOMINATION_MUTEX (LOCK_ID INTEGER, REVISION INTEGER);
@@ -86,6 +88,7 @@ class ProcedureDatabase:
 
     def connect(self):
         conn = sqlite3.connect(self.path, isolation_level=None, timeout=10)
+        conn.create_function("CURRENT_TIMESTAMP", 0, lambda: self.now.strftime("%Y-%m-%d %H:%M:%S"))
         conn.create_function("PARSE_JSON", 1, lambda value: value)
         conn.create_function(
             "ARRAY_SIZE", 1, lambda value: len(json.loads(value)) if value else None
@@ -94,6 +97,9 @@ class ProcedureDatabase:
             "OBJECT_KEYS", 1, lambda value: json.dumps(list(json.loads(value))) if value else None
         )
         return conn
+
+    def advance(self, seconds):
+        self.now += timedelta(seconds=seconds)
 
     def query(self, sql, params=None):
         namespace = {}
