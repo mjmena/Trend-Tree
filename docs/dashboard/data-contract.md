@@ -283,7 +283,7 @@ does not backfill earlier nominations from signal metadata.
 | `SIGNAL_ID` | VARCHAR | no | The canonical URL retained at acceptance. Uses the existing signal identity; the signal need not exist in `FCT_SIGNALS` yet. |
 | `STATUS` | VARCHAR | no | Current nomination outcome: `pending`, `created`, `merged`, `resurgent`, or `failed`. Applies to the nomination, not to an individual URL's ingestion state. |
 | `TREND_ID` | VARCHAR | yes | The nomination's known target, or SQL `NULL` while unknown. A failed nomination can retain its target after partial completion; a target alone does not prove success. |
-| `ACCEPTED_AT` | TIMESTAMP_NTZ | no | Original receipt creation time. Retries and result updates leave it unchanged. |
+| `ACCEPTED_AT` | TIMESTAMP_LTZ | no | Original receipt creation time. Retries and result updates leave it unchanged. |
 
 Read `MCC_PRESENTATION.TREND_AGENT.V_EDITORIAL_NOMINATION_SIGNALS` directly;
 it reflects the stored receipt without the dashboard's dynamic-table refresh lag.
