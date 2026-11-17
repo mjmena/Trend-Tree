@@ -55,10 +55,19 @@ class Settings:
     snowflake: SnowflakeSettings
     gemini_api_key: str
     dispatcher_url: str
+    preview_api_key: str | None = None
 
-    def validate_for_server(self) -> None:
+    def validate_api_keys(self) -> None:
         if not self.api_key.strip():
             raise ConfigError("EDITORIAL_API_KEY is empty: every caller would be refused")
+        if self.preview_api_key is not None:
+            if not self.preview_api_key.strip():
+                raise ConfigError("EDITORIAL_PREVIEW_API_KEY is empty")
+            if self.preview_api_key == self.api_key:
+                raise ConfigError("EDITORIAL_PREVIEW_API_KEY must differ from EDITORIAL_API_KEY")
+
+    def validate_for_server(self) -> None:
+        self.validate_api_keys()
         if not self.service_url.startswith("https://"):
             raise ConfigError("EDITORIAL_SERVICE_URL must be the https:// base service URL")
         if not self.gemini_api_key.strip():
@@ -92,4 +101,5 @@ def settings_from_env(env: Mapping[str, str] | None = None) -> Settings:
         ),
         gemini_api_key=env.get("EDITORIAL_GEMINI_API_KEY", ""),
         dispatcher_url=env.get("EDITORIAL_DISPATCHER_URL", DEFAULT_DISPATCHER_URL),
+        preview_api_key=env.get("EDITORIAL_PREVIEW_API_KEY"),
     )
