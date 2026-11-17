@@ -103,6 +103,11 @@ def create_app(
         )
     )
 
+    def require_production_key(request: Request) -> None:
+        given = request.headers.get("x-api-key", "").encode()
+        if not hmac.compare_digest(given, expected_key):
+            raise HTTPException(status_code=401, detail="missing or wrong X-Api-Key")
+
     async def reconcile(receipt: Receipt, deadline: float) -> Receipt:
         if not receipt.terminal and not receipt.queue_confirmed_at:
             await _before(deadline, queue.enqueue, receipt.nomination_id, receipt.request)
@@ -121,9 +126,7 @@ def create_app(
     async def accept(request: Request) -> JSONResponse:
         deadline = monotonic() + wait_seconds
         # The key first, before reading or parsing anything.
-        given = request.headers.get("x-api-key", "").encode()
-        if not hmac.compare_digest(given, expected_key):
-            raise HTTPException(status_code=401, detail="missing or wrong X-Api-Key")
+        require_production_key(request)
 
         try:
             async with asyncio.timeout(max(0, deadline - monotonic())):
@@ -176,9 +179,7 @@ def create_app(
     @app.get("/nominations/{nomination_id}")
     async def readback(nomination_id: str, request: Request) -> JSONResponse:
         deadline = monotonic() + readback_seconds
-        given = request.headers.get("x-api-key", "").encode()
-        if not hmac.compare_digest(given, expected_key):
-            raise HTTPException(status_code=401, detail="missing or wrong X-Api-Key")
+        require_production_key(request)
         try:
             receipt = await _before(deadline, store.get, nomination_id)
         except Exception as err:
