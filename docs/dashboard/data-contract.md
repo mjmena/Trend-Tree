@@ -270,7 +270,7 @@ ORDER BY SCORE DESC;
 
 ## V_EDITORIAL_NOMINATION_SIGNALS
 
-**Awaiting deployment.** This secure view exposes one row per accepted
+**Deployed 2026-11-17.** This secure view exposes one row per accepted
 `(NOMINATION_ID, SIGNAL_ID)` association from the durable nomination receipt.
 Repeated canonical URLs within a nomination collapse to one row. Two nominations
 that supply the same URL retain separate rows, even if they target the same trend.
@@ -302,10 +302,10 @@ retagged, and merging a nomination leaves the target's `TREND_ORIGIN` unchanged.
 The view exposes only the five columns above. The private request, editorial
 brief, `nominated_by`, dropped URLs and error details are absent. Its owner needs
 access to the receipt in `MCC_RAW.MARKETING_DEV`; ATLAS's `TH_APIROLE` receives
-`SELECT` on the view, without a grant on the receipt. Apply the receipt DDL first,
-then the view DDL with a role permitted to manage grants. Verify the view's
-`MARKETING_ENGINEER` owner can read the receipt and test access as `TH_APIROLE`
-before declaring this surface available.
+`SELECT` on the view, without a grant on the receipt. The deployed owner is
+`MARKETING_ENGINEER`; its view reads and the role grants/inheritance were checked
+in the [production release](../runbooks/editorial-nomination-outcomes-2026-11-17.md).
+Direct ATLAS-client verification remains an integration handoff.
 
 ---
 

@@ -1,6 +1,7 @@
 # Editorial nomination outcomes release
 
-**Status:** Awaiting deployment. This runbook releases the
+**Status:** Deployed 2026-11-17; see the [release record](editorial-nomination-outcomes-2026-11-17.md).
+This runbook releases the
 [CRMA-1719 outcome contract](../prd/editorial-nomination-outcomes.md).
 Approval to merge the integration PR is separate from authorization to execute
 this release, change production Snowflake objects, provision credentials or
