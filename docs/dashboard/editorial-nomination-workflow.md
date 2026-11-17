@@ -3,7 +3,7 @@
 
 **Audience:** Jason Smith and the ATLAS product team.
 
-**Draft for Martin to review and send. Not published or sent.** This draft describes the settled outcome extension, **awaiting deployment**. The original endpoint returns an immediate acceptance response; the richer outcome and preview behavior below requires the separate backend release. **Last updated:** 2026-11-17.
+**Draft for Martin to review and send. Not published or sent.** The outcome/readback and preview backend described below is **live as of 2026-11-17**. ATLAS owns its form, result display and dev credential setup. **Last updated:** 2026-11-17.
 
 **Purpose:** Show how a person's nomination moves from the ATLAS form into Trend Tree, what ATLAS can tell them, and where the resulting trend sits next to discovered trends. Developers should use the [API contract](editorial-nomination-api.md).
 
@@ -83,6 +83,6 @@ Preview creates no production nomination, signal, candidate, promotion or reviva
 
 ## Release and handoff
 
-The response contract and preview decisions are settled in [CRMA-1719](https://mcclatchy.atlassian.net/browse/CRMA-1719) and the [outcome specification](../prd/editorial-nomination-outcomes.md). Cloud Run deployment, Snowflake changes, preview credentials and live verification remain release work; merging the repository changes does not make these features live.
+The response contract and preview decisions are settled in [CRMA-1719](https://mcclatchy.atlassian.net/browse/CRMA-1719) and the [outcome specification](../prd/editorial-nomination-outcomes.md). The [production release record](../runbooks/editorial-nomination-outcomes-2026-11-17.md) covers the deployed Cloud Run revision, Snowflake changes and live checks. The preview credential exists in Trend Tree Secret Manager; an authorized ATLAS operator still needs to install it in ATLAS dev.
 
 Martin reviews this draft and sends or publishes it for Jason. [CRMA-1721](https://mcclatchy.atlassian.net/browse/CRMA-1721) stays open for that human handoff: record the delivered document link and Jason's reply there. This draft does not claim that delivery has happened.

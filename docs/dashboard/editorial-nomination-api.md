@@ -3,7 +3,7 @@
 
 **Audience:** The engineer connecting the ATLAS nomination form to Trend Tree. ATLAS calls these routes from its backend.
 
-**Status:** The outcome/readback and preview extension is **awaiting deployment**. The original endpoint has been live since 2026-10-26; it returns an immediate `202` with only `nomination_id` and `dropped_urls`. The contract below becomes available after the separate [Cloud Run and Snowflake release](../runbooks/editorial-nomination-outcomes-release.md) is verified. A repository merge does not deploy Cloud Run.
+**Status:** The outcome/readback and preview extension is **live as of 2026-11-17**. See the [production release record](../runbooks/editorial-nomination-outcomes-2026-11-17.md) for the serving revision and verification. Submission waits up to one minute; longer processing returns `pending` and completes through readback. ATLAS dev still needs its preview-only credential installed by its operator.
 
 **Source of truth:** [the outcome contract](../prd/editorial-nomination-outcomes.md), [service routes](../../services/editorial-ingest/editorial_ingest/app.py), [response snapshot](../../services/editorial-ingest/editorial_ingest/outcomes.py), and [URL validation](../../services/editorial-ingest/editorial_ingest/urls.py). The [workflow draft](editorial-nomination-workflow.md) explains the product behavior. **Last updated:** 2026-11-17.
 

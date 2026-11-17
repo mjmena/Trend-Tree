@@ -2,7 +2,7 @@
 
 ## Nomination outcomes and readback
 
-**Awaiting deployment.** `POST /nominations` persists the first accepted request
+**Deployed 2026-11-17.** `POST /nominations` persists the first accepted request
 and waits up to 60 seconds from request start, including URL checks and queue
 handoff. A committed `created`, `merged`, `resurgent`, or `failed` outcome returns
 HTTP 200. Otherwise HTTP 202 returns `status: "pending"`, `Retry-After: 5`, and
@@ -47,14 +47,15 @@ paused and old workers drained before deploying this code. Follow the
 for migration order, preview secrets/IAM, dark deployment and live verification.
 Verify the candidate revision's 200/202 timing, polling and committed rows before
 promoting traffic; local tests and the health probe do not establish live
-delivery. No deployment or production nomination is performed by this change.
+delivery. The production release record identifies the live nominations used for verification.
 
 ## Development preview
 
-**Awaiting deployment.** The preview route and credential described here are part
+**Deployed 2026-11-17.** The preview route and credential described here are part
 of [CRMA-1725](https://mcclatchy.atlassian.net/browse/CRMA-1725), within the
 [nomination outcomes contract](../../docs/prd/editorial-nomination-outcomes.md).
-Local tests do not establish that the live service supports this route.
+The [production release record](../../docs/runbooks/editorial-nomination-outcomes-2026-11-17.md)
+records live preview isolation and outcome verification.
 
 `POST /nominations/preview` accepts the same four fields as a nomination:
 `nomination_id`, `brief`, `urls`, and `nominated_by`. Send `X-Api-Key` using the
@@ -128,8 +129,8 @@ Before deploying the `deploy.env` secret binding:
    A production submission smoke test is a separate, explicitly authorized
    write; preview cannot prove the production outcome contract.
 
-Implementation work does not create secrets, grant IAM, deploy revisions, or
-run live model calls. Carry these release steps into the integration PR.
+The production backend and preview secret are deployed. ATLAS dev credential
+installation remains a separate operator handoff; see the production release record.
 
 ## Local verification
 
