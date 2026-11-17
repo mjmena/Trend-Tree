@@ -5,6 +5,7 @@ description = "Editorial trend ingest endpoint (CRMA-1660): ATLAS nominates a tr
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",
+    "anyio>=4.1",
     "uvicorn[standard]>=0.34",
     "pydantic>=2.9",
     "google-auth>=2.35",

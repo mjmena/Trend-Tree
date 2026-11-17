@@ -1,10 +1,91 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime
 
+import pytest
 from procedure_database import ProcedureDatabase
 
 from editorial_ingest.outcomes import SnowflakeNominationStore
+
+
+@pytest.mark.parametrize("encoded", [False, True])
+def test_read_deserializes_connector_variants_timestamps_and_partial_failure(encoded):
+    import json
+
+    def variant(value):
+        return json.dumps(value) if encoded else value
+
+    class Connector:
+        def query(self, sql, params):
+            return [
+                {
+                    "NOMINATION_ID": "nom-1",
+                    "REQUEST": variant({"nomination_id": "nom-1", "brief": "private", "urls": []}),
+                    "DROPPED_URLS": variant(
+                        [{"url": "https://example.com/dead", "reason": "dead_410"}]
+                    ),
+                    "STATUS": "failed",
+                    "RESULT": variant(
+                        {
+                            "trend_id": "existing-trend",
+                            "error": {
+                                "code": "processing_incomplete",
+                                "message": "Processing incomplete.",
+                            },
+                        }
+                    ),
+                    "CREATED_AT": datetime(2026, 11, 17, 12, tzinfo=UTC),
+                    "UPDATED_AT": datetime(2026, 11, 17, 13, tzinfo=UTC),
+                    "OWNER": None,
+                    "LEASE_UNTIL": None,
+                    "QUEUE_CONFIRMED_AT": datetime(2026, 11, 17, 12, tzinfo=UTC),
+                    "PLAN": variant({"topic": "Private saved topic"}),
+                }
+            ]
+
+    receipt = SnowflakeNominationStore(Connector()).get("nom-1")
+    assert receipt.snapshot() == {
+        "nomination_id": "nom-1",
+        "status": "failed",
+        "trend_id": "existing-trend",
+        "dropped_urls": [{"url": "https://example.com/dead", "reason": "dead_410"}],
+        "status_url": "/nominations/nom-1",
+        "error": {"code": "processing_incomplete", "message": "Processing incomplete."},
+    }
+    assert receipt.created_at == receipt.queue_confirmed_at == "2026-11-17 12:00:00+00:00"
+    assert receipt.updated_at == "2026-11-17 13:00:00+00:00"
+    assert receipt.owner is receipt.lease_until is None
+    assert receipt.plan == {"topic": "Private saved topic"}
+    assert receipt.request == {"nomination_id": "nom-1", "brief": "private", "urls": []}
+
+
+def test_receipt_read_works_on_a_read_only_database_and_preserves_private_fields(tmp_path):
+    database = ProcedureDatabase(tmp_path / "receipts.db")
+    store = SnowflakeNominationStore(database)
+    payload = {"nomination_id": "nom-1", "brief": "First content", "urls": []}
+    dropped = [{"url": "https://example.com/dead", "reason": "dead_410"}]
+    store.accept(payload, dropped)
+    store.mark_queued("nom-1")
+    store.claim("nom-1", "worker")
+    planned = store.save_plan("nom-1", "worker", {"topic": "The saved topic"})
+
+    class ReadOnlyDatabase:
+        def query(self, sql, params):
+            with database.connect() as conn:
+                conn.execute("PRAGMA query_only = ON")
+                cursor = conn.execute(
+                    sql.replace("MCC_RAW.MARKETING_DEV.", "").replace("%(id)s", ":id"),
+                    params,
+                )
+                return [
+                    dict(zip([c[0] for c in cursor.description], row, strict=True))
+                    for row in cursor
+                ]
+
+    reader = SnowflakeNominationStore(ReadOnlyDatabase())
+    assert reader.get("nom-1") == planned
+    assert reader.get("unknown") is None
 
 
 def test_concurrent_acceptance_keeps_one_original_request_and_dropped_urls(tmp_path):

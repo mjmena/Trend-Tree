@@ -102,6 +102,16 @@ class ProcedureDatabase:
         self.now += timedelta(seconds=seconds)
 
     def query(self, sql, params=None):
+        if sql.lstrip().upper().startswith("SELECT"):
+            with self.connect() as conn:
+                cursor = conn.execute(
+                    sql.replace("MCC_RAW.MARKETING_DEV.", "").replace("%(id)s", ":id"),
+                    params or {},
+                )
+                return [
+                    dict(zip([c[0] for c in cursor.description], row, strict=True))
+                    for row in cursor
+                ]
         namespace = {}
         if "PROC_PROMOTION_APPLY" in sql:
             path = SQL_PATH.with_name("proc_promotion_apply.sql")
