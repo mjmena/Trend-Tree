@@ -270,6 +270,8 @@ ORDER BY SCORE DESC;
 
 ## V_EDITORIAL_NOMINATION_SIGNALS
 
+For submission, polling and preview behavior, see the [editorial nomination API](editorial-nomination-api.md). The [workflow guide](editorial-nomination-workflow.md) explains the user-visible outcomes and origin rules.
+
 **Deployed 2026-11-17.** This secure view exposes one row per accepted
 `(NOMINATION_ID, SIGNAL_ID)` association from the durable nomination receipt.
 Repeated canonical URLs within a nomination collapse to one row. Two nominations

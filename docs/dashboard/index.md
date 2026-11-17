@@ -5,7 +5,7 @@
 **Audience:** Insights Agent users (strategy, content, leadership).
 **Purpose:** Explain every field shown on an ATLAS trend card — what it measures, what scale it's on, where the number comes from, and how to read it.
 **Source of truth:** This page (hub). Mirrored from the canonical Markdown in the [Trend-Tree repo](../../docs/dashboard/).
-**Last updated:** 2026-05-26
+**Last updated:** 2026-11-17
 
 ATLAS is the main trend dashboard in the Insights Agent. Each row on ATLAS is one **trend** — a cultural pattern our pipeline identified from public signals, named, categorized, and tracked over time. The fields on each card describe how the trend is performing, what it's about, where it comes from, and how likely it is to grow.
 
@@ -173,6 +173,8 @@ Every score in this table is on a **0–100 scale unless otherwise noted**. The 
 
 ## Further reading
 
+- **[Editorial nomination workflow](editorial-nomination-workflow.md)** — what ATLAS can tell a person after submission, how polling works, and how nominations relate to a trend's origin.
+- **[Editorial nomination API](editorial-nomination-api.md)** — the live submission, status and development-preview contract.
 - **[Field deep dives](fields/)** — one page per field on the card.
 - **[Where the signals come from](sources.md)** — direct platform sources, discovery agents, and on-demand agent search tools.
 - **[🟡 Migrating fields](migrating.md)** — Insights Agent backend fields being moved into McClatchy's pipeline.

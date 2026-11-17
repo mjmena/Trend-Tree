@@ -5,7 +5,7 @@
 
 **Status:** The outcome/readback and preview extension is **live as of 2026-11-17**. See the [production release record](../runbooks/editorial-nomination-outcomes-2026-11-17.md) for the serving revision and verification. Submission waits up to one minute; longer processing returns `pending` and completes through readback. ATLAS dev still needs its preview-only credential installed by its operator.
 
-**Source of truth:** [the outcome contract](../prd/editorial-nomination-outcomes.md), [service routes](../../services/editorial-ingest/editorial_ingest/app.py), [response snapshot](../../services/editorial-ingest/editorial_ingest/outcomes.py), and [URL validation](../../services/editorial-ingest/editorial_ingest/urls.py). The [workflow draft](editorial-nomination-workflow.md) explains the product behavior. **Last updated:** 2026-11-17.
+**Source of truth:** [the outcome contract](../prd/editorial-nomination-outcomes.md), [service routes](../../services/editorial-ingest/editorial_ingest/app.py), [response snapshot](../../services/editorial-ingest/editorial_ingest/outcomes.py), and [URL validation](../../services/editorial-ingest/editorial_ingest/urls.py). The [workflow guide](editorial-nomination-workflow.md) explains the product behavior. **Last updated:** 2026-11-17.
 
 ## What submission means
 
@@ -24,6 +24,8 @@ Base URL: `https://trend-tree-editorial-ingest-tu6gxkvema-uk.a.run.app`
 | `POST /nominations/preview` | Preview-only or production `X-Api-Key` | Synchronous provisional evaluation; no production submission or polling receipt. |
 
 POST bodies use `Content-Type: application/json` and have a 64 KB cap. Keys stay in the ATLAS backend, never in a browser.
+
+**One minute bounds the initial response, not completion.** In the 2026-11-17 production check with the queue running normally, POST returned `202 pending` in 60.149 seconds and readback observed `merged` at 96.852 seconds from submission. This is one measured run, not a completion guarantee. Keep polling after `202`; allow transport headroom beyond the 60-second server budget.
 
 - The production key is stored as `atlas-trend-tree-api-key` in Secret Manager, project `mcc-crm-automations`. ATLAS prod (`insights-agent-504817`) holds its copy.
 - ATLAS dev (`insights-agent-dev-504817`) receives only the separate `atlas-trend-tree-preview-api-key`. It cannot submit production work or read nomination history. Both production routes reject it with `401`.
