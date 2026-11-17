@@ -4,10 +4,12 @@ no warehouse, no Gemini."""
 from __future__ import annotations
 
 import json
+import tempfile
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
+from procedure_database import ProcedureDatabase
 from tt_services_lib.gemini import LLMResponse
 
 from editorial_ingest.tasks import EnqueueError
@@ -55,15 +57,43 @@ class RoutingFakeSnowflake:
     neighbors: list[dict[str, Any]] = field(default_factory=list)
     calls: list[tuple[str, Mapping[str, Any] | None]] = field(default_factory=list)
 
+    def __post_init__(self):
+        self._tempdir = tempfile.TemporaryDirectory()
+        self.database = ProcedureDatabase(self._tempdir.name + "/receipts.db")
+        if self.candidate:
+            with self.database.connect() as conn:
+                conn.execute(
+                    """INSERT INTO STG_TREND_CANDIDATES
+                             (CANDIDATE_ID, TOPIC, PROMOTED_AT, PROMOTED_TO, DEDUP_OF_TREND_ID)
+                             VALUES (?, ?, ?, ?, ?)""",
+                    (
+                        "nom-123",
+                        self.candidate["TOPIC"],
+                        self.candidate.get("PROMOTED_AT"),
+                        self.candidate.get("PROMOTED_TO"),
+                        self.candidate.get("DEDUP_OF_TREND_ID"),
+                    ),
+                )
+
     def query(self, sql: str, params: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
         self.calls.append((sql, params))
         upper = sql.upper()
+        if "PROC_EDITORIAL_NOMINATION" in upper:
+            return self.database.query(sql, params)
         if "PROC_PROMOTION_APPLY" in upper:
             decision = json.loads(params["decisions"])[0]
+            target = decision.get("target_trend_id") or self.trend_id
+            with self.database.connect() as conn:
+                conn.execute(
+                    """UPDATE STG_TREND_CANDIDATES
+                             SET PROMOTED_AT = CURRENT_TIMESTAMP, PROMOTED_TO = ?,
+                                 DEDUP_OF_TREND_ID = ? WHERE CANDIDATE_ID = ?""",
+                    (target, decision.get("target_trend_id"), decision["candidate_id"]),
+                )
             result = {
                 "candidate_id": decision["candidate_id"],
                 "decision": decision["decision"],
-                "target_trend_id": self.trend_id,
+                "target_trend_id": target,
                 "status": "ok",
             }
             return [{"PROC_PROMOTION_APPLY": json.dumps({"results": [result]})}]
@@ -74,7 +104,16 @@ class RoutingFakeSnowflake:
         if "DIM_LLM_PROMPT" in upper:
             return [{"TEMPLATE": "Write the trend topic.", "VERSION": 1}]
         if "FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES" in upper:
-            return [dict(self.candidate)] if self.candidate else []
+            with self.database.connect() as conn:
+                cursor = conn.execute(
+                    """SELECT TOPIC, PROMOTED_AT, PROMOTED_TO, DEDUP_OF_TREND_ID
+                                     FROM STG_TREND_CANDIDATES WHERE CANDIDATE_ID = ?""",
+                    [params["id"]],
+                )
+                return [
+                    dict(zip([c[0] for c in cursor.description], row, strict=True))
+                    for row in cursor
+                ]
         raise AssertionError(f"unexpected query: {sql[:160]}")
 
     def execute(self, sql: str, params: Mapping[str, Any] | None = None) -> int:

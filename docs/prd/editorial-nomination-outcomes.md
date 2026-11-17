@@ -106,6 +106,29 @@ overlap protection, one-minute pending fallback, and preview isolation. Tests at
 the persistence adapter's public operations must exercise its concurrency and
 transaction contract; do not rely solely on SQL-string matching.
 
+The public persistence adapter is `SnowflakeNominationStore` in
+`editorial_ingest/outcomes.py`. Its operations are `accept`, `get`, `mark_queued`,
+`claim`, `save_plan`, `prepare`, `complete`, `attempt_failed`, and
+`reconcile_missing`. `Receipt.snapshot()` exposes only the response contract;
+the request, saved evaluation, owner, lease, and queue acknowledgement stay
+private. These operations extend the agreed external-dependency test seam:
+they verify first-content acceptance, ownership, recovery, and transaction
+rollback. They do not prove Cloud Tasks delivery or model/provider behavior.
+
+Each mutation runs in one scoped Snowflake procedure transaction and takes an
+UPDATE lock on a preinitialized singleton mutex before reading the receipt.
+The shared promotion procedure takes the same lock inside its own transaction
+and checks the editorial owner before changing domain tables. A 960-second
+lease bounds a delivery; an expired or replaced owner cannot write. Committed
+candidate recovery happens under that lock. A retry retains its saved topic
+and judgment. `reconcile_missing` must only be called after confirmed queue
+absence; an active claim remains pending. Native Snowflake concurrency checks
+remain necessary in addition to the local transactional procedure harness.
+
+This follows Snowflake's documented transaction lock behavior; standard-table
+PK constraints are not used as uniqueness enforcement. See
+[Snowflake transactions](https://docs.snowflake.com/en/sql-reference/transactions).
+
 Update the API contract, data contract and Jason's workflow document from this
 behavior. Label the new contract as awaiting deployment until verified live.
 The workflow document stays a draft for Martin to publish/send; sending and
