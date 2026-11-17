@@ -108,7 +108,9 @@ The pipeline knows about ~14 sources today; several are paused, retired, or on-d
 ### `editorial`
 
 - **What it is** — URLs a person attaches when nominating a trend from ATLAS (live since 2026-10-26). The endpoint fetches each URL once and drops only dead or malformed ones.
-- **Provides** — One signal per kept URL. The nomination either becomes a new trend (`TREND_ORIGIN = 'EDITORIAL'`) or, when it describes a trend that already exists, adds its signals to that trend.
+- **Provides** — Each kept canonical URL is supplied as evidence. A new signal uses source `editorial`; an existing signal keeps its original source and metadata. The nomination can create a trend (`TREND_ORIGIN = 'EDITORIAL'`), merge into an existing trend, or revive a retired match. Merges and revivals leave the target's origin unchanged.
+- **Outcome** — Since 2026-11-17, submission waits up to one minute for a committed result. It returns `pending` if work takes longer; ATLAS polls for `created`, `merged`, `resurgent` or `failed`. A successful outcome can precede signal linking, enrichment and dashboard visibility. See the [workflow guide](editorial-nomination-workflow.md) and [API contract](editorial-nomination-api.md).
+- **Provenance** — [V_EDITORIAL_NOMINATION_SIGNALS](data-contract.md#v_editorial_nomination_signals) records every accepted nomination-to-URL association, including repeated URLs across nominations, without duplicating or retagging a signal. It records acceptance, not completed signal processing.
 - **Cadence** — Not scheduled; arrives when someone nominates.
 - **Publisher** — The URL's own domain.
 - **Reliability** — Human-selected. A nomination skips the structural gate and the promotion judgment.
