@@ -1,24 +1,7 @@
-"""The task handler's work: one accepted nomination -> one editorial trend
-(CRMA-1668, spec "The task handler").
+"""Evaluate a claimed nomination, apply it once, and persist its public outcome.
 
-    1. topic      a tool-free Gemini call writes the trend topic
-    2. sameness   a tool-free Gemini call judges the topic against promotion's
-                  neighbor pool (CRMA-1671); an empty pool skips the call
-    3. signals    MERGE_EXTERNAL_SIGNALS, source name `editorial`
-    4. candidate  one STG_TREND_CANDIDATES row, VERDICT NULL
-    5. promotion  PROC_PROMOTION_APPLY, decision_category EDITORIAL;
-                  no match -> PROMOTE_NEW, then a dispatcher POST;
-                  match -> MERGE_INTO_EXISTING, no dispatch, and a RETIRED
-                  target also gets a RESURGENT lifecycle row
-
-Nothing is written until steps 1 and 2 succeed. Any failure raises, the route
-answers non-2xx and Cloud Tasks retries; there is no retry loop here.
-
-Resume: the candidate row (CANDIDATE_ID = nomination_id) is the checkpoint.
-PROMOTED_AT set -> done (after re-asserting a merge's RESURGENT row).
-Present but unpromoted -> skip 3 and 4, go to 5.
-A ledger row is not the test: the proc logs errored decisions too, and logs
-after its COMMIT.
+The receipt owns retries; committed candidate fields establish successful
+promotion. Every domain write checks the same ownership fence in Snowflake.
 """
 
 from __future__ import annotations
@@ -27,12 +10,15 @@ import json
 import logging
 import urllib.request
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from typing import Any
+from uuid import uuid4
 
 from tt_services_lib.gemini import PredictionLLM
 from tt_services_lib.snowflake_client import SnowflakeClient
+
+from .outcomes import SnowflakeNominationStore
 
 log = logging.getLogger(__name__)
 
@@ -57,6 +43,10 @@ Dispatch = Callable[[str], None]
 
 class TaskError(RuntimeError):
     """A step failed; the task answers non-2xx and Cloud Tasks retries."""
+
+
+class TaskBusy(TaskError):
+    """Another delivery owns this nomination; preserve the queue retry."""
 
 
 @dataclass(frozen=True)
@@ -164,34 +154,66 @@ def handle_nomination(
     llm: PredictionLLM,
     judge_llm: PredictionLLM,
     dispatch: Dispatch,
+    store: SnowflakeNominationStore | None = None,
 ) -> dict[str, Any]:
+    store = store or SnowflakeNominationStore(snowflake)
     nid = task["nomination_id"]
-    candidate = read_candidate(snowflake, nid)
-    if candidate and candidate.get("PROMOTED_AT"):
-        if candidate.get("DEDUP_OF_TREND_ID"):
-            # The proc committed but the task died before the RESURGENT row.
-            mark_resurgent(snowflake, nid, candidate["DEDUP_OF_TREND_ID"])
-        # A crash between the proc commit and the dispatcher POST is covered by promotion's daily re-dispatch (CRMA-1032), not here.
-        return {"status": "done", "trend_id": candidate.get("PROMOTED_TO")}
+    # A queued task can outlive the service revision that accepted it.
+    receipt = store.get(nid) or store.accept(task, [])
+    if receipt.terminal:
+        return receipt.snapshot()
+    owner = uuid4().hex
+    receipt = store.claim(nid, owner)
+    if receipt is None:
+        raise TaskBusy("nomination is already processing")
+    if receipt.terminal:
+        return receipt.snapshot()
+    task = receipt.request
+    try:
+        candidate = read_candidate(snowflake, nid)
+        if candidate and candidate.get("PROMOTED_AT"):
+            return store.complete(nid, owner).snapshot()
 
-    topic_usage: dict[str, Any] = {}
-    if candidate:
-        topic = candidate["TOPIC"]
-    else:
-        topic, topic_usage = write_topic(snowflake, llm, task)
-    judgment, judge_usage = judge_sameness(snowflake, judge_llm, topic, task)
-    if not candidate:
-        signal_ids = merge_signals(snowflake, task)
-        insert_candidate(snowflake, task, topic, signal_ids)
+        if receipt.plan is None:
+            topic_usage: dict[str, Any] = {}
+            if candidate:
+                topic = candidate["TOPIC"]
+            else:
+                topic, topic_usage = write_topic(snowflake, llm, task)
+            judgment, judge_usage = judge_sameness(snowflake, judge_llm, topic, task)
+            receipt = store.save_plan(
+                nid,
+                owner,
+                {
+                    "topic": topic,
+                    "judgment": asdict(judgment),
+                    "usage": _merge_usage(topic_usage, judge_usage),
+                },
+            )
+        plan = receipt.plan
+        store.prepare(nid, owner, build_signals(task))
+        apply_promotion(
+            snowflake,
+            task,
+            plan["topic"],
+            Judgment(**plan["judgment"]),
+            plan["usage"],
+            owner=owner,
+        )
+        receipt = store.complete(nid, owner)
+    except Exception:
+        try:
+            store.attempt_failed(nid, owner)
+        except Exception:
+            log.exception("could not record nomination attempt failure for %s", nid)
+        raise
 
-    usage = _merge_usage(topic_usage, judge_usage)
-    result = apply_promotion(snowflake, task, topic, judgment, usage)
-    if result["decision"] == "PROMOTE_NEW":
-        dispatch(result["target_trend_id"])
-    else:
-        mark_resurgent(snowflake, nid, result["target_trend_id"])
-    return {"status": "promoted", "decision": result["decision"],
-            "trend_id": result["target_trend_id"]}
+    if receipt.status == "created":
+        try:
+            dispatch(receipt.trend_id)
+        except Exception:
+            log.exception("enrichment dispatch failed for %s", receipt.trend_id)
+    return receipt.snapshot()
 
 
 def read_candidate(snowflake: SnowflakeClient, nid: str) -> dict[str, Any] | None:
@@ -206,14 +228,12 @@ def read_candidate(snowflake: SnowflakeClient, nid: str) -> dict[str, Any] | Non
 def write_topic(
     snowflake: SnowflakeClient, llm: PredictionLLM, task: dict[str, Any]
 ) -> tuple[str, dict[str, Any]]:
-    user = json.dumps(
-        {"brief": task["brief"], "url_titles": url_titles(task)}
-    )
+    user = json.dumps({"brief": task["brief"], "url_titles": url_titles(task)})
     resp = llm.complete(system=_prompt(snowflake, TOPIC_PROMPT_KEY), user=user)
     try:
         topic = " ".join(str(json.loads(resp.text)["topic"]).split())
     except (ValueError, KeyError, TypeError) as err:
-        raise TaskError(f"topic reply is not {{\"topic\": ...}}: {resp.text[:200]!r}") from err
+        raise TaskError(f'topic reply is not {{"topic": ...}}: {resp.text[:200]!r}') from err
     if not topic:
         raise TaskError("topic reply is empty")
     return topic[:MAX_TOPIC_CHARS], _usage(resp)
@@ -256,7 +276,7 @@ def _merge_usage(topic: dict[str, Any], judge: dict[str, Any]) -> dict[str, Any]
     }
 
 
-def merge_signals(snowflake: SnowflakeClient, task: dict[str, Any]) -> list[str]:
+def build_signals(task: dict[str, Any]) -> list[dict[str, Any]]:
     """The person's URLs as `editorial` signals under the nomination's own
     session, so distillation cannot acquire them. A URL another session
     claimed first keeps that claim (the MERGE never overwrites one)."""
@@ -284,40 +304,7 @@ def merge_signals(snowflake: SnowflakeClient, task: dict[str, Any]) -> list[str]
         }
         for u in task["urls"]
     ]
-    rows = snowflake.query(
-        "CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS("
-        "%(signals)s, %(session)s, 500, 'STG_EXTERNAL_SIGNALS')",
-        {"signals": json.dumps(signals), "session": task["nomination_id"]},
-    )
-    result = _variant(rows, "MERGE_EXTERNAL_SIGNALS")
-    if not isinstance(result, dict) or result.get("error"):
-        # The proc returns its errors instead of raising.
-        raise TaskError(f"MERGE_EXTERNAL_SIGNALS failed: {result}")
-    return [s["SIGNAL_ID"] for s in signals]
-
-
-def insert_candidate(
-    snowflake: SnowflakeClient, task: dict[str, Any], topic: str, signal_ids: list[str]
-) -> None:
-    # VERDICT NULL keeps the promotion agent away (ADR-0011). SOURCE_BREAKDOWN
-    # gives the proc's heat seed a source family to count. The PK is
-    # informational only, hence the NOT EXISTS guard.
-    snowflake.execute(
-        "INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES"
-        " (CANDIDATE_ID, AGENT_SESSION_ID, CHAIN_ID, ITERATION, TOPIC,"
-        "  SUPPORTING_SIGNAL_IDS, SOURCE_BREAKDOWN, REASONING)"
-        " SELECT %(id)s, %(id)s, %(id)s, 1, %(topic)s,"
-        "  PARSE_JSON(%(ids)s), PARSE_JSON(%(breakdown)s), %(brief)s"
-        " WHERE NOT EXISTS (SELECT 1 FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES"
-        "  WHERE CANDIDATE_ID = %(id)s)",
-        {
-            "id": task["nomination_id"],
-            "topic": topic,
-            "ids": json.dumps(signal_ids),
-            "breakdown": json.dumps({SOURCE_NAME: len(signal_ids)}),
-            "brief": task["brief"],
-        },
-    )
+    return signals
 
 
 def apply_promotion(
@@ -326,10 +313,13 @@ def apply_promotion(
     topic: str,
     judgment: Judgment,
     usage: dict[str, Any],
+    *,
+    owner: str,
 ) -> dict[str, Any]:
     nid = task["nomination_id"]
     decision = {
         "candidate_id": nid,
+        "editorial_owner": owner,
         "decision": "PROMOTE_NEW" if judgment.target_trend_id is None else "MERGE_INTO_EXISTING",
         "decision_category": "EDITORIAL",
         "target_trend_id": judgment.target_trend_id,
@@ -351,35 +341,6 @@ def apply_promotion(
     if results[0].get("status") != "ok" or not results[0].get("target_trend_id"):
         raise TaskError(f"PROC_PROMOTION_APPLY did not apply: {results[0]}")
     return results[0]
-
-
-def mark_resurgent(snowflake: SnowflakeClient, nid: str, trend_id: str) -> None:
-    """A merge into a RETIRED trend brings it back: the lifecycle sweep skips
-    RETIRED, so this endpoint writes the RESURGENT row (the ledger's second
-    writer, after the lifecycle agent). Column set follows the proc's
-    seed_lifecycle_v0; heat carries forward so the dashboard does not show 0;
-    NEXT_EVAL_AT +1h puts the trend back in the sweep.
-
-    Written after PROC_PROMOTION_APPLY, not inside its transaction: the proc
-    owns its own per-decision BEGIN/COMMIT and is shared with promotion. The
-    "latest row is RETIRED" guard makes it idempotent, so the done-path of a
-    retried task can re-run it safely; a no-op when the target is not RETIRED."""
-    snowflake.execute(
-        "INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER"
-        " (TREND_ID, AGENT_SESSION_ID, CHAIN_ID, PRIOR_STATUS, NEW_STATUS,"
-        "  PRIOR_HEAT, NEW_HEAT, NEW_HEAT_SMOOTHED, HEAT_BASE, HEAT_MODIFIER_PCT,"
-        "  REASONING, DECISION_PAYLOAD, MODEL_USED, NEXT_EVAL_AT)"
-        " SELECT TREND_ID, 'editorial', %(chain)s, NEW_STATUS, 'RESURGENT',"
-        "  NEW_HEAT, NEW_HEAT, NEW_HEAT_SMOOTHED, HEAT_BASE, 0,"
-        "  'editorial nomination matched a retired trend',"
-        "  OBJECT_CONSTRUCT('nomination_id', %(chain)s), NULL,"
-        "  DATEADD(hour, 1, CURRENT_TIMESTAMP())"
-        " FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER"
-        " WHERE TREND_ID = %(tid)s"
-        " QUALIFY ROW_NUMBER() OVER (PARTITION BY TREND_ID ORDER BY EVALUATED_AT DESC) = 1"
-        "  AND NEW_STATUS = 'RETIRED'",
-        {"chain": nid, "tid": trend_id},
-    )
 
 
 def http_dispatch(url: str) -> Dispatch:

@@ -1,8 +1,10 @@
 """The editorial-ingest FastAPI app factory (CRMA-1667).
 
-Three routes:
+Routes:
 
 - ``POST /nominations`` -- the accept route ATLAS calls with ``X-Api-Key``.
+- ``GET /nominations/{nomination_id}`` -- the stored production outcome.
+- ``POST /nominations/preview`` -- provisional evaluation with no production writes.
 - ``POST /tasks/nominations`` -- the task handler; only Cloud Tasks' OIDC
   token from the queue's service account gets in. Its work is handler.py.
 - ``GET /health`` -- the deploy smoke probe (not /healthz: Google's edge
@@ -13,21 +15,26 @@ The service is public (allUsers invoker), so each route authenticates itself.
 
 from __future__ import annotations
 
+import asyncio
 import hmac
 import json
 import logging
+from collections.abc import Callable
+from time import monotonic
 from typing import Annotated, Any
 
+from anyio.to_thread import run_sync
 from fastapi import Body, Depends, FastAPI, HTTPException, Request
-from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationError
 from tt_services_lib.auth import CallerIdentity, TokenVerifier, require_caller_dependency
 from tt_services_lib.gemini import PredictionLLM
 from tt_services_lib.snowflake_client import SnowflakeClient
 
-from .config import ConfigError, Settings
-from .handler import Dispatch, handle_nomination
+from .config import Settings
+from .handler import Dispatch, TaskBusy, handle_nomination
+from .outcomes import Receipt, SnowflakeNominationStore
+from .preview import create_preview_router
 from .tasks import EnqueueError, TaskQueue
 from .urls import Fetcher, check_urls, http_fetch
 
@@ -37,6 +44,16 @@ MAX_BODY_BYTES = 64 * 1024
 TASK_HANDLER_PATH = "/tasks/nominations"
 
 NonBlank = Annotated[str, StringConstraints(pattern=r"\S")]
+
+
+async def _before(deadline: float, operation: Callable[..., Any], *args: Any) -> Any:
+    remaining = deadline - monotonic()
+    if remaining <= 0:
+        raise TimeoutError
+    # Provider calls may finish after cancellation; idempotent receipt/queue operations
+    # and separate Snowflake sessions keep a timed-out request safe to retry.
+    async with asyncio.timeout(remaining):
+        return await run_sync(operation, *args, abandon_on_cancel=True)
 
 
 class Nomination(BaseModel):
@@ -62,14 +79,44 @@ def create_app(
     dispatch: Dispatch,
     verify_token: TokenVerifier | None = None,
     fetch_url: Fetcher = http_fetch,
+    store: SnowflakeNominationStore | None = None,
+    wait_seconds: float = 60,
+    poll_interval: float = 1,
+    readback_seconds: float = 5,
 ) -> FastAPI:
-    if not settings.api_key:
-        # hmac.compare_digest("", "") is True: an empty key would admit anyone.
-        raise ConfigError("EDITORIAL_API_KEY is empty")
+    # hmac.compare_digest("", "") is True: an empty key would admit anyone.
+    settings.validate_api_keys()
     app = FastAPI(
         title="trend-tree-editorial-ingest", docs_url=None, redoc_url=None, openapi_url=None
     )
     expected_key = settings.api_key.encode()
+    store = store or SnowflakeNominationStore(snowflake)
+    app.include_router(
+        create_preview_router(
+            settings,
+            nomination_model=Nomination,
+            max_body_bytes=MAX_BODY_BYTES,
+            snowflake=snowflake,
+            llm=llm,
+            judge_llm=judge_llm,
+            fetch_url=fetch_url,
+        )
+    )
+
+    def require_production_key(request: Request) -> None:
+        given = request.headers.get("x-api-key", "").encode()
+        if not hmac.compare_digest(given, expected_key):
+            raise HTTPException(status_code=401, detail="missing or wrong X-Api-Key")
+
+    async def reconcile(receipt: Receipt, deadline: float) -> Receipt:
+        if not receipt.terminal and not receipt.queue_confirmed_at:
+            await _before(deadline, queue.enqueue, receipt.nomination_id, receipt.request)
+            receipt = await _before(deadline, store.mark_queued, receipt.nomination_id)
+        if not receipt.terminal:
+            presence = await _before(deadline, queue.lookup, receipt.nomination_id)
+            if presence == "missing":
+                return await _before(deadline, store.reconcile_missing, receipt.nomination_id)
+        return receipt
 
     @app.get("/health")
     def health() -> dict[str, bool]:
@@ -77,12 +124,15 @@ def create_app(
 
     @app.post("/nominations")
     async def accept(request: Request) -> JSONResponse:
+        deadline = monotonic() + wait_seconds
         # The key first, before reading or parsing anything.
-        given = request.headers.get("x-api-key", "").encode()
-        if not hmac.compare_digest(given, expected_key):
-            raise HTTPException(status_code=401, detail="missing or wrong X-Api-Key")
+        require_production_key(request)
 
-        raw = await request.body()
+        try:
+            async with asyncio.timeout(max(0, deadline - monotonic())):
+                raw = await request.body()
+        except TimeoutError as err:
+            raise HTTPException(status_code=503, detail="nomination unavailable; retry") from err
         if len(raw) > MAX_BODY_BYTES:
             raise HTTPException(status_code=400, detail="body over 64 KB")
         try:
@@ -90,24 +140,61 @@ def create_app(
         except (ValueError, ValidationError) as err:
             raise HTTPException(status_code=400, detail=f"malformed body: {err}") from err
 
-        kept, dropped = await run_in_threadpool(check_urls, nomination.urls, fetch_url)
-        if not kept:
-            return JSONResponse(status_code=422, content={"urls": dropped})
-
-        payload = {
-            "nomination_id": nomination.nomination_id,
-            "brief": nomination.brief,
-            "nominated_by": nomination.nominated_by,
-            "urls": kept,
-        }
+        receipt = None
         try:
-            # False (the name already exists) is a repeat: still 202, first content wins.
-            await run_in_threadpool(queue.enqueue, nomination.nomination_id, payload)
+            receipt = await _before(deadline, store.get, nomination.nomination_id)
+            if receipt is None:
+                kept, dropped = await _before(deadline, check_urls, nomination.urls, fetch_url)
+                if not kept:
+                    return JSONResponse(status_code=422, content={"urls": dropped})
+                payload = {
+                    "nomination_id": nomination.nomination_id,
+                    "brief": nomination.brief,
+                    "nominated_by": nomination.nominated_by,
+                    "urls": kept,
+                }
+                receipt = await _before(deadline, store.accept, payload, dropped)
+            receipt = await reconcile(receipt, deadline)
+            while not receipt.terminal and monotonic() < deadline:
+                await asyncio.sleep(min(poll_interval, max(0, deadline - monotonic())))
+                if monotonic() < deadline:
+                    receipt = await _before(deadline, store.get, receipt.nomination_id) or receipt
+                    receipt = await reconcile(receipt, deadline)
+        except TimeoutError as err:
+            if receipt is None:
+                raise HTTPException(
+                    status_code=503, detail="nomination unavailable; retry"
+                ) from err
         except EnqueueError as err:
             raise HTTPException(status_code=503, detail="enqueue failed; retry") from err
+        except Exception as err:
+            log.exception("nomination acceptance unavailable")
+            raise HTTPException(status_code=503, detail="nomination unavailable; retry") from err
         return JSONResponse(
-            status_code=202,
-            content={"nomination_id": nomination.nomination_id, "dropped_urls": dropped},
+            status_code=200 if receipt.terminal else 202,
+            content=receipt.snapshot(),
+            headers={} if receipt.terminal else {"Retry-After": "5"},
+        )
+
+    @app.get("/nominations/{nomination_id}")
+    async def readback(nomination_id: str, request: Request) -> JSONResponse:
+        deadline = monotonic() + readback_seconds
+        require_production_key(request)
+        try:
+            receipt = await _before(deadline, store.get, nomination_id)
+        except Exception as err:
+            log.exception("nomination readback unavailable")
+            raise HTTPException(status_code=503, detail="nomination unavailable; retry") from err
+        if receipt is None:
+            raise HTTPException(status_code=404, detail="nomination not found")
+        try:
+            receipt = await reconcile(receipt, deadline)
+        except Exception:
+            log.exception("nomination reconciliation unavailable for %s", nomination_id)
+        return JSONResponse(
+            status_code=200,
+            content=receipt.snapshot(),
+            headers={} if receipt.terminal else {"Retry-After": "5"},
         )
 
     require_caller = require_caller_dependency(settings.service_url, verify=verify_token)
@@ -126,11 +213,20 @@ def create_app(
     ) -> dict[str, Any]:
         try:
             return handle_nomination(
-                task, snowflake=snowflake, llm=llm, judge_llm=judge_llm, dispatch=dispatch
+                task,
+                snowflake=snowflake,
+                llm=llm,
+                judge_llm=judge_llm,
+                dispatch=dispatch,
+                store=store,
             )
+        except TaskBusy as err:
+            raise HTTPException(status_code=409, detail="nomination is already processing") from err
         except Exception as err:
             # Non-2xx is the whole retry contract with Cloud Tasks.
             log.exception("nomination %s failed", task.get("nomination_id"))
-            raise HTTPException(status_code=500, detail=f"task failed: {err}") from err
+            raise HTTPException(
+                status_code=500, detail="task processing interrupted; retry"
+            ) from err
 
     return app

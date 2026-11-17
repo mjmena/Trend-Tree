@@ -3,9 +3,9 @@
 
 **Audience:** Engineers consuming the Trend Tree Snowflake tables — the Insights Agent backend and the Trend Hunter B2C feed. (For the plain-English, strategist-facing card reference, see [ATLAS Dashboard — Field Reference](https://mcclatchy.atlassian.net/wiki/x/CgARdw).)
 
-**Purpose:** The full column schema, type, meaning, and an example value for the three dynamic tables the downstream platforms read, plus the product-sourcing tables behind the dashboard's commerce columns.
+**Purpose:** The full column schema, type, meaning, and an example value for the three dynamic tables the downstream platforms read, plus the nomination provenance view and product-sourcing tables behind the dashboard's commerce columns.
 
-**Source of truth:** the table DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`), `sql/task_recompute_content_matches.sql` (+ `sql/fct_trend_content_matches_ledger.sql`), `sql/fct_trend_sourcing_ledger.sql` (+ `sql/fct_trend_sourcing_candidates.sql`), `sql/dim_catalog_product.sql`. This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-11-16.
+**Source of truth:** the DDL in the Trend-Tree repo — `sql/dt_trend_dashboard.sql`, `sql/dt_trend_daily.sql`, `sql/dt_trend_connections.sql` (+ `sql/fct_trend_connections_ledger.sql`), `sql/task_recompute_content_matches.sql` (+ `sql/fct_trend_content_matches_ledger.sql`), `sql/fct_trend_sourcing_ledger.sql` (+ `sql/fct_trend_sourcing_candidates.sql`), `sql/dim_catalog_product.sql`, `sql/v_editorial_nomination_signals.sql`. This page is the canonical engineer-facing schema reference. **Database:** `MCC_PRESENTATION.TREND_AGENT` · **Account:** `WVB49304-MCCLATCHY_EVAL`. **Last updated:** 2026-11-17.
 
 **Example values are real, pulled 2026-06-08** — mostly from the live trend **Hyper-Tactile Interiors** (`c51f1620-a832-4f13-a443-a7df03bf6a99`). A few fields that are null for that trend (geographic hotspots, macrotrend tags, the social-evidence object) use a populated row from another live trend to show the shape. Column names and types are authoritative.
 
@@ -265,6 +265,47 @@ ORDER BY SCORE DESC;
 ```
 
 > **Isolated from `RELATED_TRENDS`.** `DT_TREND_DASHBOARD.RELATED_TRENDS` (top-5, flat ≥ 0.65) and `DT_TREND_CONNECTIONS` (category-aware, capped, undirected) are computed separately for now and may differ; reconcile deliberately rather than assume they match.
+
+---
+
+## V_EDITORIAL_NOMINATION_SIGNALS
+
+**Awaiting deployment.** This secure view exposes one row per accepted
+`(NOMINATION_ID, SIGNAL_ID)` association from the durable nomination receipt.
+Repeated canonical URLs within a nomination collapse to one row. Two nominations
+that supply the same URL retain separate rows, even if they target the same trend.
+Dropped URLs are excluded. Only nominations with receipts appear; this change
+does not backfill earlier nominations from signal metadata.
+
+| Column | Type | Null | What it is |
+| --- | --- | --- | --- |
+| `NOMINATION_ID` | VARCHAR | no | The accepted nomination's identity. |
+| `SIGNAL_ID` | VARCHAR | no | The canonical URL retained at acceptance. Uses the existing signal identity; the signal need not exist in `FCT_SIGNALS` yet. |
+| `STATUS` | VARCHAR | no | Current nomination outcome: `pending`, `created`, `merged`, `resurgent`, or `failed`. Applies to the nomination, not to an individual URL's ingestion state. |
+| `TREND_ID` | VARCHAR | yes | The nomination's known target, or SQL `NULL` while unknown. A failed nomination can retain its target after partial completion; a target alone does not prove success. |
+| `ACCEPTED_AT` | TIMESTAMP_LTZ | no | Original receipt creation time. Retries and result updates leave it unchanged. |
+
+Read `MCC_PRESENTATION.TREND_AGENT.V_EDITORIAL_NOMINATION_SIGNALS` directly;
+it reflects the stored receipt without the dashboard's dynamic-table refresh lag.
+An association records a supplied URL. It does not prove signal ingestion,
+supporting/attributed linkage, completed promotion, or dashboard visibility.
+Use `STATUS` for the nomination outcome and the corresponding signal/link tables
+when those downstream facts matter.
+
+`METADATA.nomination_id` remains the first-ingestion provenance on a signal first
+written by editorial ingest. Existing signals keep their original `SOURCE_NAME`
+and metadata when another nomination supplies their URL. A URL first ingested
+by discovery can therefore appear here while retaining its discovery source
+and having no nomination ID in its signal metadata. No signal is duplicated or
+retagged, and merging a nomination leaves the target's `TREND_ORIGIN` unchanged.
+
+The view exposes only the five columns above. The private request, editorial
+brief, `nominated_by`, dropped URLs and error details are absent. Its owner needs
+access to the receipt in `MCC_RAW.MARKETING_DEV`; ATLAS's `TH_APIROLE` receives
+`SELECT` on the view, without a grant on the receipt. Apply the receipt DDL first,
+then the view DDL with a role permitted to manage grants. Verify the view's
+`MARKETING_ENGINEER` owner can read the receipt and test access as `TH_APIROLE`
+before declaring this surface available.
 
 ---
 

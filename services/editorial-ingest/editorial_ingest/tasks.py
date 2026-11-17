@@ -3,17 +3,18 @@ nomination, named by ``nomination_id``; tests substitute a fake.
 
 The real client is Cloud Tasks' REST API through google-auth (no
 google-cloud-tasks dependency). It runs as the service's own identity,
-crm-runtime@, which holds roles/cloudtasks.enqueuer and actAs on itself (needed
-to sign the task's OIDC token).
+crm-runtime@. Enqueueing needs roles/cloudtasks.enqueuer and actAs on itself
+(to sign the task's OIDC token); readback also needs roles/cloudtasks.viewer.
 """
 
 from __future__ import annotations
 
 import base64
 import json
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 TASKS_API = "https://cloudtasks.googleapis.com/v2"
+TaskPresence = Literal["present", "missing", "unknown"]
 
 
 class EnqueueError(Exception):
@@ -24,6 +25,10 @@ class TaskQueue(Protocol):
     def enqueue(self, name: str, payload: dict[str, Any]) -> bool:
         """Create the task. True if created, False if a task with this name
         already exists (the first content wins). Raises EnqueueError otherwise."""
+        ...
+
+    def lookup(self, name: str) -> TaskPresence:
+        """Return missing only on confirmed absence; access/transport failures are unknown."""
         ...
 
 
@@ -86,3 +91,12 @@ class CloudTasksQueue:
         if resp.status_code >= 300:
             raise EnqueueError(f"Cloud Tasks answered {resp.status_code}: {resp.text[:300]}")
         return True
+
+    def lookup(self, name: str) -> TaskPresence:
+        try:
+            resp = self._authed().get(f"{TASKS_API}/{self._parent}/tasks/{name}", timeout=5)
+        except Exception:  # noqa: BLE001 - a lookup outage proves nothing about delivery
+            return "unknown"
+        if resp.status_code == 404:
+            return "missing"
+        return "present" if resp.status_code == 200 else "unknown"

@@ -2,6 +2,17 @@
 
 # PRD: an endpoint to ingest an editorial trend
 
+> **Contract extension (2026-11-17; awaiting deployment):**
+> [Editorial nomination outcomes](editorial-nomination-outcomes.md) supersedes this
+> document's immediate-202-only response, no-status-route and no-dev-key boundaries,
+> enqueue-failure “nothing written” claim, and promotion-ledger-only retry recovery.
+> It adds durable receipts before evaluation, bounded waiting, authenticated readback,
+> safe terminal/partial outcomes, isolated preview and the corresponding verification
+> contract. The original request fields, evidence rules and unchanged origin on merge
+> remain. Use the updated [API contract](../dashboard/editorial-nomination-api.md)
+> and [release runbook](../runbooks/editorial-nomination-outcomes-release.md) for this
+> extension; the historical decisions below describe the original service.
+
 Produced 2026-10-26 from wayfinder map [CRMA-1424](https://mcclatchy.atlassian.net/browse/CRMA-1424)
 (`docs/wayfinder/editorial-trend-ingest-endpoint.md`). Every decision below was settled on that
 map's tickets; this document assembles them into one buildable spec. The terms editorial trend,
