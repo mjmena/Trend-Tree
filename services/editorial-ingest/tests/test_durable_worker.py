@@ -6,6 +6,29 @@ from test_task_handler import QUEUE_AUTH, TASK, _client
 from editorial_ingest.outcomes import SnowflakeNominationStore
 
 
+def test_completed_task_replay_needs_only_a_receipt_read():
+    snowflake = RoutingFakeSnowflake()
+    first = _client(snowflake).post("/tasks/nominations", json=TASK, headers=QUEUE_AUTH)
+    assert first.status_code == 200
+
+    class ReadOnlyDatabase:
+        def query(self, sql, params=None):
+            if not sql.lstrip().upper().startswith("SELECT"):
+                raise RuntimeError("write unavailable")
+            return snowflake.query(sql, params)
+
+        def execute(self, sql, params=None):
+            raise RuntimeError("write unavailable")
+
+    repeated = _client(ReadOnlyDatabase()).post(
+        "/tasks/nominations",
+        json=TASK,
+        headers=QUEUE_AUTH,
+    )
+    assert repeated.status_code == 200
+    assert repeated.json() == first.json()
+
+
 def test_created_outcome_is_durable_before_dispatch_and_dispatch_failure_cannot_erase_it():
     snowflake = RoutingFakeSnowflake()
     seen = []

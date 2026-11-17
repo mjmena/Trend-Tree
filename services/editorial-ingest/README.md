@@ -1,4 +1,55 @@
-# Editorial ingest development preview
+# Editorial ingest
+
+## Nomination outcomes and readback
+
+**Awaiting deployment.** `POST /nominations` persists the first accepted request
+and waits up to 60 seconds from request start, including URL checks and queue
+handoff. A committed `created`, `merged`, `resurgent`, or `failed` outcome returns
+HTTP 200. Otherwise HTTP 202 returns `status: "pending"`, `Retry-After: 5`, and
+`status_url: "/nominations/{nomination_id}"`. Both responses also contain
+`nomination_id`, nullable `trend_id`, the original `dropped_urls`, and nullable
+safe `error`. Enrichment and dashboard refresh do not delay a committed outcome.
+
+Use the production `X-Api-Key` for submission and `GET /nominations/{nomination_id}`.
+GET returns HTTP 200 for any known snapshot, including pending, with the same
+fields; pending snapshots include `Retry-After: 5`. Unknown IDs return 404.
+The preview key returns 401 for both production routes, including historical
+nomination IDs. GET does not wait for evaluation. Its external work is limited
+to five seconds; a timeout after reading a receipt returns that snapshot.
+Storage unavailability before a receipt can be read returns a safe 503.
+
+A repeat ID reuses the durable request before checking replacement URLs, and
+keeps its original dropped URLs and outcome. POST and GET both repair an
+unconfirmed receipt-to-queue handoff using that request. A Cloud Tasks enqueue
+timeout may have created the task; retrying its stable name is safe. An explicit
+enqueue failure returns 503 while leaving the receipt available for recovery.
+Poll the status URL after a 202 or uncertain network response. A 90-second
+client timeout leaves room around the server's 60-second submission budget.
+
+Only a confirmed Cloud Tasks 404 permits missing-task reconciliation. A lookup
+outage or 403 leaves the nomination pending. The receipt procedure preserves an
+active worker's lease, recovers committed candidate state, or records a safe
+terminal failure after processing can no longer write. Timeouts never invent
+failure or success. Receipt reads use a direct SELECT, avoiding the Python
+procedure startup cost on each poll; production workers and request reads use
+separate Snowflake sessions through `ThreadLocalSnowflakeClient`.
+
+Before release, grant the runtime service account
+`crm-runtime@mcc-crm-automations.iam.gserviceaccount.com`
+`roles/cloudtasks.viewer` for the editorial queue (or equivalent least-privilege
+`cloudtasks.tasks.get` access). Its existing `roles/cloudtasks.enqueuer` and
+service-account `actAs` permissions do not grant task lookup. Keep the task
+handler's existing OIDC audience and queue service-account checks.
+
+Apply the receipt/provenance and guarded promotion migrations with the queue
+paused and old workers drained before deploying this code. Follow the
+[integration release runbook](../../docs/runbooks/editorial-nomination-outcomes-release.md)
+for migration order, preview secrets/IAM, dark deployment and live verification.
+Verify the candidate revision's 200/202 timing, polling and committed rows before
+promoting traffic; local tests and the health probe do not establish live
+delivery. No deployment or production nomination is performed by this change.
+
+## Development preview
 
 **Awaiting deployment.** The preview route and credential described here are part
 of [CRMA-1725](https://mcclatchy.atlassian.net/browse/CRMA-1725), within the

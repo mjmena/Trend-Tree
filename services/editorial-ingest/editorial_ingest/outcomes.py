@@ -80,7 +80,40 @@ class SnowflakeNominationStore:
         )
 
     def get(self, nomination_id: str) -> Receipt | None:
-        return self._call("get", nomination_id)
+        rows = self.snowflake.query(
+            "SELECT NOMINATION_ID, REQUEST, DROPPED_URLS, STATUS, RESULT, "
+            "CREATED_AT, UPDATED_AT, OWNER, LEASE_UNTIL, QUEUE_CONFIRMED_AT, PLAN "
+            "FROM MCC_RAW.MARKETING_DEV.STG_EDITORIAL_NOMINATIONS "
+            "WHERE NOMINATION_ID = %(id)s",
+            {"id": nomination_id},
+        )
+        if len(rows) > 1:
+            raise ValueError("duplicate nomination receipts require operator repair")
+        if not rows:
+            return None
+        row = rows[0]
+
+        def variant(column: str) -> Any:
+            value = row[column]
+            return json.loads(value) if isinstance(value, str) else value
+
+        result = variant("RESULT") or {}
+        return Receipt(
+            nomination_id=row["NOMINATION_ID"],
+            request=variant("REQUEST"),
+            dropped_urls=variant("DROPPED_URLS"),
+            status=row["STATUS"],
+            trend_id=result.get("trend_id"),
+            error=result.get("error"),
+            created_at=str(row["CREATED_AT"]),
+            updated_at=str(row["UPDATED_AT"]),
+            owner=row["OWNER"],
+            lease_until=str(row["LEASE_UNTIL"]) if row["LEASE_UNTIL"] else None,
+            queue_confirmed_at=(
+                str(row["QUEUE_CONFIRMED_AT"]) if row["QUEUE_CONFIRMED_AT"] else None
+            ),
+            plan=variant("PLAN"),
+        )
 
     def claim(self, nomination_id: str, owner: str) -> Receipt | None:
         return self._call("claim", nomination_id, owner=owner)

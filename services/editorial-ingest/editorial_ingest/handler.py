@@ -159,7 +159,9 @@ def handle_nomination(
     store = store or SnowflakeNominationStore(snowflake)
     nid = task["nomination_id"]
     # A queued task can outlive the service revision that accepted it.
-    store.accept(task, [])
+    receipt = store.get(nid) or store.accept(task, [])
+    if receipt.terminal:
+        return receipt.snapshot()
     owner = uuid4().hex
     receipt = store.claim(nid, owner)
     if receipt is None:

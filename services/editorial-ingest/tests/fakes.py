@@ -31,6 +31,11 @@ class FakeTaskQueue:
         self.tasks[name] = payload
         return True
 
+    def lookup(self, name: str) -> str:
+        if self.fail:
+            return "unknown"
+        return "present" if name in self.tasks else "missing"
+
 
 def fake_fetch(statuses: dict[str, int | Exception]):
     """A URL fetcher answering from a table: url -> HTTP status, or an
@@ -78,7 +83,7 @@ class RoutingFakeSnowflake:
     def query(self, sql: str, params: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
         self.calls.append((sql, params))
         upper = sql.upper()
-        if "PROC_EDITORIAL_NOMINATION" in upper:
+        if "PROC_EDITORIAL_NOMINATION" in upper or "STG_EDITORIAL_NOMINATIONS" in upper:
             return self.database.query(sql, params)
         if "PROC_PROMOTION_APPLY" in upper:
             decision = json.loads(params["decisions"])[0]
