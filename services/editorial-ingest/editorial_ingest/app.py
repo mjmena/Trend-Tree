@@ -28,7 +28,8 @@ from tt_services_lib.gemini import PredictionLLM
 from tt_services_lib.snowflake_client import SnowflakeClient
 
 from .config import Settings
-from .handler import Dispatch, handle_nomination
+from .handler import Dispatch, TaskBusy, handle_nomination
+from .outcomes import SnowflakeNominationStore
 from .preview import create_preview_router
 from .tasks import EnqueueError, TaskQueue
 from .urls import Fetcher, check_urls, http_fetch
@@ -64,6 +65,7 @@ def create_app(
     dispatch: Dispatch,
     verify_token: TokenVerifier | None = None,
     fetch_url: Fetcher = http_fetch,
+    store: SnowflakeNominationStore | None = None,
 ) -> FastAPI:
     # hmac.compare_digest("", "") is True: an empty key would admit anyone.
     settings.validate_api_keys()
@@ -71,6 +73,7 @@ def create_app(
         title="trend-tree-editorial-ingest", docs_url=None, redoc_url=None, openapi_url=None
     )
     expected_key = settings.api_key.encode()
+    store = store or SnowflakeNominationStore(snowflake)
     app.include_router(
         create_preview_router(
             settings,
@@ -138,11 +141,20 @@ def create_app(
     ) -> dict[str, Any]:
         try:
             return handle_nomination(
-                task, snowflake=snowflake, llm=llm, judge_llm=judge_llm, dispatch=dispatch
+                task,
+                snowflake=snowflake,
+                llm=llm,
+                judge_llm=judge_llm,
+                dispatch=dispatch,
+                store=store,
             )
+        except TaskBusy as err:
+            raise HTTPException(status_code=409, detail="nomination is already processing") from err
         except Exception as err:
             # Non-2xx is the whole retry contract with Cloud Tasks.
             log.exception("nomination %s failed", task.get("nomination_id"))
-            raise HTTPException(status_code=500, detail=f"task failed: {err}") from err
+            raise HTTPException(
+                status_code=500, detail="task processing interrupted; retry"
+            ) from err
 
     return app

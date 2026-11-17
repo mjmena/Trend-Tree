@@ -338,6 +338,40 @@ def lookup_leader_outcome(session, leader_cid):
     }
 
 
+def fence_editorial(session, decision):
+    changed = session.sql('''
+        UPDATE MCC_RAW.MARKETING_DEV.STG_EDITORIAL_NOMINATION_MUTEX
+        SET REVISION = REVISION + 1 WHERE LOCK_ID = 1
+    ''').collect()
+    if int(changed[0][0]) != 1:
+        raise ValueError('editorial mutex requires exactly one row')
+    cid = decision['candidate_id']
+    receipts = session.sql('''
+        SELECT OWNER, STATUS, LEASE_UNTIL > CURRENT_TIMESTAMP() AS ACTIVE
+        FROM MCC_RAW.MARKETING_DEV.STG_EDITORIAL_NOMINATIONS WHERE NOMINATION_ID = ?
+    ''', [cid]).collect()
+    if len(receipts) > 1:
+        raise ValueError('duplicate nomination receipts require operator repair')
+    if receipts:
+        owner, status, active = receipts[0][0], receipts[0][1], receipts[0][2]
+        if status not in ('created', 'merged', 'resurgent'):
+            if status != 'pending' or not active or owner != decision.get('editorial_owner'):
+                raise ValueError('nomination ownership lost')
+    elif decision.get('editorial_owner'):
+        raise ValueError('unknown nomination receipt')
+    rows = session.sql('''
+        SELECT PROMOTED_AT, PROMOTED_TO, DEDUP_OF_TREND_ID
+        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES WHERE CANDIDATE_ID = ?
+    ''', [cid]).collect()
+    if len(rows) != 1:
+        raise ValueError('editorial promotion requires exactly one candidate')
+    promoted_at, target, dedup = rows[0][0], rows[0][1], rows[0][2]
+    if promoted_at and target:
+        return {'candidate_id': cid, 'target_trend_id': target, 'status': 'ok',
+                'decision': 'MERGE_INTO_EXISTING' if dedup else 'PROMOTE_NEW'}
+    return None
+
+
 def run(session, DECISIONS, CHAIN_ID, ITERATION):
     if DECISIONS is None:
         return {'applied_count': 0, 'results': []}
@@ -409,6 +443,13 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
 
         try:
             session.sql("BEGIN").collect()
+
+            if cat == 'EDITORIAL':
+                recovered = fence_editorial(session, d)
+                if recovered:
+                    session.sql('COMMIT').collect()
+                    results.append(recovered)
+                    continue
 
             if decision == 'PROMOTE_NEW':
                 # Insert new FCT_TRENDS row; copy candidate fields.
