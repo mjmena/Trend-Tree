@@ -19,6 +19,7 @@ current queue settings, and the deployed definition of
 `MCC_RAW.MARKETING_DEV.PROC_PROMOTION_APPLY`. The promotion procedure is
 shared with discovery, so include its non-editorial behavior in the release
 checks. Preserve the old definition for investigation or a coordinated rollback.
+Record its grants too; replacement uses `COPY GRANTS` to preserve existing callers.
 
 Agree a short nomination maintenance window with ATLAS. Stop new production
 submissions there and let in-flight acceptance requests finish. Pause the
@@ -30,6 +31,11 @@ are 900 seconds, but elapsed time alone is not proof that all domain writes
 have stopped.
 
 Keep the queue paused and ATLAS admission closed through the candidate checks.
+When ATLAS cannot be gated directly, temporarily remove the service's public
+invoker binding and retain only authorized operator/runtime access. Verify an
+unauthenticated request is rejected, and restore the recorded policy after cutover.
+The candidate may be built at zero traffic before this window to shorten it;
+do not invoke its database-dependent routes until the migrations are applied.
 The new worker can adopt a queued legacy payload into a receipt and recover a
 committed candidate. It cannot reconstruct dropped URLs absent from that old
 payload. Completed historical nominations are not backfilled into receipts.
@@ -138,6 +144,10 @@ The safe paused-queue sequence is:
    insufficient. Keep the actual queue paused so no delivery reaches the old
    revision. This invokes the real handler with the accepted input; it is not a
    preview or a simulated outcome.
+   If the operator cannot mint that runtime token, create a separate smoke task
+   with the same stored payload, candidate URL and base-URL OIDC audience, then
+   explicitly run only that task while the queue remains paused. Cloud Tasks
+   signs the request. The original task stays queued for the cutover replay.
 3. Read the candidate status route and replay the original POST. Both return
    the same terminal snapshot with HTTP `200`; dropped URLs stay unchanged.
    Confirm candidate `PROMOTED_AT` and target fields, corresponding domain rows,
