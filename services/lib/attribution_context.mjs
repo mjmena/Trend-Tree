@@ -225,6 +225,7 @@ const RATES = {
 export function entryCost(usage = {}, { model = JOB_MODEL, batch = true, at = new Date() } = {}) {
   const r = RATES[model];
   if (!r) throw new Error(`attribution: no rates for ${model}`);
+  if (!Number.isFinite(at.getTime())) throw new Error("attribution: invalid usage time for cost accounting");
   const scale = (batch ? 0.5 : 1) * (at.getTime() >= r.doublesAt ? 2 : 1);
   const output = (usage.candidatesTokenCount || 0) + (usage.thoughtsTokenCount || 0);
   const usd = ((usage.promptTokenCount || 0) * r.input + output * r.output) * scale / 1e6;

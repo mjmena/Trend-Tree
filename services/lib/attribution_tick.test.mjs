@@ -66,7 +66,7 @@ function fakeGemini() {
       g.submitted.push({ model, requests });
       return { name: `batches/${g.submitted.length}` };
     },
-    async getBatch() { return { state: g.state, entries: g.entries }; },
+    async getBatch() { return { state: g.state, entries: g.entries, endTime: g.endTime }; },
     async cancelBatch(name) { g.cancelled.push(name); },
     async generateContent({ model, request }) { g.retries.push({ model, request }); return g.retryAnswer; },
   };
@@ -141,6 +141,24 @@ test("a requested trend missing from the results is named in ERROR_MESSAGE", asy
   gemini.g.entries = [{ metadata: { key: "a" }, response: answer([]) }];
   await runTick({ query, gemini, cap: 0 });
   assert.match(db.costs[0].ERROR_MESSAGE, /no batch entry for b/);
+});
+
+test("a December batch collected in January keeps its old rate while its retry uses the new rate", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: new Date("2027-01-01T00:30:00Z") });
+  const { db, query } = fakeSnowflake({ eligible: ["a"], pools: { a: ["s1"] } });
+  const gemini = fakeGemini();
+  await runTick({ query, gemini });
+  const usage = { promptTokenCount: 1_000_000, candidatesTokenCount: 100_000, thoughtsTokenCount: 900_000 };
+  gemini.g.state = "BATCH_STATE_SUCCEEDED";
+  gemini.g.endTime = "2026-12-31T23:55:00Z";
+  gemini.g.entries = [{ metadata: { key: "a" }, response: {
+    candidates: [{ content: { parts: [{ text: "oops" }] } }], usageMetadata: usage,
+  } }];
+  gemini.g.retryAnswer = answer([{ signal_id: "s1", link_type: "news" }], usage);
+  await runTick({ query, gemini, cap: 0 });
+  assert.equal(db.costs[0].COST_USD, 11.25);
+  assert.equal(db.costs[0].MODEL, "gemini-3.8-flash");
+  assert.deepEqual(db.links, [{ trend_id: "a", signal_id: "s1", link_type: "news" }]);
 });
 
 test("a collect run twice links nothing twice", async () => {

@@ -31,8 +31,15 @@ test("getBatch returns the state and the inlined responses", async () => {
   const entries = [{ metadata: { key: "t1" }, error: { code: 1, message: "The operation was cancelled." } }];
   const f = fakeFetch(200, { name: "batches/abc", metadata: { state: "BATCH_STATE_SUCCEEDED", output: { inlinedResponses: { inlinedResponses: entries } } } });
   const client = createGeminiBatchClient({ apiKey: "k", fetch: f.fetch });
-  assert.deepEqual(await client.getBatch("batches/abc"), { state: "BATCH_STATE_SUCCEEDED", entries });
+  assert.deepEqual(await client.getBatch("batches/abc"), { state: "BATCH_STATE_SUCCEEDED", endTime: undefined, entries });
   assert.equal(f.calls[0].url, "https://generativelanguage.googleapis.com/v1beta/batches/abc");
+});
+
+test("getBatch preserves completion time for cost accounting after a price change", async () => {
+  const endTime = "2026-12-31T23:55:00Z";
+  const f = fakeFetch(200, { metadata: { state: "BATCH_STATE_SUCCEEDED", endTime } });
+  const client = createGeminiBatchClient({ apiKey: "k", fetch: f.fetch });
+  assert.equal((await client.getBatch("batches/abc")).endTime, endTime);
 });
 
 test("a non-2xx answer throws with the status", async () => {

@@ -27,6 +27,7 @@ export function createGeminiBatchClient({ apiKey, fetch = globalThis.fetch }) {
       const op = await call("GET", name);
       return {
         state: op.metadata?.state,
+        endTime: op.metadata?.endTime,
         entries: op.metadata?.output?.inlinedResponses?.inlinedResponses ?? op.response?.inlinedResponses?.inlinedResponses ?? [],
       };
     },

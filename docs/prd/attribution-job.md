@@ -75,6 +75,9 @@ today's $18.02/day. CRMA-1690 measured a $2.11/day estimate on Flash at 720 eval
 - Per-entry cost uses that model's rates: Flash $0.75 / $3.75 per million (input / output),
   doubling on 2027-01-01; Pro $2.00 / $12.00. A batch entry bills half. Output includes
   thinking tokens.
+- Batch cost uses Google's batch completion time when available, so delayed collection
+  does not reprice a completed batch. Standard retries use their own call time. If completion
+  time is absent, the estimate uses the collection time.
 
 ### The request
 
@@ -216,7 +219,7 @@ replaced string, re-runnable by `NOT EXISTS`. The replacements are the CRMA-1687
 no completed execution for 3 h), `README.md`. The logic lives in
 `services/lib/attribution_context.mjs` (pure: queries, blocks, request, filter, cost) and
 `services/lib/attribution_tick.mjs` (the state machine, I/O injected). It reuses
-`services/lib/gemini_batch.mjs` unchanged.
+`services/lib/gemini_batch.mjs`, including the batch completion time for cost accounting.
 
 ### Cut-over
 

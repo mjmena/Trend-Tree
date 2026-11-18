@@ -16,6 +16,8 @@ The operator selected Flash on 2026-11-18, superseding CRMA-1691's Pro choice. T
 and no malformed answers. This is an accepted recall tradeoff, not a new passing evaluation.
 The measured estimate was $2.11/day at 720 evaluations; live cost is recorded per batch in
 `STG_AGENT_RUN_COSTS`, including thinking tokens and standard retries.
+Batch rates use Google's completion timestamp when available (collection time otherwise);
+standard retries use their own call time.
 
 [Google's pricing](https://aistudio.google.com/docs/pricing#gemini-3.8-flash) doubles on
 2027-01-01. Cost accounting applies that change automatically; at the same token usage the

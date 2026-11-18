@@ -73,6 +73,7 @@ export async function runTick({ query, gemini, cap = 30 }) {
       const pools = typeof inFlight.POOLS === "string" ? JSON.parse(inFlight.POOLS) : (inFlight.POOLS || {});
       summary.collected = await collect({
         query, gemini, prompts, batchName: name, pools, entries: batch.entries,
+        batchCompletedAt: batch.endTime ? new Date(batch.endTime) : undefined,
         status: inFlight.BUDGET_EXHAUSTED ? "BUDGET_EXHAUSTED" : "OK",
       });
       retries = summary.collected.retries;
@@ -104,7 +105,7 @@ async function close({ query, batchName, state, status, error = null }) {
   await query(INSERT_COST, [JOB_MODEL, 0, 0, 0, 0, 0, status, error, batchName]);
 }
 
-async function collect({ query, gemini, prompts, batchName, pools, entries, status }) {
+async function collect({ query, gemini, prompts, batchName, pools, entries, status, batchCompletedAt }) {
   const links = [];
   const errors = [];
   const toRetry = [];
@@ -115,7 +116,7 @@ async function collect({ query, gemini, prompts, batchName, pools, entries, stat
     usage.prompt += u.promptTokenCount || 0;
     usage.candidates += u.candidatesTokenCount || 0;
     usage.thoughts += u.thoughtsTokenCount || 0;
-    usage.cost += entryCost(u, { model: JOB_MODEL, batch });
+    usage.cost += entryCost(u, { model: JOB_MODEL, batch, at: batch ? batchCompletedAt : undefined });
     const list = parseAttributions(response);
     if (!list) return false;
     const f = filterAttributions(list, pools[key] || []);
