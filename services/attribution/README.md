@@ -5,6 +5,9 @@ batch into `FCT_TREND_SIGNALS` (`LINK_KIND = 'attributed'`), then submit the nex
 `ATTRIBUTION_BATCH_CAP` trends, least recently swept first, as the next batch. The design is
 `docs/prd/attribution-job.md`.
 
+Live since 2026-11-18. The [release record](../../docs/runbooks/attribution-2026-11-18.md)
+contains the deployed image, Snowflake verification and retirement evidence.
+
 ## Model
 
 The job submits batches and standard retries to `gemini-3.8-flash`, with medium thinking
@@ -29,8 +32,8 @@ change: the collector prices entries using the deployed `JOB_MODEL`.
 - Deploy: `services/deploy.sh attribution --no-execute`. An execution writes links.
 - Schedule: `services/attribution/schedule.sh` (`--dry-run` prints the call, `--fire` runs it
   once). Hourly at minute 30, UTC, Scheduler job `trend-tree-attribution-hourly`. Apply it only
-  at the cut-over, after the Pipedream attribution workflows are deleted: the job and the
-  Pipedream sweep must never both link signals.
+  at the cut-over, after the Pipedream attribution writers are stopped and drained. Remove
+  the retired workflows as part of the cut-over; the job is the only attribution sweep writer.
 - Alert policy, applied once by hand (`services/deploy.sh` does not apply policies):
 
   ```sh

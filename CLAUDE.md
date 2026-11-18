@@ -24,6 +24,7 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 - `services/tiktok-ingest` — Cloud Run **job** `trend-tree-tiktok-ingest` (CRMA-1337). SerpApi `google_short_videos` over a fixed seed list → `gemini-3.7-flash` title filter (`DIM_LLM_PROMPT` `ingestion.tiktok.filter`) → `SOURCE_NAME = 'tiktok'` rows via `MERGE_EXTERNAL_SIGNALS`. Max 50 SerpApi calls per run on the shared `dev@trendhunter.com` plan. Run by hand with `gcloud run jobs execute trend-tree-tiktok-ingest --region us-east4 --project mcc-crm-automations --wait`.
 - `services/lifecycle` — Cloud Run **job** `trend-tree-lifecycle` (CRMA-1682), the replacement for the two lifecycle Pipedream workflows. Each execution is one tick: collect the in-flight Gemini batch (`gemini-3.8-flash`, tracked in `STG_LIFECYCLE_BATCHES`) through `PROC_LIFECYCLE_APPLY` if it finished, then submit the due trends (up to `LIFECYCLE_BATCH_CAP`) as the next one. Live since the 2026-10-26 cut-over: Scheduler job `trend-tree-lifecycle-hourly` (managed by its `schedule.sh`) runs it hourly, UTC, and it is the only scheduled writer of `FCT_TREND_LIFECYCLE_LEDGER` (`services/editorial-ingest` also writes one `RESURGENT` row when a nomination merges into a `RETIRED` trend). Batch cost lands in `STG_AGENT_RUN_COSTS` under `WORKFLOW_NAME = 'trend-tree-lifecycle'`; `STATUS = BUDGET_EXHAUSTED` means more trends were due than the cap, not a failure. Operate and alert runbook: `services/lifecycle/README.md`.
 - `services/catalog-sync` — Cloud Run **job** `trend-tree-catalog-sync` (CRMA-777): sweeps the public Shopify storefront `products.json` feed into `DIM_CATALOG_PRODUCT` daily at 09:00 UTC (Scheduler job `trend-tree-catalog-sync-daily`, managed by its `schedule.sh`). `deploy.env` sets `KIND=job`, which sends `services/deploy.sh` down its job path: deploy, then one real execution as the smoke test.
+- `services/attribution` — Cloud Run **job** `trend-tree-attribution`, the only attribution sweep writer of `FCT_TREND_SIGNALS`. Each tick collects the finished Gemini 3.8 Flash batch from `STG_ATTRIBUTION_BATCHES`, then submits up to 30 trends, least recently swept first. Scheduler `trend-tree-attribution-hourly` runs at minute 30, UTC. For deployment, scheduling, costs and alerts, read [`services/attribution/README.md`](services/attribution/README.md).
 
 ## Workflow defaults
 
@@ -45,7 +46,6 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 | `sources-p_7NCy36w` | Per-trend source-metrics fetcher — populates `FCT_TREND_SOURCE_METRICS` |
 | `enrichment-p_xMC995w` | Single Gemini 3.1 Pro agent loop — produces the canonical enrichment record. Its `run_name_reviewer` step is one of three remaining Anthropic callers; see **Anthropic callers** below |
 | `write-p_o7CWa2K` | Persists enrichment to `FCT_TREND_ENRICHMENT_LEDGER` (append-only ledger; the legacy `DIM_TREND_ENRICHMENT` was retired in the 2026-04-28 agent-owned-ledgers refactor) |
-| `lifecycle-attribution-agent-p_KwCoaap` + `lifecycle-attribution-subagent-p_PACe77B` | Gemini 3.1 Pro attribution agent. Hourly cron sweeps active trends and dispatches subagents that attribute newly-ingested candidate signals to existing trends → appends `FCT_TREND_SIGNALS` links (grows a trend's evidence pool over time). |
 | `prediction-agent-p_QPCkLP1` | Deterministic emergence scorer (no LLM). Computes `PREDICTION_SCORE` (0–100), `PREDICTION_FLAG` (Emerging / Watchlist / High Potential), `PREDICTION_ELIGIBLE` across all live trends in one batch SQL run → `FCT_TREND_PREDICTION_LEDGER`. Feeds the Insights Agent Predictions Queue. Daily 14:00 UTC cron (`dc_wDuPeGB`) + manual via HTTP. Scores + writes in a single `INSERT...SELECT` (no proc). |
 | `daily-digest-p_vQCkwgV` | Email digest of recently-promoted trends |
 | `audit-agent-p_xMC9nm3` | Gemini 3.1 Pro health auditor. Daily 13:00 UTC + HTTP. Prefetches Snowflake freshness/cost/stuck-trends + Pipedream errors per workflow (registry covers all live workflows incl. the full ingestion tier as of 2026-06-08) + `DIM_LLM_PROMPT` drift (live ACTIVE version vs. a committed manifest, CRMA-469), emits GREEN/YELLOW/RED report → `FCT_AUDIT_LEDGER` + Slack DM (gated on non-GREEN). Realtime per-error alerting is handled by an external multi-repo monitor outside this project |
@@ -57,6 +57,8 @@ Pipedream does **not** deploy anything under `services/`. These are containerize
 > The `gtrends-poller-p_13CN9KG` workflow (daily Google Trends interest fetcher → `FCT_TREND_GTRENDS_DAILY`) was broken and has been **removed** from the repo (CRMA-1313, 2026-09-25). `FCT_TREND_GTRENDS_DAILY` stays in Snowflake as history; `DT_TREND_DASHBOARD.KEY_DATA_POINTS` is now always an empty array. The live `search-google-trends` agent tool is a separate component and stays.
 
 > The Pipedream lifecycle sweep, `lifecycle-agent-p_JZCz73w` + `lifecycle-subagent-p_gYC562o` (and its `sources/lifecycle-cron` timer), has been **removed** from the repo (CRMA-1681). `services/lifecycle` replaced it at the 2026-10-26 cut-over and is the only scheduled writer of `FCT_TREND_LIFECYCLE_LEDGER`. If either workflow still exists in Pipedream, never turn it on: two writers would both write the ledger.
+
+> The Pipedream attribution sweep, `lifecycle-attribution-agent-p_KwCoaap` + `lifecycle-attribution-subagent-p_PACe77B`, its `sources/attribution-cron` timer and its backfill driver have been **removed** (CRMA-1740). `services/attribution` took over on 2026-11-18. Keep any surviving copies inactive to preserve one attribution writer. Release evidence: [`docs/runbooks/attribution-2026-11-18.md`](docs/runbooks/attribution-2026-11-18.md).
 
 > The legacy `llm-enrichment-p_YyC86Zo` (3-LLM cascade, replaced by `enrichment-p_xMC995w` on 2026-04-27) has been **removed** from the repo — no longer kept for rollback.
 
@@ -83,8 +85,8 @@ discovery agents (every 2h) → STG_EXTERNAL_SIGNALS
                         TASK_PROMOTE_TREND_SIGNALS (5-min)
                                   ↓
                           FCT_TREND_SIGNALS  ←  trend↔signal links
-                          (lifecycle-attribution agent, hourly, keeps
-                           appending newly-ingested signals to live trends)
+                          (attribution job, Cloud Run, Gemini 3.8 Flash batch,
+                           hourly at :30, appends new signals to live trends)
                                   ↓ promotion's fire_enrichment_chain
                           dispatcher (HTTP, per trend)
                                   ↓

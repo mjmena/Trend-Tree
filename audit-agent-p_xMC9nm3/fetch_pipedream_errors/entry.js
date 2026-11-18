@@ -46,9 +46,6 @@ const WORKFLOW_REGISTRY = [
   { id: "p_7NCy36w", name: "sources" },
   { id: "p_xMC995w", name: "enrichment" },
   { id: "p_o7CWa2K", name: "write" },
-  // --- lifecycle attribution / prediction / digest ---
-  { id: "p_KwCoaap", name: "lifecycle-attribution-agent" },
-  { id: "p_PACe77B", name: "lifecycle-attribution-subagent" },
   { id: "p_QPCkLP1", name: "prediction-agent" },
   { id: "p_vQCkwgV", name: "daily-digest" },
   // --- ingestion (was entirely unmonitored before 2026-06-08) ---
