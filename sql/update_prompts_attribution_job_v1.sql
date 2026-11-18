@@ -12,13 +12,13 @@ INSERT INTO DIM_LLM_PROMPT (PROMPT_KEY, VERSION, MODEL, TEMPLATE, MODEL_PARAMS, 
 SELECT
     'signal.attribution.job.system',
     1,
-    'gemini-3.1-pro-preview',
+    'gemini-3.8-flash',
     p.TPL,
     OBJECT_INSERT(OBJECT_INSERT(p.MODEL_PARAMS::OBJECT, 'per_call_max_tokens', 8192, TRUE), 'thinking_level', 'medium', TRUE),
     TRUE,
     MD5(p.TPL),
     'marty',
-    'v1 CRMA-1737: one-shot JSON variant of signal.attribution.system v1 for the Cloud Run attribution job; tool wording removed'
+    'v1 CRMA-1737: one-shot JSON variant of signal.attribution.system v1 for the Cloud Run attribution job; tool wording removed; gemini-3.8-flash selected by the operator on 2026-11-18'
 FROM (
     SELECT *, REPLACE(REPLACE(REPLACE(TEMPLATE,
         '═══ AVAILABLE TOOLS ═══\n\n- `filter_candidates(min_similarity, source_filter)` — slice the candidate pool by similarity or source name. Use if you want to inspect a tighter cut before deciding.\n- `commit_attributions(attributions)` — write confirmed signal-trend links. Call exactly once. Pass an array of { signal_id, link_type } objects. link_type must be one of: news | social | commerce | other.\n\n', ''),

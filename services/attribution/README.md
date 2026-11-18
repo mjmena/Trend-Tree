@@ -5,6 +5,23 @@ batch into `FCT_TREND_SIGNALS` (`LINK_KIND = 'attributed'`), then submit the nex
 `ATTRIBUTION_BATCH_CAP` trends, least recently swept first, as the next batch. The design is
 `docs/prd/attribution-job.md`.
 
+## Model
+
+The job submits batches and standard retries to `gemini-3.8-flash`, with medium thinking
+and an 8192-token output limit. The prompt migration sets the same model in
+`signal.attribution.job.system` v1. Apply it after the audit manifest has deployed.
+
+The operator selected Flash on 2026-11-18, superseding CRMA-1691's Pro choice. The frozen
+300-trend comparison (CRMA-1690) measured 91.8% precision, 60.0% recall against a 61.8% cutoff,
+and no malformed answers. This is an accepted recall tradeoff, not a new passing evaluation.
+The measured estimate was $2.11/day at 720 evaluations; live cost is recorded per batch in
+`STG_AGENT_RUN_COSTS`, including thinking tokens and standard retries.
+
+[Google's pricing](https://aistudio.google.com/docs/pricing#gemini-3.8-flash) doubles on
+2027-01-01. Cost accounting applies that change automatically; at the same token usage the
+estimate becomes $4.22/day. No batch from another model may remain in flight during a model
+change: the collector prices entries using the deployed `JOB_MODEL`.
+
 ## Operate
 
 - Deploy: `services/deploy.sh attribution --no-execute`. An execution writes links.

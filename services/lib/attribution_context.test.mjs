@@ -32,9 +32,24 @@ test("parseAttributions reads the JSON answer and skips thought parts", () => {
 
 test("entryCost bills thinking as output, halves a batch, and refuses an unpriced model", () => {
   const usage = { promptTokenCount: 1_000_000, candidatesTokenCount: 100_000, thoughtsTokenCount: 900_000 };
-  assert.equal(entryCost(usage, { batch: false }), 14);
-  assert.equal(entryCost(usage, { batch: true }), 7);
+  const at = new Date("2026-12-31T23:59:59Z");
+  assert.equal(entryCost(usage, { batch: false, at }), 4.5);
+  assert.equal(entryCost(usage, { batch: true, at }), 2.25);
   assert.throws(() => entryCost(usage, { model: "gemini-9" }), /no rates/);
+});
+
+test("Flash pricing doubles on January 1, 2027 for batch entries and standard retries; Pro stays fixed", () => {
+  const usage = { promptTokenCount: 1_000_000, candidatesTokenCount: 100_000, thoughtsTokenCount: 900_000 };
+  const before = new Date("2026-12-31T23:59:59.999Z");
+  const after = new Date("2027-01-01T00:00:00Z");
+  assert.equal(entryCost(usage, { batch: false, at: before }), 4.5);
+  assert.equal(entryCost(usage, { batch: true, at: before }), 2.25);
+  assert.equal(entryCost(usage, { batch: false, at: after }), 9);
+  assert.equal(entryCost(usage, { batch: true, at: after }), 4.5);
+  for (const at of [before, after]) {
+    assert.equal(entryCost(usage, { model: "gemini-3.1-pro-preview", batch: false, at }), 14);
+    assert.equal(entryCost(usage, { model: "gemini-3.1-pro-preview", batch: true, at }), 7);
+  }
 });
 
 test("buildBlocks renders the subagent's trend and candidate blocks", () => {

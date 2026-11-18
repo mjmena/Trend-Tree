@@ -3,7 +3,7 @@
 
 import { loadPrompts, mustGet, render } from "./lifecycle_context.mjs";
 
-export const JOB_MODEL = "gemini-3.1-pro-preview";
+export const JOB_MODEL = "gemini-3.8-flash";
 export const JOB_SYSTEM_PROMPT_KEY = "signal.attribution.job.system";
 export const RUBRIC_PROMPT_KEY = "signal.attribution.rubric";
 export const SIMILARITY_THRESHOLD = "0.35";
@@ -216,13 +216,16 @@ export function filterAttributions(list, pool) {
 }
 
 // Standard per-million rates; a batch entry bills half.
-const RATES = { "gemini-3.1-pro-preview": { input: 2.0, output: 12.0 } };
+const RATES = {
+  "gemini-3.1-pro-preview": { input: 2.0, output: 12.0 },
+  "gemini-3.8-flash": { input: 0.75, output: 3.75, doublesAt: Date.parse("2027-01-01T00:00:00Z") },
+};
 
 /** One entry's cost in USD, thinking tokens billed as output. */
-export function entryCost(usage = {}, { model = JOB_MODEL, batch = true } = {}) {
+export function entryCost(usage = {}, { model = JOB_MODEL, batch = true, at = new Date() } = {}) {
   const r = RATES[model];
   if (!r) throw new Error(`attribution: no rates for ${model}`);
-  const scale = batch ? 0.5 : 1;
+  const scale = (batch ? 0.5 : 1) * (at.getTime() >= r.doublesAt ? 2 : 1);
   const output = (usage.candidatesTokenCount || 0) + (usage.thoughtsTokenCount || 0);
   const usd = ((usage.promptTokenCount || 0) * r.input + output * r.output) * scale / 1e6;
   return Math.round(usd * 1e6) / 1e6;

@@ -6,7 +6,7 @@ import { runTick } from "./attribution_tick.mjs";
 import { SET_QUERIES } from "./attribution_context.mjs";
 
 const PROMPT_ROWS = [
-  { PROMPT_KEY: "signal.attribution.job.system", VERSION: 1, TEMPLATE: "SYS\n{{trend_block}}\n{{candidate_signals_block}}\n{{attribution_rubric}}", MODEL_PARAMS: { per_call_max_tokens: 8192, thinking_level: "low" } },
+  { PROMPT_KEY: "signal.attribution.job.system", VERSION: 1, MODEL: "gemini-3.8-flash", TEMPLATE: "SYS\n{{trend_block}}\n{{candidate_signals_block}}\n{{attribution_rubric}}", MODEL_PARAMS: { per_call_max_tokens: 8192, thinking_level: "medium" } },
   { PROMPT_KEY: "signal.attribution.rubric", VERSION: 3, TEMPLATE: "RUBRIC", MODEL_PARAMS: {} },
 ];
 
@@ -68,7 +68,7 @@ function fakeGemini() {
     },
     async getBatch() { return { state: g.state, entries: g.entries }; },
     async cancelBatch(name) { g.cancelled.push(name); },
-    async generateContent({ request }) { g.retries.push(request); return g.retryAnswer; },
+    async generateContent({ model, request }) { g.retries.push({ model, request }); return g.retryAnswer; },
   };
 }
 
@@ -78,6 +78,8 @@ test("first tick submits the cap, least recently swept first; empty pools are sw
   const out = await runTick({ query, gemini, cap: 2 });
   assert.deepEqual(db.batches[0].TREND_IDS, ["a", "b"]);
   assert.equal(gemini.g.submitted[0].requests.length, 1);
+  assert.equal(gemini.g.submitted[0].model, "gemini-3.8-flash");
+  assert.equal(gemini.g.submitted[0].requests[0].request.generationConfig.thinkingConfig.thinkingLevel, "medium");
   assert.equal(gemini.g.submitted[0].requests[0].metadata.key, "a");
   assert.equal(out.submitted.budget_exhausted, true);
   assert.equal(db.batches[0].STATE, "SUBMITTED");
@@ -106,6 +108,7 @@ test("collect links in-pool answers, drops the rest, writes one cost row, then s
   assert.equal(out.collected.dropped, 1);
   assert.equal(db.batches[0].STATE, "COLLECTED");
   assert.equal(db.costs.length, 1);
+  assert.equal(db.costs[0].MODEL, "gemini-3.8-flash");
   assert.equal(db.costs[0].STATUS, "BUDGET_EXHAUSTED");
   assert.equal(db.costs[0].TURN_COUNT, 2);
   assert.match(db.costs[0].ERROR_MESSAGE, /1 attribution\(s\) dropped/);
@@ -124,7 +127,8 @@ test("a non-JSON entry gets one standard retry from the stored pool", async () =
   gemini.g.retryAnswer = answer([{ signal_id: "s1", link_type: "social" }]);
   const out = await runTick({ query, gemini, cap: 0 });
   assert.equal(gemini.g.retries.length, 1);
-  assert.match(gemini.g.retries[0].systemInstruction.parts[0].text, /\[s1\]/);
+  assert.equal(gemini.g.retries[0].model, "gemini-3.8-flash");
+  assert.match(gemini.g.retries[0].request.systemInstruction.parts[0].text, /\[s1\]/);
   assert.deepEqual(db.links, [{ trend_id: "a", signal_id: "s1", link_type: "social" }]);
   assert.equal(out.collected.retries, 1);
 });
