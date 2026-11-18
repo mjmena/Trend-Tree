@@ -38,6 +38,7 @@ flowchart TD
     H2 -->|sync chain| H3["write-p_o7CWa2K"]
     H3 -->|INSERT| I["FCT_TREND_ENRICHMENT_LEDGER"]
     J["services/lifecycle (Cloud Run job)\nGemini 3.8 Flash batch @ 1h"] -->|"PROC_LIFECYCLE_APPLY"| K["FCT_TREND_LIFECYCLE_LEDGER"]
+    A2["services/attribution (Cloud Run job)\nGemini 3.8 Flash batch @ hourly :30 UTC"] -->|"attributed links"| G2
     P["prediction-agent-p_QPCkLP1\ndeterministic SQL @ daily 14:00 UTC"] -->|"INSERT...SELECT"| P2["FCT_TREND_PREDICTION_LEDGER"]
     K --> P
     G & I & K & P2 -->|"15-min dynamic table"| L["DT_TREND_DASHBOARD"]
@@ -63,11 +64,12 @@ All workflows share network `net_5Lnie3` (required for Snowflake egress allowlis
 | `p_7NCy36w` | `sources-p_7NCy36w` | HTTP | Fetches per-source metrics → FCT_TREND_SOURCE_METRICS | 2048 MB · 300s |
 | `p_xMC995w` | `enrichment-p_xMC995w` | HTTP | Claude Sonnet 4.6 4-layer naming + enrichment agent | 4096 MB · 600s |
 | `p_o7CWa2K` | `write-p_o7CWa2K` | HTTP | Persists enrichment payload → FCT_TREND_ENRICHMENT_LEDGER | 2048 MB · 300s |
-| `p_KwCoaap` | `lifecycle-attribution-agent-p_KwCoaap` | HTTP | Attribution lifecycle agent | 4096 MB · 600s |
-| `p_PACe77B` | `lifecycle-attribution-subagent-p_PACe77B` | HTTP | Attribution lifecycle subagent | 4096 MB · 600s |
 | `p_QPCkLP1` | `prediction-agent-p_QPCkLP1` | cron daily 14:00 UTC + HTTP | Deterministic emergence scorer over all live trends → FCT_TREND_PREDICTION_LEDGER | 4096 MB · 600s |
 | `p_vQCkwgV` | `daily-digest-p_vQCkwgV` | cron daily | Assembles + sends trend digest via Braze | 2048 MB · 300s |
 | `p_xMC9nm3` | `audit-agent-p_xMC9nm3` | cron daily 13:00 UTC + HTTP | Gemini 3.1 Pro health auditor → FCT_AUDIT_LEDGER + Slack DM (gated non-GREEN) | 2048 MB · 300s |
+
+Attribution runs in the Cloud Run job `trend-tree-attribution`; its Pipedream workflows
+were retired on 2026-11-18. See the [job runbook](../services/attribution/README.md).
 
 ---
 
