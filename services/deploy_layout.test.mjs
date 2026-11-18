@@ -47,7 +47,7 @@ function load(name) {
   };
 }
 
-const UNITS = [load("ecomm-agent"), load("scrape-gateway"), load("catalog-sync"), load("tiktok-ingest"), load("lifecycle")];
+const UNITS = [load("ecomm-agent"), load("scrape-gateway"), load("catalog-sync"), load("tiktok-ingest"), load("lifecycle"), load("attribution")];
 // RUNTIME=python services (CRMA-1667): deploy.sh's Python branch.
 const PY_UNITS = [load("editorial-ingest")];
 
@@ -194,6 +194,19 @@ test("lifecycle: deploys as a job with one retry, a 1500 s timeout, the 200-tren
   assert.equal(u.envValue("MAX_RETRIES"), "1");
   assert.equal(u.envValue("TIMEOUT"), "1500");
   assert.match(u.deployEnv, /^LIFECYCLE_BATCH_CAP: '200'$/m);
+  const secrets = u.deployEnv.match(/^SECRETS="([^"]*)"/m)?.[1] ?? "";
+  assert.deepEqual(secrets.split(",").sort(), [
+    "GEMINI_API_KEY=generic-gemini-api-key:latest",
+    "SNOWFLAKE_PRIVATE_KEY=snowflake-private-key:latest",
+  ]);
+});
+
+test("attribution: deploys as a job with one retry, a 1500 s timeout, the 30-trend cap and its two secrets", () => {
+  const u = load("attribution");
+  assert.equal(u.kind, "job");
+  assert.equal(u.envValue("MAX_RETRIES"), "1");
+  assert.equal(u.envValue("TIMEOUT"), "1500");
+  assert.match(u.deployEnv, /^ATTRIBUTION_BATCH_CAP: '30'$/m);
   const secrets = u.deployEnv.match(/^SECRETS="([^"]*)"/m)?.[1] ?? "";
   assert.deepEqual(secrets.split(",").sort(), [
     "GEMINI_API_KEY=generic-gemini-api-key:latest",
