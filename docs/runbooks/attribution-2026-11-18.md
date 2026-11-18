@@ -42,9 +42,15 @@ matching the per-entry Batch API calculation. No links were added by this sample
 `STATUS = 'BUDGET_EXHAUSTED'` reflects the initial unswept backlog.
 
 The collector then submitted 30 trends, 29 with nonempty candidate pools, as batch
-`batches/i0k06yo6w7zowhuioj2t9375necrs11bwsyx`. A direct Scheduler fire launched execution
-`trend-tree-attribution-h8khs` as the runtime service account and completed successfully
-at 17:55:47 UTC. The permanent cap remained 30 after the smoke-test override.
+`batches/i0k06yo6w7zowhuioj2t9375necrs11bwsyx`. All 29 requests succeeded. Execution
+`trend-tree-attribution-zz6vg` collected it and wrote five new `attributed` links at
+18:00:48 UTC. A before/after Snowflake comparison verified all five pairs, their link
+types and timestamps, the `COLLECTED` batch state and its single cost row. That row has
+99,628 input, 537 output and 30,565 thinking tokens, costing $0.095682, with no errors.
+
+A direct Scheduler fire launched execution `trend-tree-attribution-h8khs` as the runtime
+service account and completed successfully at 17:55:47 UTC. The smoke executions used
+per-execution cap overrides; the permanent cap remains 30.
 
 ## Retirement sequence
 
