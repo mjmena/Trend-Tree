@@ -316,12 +316,6 @@ UNION ALL SELECT 'unknown MODE: applied=false, no header written',
 -- Print the report (visible in snow sql output).
 SELECT check_name, pass FROM _sourcing_results ORDER BY check_name;
 
--- Force a non-zero exit if anything failed.
-SELECT CASE WHEN (SELECT COUNT_IF(NOT pass OR pass IS NULL) FROM _sourcing_results) = 0
-            THEN 'ALL SOURCING TESTS PASS'
-            ELSE TO_VARCHAR(1/0)  -- deliberate error -> snow sql exits non-zero
-       END AS result;
-
 -- ---------------------------------------------------------------------------
 -- Cleanup this file's own fixtures so re-runs stay idempotent and the
 -- table doesn't accumulate test rows across CI runs.
@@ -330,3 +324,9 @@ DELETE FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_CANDIDATES
 WHERE TREND_ID LIKE 'zztest-sourcing-%';
 DELETE FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_LEDGER
 WHERE TREND_ID LIKE 'zztest-sourcing-%';
+
+-- Force a non-zero exit if anything failed.
+SELECT CASE WHEN (SELECT COUNT_IF(NOT pass OR pass IS NULL) FROM _sourcing_results) = 0
+            THEN 'ALL SOURCING TESTS PASS'
+            ELSE TO_VARCHAR(1/0)  -- deliberate error -> snow sql exits non-zero
+       END AS result;

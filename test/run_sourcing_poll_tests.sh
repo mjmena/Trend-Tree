@@ -10,4 +10,19 @@
 # otherwise try to interpret.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+cleanup() {
+  local result=$?
+  trap - EXIT
+  if ! snow sql -c claude -f test/sourcing_poll_cleanup.sql --enable-templating NONE; then
+    echo 'Sourcing poll fixture cleanup failed; rerun test/sourcing_poll_cleanup.sql.' >&2
+    if (( result == 0 )); then result=1; fi
+  fi
+  exit "$result"
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+snow sql -c claude -f test/sourcing_poll_cleanup.sql --enable-templating NONE
 snow sql -c claude -f test/sourcing_poll.test.sql --enable-templating NONE
