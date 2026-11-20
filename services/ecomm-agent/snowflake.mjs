@@ -48,10 +48,9 @@ export function destroy(conn) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-// General-purpose retry: safe for reads and for PROC_SOURCING_APPLY 'complete'
-// (which has its own double-completion guard, so a retried complete() after a
-// lost response is a harmless no-op, not a duplicate write). NOT used for
-// 'open' — see runWithConnectRetryOnly below.
+// Retrying 'complete' cannot duplicate writes: the procedure rejects a terminal
+// run with "no running header", which callProcComplete normalizes as applied.
+// Reads are also safe; 'open' uses runWithConnectRetryOnly instead.
 export async function runWithRetry(connOpts, sqlText, binds) {
   for (let attempt = 1; ; attempt++) {
     let conn;
