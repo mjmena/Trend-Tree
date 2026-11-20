@@ -31,17 +31,10 @@
 -- references (e.g. from a sourcing suggestion already shown to a
 -- strategist) never dangle.
 --
--- ****************************************************************
--- WARNING: CREATE OR REPLACE TABLE is destructive on re-run — it drops and
--- recreates this table EMPTY, discarding every seeded row and its (paid)
--- Cortex embedding. This is the one table in sql/ that behaves this way on
--- purpose per CRMA-773's spec (every sibling DIM_*/FCT_* table here uses
--- CREATE TABLE IF NOT EXISTS instead). Only ever run the CREATE statement
--- below for the initial table creation or a deliberate schema migration —
--- never as a "make sure the table exists" no-op before a script run.
--- ****************************************************************
+-- Existing rows and paid embeddings must survive bootstrap replays.
+-- Schema changes to an existing table belong in ALTER TABLE migrations.
 
-CREATE OR REPLACE TABLE MCC_PRESENTATION.TREND_AGENT.DIM_CATALOG_PRODUCT (
+CREATE TABLE IF NOT EXISTS MCC_PRESENTATION.TREND_AGENT.DIM_CATALOG_PRODUCT (
   TIER                 VARCHAR(32)   NOT NULL COMMENT 'sourcing tier — ''shopify'' is the only tier as of CRMA-773; CATALOG_PRODUCT_ID''s shape is defined per tier',
   CATALOG_PRODUCT_ID   VARCHAR(255)  NOT NULL COMMENT 'tier-scoped natural key — shopify tier: the product Handle (stable across variants, present on every export/API row)',
 

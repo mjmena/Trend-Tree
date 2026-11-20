@@ -1,10 +1,8 @@
 // Distillation Revisit Lead — commit_batch_result
 //
 // One TCP-connected Snowflake session does:
-//   1. INSERT this batch's candidates into STG_TREND_CANDIDATES (same
-//      CTE shape the legacy commit_candidates SQL action used: derives
-//      SOURCE_BREAKDOWN by joining supporting_signal_ids back to
-//      STG_EXTERNAL_SIGNALS).
+//   1. INSERT candidates with resolvable FCT_SIGNALS evidence, deriving
+//      both SUPPORTING_SIGNAL_IDS and SOURCE_BREAKDOWN from those signals.
 //   2. UPDATE the queue row with terminal status (DONE on happy path,
 //      FAILED on cluster_agent_timeout / error / malformed callback) plus
 //      candidate count, cost, duration, and error string.
@@ -24,11 +22,19 @@ INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES (
 WITH cand AS (
   SELECT c.value AS j FROM TABLE(FLATTEN(INPUT => PARSE_JSON(?))) c
 ),
-sig_counts AS (
-  SELECT cand.j:candidate_id::STRING AS candidate_id, s.SOURCE_NAME, COUNT(*) AS n
+valid_pairs AS (
+  SELECT DISTINCT cand.j:candidate_id::STRING AS candidate_id, f.SIGNAL_ID, f.SOURCE_NAME
   FROM cand, LATERAL FLATTEN(INPUT => cand.j:supporting_signal_ids) sid
-  JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s ON s.SIGNAL_ID = sid.value::STRING
-  GROUP BY 1, 2
+  JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f ON f.SIGNAL_ID = sid.value::STRING
+),
+vs AS (
+  SELECT candidate_id,
+         ARRAY_AGG(SIGNAL_ID) WITHIN GROUP (ORDER BY SIGNAL_ID) AS supporting_signal_ids
+  FROM valid_pairs GROUP BY 1
+),
+sig_counts AS (
+  SELECT candidate_id, SOURCE_NAME, COUNT(*) AS n
+  FROM valid_pairs GROUP BY 1, 2
 ),
 sb AS (
   SELECT candidate_id, OBJECT_AGG(SOURCE_NAME, n::VARIANT) AS source_breakdown
@@ -41,7 +47,7 @@ SELECT
   cand.j:iteration::NUMBER,
   cand.j:topic::STRING,
   cand.j:query::STRING,
-  cand.j:supporting_signal_ids,
+  vs.supporting_signal_ids,
   cand.j:confidence::FLOAT,
   cand.j:specificity_score::FLOAT,
   COALESCE(sb.source_breakdown, OBJECT_CONSTRUCT()),
@@ -51,7 +57,9 @@ SELECT
   cand.j:reasoning::STRING,
   cand.j:reasoning_trace,
   cand.j:dedup_of_trend_id::STRING
-FROM cand LEFT JOIN sb ON sb.candidate_id = cand.j:candidate_id::STRING
+FROM cand
+INNER JOIN vs ON vs.candidate_id = cand.j:candidate_id::STRING
+LEFT JOIN sb ON sb.candidate_id = cand.j:candidate_id::STRING
 `;
 
 const UPDATE_QUEUE_SQL = `
@@ -109,14 +117,15 @@ export default defineComponent({
     });
 
     try {
+      let candidatesCommitted = 0;
       // Only INSERT when there are candidates — driver is unhappy with
       // an empty FLATTEN, and skipping the round-trip is faster.
       if (p.candidates_count > 0 && p.candidates_json && p.candidates_json !== "[]") {
-        await execute(conn, INSERT_CANDIDATES_SQL, [p.candidates_json]);
-        console.log(
-          `commit_batch_result: inserted ${p.candidates_count} candidates ` +
-          `(chain=${p.chain_id} batch=${p.batch_index})`,
-        );
+        const rows = await execute(conn, INSERT_CANDIDATES_SQL, [p.candidates_json]);
+        candidatesCommitted = Number(rows?.[0]?.["number of rows inserted"]);
+        if (!Number.isInteger(candidatesCommitted) || candidatesCommitted < 0) {
+          throw new Error("Candidate INSERT did not return an affected-row count");
+        }
       } else {
         console.log(
           `commit_batch_result: 0 candidates to insert ` +
@@ -124,9 +133,15 @@ export default defineComponent({
         );
       }
 
+      const candidatesDropped = Math.max(0, (Number(p.candidates_count) || 0) - candidatesCommitted);
+      console.log(
+        `commit_batch_result: inserted ${candidatesCommitted}, dropped ${candidatesDropped} ` +
+        `candidates without resolvable evidence (chain=${p.chain_id} batch=${p.batch_index})`,
+      );
+
       await execute(conn, UPDATE_QUEUE_SQL, [
         status,
-        Number(p.candidates_count) || 0,
+        candidatesCommitted,
         Number(p.cost_usd) || 0,
         Number(p.run_duration_ms) || 0,
         p.error || null,
@@ -134,13 +149,14 @@ export default defineComponent({
         p.batch_index,
       ]);
 
-      $.export("$summary", `${status}: ${p.candidates_count || 0} candidates`);
+      $.export("$summary", `${status}: ${candidatesCommitted} committed, ${candidatesDropped} dropped`);
       return {
         skipped: false,
         status,
         chain_id: p.chain_id,
         batch_index: p.batch_index,
-        candidates_committed: p.candidates_count || 0,
+        candidates_committed: candidatesCommitted,
+        candidates_dropped: candidatesDropped,
       };
     } finally {
       await destroy(conn);

@@ -10,7 +10,7 @@
 --
 -- Adding a new source = INSERT a new SOURCE_NAME value. No DDL changes needed.
 
-CREATE OR REPLACE TABLE MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCE_METRICS (
+CREATE TABLE IF NOT EXISTS MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCE_METRICS (
     TREND_ID VARCHAR NOT NULL,
     SOURCE_NAME VARCHAR NOT NULL,            -- 'gdelt', 'wikimedia', 'bluesky', 'google_trends', 'amazon', 'reddit', 'pinterest', 'tiktok', 'mcclatchy'
     HEADLINE_METRIC FLOAT,                   -- one comparable number per source

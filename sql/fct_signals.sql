@@ -2,7 +2,7 @@
 -- Database: MCC_PRESENTATION.TREND_AGENT
 --
 -- Append-only fact table promoted from STG_EXTERNAL_SIGNALS by
--- TASK_PROMOTE_SIGNALS_TO_FCT (5-min cadence). Single SIGNAL_VECTOR
+-- MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT (5-min cadence). Single SIGNAL_VECTOR
 -- column over (SIGNAL_TITLE + first 512 chars of SIGNAL_TEXT) via
 -- Cortex EMBED_TEXT_1024('snowflake-arctic-embed-l-v2.0', ...).
 --
@@ -14,7 +14,7 @@
 -- amazon_movers excluded by design (too granular — individual SKUs;
 -- the aggregated amazon_trends rows are the useful unit).
 
-CREATE OR REPLACE TABLE MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS (
+CREATE TABLE IF NOT EXISTS MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS (
     SIGNAL_ID         VARCHAR(16777216) NOT NULL PRIMARY KEY,  -- widened from 255 — see sql/alter_signal_id_widen.sql
     SOURCE_NAME       VARCHAR(50)   NOT NULL,
     SIGNAL_TIMESTAMP  TIMESTAMP_NTZ,
@@ -34,9 +34,8 @@ CREATE OR REPLACE TABLE MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS (
 -- Cortex EMBED rejects them and one such row halts the whole INSERT.
 -- See sql/alter_task_promote_signals_utf8_guard.sql for the incident.
 --
--- The live object carries a MARKETING_ prefix
--- (MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT). Apply changes to that name.
-CREATE OR REPLACE TASK MCC_PRESENTATION.TREND_AGENT.TASK_PROMOTE_SIGNALS_TO_FCT
+-- The task name must match the scheduled writer to avoid duplicate inserts.
+CREATE OR REPLACE TASK MCC_PRESENTATION.TREND_AGENT.MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT
     WAREHOUSE = MARKETING_WH
     SCHEDULE  = '5 MINUTE'
 AS
@@ -61,4 +60,8 @@ WHERE s.SIGNAL_TITLE IS NOT NULL
   )
 QUALIFY ROW_NUMBER() OVER (PARTITION BY s.SIGNAL_ID ORDER BY s.INGESTED_AT ASC) = 1;
 
-ALTER TASK MCC_PRESENTATION.TREND_AGENT.TASK_PROMOTE_SIGNALS_TO_FCT RESUME;
+-- Replacement can lose the owner with warehouse USAGE; restore it before resume.
+GRANT OWNERSHIP ON TASK MCC_PRESENTATION.TREND_AGENT.MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT
+    TO ROLE MARKETING_ENGINEER COPY CURRENT GRANTS;
+
+ALTER TASK MCC_PRESENTATION.TREND_AGENT.MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT RESUME;
