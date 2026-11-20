@@ -187,7 +187,8 @@ for (const together of [false,true]) {
   const suffix=together?'batch':'separate';
   const redirect='https://redirect.example/'+suffix, final='https://daily.example/'+suffix;
   const first=native('discovery-'+suffix,redirect,'agent_chatgpt_discovery');
-  first.METADATA=JSON.stringify({url:redirect,canonical_url:final});
+  first.URL=final;
+  first.METADATA=JSON.stringify({original_url:redirect,url:final,canonical_url:final});
   stage([first]);
   const {signals}=await preparePage({data:[{...article,id:suffix,url:final}],observed,origin:'forward',
     from:'2026-11-01T00:00:00.000Z',to:'2026-11-02T00:00:00.000Z'});
@@ -206,13 +207,20 @@ check('the final supporting ID limit preserves both original URLs and accepts lo
        AND ORIGINAL_URL=${literal(tooLong)} AND SIGNAL_ID IS NULL)=1
    AND COUNT_IF(PROVIDER_ID='short-id' AND SIGNAL_ID='https://short.example/news' AND ORIGINAL_URL=${literal(tracking)})=1
    FROM FIX_TH_STG_TREND_HUNTER_ARTICLES`);
+await intake([{...article,id:'root-a',url:'https://paper.example/?utm_source=a'},
+  {...article,id:'root-b',url:'https://paper.example/?utm_medium=b',title:'Another headline'},
+  {...article,id:'root-story',url:'https://paper.example/?p=123&utm_source=a'}]);
+check('a homepage with only tracking parameters is unusable while a query identifying an article remains eligible',
+  `SELECT COUNT_IF(PROVIDER_ID IN ('root-a','root-b') AND DISPOSITION='unusable' AND REASON='invalid_original_url'
+       AND ORIGINAL_URL LIKE 'https://paper.example/?utm_%' AND SIGNAL_ID IS NULL)=2
+   AND COUNT_IF(PROVIDER_ID='root-story' AND SIGNAL_ID='https://paper.example/?p=123')=1 FROM FIX_TH_STG_TREND_HUNTER_ARTICLES`);
 
 // Read the deployed Pipedream queries against the same native-first, verified-copy fixtures.
 function workflowQuery(file,step,trend='late') {
   const query=read(file).split('- namespace: '+step+'\n')[1].split('      value: |-\n')[1].split('      query: |-\n')[0];
   return isolated(query.replace(/\{\{steps\.[^}]+\}\}/g,trend));
 }
-statements.push(`CREATE TEMPORARY TABLE FIX_TH_FCT_TRENDS AS SELECT 'late' TREND_ID,'copies' CANDIDATE_ID,'Refill stores' TREND_TOPIC,
+statements.push(`CREATE TEMPORARY TABLE FIX_TH_FCT_TRENDS AS SELECT 'late'::VARCHAR(64) TREND_ID,'copies'::VARCHAR(64) CANDIDATE_ID,'Refill stores' TREND_TOPIC,
   'Refill' TREND_NAME,'Refill' TREND_NAME_B2C,'Retail' CATEGORY,'Stores' SUBCATEGORY,
   CURRENT_TIMESTAMP() DETECTED_AT,CURRENT_TIMESTAMP() LAST_UPDATE_AT`);
 statements.push('CREATE TEMPORARY TABLE FIX_TH_FCT_TREND_LIFECYCLE_LEDGER (TREND_ID VARCHAR,NEW_STATUS VARCHAR,NEW_HEAT NUMBER,NEW_HEAT_SMOOTHED NUMBER,EVALUATED_AT TIMESTAMP_NTZ)');
@@ -225,6 +233,11 @@ for (const step of ['q_metrics','q_neighbors']) {
 }
 check('enrichment presents one original supporting article',
   `SELECT COUNT(*)=1 AND MAX(SIGNAL_NAME)='gdelt' AND MAX(URL)=${literal(wire)} FROM (`+workflowQuery(enrichment,'q_signals')+')');
+statements.push("INSERT INTO FIX_TH_STG_TREND_CANDIDATES (CANDIDATE_ID,SUPPORTING_SIGNAL_IDS) SELECT 'publisher',ARRAY_CONSTRUCT('discovery-batch')");
+statements.push("INSERT INTO FIX_TH_FCT_TRENDS (TREND_ID,CANDIDATE_ID) VALUES ('publisher','publisher')");
+check('enrichment uses the publisher URL verified by discovery when metadata retains a provider redirect',
+  "SELECT COUNT(*)=1 AND MAX(URL)='https://daily.example/batch' AND MAX(DOMAIN)='daily.example' FROM ("+
+  workflowQuery(enrichment,'q_signals','publisher')+')');
 statements.push("DELETE FROM FIX_TH_FCT_TREND_SIGNALS WHERE TREND_ID='late' AND SIGNAL_ID LIKE 'linked-%'");
 check('source metrics credit a release and an independent linked report once each',
   'SELECT MAX(TOTAL_CLUSTER_SIZE)=2 FROM ('+workflowQuery('sources-p_7NCy36w/workflow.yaml','query_metrics')+')');

@@ -94,7 +94,7 @@ steps:
           SELECT DISTINCT f.value::STRING AS sid
           FROM cand, LATERAL FLATTEN(input => cand.SUPPORTING_SIGNAL_IDS) f
         ), evidence AS (
-          SELECT x.*,COALESCE(NULLIF(x.METADATA:original_url::VARCHAR,''),NULLIF(x.URL,''),
+          SELECT x.*,COALESCE(NULLIF(x.URL,''),NULLIF(x.METADATA:original_url::VARCHAR,''),
                  NULLIF(x.METADATA:url::VARCHAR,''),IFF(x.SIGNAL_ID ILIKE 'http://%' OR x.SIGNAL_ID ILIKE 'https://%',x.SIGNAL_ID,NULL)) AS evidence_url
           FROM sig_ids JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS x ON x.SIGNAL_ID=sig_ids.sid
           QUALIFY ROW_NUMBER() OVER (PARTITION BY x.SIGNAL_ID ORDER BY x.INGESTED_AT,x.SOURCE_NAME,x.SIGNAL_TITLE)=1
@@ -126,7 +126,7 @@ steps:
           SELECT DISTINCT f.value::STRING AS sid
           FROM cand, LATERAL FLATTEN(input => cand.SUPPORTING_SIGNAL_IDS) f
         ), evidence AS (
-          SELECT x.*,COALESCE(NULLIF(x.METADATA:original_url::VARCHAR,''),NULLIF(x.URL,''),
+          SELECT x.*,COALESCE(NULLIF(x.URL,''),NULLIF(x.METADATA:original_url::VARCHAR,''),
                  NULLIF(x.METADATA:url::VARCHAR,''),IFF(x.SIGNAL_ID ILIKE 'http://%' OR x.SIGNAL_ID ILIKE 'https://%',x.SIGNAL_ID,NULL)) AS evidence_url
           FROM sig_ids JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS x ON x.SIGNAL_ID=sig_ids.sid
           QUALIFY ROW_NUMBER() OVER (PARTITION BY x.SIGNAL_ID ORDER BY x.INGESTED_AT,x.SOURCE_NAME,x.SIGNAL_TITLE)=1

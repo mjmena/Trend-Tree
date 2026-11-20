@@ -99,6 +99,10 @@ def identity(signal):
     canonical_urls = list(dict.fromkeys(filter(None, map(canonical, urls))))
     if not canonical_urls:
         return {}
+    if direct:
+        publisher_url = urlsplit(canonical_urls[0])
+        if publisher_url.path == '/' and not publisher_url.query:
+            return {}
     keys = ['url:' + u for u in canonical_urls]
     if direct:
         keys.append('provider:' + metadata['observation_key'])
