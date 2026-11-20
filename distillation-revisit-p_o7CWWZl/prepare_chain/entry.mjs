@@ -130,6 +130,7 @@ export default defineComponent({
            WHERE s.INGESTED_AT > DATEADD(hour, -${POOL_LOOKBACK_HOURS}, CURRENT_TIMESTAMP())
              AND s.AGENT_SESSION_ID LIKE 'sess-%'
              AND COALESCE(s.METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
+             AND NOT EXISTS (SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_ARTICLE_SIGNAL_ALIASES a WHERE a.SIGNAL_ID=s.SIGNAL_ID)
              AND NOT EXISTS (
                SELECT 1
                FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,

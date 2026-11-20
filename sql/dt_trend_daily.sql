@@ -61,7 +61,7 @@ signal_first_link AS (
     -- First day each signal linked to each trend (cumulative-set anchor).
     SELECT TREND_ID, SIGNAL_ID,
            MIN(CAST(LINKED_AT AS DATE)) AS FIRST_DAY
-    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
+    FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_SIGNAL_EVIDENCE
     GROUP BY TREND_ID, SIGNAL_ID
 ),
 new_signals_daily AS (
@@ -89,6 +89,8 @@ signal_domains AS (
             WHEN SOURCE_NAME = 'grok_live'             THEN 'x.com'
             WHEN SOURCE_NAME = 'gdelt'
                 THEN LOWER(REGEXP_REPLACE(METADATA:domain::STRING, '^www\\.', ''))
+            WHEN SOURCE_NAME = 'gemini_other' AND PARSE_URL(SIGNAL_ID,1):host IS NOT NULL
+                THEN LOWER(REGEXP_REPLACE(PARSE_URL(SIGNAL_ID,1):host::VARCHAR, '^www[.]', ''))
             WHEN SOURCE_NAME LIKE 'gemini\\_%' ESCAPE '\\'
                 THEN LOWER(METADATA:source_name::STRING)
             WHEN SOURCE_NAME LIKE 'agent\\_%\\_discovery' ESCAPE '\\' THEN
@@ -99,7 +101,7 @@ signal_domains AS (
                         REGEXP_SUBSTR(METADATA:canonical_url::STRING, 'https?://([^/]+)', 1, 1, 'e', 1),
                         '^www\\.', ''))
                 END
-            WHEN SOURCE_NAME = 'google_trends_rss'
+            WHEN SOURCE_NAME IN ('google_trends_rss', 'trend_hunter')
                 THEN LOWER(METADATA:publisher::STRING)
             ELSE NULL
         END AS DOMAIN
@@ -109,7 +111,7 @@ domain_first_link AS (
     -- First day each publisher domain linked to each trend.
     SELECT ts.TREND_ID, sd.DOMAIN,
            MIN(CAST(ts.LINKED_AT AS DATE)) AS FIRST_DAY
-    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
+    FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_SIGNAL_EVIDENCE ts
     JOIN signal_domains sd ON sd.SIGNAL_ID = ts.SIGNAL_ID
     WHERE sd.DOMAIN IS NOT NULL
     GROUP BY ts.TREND_ID, sd.DOMAIN

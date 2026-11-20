@@ -199,6 +199,8 @@ signal_domains AS (
             -- News + discovery sources (extract from METADATA)
             WHEN SOURCE_NAME = 'gdelt'
                 THEN LOWER(REGEXP_REPLACE(METADATA:domain::STRING, '^www\\.', ''))
+            WHEN SOURCE_NAME = 'gemini_other' AND PARSE_URL(SIGNAL_ID,1):host IS NOT NULL
+                THEN LOWER(REGEXP_REPLACE(PARSE_URL(SIGNAL_ID,1):host::VARCHAR, '^www[.]', ''))
             WHEN SOURCE_NAME LIKE 'gemini\\_%' ESCAPE '\\'
                 -- gemini_food_drink / gemini_other / gemini_travel / gemini_wellness
                 -- (vertical-sharded discovery) emit metadata.source_name as the publisher.
@@ -212,7 +214,7 @@ signal_domains AS (
                         REGEXP_SUBSTR(METADATA:canonical_url::STRING, 'https?://([^/]+)', 1, 1, 'e', 1),
                         '^www\\.', ''))
                 END
-            WHEN SOURCE_NAME = 'google_trends_rss'
+            WHEN SOURCE_NAME IN ('google_trends_rss', 'trend_hunter')
                 -- Post-2026-05-27 flatten: one row per article, publisher
                 -- normalized at ingest. Old-shape rows (pre-flatten + the
                 -- 95k legacy unbackfilled) lack METADATA:publisher and yield
@@ -233,7 +235,7 @@ trend_aggregates AS (
     SELECT ts.TREND_ID,
            COUNT(DISTINCT ts.SIGNAL_ID) AS TOTAL_CLUSTER_SIZE,
            COUNT(DISTINCT sd.DOMAIN)    AS DISTINCT_SOURCE_COUNT
-    FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
+    FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_SIGNAL_EVIDENCE ts
     LEFT JOIN signal_domains sd ON sd.SIGNAL_ID = ts.SIGNAL_ID
     GROUP BY ts.TREND_ID
 ),

@@ -1,0 +1,18 @@
+{
+  "name": "trend-tree-trend-hunter-ingest",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Bounded intake of accepted Trend Hunter publisher articles.",
+  "main": "ingest.mjs",
+  "scripts": {
+    "start": "node ingest.mjs",
+    "test": "node --test ingest.test.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "snowflake-sdk": "^2.2.0"
+  }
+}
