@@ -29,13 +29,17 @@ def candidate_inserts():
 
 def build_fixture():
     fixture = """
+CREATE OR REPLACE TEMPORARY TABLE _COMMIT_ALIASES (SIGNAL_ID STRING,CREDITED_SIGNAL_ID STRING);
+INSERT INTO _COMMIT_ALIASES VALUES ('alias-wait','owner-wait'),('second-copy','owner-wait'),('alias-ready','signal-b');
 CREATE OR REPLACE TEMPORARY TABLE _COMMIT_SIGNALS (
-  SIGNAL_ID STRING, SOURCE_NAME STRING
+  SIGNAL_ID STRING, SOURCE_NAME STRING, SIGNAL_VECTOR VECTOR(FLOAT,3), EMBEDDED_AT TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
 );
-INSERT INTO _COMMIT_SIGNALS VALUES ('signal-a', 'bluesky'), ('signal-b', 'gdelt');
+INSERT INTO _COMMIT_SIGNALS (SIGNAL_ID,SOURCE_NAME,SIGNAL_VECTOR)
+SELECT column1,column2,[1,0,0]::VECTOR(FLOAT,3) FROM VALUES
+ ('signal-a','bluesky'),('signal-b','gdelt'),('alias-wait','trend_hunter'),('second-copy','google_trends_rss');
 CREATE OR REPLACE TEMPORARY TABLE _COMMIT_EXTERNAL_SIGNALS AS
 SELECT * FROM _COMMIT_SIGNALS;
-INSERT INTO _COMMIT_EXTERNAL_SIGNALS VALUES ('raw-only', 'bluesky');
+INSERT INTO _COMMIT_EXTERNAL_SIGNALS (SIGNAL_ID,SOURCE_NAME) VALUES ('raw-only', 'bluesky');
 CREATE OR REPLACE TEMPORARY TABLE _COMMIT_CANDIDATES (
   CANDIDATE_ID STRING, AGENT_SESSION_ID STRING, CHAIN_ID STRING, ITERATION NUMBER,
   TOPIC STRING, QUERY STRING, SUPPORTING_SIGNAL_IDS ARRAY, CONFIDENCE FLOAT,
@@ -53,6 +57,9 @@ CREATE OR REPLACE TEMPORARY TABLE _COMMIT_CHECKS (WRITER STRING, CHECK_NAME STRI
         {"candidate_id": "raw", "supporting_signal_ids": ["raw-only"]},
         {"candidate_id": "mixed", "supporting_signal_ids": ["signal-a", "invented", "signal-a"]},
         {"candidate_id": "valid", "supporting_signal_ids": ["signal-b", "signal-a"]},
+        {"candidate_id": "waiting", "supporting_signal_ids": ["alias-wait", "signal-a"]},
+        {"candidate_id": "only-copies", "supporting_signal_ids": ["alias-wait", "second-copy"]},
+        {"candidate_id": "resolved", "supporting_signal_ids": ["alias-ready", "signal-b", "signal-a"]},
     ]
     for candidate in inputs:
         candidate.update(query="mushroom coffee", reasoning="Independent reports")
@@ -60,6 +67,7 @@ CREATE OR REPLACE TEMPORARY TABLE _COMMIT_CHECKS (WRITER STRING, CHECK_NAME STRI
 
     for name, sql in candidate_inserts():
         sql = sql.replace("MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES", "_COMMIT_CANDIDATES")
+        sql = sql.replace("MCC_PRESENTATION.TREND_AGENT.FCT_ARTICLE_SIGNAL_ALIASES", "_COMMIT_ALIASES")
         sql = sql.replace("MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS", "_COMMIT_SIGNALS")
         sql = sql.replace("MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS", "_COMMIT_EXTERNAL_SIGNALS")
         if re.search(r"\bMCC_[A-Z_]+\.", sql):
@@ -70,8 +78,16 @@ CREATE OR REPLACE TEMPORARY TABLE _COMMIT_CHECKS (WRITER STRING, CHECK_NAME STRI
         fixture += f"""
 INSERT INTO _COMMIT_CHECKS
 SELECT '{name}', 'drops every candidate without resolvable evidence',
-       (SELECT COUNT(*) FROM _COMMIT_CANDIDATES) = 2
-       AND NOT EXISTS (SELECT 1 FROM _COMMIT_CANDIDATES WHERE CANDIDATE_ID NOT IN ('mixed', 'valid'))
+       (SELECT COUNT(*) FROM _COMMIT_CANDIDATES) = 4
+       AND NOT EXISTS (SELECT 1 FROM _COMMIT_CANDIDATES WHERE CANDIDATE_ID NOT IN ('mixed','valid','waiting','resolved'))
+UNION ALL
+SELECT '{name}', 'preserves the embedded alias until promotion can read its credited owner',
+       (SELECT COUNT(*)=1 FROM _COMMIT_CANDIDATES WHERE CANDIDATE_ID='waiting'
+        AND SUPPORTING_SIGNAL_IDS=PARSE_JSON('["alias-wait","signal-a"]') AND SOURCE_BREAKDOWN=PARSE_JSON('{{"bluesky":1}}'))
+UNION ALL
+SELECT '{name}', 'deduplicates ready owners and their source families',
+       (SELECT COUNT(*)=1 FROM _COMMIT_CANDIDATES WHERE CANDIDATE_ID='resolved'
+        AND SUPPORTING_SIGNAL_IDS=PARSE_JSON('["signal-a","signal-b"]') AND SOURCE_BREAKDOWN=PARSE_JSON('{{"bluesky":1,"gdelt":1}}'))
 UNION ALL
 SELECT '{name}', 'keeps one surviving signal and removes invalid or duplicate IDs',
        (SELECT COUNT(*) FROM _COMMIT_CANDIDATES WHERE CANDIDATE_ID = 'mixed'

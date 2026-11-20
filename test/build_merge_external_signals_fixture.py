@@ -20,8 +20,9 @@ def build_fixture() -> str:
         1,
     )
     procedure = re.sub(r" DEFAULT (NULL|500|'STG_EXTERNAL_SIGNALS')", "", procedure)
-    procedure = procedure.replace("EXECUTE AS CALLER\n", "")
+    procedure = procedure.replace("COPY GRANTS\n", "").replace("EXECUTE AS CALLER\n", "")
     procedure = procedure.replace("MCC_RAW.MARKETING_DEV.${targetTable}", "${targetTable}")
+    procedure = procedure.replace("MCC_RAW.MARKETING_DEV.RESOLVE_ARTICLE_SIGNALS", "FIX_TH_RESOLVE_ARTICLE_SIGNALS")
     if re.search(r"\bMCC_[A-Z_]+\.", procedure):
         raise ValueError("Fixture procedure still references a production database")
 

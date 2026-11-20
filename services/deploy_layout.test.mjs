@@ -47,7 +47,7 @@ function load(name) {
   };
 }
 
-const UNITS = [load("ecomm-agent"), load("scrape-gateway"), load("catalog-sync"), load("tiktok-ingest"), load("lifecycle"), load("attribution")];
+const UNITS = [load("ecomm-agent"), load("scrape-gateway"), load("catalog-sync"), load("tiktok-ingest"), load("lifecycle"), load("attribution"), load("trend-hunter-ingest")];
 // RUNTIME=python services (CRMA-1667): deploy.sh's Python branch.
 const PY_UNITS = [load("editorial-ingest")];
 
