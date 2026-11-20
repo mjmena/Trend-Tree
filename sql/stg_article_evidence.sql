@@ -315,16 +315,17 @@ if (observations.length) {
           FROM TABLE(FLATTEN(input=>PARSE_JSON(?)))`,[observedAt,JSON.stringify(observations)]);
     exec(`MERGE INTO MCC_RAW.MARKETING_DEV.STG_TREND_HUNTER_ARTICLES t
           USING (SELECT value v, v:meta m FROM TABLE(FLATTEN(input=>PARSE_JSON(?)))
+                 WHERE m:status::VARCHAR='accepted'
                  QUALIFY ROW_NUMBER() OVER (PARTITION BY m:observation_key::VARCHAR ORDER BY (v:disposition='unusable'), index)=1) s
           ON t.OBSERVATION_KEY=s.m:observation_key::VARCHAR
-          WHEN MATCHED AND t.DISPOSITION='unusable' AND s.v:disposition!='unusable' THEN UPDATE SET
+          WHEN MATCHED AND (t.REASON='missing_status' OR (t.DISPOSITION='unusable' AND s.v:disposition!='unusable')) THEN UPDATE SET
               SIGNAL_ID=s.v:id::VARCHAR, ORIGINAL_URL=s.m:original_url::VARCHAR,CANONICAL_URL=s.v:url::VARCHAR,
               PUBLISHER=s.m:publisher::VARCHAR,FEED_LABEL=s.m:feed_label::VARCHAR,STATUS=s.m:status::VARCHAR,
               VERDICT=s.m:verdict::VARCHAR,HEADLINE=s.v:title::VARCHAR,SUMMARY=s.v:summary::VARCHAR,FIRST_SEEN_UTC=s.m:first_seen_utc::TIMESTAMP_NTZ,
-              PUBLISHED_AT_UTC=s.m:published_at_utc::TIMESTAMP_NTZ,DISPOSITION=s.v:disposition::VARCHAR,REASON=NULL,
+              PUBLISHED_AT_UTC=s.m:published_at_utc::TIMESTAMP_NTZ,DISPOSITION=s.v:disposition::VARCHAR,REASON=s.m:unusable_reason::VARCHAR,
               RELEASE_PROOF=s.m:release_proof,
-              ORIGIN=IFF(t.FIRST_OBSERVED_AT_UTC <= s.m:first_observed_at_utc::TIMESTAMP_NTZ,t.ORIGIN,s.m:origin::VARCHAR),
-              FIRST_OBSERVED_AT_UTC=LEAST(t.FIRST_OBSERVED_AT_UTC,s.m:first_observed_at_utc::TIMESTAMP_NTZ)
+              ORIGIN=IFF(t.STATUS='accepted' AND t.FIRST_OBSERVED_AT_UTC <= s.m:first_observed_at_utc::TIMESTAMP_NTZ,t.ORIGIN,s.m:origin::VARCHAR),
+              FIRST_OBSERVED_AT_UTC=IFF(t.STATUS='accepted',LEAST(t.FIRST_OBSERVED_AT_UTC,s.m:first_observed_at_utc::TIMESTAMP_NTZ),s.m:first_observed_at_utc::TIMESTAMP_NTZ)
           WHEN MATCHED AND t.FIRST_OBSERVED_AT_UTC>s.m:first_observed_at_utc::TIMESTAMP_NTZ THEN UPDATE SET
               FIRST_OBSERVED_AT_UTC=s.m:first_observed_at_utc::TIMESTAMP_NTZ, ORIGIN=s.m:origin::VARCHAR
           WHEN NOT MATCHED THEN INSERT (OBSERVATION_KEY,PROVIDER_ID,SIGNAL_ID,ORIGINAL_URL,CANONICAL_URL,PUBLISHER,

@@ -14,7 +14,7 @@
 --
 -- Behavior:
 --  * Chunks signals into BATCH_SIZE-row groups, each its own MERGE.
---  * INSERT on no-match (matches legacy — preserves first-seen METADATA).
+--  * The first writer owns the signal. Gemini Other can refresh a row it already owns.
 --  * Tags AGENT_SESSION_ID on existing rows that don't have one yet,
 --    never overwrites a non-NULL session_id.
 --  * Validates TARGET_TABLE_NAME against [A-Z0-9_]+ to prevent injection.

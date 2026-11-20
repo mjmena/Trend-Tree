@@ -12,6 +12,10 @@ CREATE TABLE IF NOT EXISTS MCC_RAW.MARKETING_DEV.STG_TREND_HUNTER_RUNS (
     NEW_SIGNALS INTEGER DEFAULT 0, REPEAT_SIGHTINGS INTEGER DEFAULT 0, SYNDICATED_COPIES INTEGER DEFAULT 0,
     UNUSABLE_RECORDS INTEGER DEFAULT 0
 );
+ALTER TABLE MCC_RAW.MARKETING_DEV.STG_TREND_HUNTER_RUNS ADD COLUMN IF NOT EXISTS FETCH_TOKEN VARCHAR;
+ALTER TABLE MCC_RAW.MARKETING_DEV.STG_TREND_HUNTER_RUNS ADD COLUMN IF NOT EXISTS FETCH_EXECUTION VARCHAR;
+ALTER TABLE MCC_RAW.MARKETING_DEV.STG_TREND_HUNTER_RUNS ADD COLUMN IF NOT EXISTS FETCH_ATTEMPT INTEGER;
+ALTER TABLE MCC_RAW.MARKETING_DEV.STG_TREND_HUNTER_RUNS ADD COLUMN IF NOT EXISTS FETCH_LEASE_UNTIL_UTC TIMESTAMP_NTZ;
 CREATE TABLE IF NOT EXISTS MCC_RAW.MARKETING_DEV.STG_TREND_HUNTER_PAGES (
     WINDOW_ID VARCHAR NOT NULL, PAGE_NUMBER INTEGER NOT NULL, CURSOR_IN VARCHAR, NEXT_CURSOR VARCHAR,
     OBSERVED_AT_UTC TIMESTAMP_NTZ NOT NULL, ARTICLES VARIANT NOT NULL, COMMITTED_AT_UTC TIMESTAMP_NTZ, COUNTS VARIANT
@@ -85,8 +89,26 @@ function openWindow() {
         SELECT ?,?,?::TIMESTAMP_NTZ,?::TIMESTAMP_NTZ,${utcNow}`,[e.execution,e.origin,from,to]);
     return e.execution;
 }
+function releaseClaim() {
+    execute(`UPDATE ${runs} SET FETCH_TOKEN=NULL,FETCH_EXECUTION=NULL,FETCH_ATTEMPT=NULL,FETCH_LEASE_UNTIL_UTC=NULL
+        WHERE WINDOW_ID=? AND FETCH_TOKEN=?`,[e.id,e.token]);
+}
+function claim(s) {
+    if (s.receipt) return s;
+    if (!e.token) throw new Error('Missing page claim token');
+    const acquired = value(`UPDATE ${runs} SET FETCH_TOKEN=?,FETCH_EXECUTION=?,FETCH_ATTEMPT=?::INTEGER,
+            FETCH_LEASE_UNTIL_UTC=DATEADD(minute,3,${utcNow})
+        WHERE WINDOW_ID=? AND (FETCH_TOKEN IS NULL OR FETCH_TOKEN=? OR FETCH_LEASE_UNTIL_UTC<=${utcNow}
+            OR (FETCH_EXECUTION=? AND FETCH_ATTEMPT<?::INTEGER))
+          AND NOT EXISTS (SELECT 1 FROM ${executions} WHERE EXECUTION_ID=? AND TRY_TO_NUMBER(TASK_ATTEMPT)>?::INTEGER)`,
+        [e.token,e.execution,e.attempt,s.id,e.token,e.execution,e.attempt,e.execution,e.attempt]);
+    return Object.assign(s, acquired===1 ? {claimed:true} : {busy:true});
+}
 function receive(s) {
-    if (s.receipt) return;
+    if (s.receipt) return s;
+    if (!e.token) throw new Error('Missing page claim token');
+    if (!value(`SELECT COUNT(*) FROM ${runs} WHERE WINDOW_ID=? AND FETCH_TOKEN=?`,[s.id,e.token]))
+        return Object.assign(s,{busy:true});
     if (!Array.isArray(e.data) || !(e.next_cursor === null || (typeof e.next_cursor === 'string' && e.next_cursor)))
         throw new Error('Invalid provider page');
     if (e.next_cursor !== null && (e.next_cursor === s.cursor || value(
@@ -94,6 +116,8 @@ function receive(s) {
         throw new Error('Repeated article page cursor');
     execute(`INSERT INTO ${pages} (WINDOW_ID,PAGE_NUMBER,CURSOR_IN,NEXT_CURSOR,OBSERVED_AT_UTC,ARTICLES)
         SELECT ?,?,?,?,?::TIMESTAMP_NTZ,PARSE_JSON(?)`,[s.id,s.page_number,s.cursor,e.next_cursor,e.observed,JSON.stringify(e.data)]);
+    releaseClaim();
+    return state(s.id);
 }
 function commitPage(s) {
     if (!s.receipt) throw new Error('No durable article page');
@@ -139,6 +163,7 @@ function apply() {
         return state(id);
     }
     if (e.action==='finish') {
+        if (e.id && e.token) releaseClaim();
         execute(`UPDATE ${executions} SET OUTCOME=?,FINISHED_AT_UTC=${utcNow} WHERE EXECUTION_ID=? AND TASK_ATTEMPT=?`,
             [e.outcome,e.execution,e.attempt]);
         return {};
@@ -149,8 +174,9 @@ function apply() {
     }
     const s=state(e.id);
     if (s.complete || s.page_number!==e.page_number) return s;
-    if (e.action==='receive') receive(s);
-    else if (e.action==='commit') commitPage(s);
+    if (e.action==='claim') return claim(s);
+    if (e.action==='receive') return receive(s);
+    if (e.action==='commit') commitPage(s);
     else throw new Error('Unknown intake action');
     return state(e.id);
 }

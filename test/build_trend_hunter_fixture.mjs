@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {SET_QUERIES as attribution} from '../services/lib/attribution_context.mjs';
 import {SET_QUERIES as lifecycle} from '../services/lib/lifecycle_context.mjs';
-import {runWindow, createArticleStore} from '../services/trend-hunter-ingest/ingest.mjs';
+import {preparePage} from '../services/trend-hunter-ingest/ingest.mjs';
 
 const prefix = 'FIX_TH_';
 function isolated(sql) {
@@ -24,13 +24,10 @@ function stage(rows) {
   const proc = prefix + 'MERGE_EXTERNAL_SIGNALS';
   statements.push(`CALL ${proc}(${literal(JSON.stringify(rows))}, '', 500, 'STG_EXTERNAL_SIGNALS')`);
 }
-async function intake(items) {
-  await runWindow({from: '2026-11-01T00:00:00Z', to: '2026-11-02T00:00:00Z', origin: 'forward',
-    now: () => new Date(observed), fetchPage: async () => ({data: items, next_cursor: null}),
-    recordPage: createArticleStore(async (sql, [rows]) => {
-      assert.match(sql, /^CALL MCC_RAW\.MARKETING_DEV\.MERGE_EXTERNAL_SIGNALS/);
-      stage(JSON.parse(rows)); return [{MERGE_EXTERNAL_SIGNALS: {article_counts: {}}}];
-    })});
+async function intake(items, origin = 'forward') {
+  const {signals} = await preparePage({from:'2026-11-01T00:00:00.000Z', to:'2026-11-02T00:00:00.000Z',
+    origin, observed:new Date(observed).toISOString(), data:items});
+  stage(signals);
 }
 statements.push(`INSERT INTO FIX_TH_STG_EXTERNAL_SIGNALS (SIGNAL_ID,SOURCE_NAME,SIGNAL_TITLE,METADATA,INGESTED_AT)
  SELECT 'gdelt_prelaunch','gdelt','First receipt',PARSE_JSON('{"url":"https://www.archive.example/report?utm_source=old","domain":"archive.example"}'),
@@ -48,6 +45,21 @@ check('only the eligible story reaches staging', `SELECT COUNT(*)=1 AND MIN(SIGN
  AND MIN(SIGNAL_TEXT)='A city changes' FROM FIX_TH_STG_EXTERNAL_SIGNALS WHERE SOURCE_NAME='trend_hunter'`);
 check('malformed article has a reason and a rejected article produces no observation', `SELECT COUNT(*)=2
  AND COUNT_IF(DISPOSITION='unusable' AND REASON='missing_headline' AND SIGNAL_ID IS NULL)=1 FROM FIX_TH_STG_TREND_HUNTER_ARTICLES`);
+const eventual = {...article, id:'eventual', url:'https://status.example/accepted'};
+const corrected = {...article, id:'corrected', url:'https://status.example/corrected'};
+observed = '2026-11-02T04:00:00Z';
+await intake([{...eventual,status:null},{...corrected,title:''}], 'replay');
+observed = '2026-11-02T06:00:00Z';
+await intake([eventual,corrected], 'reconcile');
+observed = '2026-11-02T03:00:00Z';
+await intake([{...eventual,status:null},{...corrected,title:''}], 'forward');
+check('malformed polls before acceptance never set the accepted clock or origin, including late-arriving writes',
+  `SELECT (SELECT COUNT(*)=2 FROM FIX_TH_STG_TREND_HUNTER_ARTICLE_SIGHTINGS WHERE PROVIDER_ID='eventual' AND REASON='missing_status')
+   AND FIRST_OBSERVED_AT_UTC='2026-11-02 06:00:00' AND ORIGIN='reconcile' AND DISPOSITION='new_signal'
+   FROM FIX_TH_STG_TREND_HUNTER_ARTICLES WHERE PROVIDER_ID='eventual'`);
+check('the earliest accepted but unusable poll keeps its clock and origin after repair in either arrival order',
+  `SELECT FIRST_OBSERVED_AT_UTC='2026-11-02 03:00:00' AND ORIGIN='forward' AND DISPOSITION='new_signal'
+   FROM FIX_TH_STG_TREND_HUNTER_ARTICLES WHERE PROVIDER_ID='corrected'`);
 await intake([{...article,id:'legacy',url:'https://archive.example/report#new'}]);
 check('a pre-install hashed native writer keeps its identity and origin time is not invented for old discarded native receipts',
   `SELECT (SELECT COUNT(*) FROM FIX_TH_STG_TREND_HUNTER_ARTICLES WHERE PROVIDER_ID='legacy' AND SIGNAL_ID='gdelt_prelaunch' AND DISPOSITION='repeat')=1
@@ -119,17 +131,58 @@ statements.push('CREATE TEMPORARY TABLE FIX_TH_LIFECYCLE_DOMAINS AS '+isolated(l
 check('lifecycle breadth credits one linked signal per publisher for each independent article', `SELECT COUNT(*)=3
  AND MAX(SIGNAL_COUNT)=1 AND COUNT_IF(DOMAIN='partner.example')=0 FROM FIX_TH_LIFECYCLE_DOMAINS`);
 
+statements.push(`INSERT INTO FIX_TH_FCT_SIGNALS (SIGNAL_ID,SIGNAL_TIMESTAMP,SIGNAL_VECTOR)
+  SELECT 'linked-'||n,DATEADD(minute,n,'2026-11-02'::TIMESTAMP_NTZ),[1,0,0]::VECTOR(FLOAT,3)
+  FROM (SELECT ROW_NUMBER() OVER(ORDER BY SEQ4()) n FROM TABLE(GENERATOR(ROWCOUNT=>28)))`);
+statements.push(`INSERT INTO FIX_TH_FCT_TREND_SIGNALS (TREND_ID,SIGNAL_ID,LINK_KIND,LINK_TYPE)
+  SELECT 'late',SIGNAL_ID,'supporting','news' FROM FIX_TH_FCT_SIGNALS WHERE SIGNAL_ID LIKE 'linked-%'`);
+const recent = isolated(lifecycle.recent_signals.replace(':1',literal('["late"]'))
+  .replace('DATEADD(day, -14, CURRENT_TIMESTAMP())',"'2026-10-01'::TIMESTAMP_NTZ"));
+statements.push('CREATE TEMPORARY TABLE FIX_TH_RECENT AS '+recent);
+check('lifecycle counts a story linked as both supporting and attributed once in recent heat evidence',
+  `SELECT COUNT(*)=30 AND COUNT_IF(SIGNAL_ID='gdelt_native')=1 AND COUNT_IF(SIGNAL_ID='https://reporter.example/refill-trial')=1 FROM FIX_TH_RECENT`);
+statements.push(`INSERT INTO FIX_TH_FCT_TREND_ENRICHMENT_LEDGER SELECT 'late',[0,1,0]::VECTOR(FLOAT,3),CURRENT_TIMESTAMP()`);
+statements.push(`UPDATE FIX_TH_FCT_SIGNALS SET SIGNAL_VECTOR=[0,1,0]::VECTOR(FLOAT,3) WHERE SIGNAL_ID='https://partner.example/refill-trial'`);
+statements.push(`INSERT INTO FIX_TH_FCT_SIGNALS (SIGNAL_ID,SIGNAL_VECTOR)
+  SELECT 'new-fact-'||n,IFF(n=20,[0.2,1,0],[0,1,0])::VECTOR(FLOAT,3)
+  FROM (SELECT ROW_NUMBER() OVER(ORDER BY SEQ4()) n FROM TABLE(GENERATOR(ROWCOUNT=>20)))`);
+const advisory = isolated(lifecycle.candidate_signals.replace(':1',literal('["late"]')));
+statements.push('CREATE TEMPORARY TABLE FIX_TH_ADVISORY AS '+advisory);
+check('a linked release alias cannot occupy a lifecycle advisory slot',
+  `SELECT COUNT(*)=20 AND COUNT_IF(SIGNAL_ID='https://partner.example/refill-trial')=0 AND COUNT_IF(SIGNAL_ID='new-fact-20')=1 FROM FIX_TH_ADVISORY`);
+
 statements.push(`INSERT INTO FIX_TH_STG_TREND_CANDIDATES (CANDIDATE_ID,VERDICT,SUPPORTING_SIGNAL_IDS,SOURCE_BREAKDOWN,CONFIDENCE,SPECIFICITY_SCORE)
  SELECT column1,'REAL_TREND',PARSE_JSON(column2)::ARRAY,PARSE_JSON(column3)::OBJECT,0.8,0.8 FROM VALUES
  ('copies','["gdelt_native","https://partner.example/refill-trial"]','{"gdelt":1,"google_trends_rss":1}'),
  ('reverse','["gdelt_after","https://partner-two.example/e-bike"]','{"gdelt":1,"trend_hunter":1}'),
  ('independent','["gdelt_native","https://partner.example/refill-trial","https://reporter.example/refill-trial"]','{"gdelt":1,"google_trends_rss":1,"trend_hunter":1}')`);
+statements.push(`INSERT INTO FIX_TH_FCT_ARTICLE_SIGNAL_ALIASES VALUES
+  ('pending-copy-a','pending-owner','https://old.example/release',CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP()),
+  ('pending-copy-b','pending-owner','https://old.example/release',CURRENT_TIMESTAMP(),CURRENT_TIMESTAMP())`);
+statements.push(`INSERT INTO FIX_TH_STG_TREND_CANDIDATES (CANDIDATE_ID,VERDICT,SUPPORTING_SIGNAL_IDS,SOURCE_BREAKDOWN,CONFIDENCE,SPECIFICITY_SCORE)
+  SELECT 'pending-owner','REAL_TREND',ARRAY_CONSTRUCT('pending-copy-a','pending-copy-b'),
+  OBJECT_CONSTRUCT('gdelt',1,'trend_hunter',1),0.9,0.9 UNION ALL
+  SELECT 'pending-independent','REAL_TREND',ARRAY_CONSTRUCT('pending-copy-b','https://reporter.example/refill-trial'),
+  OBJECT_CONSTRUCT('gdelt',1,'trend_hunter',1),0.9,0.9`);
 const promotion = read('promotion-p_xMC99jg/workflow.yaml').split('- namespace: q_load_pending_candidates')[1].split('      query: |-')[0].split('      value: |-')[1];
 statements.push('CREATE TEMPORARY TABLE FIX_TH_PENDING AS '+isolated(promotion));
 check('source-family corroboration uses the first writer for both orders and retains the second independent family',
  `SELECT COUNT_IF(ARTICLE_COPIES_ONLY AND CLUSTER_SIZE=1 AND SOURCE_COUNT=1)=2 AND
  COUNT_IF(CANDIDATE_ID='independent' AND CLUSTER_SIZE=2 AND SOURCE_COUNT=2 AND SOURCE_BREAKDOWN:gdelt=1 AND SOURCE_BREAKDOWN:trend_hunter=1)=1 FROM FIX_TH_PENDING`);
+check('promotion retains the candidate with an unembedded owner and exposes zero available supporting facts',
+ `SELECT COUNT(*)=1 AND MAX(CLUSTER_SIZE)=0 AND MAX(SOURCE_COUNT)=0 AND BOOLAND_AGG(ARTICLE_COPIES_ONLY)
+  FROM FIX_TH_PENDING WHERE CANDIDATE_ID='pending-owner'`);
 statements.push('SELECT CANDIDATE_ID, SOURCE_BREAKDOWN, ARTICLE_COPIES_ONLY, CONFIDENCE, SPECIFICITY_SCORE FROM FIX_TH_PENDING');
+check('a candidate with independently credited stories remains pending while a required owner has no vector',
+  `SELECT (SELECT COUNT(*) FROM FIX_TH_PENDING WHERE CANDIDATE_ID='pending-independent')=0
+   AND (SELECT COUNT(*) FROM FIX_TH_STG_TREND_CANDIDATES WHERE CANDIDATE_ID='pending-independent' AND REJECTED_AT IS NULL)=1`);
+statements.push(`INSERT INTO FIX_TH_FCT_SIGNALS (SIGNAL_ID,SOURCE_NAME,SIGNAL_VECTOR)
+  SELECT 'pending-owner','gdelt',[1,0,0]::VECTOR(FLOAT,3)`);
+statements.push('CREATE TEMPORARY TABLE FIX_TH_EMBEDDED_PENDING AS '+isolated(promotion));
+check('the same candidate enters promotion with two independent facts after its missing owner embeds',
+  `SELECT COUNT(*)=1 AND MAX(CLUSTER_SIZE)=2 AND MAX(SOURCE_COUNT)=2 AND NOT BOOLOR_AGG(ARTICLE_COPIES_ONLY)
+   FROM FIX_TH_EMBEDDED_PENDING WHERE CANDIDATE_ID='pending-independent'`);
+statements.push("SELECT CANDIDATE_ID, SOURCE_BREAKDOWN, ARTICLE_COPIES_ONLY, CONFIDENCE, SPECIFICITY_SCORE FROM FIX_TH_EMBEDDED_PENDING WHERE CANDIDATE_ID='pending-independent'");
 const sql = statements.join(';\n') + ';\n';
 assert.doesNotMatch(sql, /MCC_(?:RAW|PRESENTATION)\./);
 assert.doesNotMatch(sql, /^CREATE (?:OR REPLACE )?(?:VIEW|TABLE|FUNCTION|PROCEDURE|TASK)\b/mi);

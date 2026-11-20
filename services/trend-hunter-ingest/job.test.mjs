@@ -23,6 +23,7 @@ test('an hourly job records an accepted page at its receipt time and reports its
       const {action} = args;
       let result;
       if (action === 'open') result = window;
+      else if (action === 'claim') result = {...window, claimed:true};
       else if (action === 'gate') result = {retry_at: null};
       else if (action === 'receive') {
         received = args;
@@ -60,6 +61,7 @@ test('a detail 429 retains the accepted receipt and defers other executions unti
     },
     intake: async (action,args) => {
       if (action==='open') return {...window,receipt};
+      if (action==='claim') return {...window,claimed:true};
       if (action==='gate') return {retry_at:retryAt};
       if (action==='proof') return {found:proofs.has(args.provider_id),proof:proofs.get(args.provider_id)};
       if (action==='save_proof') {proofs.set(args.provider_id,args.proof); return {found:true,proof:args.proof};}
@@ -123,6 +125,7 @@ test('a resumed list cursor waits out Retry-After seconds without changing its o
     intake:async(action,args)=>{
       const partial={...window,page_number:2,cursor:'opaque-fixed'};
       if(action==='open') return partial;
+      if(action==='claim') return {...partial,claimed:true};
       if(action==='gate') return {retry_at:retryAt};
       if(action==='cooldown') {retryAt=args.retry_at; return {};}
       if(action==='receive') return {...partial,receipt:{data:[],observed:args.observed,next_cursor:null}};
@@ -144,4 +147,45 @@ test('manual recovery rejects unbounded, future, offset-free and oversized windo
       now:()=>new Date(observed),intake:()=>assert.fail('unbounded request reached the warehouse'),
     }), /Replay requires/);
   }
+});
+
+test('overlapping jobs fetch a cursor once and keep the first list observation while the warehouse write is delayed', async () => {
+  let token, receipt, committed;
+  const started = Promise.withResolvers(), proceed = Promise.withResolvers();
+  const requests = [];
+  const intake = async (action, args) => {
+    if (action === 'open') return window;
+    if (action === 'gate' || action === 'finish') return {};
+    if (action === 'claim') {
+      if (token && token !== args.token) return {...window, busy: true};
+      token = args.token;
+      return {...window, claimed: true};
+    }
+    if (action === 'receive') {
+      if (args.execution === 'first') {
+        started.resolve();
+        await proceed.promise;
+      }
+      receipt ??= {data: args.data, observed: args.observed, next_cursor: null};
+      return {...window, receipt};
+    }
+    if (action === 'commit') {
+      committed = args.signals;
+      return {...window, complete: true, counts, page_number: 1};
+    }
+    throw Error(action);
+  };
+  const run = (execution, clock, data) => runJob({CLOUD_RUN_EXECUTION: execution}, {
+    intake, now: () => new Date(clock),
+    fetchPage: async () => { requests.push(execution); return {data, next_cursor: null}; },
+  });
+  const firstJob = run('first', observed, [first, {...first, id: 'additional'}]);
+  await started.promise;
+  const second = await run('second', '2026-11-01T03:08:00Z', [first]);
+  proceed.resolve();
+  await firstJob;
+  assert.deepEqual(requests, ['first']);
+  assert.equal(second.outcome, 'in_progress');
+  assert.deepEqual(committed.map((s) => JSON.parse(s.METADATA).provider_id), ['one', 'additional']);
+  assert.equal(receipt.observed, observed);
 });

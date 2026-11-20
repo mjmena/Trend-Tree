@@ -14,7 +14,7 @@ const ddl = ['sql/stg_article_evidence.sql', 'sql/trend_hunter_intake.sql', 'sql
 for (const match of ddl.matchAll(/CREATE TABLE IF NOT EXISTS [^;]+;/g))
   console.log(fixture(match[0]).replace('TABLE IF NOT EXISTS', 'TEMPORARY TABLE'));
 for (const match of ddl.matchAll(/ALTER TABLE [^;]+;/g)) console.log(fixture(match[0]));
-for (const name of ['STG_TREND_CANDIDATES', 'STG_EXTERNAL_SIGNALS', 'STG_ATTRIBUTION_BATCHES'])
+for (const name of ['STG_TREND_CANDIDATES', 'STG_EXTERNAL_SIGNALS', 'STG_ATTRIBUTION_BATCHES', 'STG_REVISIT_BATCH_QUEUE'])
   console.log(`CREATE TEMPORARY TABLE FIX_REPORT_${name} LIKE ${raw}${name};`);
 for (const name of [
   'FCT_TRENDS',
@@ -70,6 +70,42 @@ INSERT INTO FIX_REPORT_FCT_TREND_SIGNALS VALUES ('retail-trend','signal-water','
 INSERT INTO FIX_REPORT_FCT_TREND_ENRICHMENT_LEDGER (ENRICHMENT_ID,TREND_ID,ENRICHMENT_KIND,WRITTEN_AT,PAYLOAD)
  SELECT 'old-fact','retail-trend','initial','2026-11-01T12:00:00',PARSE_JSON('{"evidence":[{"claim":"Businesses are planning a refill trial"}]}') UNION ALL
  SELECT 'future-fact','retail-trend','refinement','2026-11-05T12:00:00',PARSE_JSON('{"evidence":[{"claim":"The stores opened"}]}');
+INSERT INTO FIX_REPORT_STG_EXTERNAL_SIGNALS (SIGNAL_ID,SOURCE_NAME,INGESTED_AT)
+ SELECT 'https://local.example/workers','gemini_other','2026-11-05T10:00:00';
+INSERT INTO FIX_REPORT_STG_NATIVE_ARTICLE_SIGHTINGS (SOURCE_NAME,NATIVE_SIGNAL_ID,SIGNAL_ID,ORIGINAL_URL,CANONICAL_URL,OBSERVED_AT_UTC)
+ SELECT 'gemini_other','https://local.example/workers','union-report','https://local.example/workers','https://local.example/workers','2026-11-06T15:00:00';
+INSERT INTO FIX_REPORT_STG_ARTICLE_ALIAS_HISTORY VALUES
+ ('native-b','older-a','https://archive.example/older-a','2026-10-01T00:00:00','2026-11-03T09:00:00');
+INSERT INTO FIX_REPORT_STG_TREND_HUNTER_ARTICLE_SIGHTINGS (OBSERVATION_KEY,ORIGIN,OBSERVED_AT_UTC,HANDLED_AT_UTC,SIGNAL_ID,DISPOSITION)
+ SELECT 'id:old-a','forward','2026-10-01T00:00:00','2026-10-01T00:01:00','older-a','new_signal';
+INSERT INTO FIX_REPORT_STG_NATIVE_ARTICLE_SIGHTINGS (SOURCE_NAME,NATIVE_SIGNAL_ID,SIGNAL_ID,ORIGINAL_URL,CANONICAL_URL,OBSERVED_AT_UTC)
+ SELECT 'gdelt','native-b','older-a','https://local.example/native-b','https://local.example/native-b','2026-11-03T09:05:00';
+INSERT INTO FIX_REPORT_STG_TREND_HUNTER_POOL_SIGNALS (OPPORTUNITY_ID,SIGNAL_ID,INPUT_ORDINAL,SOURCE_NAME,SIGNAL_TITLE,INGESTED_AT_UTC,EMBEDDED_AT_UTC,SIGNAL_KIND,HAD_PROMOTED_CANDIDATE,CREDITED_SIGNAL_ID,POOL_RANK)
+ SELECT o.OPPORTUNITY_ID,'native-b',1,'gdelt','Original native headline','2026-11-02T07:00:00','2026-11-02T07:01:00','discovery_signal',FALSE,
+ IFF(o.OPPORTUNITY_ID='op-early','native-b','older-a'),IFF(o.OPPORTUNITY_ID='op-early',151,NULL) FROM FIX_REPORT_STG_TREND_HUNTER_OPPORTUNITIES o;
+INSERT INTO FIX_REPORT_STG_TREND_HUNTER_OPPORTUNITIES
+ SELECT column1,'2026-11-07T12:00:00','revisit',column1,'sess-revisit',48,320,1600,1,4,TRUE
+ FROM VALUES ('revisit-same'),('revisit-different');
+INSERT INTO FIX_REPORT_STG_TREND_HUNTER_POOL_SIGNALS (OPPORTUNITY_ID,SIGNAL_ID,INPUT_ORDINAL,SOURCE_NAME,INGESTED_AT_UTC,EMBEDDED_AT_UTC,CLAIM_SESSION_ID,SIGNAL_KIND,HAD_PROMOTED_CANDIDATE,CREDITED_SIGNAL_ID,POOL_RANK)
+ SELECT o.OPPORTUNITY_ID,b.id,1,IFF(o.OPPORTUNITY_ID='revisit-different' AND b.r=4,'trend_hunter','bluesky'),
+ DATEADD(minute,-b.r,'2026-11-07T10:00:00'::TIMESTAMP_NTZ),'2026-11-07T10:05:00','sess-main','discovery_signal',FALSE,b.id,b.r
+ FROM FIX_REPORT_STG_TREND_HUNTER_OPPORTUNITIES o CROSS JOIN (SELECT column1 id,column2 r FROM VALUES ('batch-a',1),('batch-b',2),('batch-c',3),('omitted',4)) b WHERE o.LANE='revisit';
+INSERT INTO FIX_REPORT_STG_REVISIT_BATCH_QUEUE (CHAIN_ID,AGENT_SESSION_ID,BATCH_INDEX,TOTAL_BATCHES,CLUSTER_ROWS,SIGNAL_IDS_JSON,SIGNAL_COUNT,STATUS,CREATED_AT,UPDATED_AT)
+ SELECT o.CHAIN_ID,o.SESSION_ID,b.idx,2,ARRAY_CONSTRUCT(),b.ids,b.n,'DONE','2026-11-07T07:01:00','2026-11-07T07:10:00'
+ FROM FIX_REPORT_STG_TREND_HUNTER_OPPORTUNITIES o CROSS JOIN (SELECT column1 idx,column2 ids,column3 n
+ FROM VALUES (0,'["batch-a","batch-b"]',2),(1,'["batch-c"]',1)) b WHERE o.LANE='revisit';
+INSERT INTO FIX_REPORT_STG_TREND_CANDIDATES (CANDIDATE_ID,CREATED_AT,TOPIC,QUERY,SUPPORTING_SIGNAL_IDS,CHAIN_ID)
+ SELECT 'prior-fixture','2026-10-31T10:00:00','Earlier topics','earlier topics',
+ ARRAY_CONSTRUCT('batch-a','batch-b','batch-c','omitted','native-b'),'prior-chain';
 SET cutoff='${cutoff}T00:00:00Z'::TIMESTAMP_TZ;
 SET report_snapshot=CURRENT_TIMESTAMP();`);
 console.log(fixture(read('services/trend-hunter-ingest/report.sql')));
+
+if (scenario === 'linked') console.log(`
+SELECT 'legacy Gemini exact URL uses its earlier surviving receipt even with a later resolver receipt' CHECK_NAME,
+  1 / IFF((SELECT native='2026-11-05T15:00:00' AND native_clock='surviving_staging' FROM THR_ARTICLES WHERE id='id:independent'),1,0) PASSED;
+SELECT 'an already embedded native alias keeps its own rank and vector before and after verification with its owner outside the pool' CHECK_NAME,
+  1 / IFF((SELECT COUNT(*)=2 AND COUNT_IF(op='op-early' AND story='native-b')=1 AND COUNT_IF(op='op-later' AND story='older-a')=1
+    AND COUNT_IF(source='gdelt' AND title='Original native headline' AND embedded='2026-11-02T07:01:00'
+      AND ingested='2026-11-02T07:00:00' AND rank IS NOT NULL AND representation='staging_snapshot')=2
+    FROM THR_NATIVE_POOL WHERE signal='native-b'),1,0) PASSED;`);

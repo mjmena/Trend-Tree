@@ -26,17 +26,28 @@ const observed = '2026-11-01T03:07:01.000Z';
 const article = {id: 'fixture', status: 'accepted', title: 'A city refill trial', source: 'Trade',
   url: 'https://press.example/refills', first_seen: '2026-11-01T02:00:00Z'};
 const prepared = await preparePage({data:[article], observed, from, to, origin:'forward',windowId:'fixture-one',pageNumber:0});
-const action = (execution, action, args = {}) => statements.push(`CALL FIX_JOB_TREND_HUNTER_INTAKE(${literal(JSON.stringify({execution,attempt:'0',action,...args}))})`);
+const action = (execution, action, args = {}) => statements.push(`CALL FIX_JOB_TREND_HUNTER_INTAKE(${literal(JSON.stringify({execution,attempt:'0',token:execution,action,...args}))})`);
 statements.push(`UPDATE FIX_JOB_STG_TREND_HUNTER_CONTROL SET ENABLED_AT_UTC='${from}', FORWARD_THROUGH_UTC='${from}' WHERE LOCK_ID=1`);
 action('fixture-one','open',{origin:'forward',now:observed});
 action('fixture-overlap','open',{origin:'forward',now:'2026-11-01T04:01:00Z'});
 check('overlapping forward jobs share the first fixed bounds', `SELECT COUNT(*)=1 AND MIN(FROM_UTC)='${from}' AND MAX(TO_UTC)='${to}' FROM FIX_JOB_STG_TREND_HUNTER_RUNS`);
+action('abandoned','claim',{id:'fixture-one',page_number:0});
+action('fixture-overlap','claim',{id:'fixture-one',page_number:0});
+check('only the first worker can fetch an unreceived cursor',
+  `SELECT FETCH_TOKEN='abandoned' AND FETCH_LEASE_UNTIL_UTC IS NOT NULL FROM FIX_JOB_STG_TREND_HUNTER_RUNS WHERE WINDOW_ID='fixture-one'`);
+statements.push(`UPDATE FIX_JOB_STG_TREND_HUNTER_RUNS SET FETCH_LEASE_UNTIL_UTC=DATEADD(second,-1,CONVERT_TIMEZONE('UTC',CURRENT_TIMESTAMP())::TIMESTAMP_NTZ) WHERE WINDOW_ID='fixture-one'`);
+action('fixture-one','claim',{id:'fixture-one',page_number:0});
+action('abandoned','receive',{id:'fixture-one',page_number:0,next_cursor:null,data:[],observed:'2026-11-01T03:02:00Z'});
+action('abandoned','finish',{id:'fixture-one',outcome:'failed'});
+check('an expired fetch may be reclaimed and a delayed response and cleanup cannot overwrite the new claim',
+  `SELECT (SELECT COUNT(*) FROM FIX_JOB_STG_TREND_HUNTER_PAGES)=0 AND FETCH_TOKEN='fixture-one' FROM FIX_JOB_STG_TREND_HUNTER_RUNS WHERE WINDOW_ID='fixture-one'`);
 action('fixture-one','receive',{id:'fixture-one',page_number:0,next_cursor:'page-two',data:[article],observed});
 action('fixture-one','commit',{id:'fixture-one',page_number:0,...prepared});
 action('fixture-overlap','commit',{id:'fixture-one',page_number:0,...prepared});
 check('first page advances only its cursor and counts exactly once', `SELECT COUNT(*)=1 AND MAX(NEXT_CURSOR)='page-two' AND MAX(PAGES_COMMITTED)=1
  AND MAX(NEW_SIGNALS)=1 AND MAX(ACCEPTED_ROWS)=1 AND MAX(REPEAT_SIGHTINGS)=0 AND MAX(COMPLETED_AT_UTC) IS NULL FROM FIX_JOB_STG_TREND_HUNTER_RUNS`);
 check('partial window leaves the forward checkpoint at enablement', `SELECT FORWARD_THROUGH_UTC='${from}' FROM FIX_JOB_STG_TREND_HUNTER_CONTROL`);
+action('fixture-overlap','claim',{id:'fixture-one',page_number:1});
 action('fixture-overlap','receive',{id:'fixture-one',page_number:1,next_cursor:null,data:[],observed});
 action('fixture-overlap','commit',{id:'fixture-one',page_number:1,signals:[],accepted:0});
 check('terminal page commits the original upper bound', `SELECT FORWARD_THROUGH_UTC='${to}' FROM FIX_JOB_STG_TREND_HUNTER_CONTROL`);
@@ -94,6 +105,7 @@ const previouslyUnusable={...article,id:'repair',url:'https://news.example/corre
 const reconcileAt='2026-11-08T00:17:00.000Z';
 const reconcileEnd='2026-11-08T00:00:00.000Z';
 action('reconcile','open',{origin:'reconcile',now:reconcileAt});
+action('reconcile','claim',{id:'reconcile',page_number:0});
 action('reconcile','receive',{id:'reconcile',page_number:0,next_cursor:null,data:[article,late,previouslyUnusable],observed:reconcileAt});
 const reconcile=await preparePage({data:[article,late,previouslyUnusable],observed:reconcileAt,origin:'reconcile',from,to:reconcileEnd,windowId:'reconcile',pageNumber:0});
 action('reconcile','commit',{id:'reconcile',page_number:0,...reconcile});
@@ -103,7 +115,19 @@ check('reconciliation catches later acceptance and leaves forward progress untou
 const replayAt='2026-11-11T01:00:00.000Z';
 const repaired={...previouslyUnusable,title:'Corrected headline'};
 action('manual','open',{origin:'replay',from,to,now:replayAt});
-action('manual','receive',{id:'manual',page_number:0,data:[article,repaired],next_cursor:null,observed:replayAt});
+action('manual','claim',{id:'manual',page_number:0});
+action('another-manual','claim',{id:'manual',page_number:0,attempt:'5'});
+check('an independent execution with a higher task attempt cannot preempt a live manual replay',
+  `SELECT FETCH_TOKEN='manual' FROM FIX_JOB_STG_TREND_HUNTER_RUNS WHERE WINDOW_ID='manual'`);
+action('manual','open',{origin:'replay',from,to,now:replayAt,attempt:'1'});
+action('manual','claim',{id:'manual',page_number:0,attempt:'1',token:'retry-one'});
+action('manual','receive',{id:'manual',page_number:0,data:[],next_cursor:null,observed:observed});
+action('manual','finish',{id:'manual',outcome:'failed'});
+check('a retried Cloud Run task fences its crashed predecessor immediately while the manual lease is still live',
+  `SELECT FETCH_TOKEN='retry-one' AND FETCH_LEASE_UNTIL_UTC>CONVERT_TIMEZONE('UTC',CURRENT_TIMESTAMP())::TIMESTAMP_NTZ
+   AND (SELECT COUNT(*) FROM FIX_JOB_STG_TREND_HUNTER_PAGES WHERE WINDOW_ID='manual')=0
+   FROM FIX_JOB_STG_TREND_HUNTER_RUNS WHERE WINDOW_ID='manual'`);
+action('manual','receive',{id:'manual',page_number:0,attempt:'1',token:'retry-one',data:[article,repaired],next_cursor:null,observed:replayAt});
 const replay=await preparePage({data:[article,repaired],observed:replayAt,origin:'replay',from,to,windowId:'manual',pageNumber:0});
 statements.push(`CREATE OR REPLACE TEMPORARY PROCEDURE FIX_JOB_EXPECT_INTAKE_ERROR(PAYLOAD VARCHAR)
  RETURNS BOOLEAN LANGUAGE JAVASCRIPT AS $$
@@ -116,7 +140,7 @@ check('a failed page after the signal merge rolls back facts and metrics and kee
  AND (SELECT COUNT(*) FROM FIX_JOB_STG_TREND_HUNTER_ARTICLE_SIGHTINGS WHERE WINDOW_ID='manual')=0
  AND (SELECT COMMITTED_AT_UTC IS NULL AND OBSERVED_AT_UTC='${replayAt}' FROM FIX_JOB_STG_TREND_HUNTER_PAGES WHERE WINDOW_ID='manual')
  AND (SELECT PAGES_COMMITTED=0 AND ACCEPTED_ROWS=0 FROM FIX_JOB_STG_TREND_HUNTER_RUNS WHERE WINDOW_ID='manual')`);
-action('manual','commit',{id:'manual',page_number:0,...replay});
+action('manual','commit',{id:'manual',page_number:0,attempt:'1',...replay});
 check('the first accepted clock, first usable clock and replay origin can be distinguished',
  `SELECT MIN(OBSERVED_AT_UTC)='${reconcileAt}' AND MIN(IFF(DISPOSITION!='unusable',OBSERVED_AT_UTC,NULL))='${replayAt}'
  AND COUNT_IF(ORIGIN='replay' AND DISPOSITION='new_signal')=1 FROM FIX_JOB_STG_TREND_HUNTER_ARTICLE_SIGHTINGS WHERE PROVIDER_ID='repair'`);
@@ -126,9 +150,11 @@ check('reconciliation and replay leave the forward checkpoint intact', `SELECT F
 action('next-day','open',{origin:'reconcile',now:'2026-11-12T00:17:00Z'});
 check('the daily recovery horizon covers exactly seven UTC days after rollout', `SELECT FROM_UTC='2026-11-05 00:00:00' AND TO_UTC='2026-11-12 00:00:00'
  FROM FIX_JOB_STG_TREND_HUNTER_RUNS WHERE WINDOW_ID='next-day'`);
+action('next-day','claim',{id:'next-day',page_number:0});
 action('next-day','receive',{id:'next-day',page_number:0,data:[],next_cursor:'cycle',observed:replayAt});
 action('next-day','commit',{id:'next-day',page_number:0,signals:[],accepted:0});
-statements.push(`CALL FIX_JOB_EXPECT_INTAKE_ERROR(${literal(JSON.stringify({execution:'next-day',attempt:'0',action:'receive',id:'next-day',page_number:1,data:[],next_cursor:'cycle',observed:replayAt}))})`);
+action('next-day','claim',{id:'next-day',page_number:1});
+statements.push(`CALL FIX_JOB_EXPECT_INTAKE_ERROR(${literal(JSON.stringify({execution:'next-day',attempt:'0',token:'next-day',action:'receive',id:'next-day',page_number:1,data:[],next_cursor:'cycle',observed:replayAt}))})`);
 check('a looping cursor leaves the active page eligible for retry', `SELECT PAGES_COMMITTED=1 AND NEXT_CURSOR='cycle' AND COMPLETED_AT_UTC IS NULL
  FROM FIX_JOB_STG_TREND_HUNTER_RUNS WHERE WINDOW_ID='next-day'`);
 action('next-day','cooldown',{retry_at:'2026-11-12T02:00:00Z'});
@@ -138,6 +164,20 @@ action('next-day','save_proof',{id:'next-day',page_number:1,provider_id:'wire',p
 action('overlap','save_proof',{id:'next-day',page_number:1,provider_id:'wire',proof:{text_sha256:'example'}});
 check('concurrent detail verification keeps the first durable result, including an unverified detail',
  `SELECT COUNT(*)=1 AND COUNT_IF(RELEASE_PROOF IS NULL OR IS_NULL_VALUE(RELEASE_PROOF))=1 FROM FIX_JOB_STG_TREND_HUNTER_DETAILS`);
+statements.push(`UPDATE FIX_JOB_STG_EXTERNAL_SIGNALS SET INGESTED_AT=DATEADD(day,-20,CURRENT_TIMESTAMP())`);
+statements.push(`INSERT INTO FIX_JOB_STG_EXTERNAL_SIGNALS (SIGNAL_ID,SOURCE_NAME,INGESTED_AT)
+  SELECT IFF(n<=2,'retail-post','post-'||n),'bluesky',DATEADD(second,-n,CURRENT_TIMESTAMP())
+  FROM (SELECT ROW_NUMBER() OVER(ORDER BY SEQ4()) n FROM TABLE(GENERATOR(ROWCOUNT=>151)))`);
+statements.push(`CALL FIX_JOB_ACQUIRE_ARTICLE_COMPARISON_POOL('main','duplicate-floor','sess-floor',168,150,1600,150)`);
+check('unrelated duplicate native rows retain both original slots at the source cap and pool floor',
+  `SELECT COUNT_IF(s.POOL_RANK IS NOT NULL)=150 AND COUNT_IF(s.SIGNAL_ID='retail-post' AND s.POOL_RANK IS NOT NULL)=2
+   AND COUNT_IF(s.SIGNAL_ID='post-151' AND s.POOL_RANK IS NULL)=1 AND MAX(o.SELECTED_COUNT)=150 AND BOOLAND_AGG(o.PASSED_FLOOR)
+   FROM FIX_JOB_STG_TREND_HUNTER_POOL_SIGNALS s JOIN FIX_JOB_STG_TREND_HUNTER_OPPORTUNITIES o USING(OPPORTUNITY_ID)
+   WHERE o.CHAIN_ID='duplicate-floor'`);
+statements.push(`INSERT INTO FIX_JOB_STG_EXTERNAL_SIGNALS (SIGNAL_ID,SOURCE_NAME,INGESTED_AT) SELECT NULL,'bluesky',CURRENT_TIMESTAMP()`);
+statements.push(`CALL FIX_JOB_ACQUIRE_ARTICLE_COMPARISON_POOL('main','filtered-floor','sess-filtered',168,150,1600,150)`);
+check('an unusable legacy ID consumes its ranked slot before the returned IDs are checked against the floor',
+  `SELECT SELECTED_COUNT=149 AND NOT PASSED_FLOOR FROM FIX_JOB_STG_TREND_HUNTER_OPPORTUNITIES WHERE CHAIN_ID='filtered-floor'`);
 const sql=statements.join(';\n')+';\n';
 assert.doesNotMatch(sql.replace(/^\s*--.*$/gm,''),/MCC_(?:RAW|PRESENTATION)\./);
 assert.doesNotMatch(sql,/^CREATE (?:OR REPLACE )?(?:VIEW|TABLE|FUNCTION|PROCEDURE|TASK)\b/mi);

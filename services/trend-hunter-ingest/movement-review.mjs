@@ -44,8 +44,11 @@ function judge(judgment, available, packet, movement, opportunity) {
   const cited = ids.map((id) => available.find((r) => r.signal === id));
   if (cited.some((r) => !r)) throw new Error('Evidence is unavailable in this arm at this opportunity');
   if (judgment.disposition !== 'meets') return judgment;
-  if (!judgment.query?.trim() || cited.length < 2 || distinct(cited.map((r) => r.story)).length !== cited.length) {
+  if (!judgment.query?.trim() || cited.length < 2 || distinct(cited.map((r) => r.independent_story)).length !== cited.length) {
     throw new Error('A positive review needs an atomic query and two or more independently credited in-pool IDs');
+  }
+  if (opportunity.lane === 'revisit' && (cited.some((r) => r.batch == null) || distinct(cited.map((r) => r.batch)).length !== 1)) {
+    throw new Error('Revisit evidence must come from one dispatched batch');
   }
   if (judgment.query.trim().toLowerCase() !== movement.query?.trim().toLowerCase()) {
     throw new Error('Both arms must evaluate the fixed movement query');
@@ -81,10 +84,16 @@ function judge(judgment, available, packet, movement, opportunity) {
   return { ...judgment, gate: action };
 }
 
-function compareMovement(packet, movement, candidates, evidence, credit) {
+function hasIndependentPair(rows, revisit) {
+  const groups = revisit ? Map.groupBy(rows.filter((r) => r.batch != null), (r) => r.batch).values() : [rows];
+  return [...groups].some((group) => distinct(group.map((r) => r.independent_story)).length >= 2);
+}
+
+function compareMovement(packet, movement, candidates, evidence, credit, cutoff) {
   const support = distinct(
     movement.candidates.flatMap((id) => candidates.get(id).support || []).concat(movement.extra_ids || [])
   );
+  const stories = new Set(support.map((id) => credit(id, cutoff)));
   const judgments = new Map();
   for (const j of movement.judgments || []) {
     if (judgments.has(key(j.op, j.arm))) throw new Error('Duplicate opportunity judgment');
@@ -96,8 +105,9 @@ function compareMovement(packet, movement, candidates, evidence, credit) {
       earlierUnknown = false;
     const packets = [];
     for (const op of packet.opportunities || []) {
-      const ids = new Set(support.map((id) => credit(id, op.at)));
-      const rows = (evidence.get(key(op.id, arm)) || []).filter((r) => ids.has(r.story) || ids.has(r.signal));
+      const rows = (evidence.get(key(op.id, arm)) || [])
+        .map((r) => ({...r, independent_story: credit(r.story, cutoff)}))
+        .filter((r) => stories.has(r.independent_story) || stories.has(credit(r.signal, cutoff)));
       const selected = arm === 'augmented' ? op.selected_count : op.native_count;
       const hasFloor = selected >= op.floor;
       const replayFloor = arm === 'augmented' && selected - (op.excluded_feed_count || 0) < op.floor && hasFloor;
@@ -112,9 +122,11 @@ function compareMovement(packet, movement, candidates, evidence, credit) {
           (r.source !== 'trend_hunter' || ['forward', 'reconcile'].includes(r.origin))
       );
       const potential = rows.filter((r) => available.includes(r) || r.representation === 'suppressed_native_receipt');
-      const canQualify = hasFloor && !replayFloor && distinct(available.map((r) => r.story)).length >= 2;
-      const unknownEmbedding =
-        hasFloor && distinct(potential.map((r) => r.story)).length >= 2 && potential.length > available.length;
+      const revisit = op.lane === 'revisit';
+      const groupsKnown = !revisit || op[arm + '_groups_known'] === true;
+      const unknownGroups = hasFloor && !groupsKnown && hasIndependentPair(potential, false);
+      const canQualify = hasFloor && !replayFloor && groupsKnown && hasIndependentPair(available, revisit);
+      const unknownEmbedding = hasFloor && groupsKnown && hasIndependentPair(potential, revisit) && potential.length > available.length;
       const reviewKey = key(op.id, arm);
       let judgment = judgments.get(reviewKey);
       if (judgment) {
@@ -123,7 +135,7 @@ function compareMovement(packet, movement, candidates, evidence, credit) {
         judgment = judge(judgment, available, packet, movement, op);
         judgments.delete(reviewKey);
       }
-      const disposition =
+      const disposition = unknownGroups ? 'unknown_revisit_groups' :
         judgment?.disposition ||
         (canQualify
           ? 'awaiting_review'
@@ -135,7 +147,7 @@ function compareMovement(packet, movement, candidates, evidence, credit) {
       if (!first) {
         if (disposition === 'meets') first = { ...judgment, at: op.at, earlier_unknown: earlierUnknown };
         else if (
-          ['uncertain', 'awaiting_review', 'native_embedding_unknown', 'unknown_replay_dependent_floor'].includes(
+          ['uncertain', 'awaiting_review', 'native_embedding_unknown', 'unknown_replay_dependent_floor', 'unknown_revisit_groups'].includes(
             disposition
           )
         )
@@ -181,7 +193,7 @@ export function discoveryReport(packet, window, eligible, credit) {
     const review = reviewed.get(s.id);
     if (review && review.seed !== s.id) continue;
     const movement = { seed: s.id, candidates: [s.id], query: candidates.get(s.id).query, ...review };
-    const comparison = compareMovement({ ...packet, opportunities }, movement, candidates, byArm, credit);
+    const comparison = compareMovement({ ...packet, opportunities }, movement, candidates, byArm, credit, window.cutoff);
     const { native, augmented } = comparison;
     const complete =
       native.first && augmented.first && !native.first.earlier_unknown && !augmented.first.earlier_unknown;
