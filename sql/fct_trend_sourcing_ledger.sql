@@ -36,7 +36,7 @@
 -- CANDIDATE_COUNT / SELECTED_COUNT are 0 for 'no_match' (we know the pool was
 -- empty) and NULL for 'failed' (we may not have gotten far enough to know).
 
-CREATE OR REPLACE TABLE MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_LEDGER (
+CREATE TABLE IF NOT EXISTS MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_LEDGER (
   SOURCING_RUN_ID      VARCHAR       DEFAULT UUID_STRING() PRIMARY KEY,
   TREND_ID             VARCHAR(64)   NOT NULL                 COMMENT 'FCT_TRENDS.TREND_ID',
   TIER                 VARCHAR(32)   NOT NULL                 COMMENT 'e.g. shopify — one product catalog ranked by commercial preference; free string, new tiers add rows not columns',

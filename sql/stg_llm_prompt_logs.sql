@@ -1,7 +1,7 @@
 -- Staging: LLM prompt/response audit log
 -- Database: MCC_RAW.MARKETING_DEV
 
-create or replace table MCC_RAW.MARKETING_DEV.STG_LLM_PROMPT_LOGS (
+CREATE TABLE IF NOT EXISTS MCC_RAW.MARKETING_DEV.STG_LLM_PROMPT_LOGS (
     INGESTION_ID NUMBER(38,0) autoincrement start 1 increment 1 noorder
         COMMENT 'Unique identifier for the ingestion of the model.',
     CREATED_AT_UTC TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP()

@@ -1,7 +1,7 @@
 -- Staging: Third-party trend signals (GDELT, Wikimedia, Bluesky, Pinterest, TikTok, Amazon)
 -- Database: MCC_RAW.MARKETING_DEV
 
-create or replace table MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS (
+CREATE TABLE IF NOT EXISTS MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS (
     SIGNAL_ID VARCHAR(16777216),  -- canonical URL identity (Option D); widened from 255 — see sql/alter_signal_id_widen.sql
     INGESTED_AT TIMESTAMP_NTZ(9) DEFAULT CURRENT_TIMESTAMP(),
     SOURCE_NAME VARCHAR(50),

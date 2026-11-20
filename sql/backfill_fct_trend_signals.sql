@@ -2,7 +2,7 @@
 -- existing STG_TREND_CANDIDATES so downstream consumers (and the future
 -- DT_TREND_DASHBOARD repoint) have data on day one.
 --
--- Same body as TASK_PROMOTE_TREND_SIGNALS — runs immediately, then the
+-- Same body as MARKETING_TASK_PROMOTE_TREND_SIGNALS — runs immediately, then the
 -- recurring TASK takes over.
 --
 -- Idempotent (NOT EXISTS guard); safe to re-run.
