@@ -180,6 +180,10 @@ function classifyCandidate(c) {
   const flags = qualityFlags(c);
   const familyList = [...families].join(",");
 
+  if (String(c.ARTICLE_COPIES_ONLY).toLowerCase() === "true") {
+    return {action: "reject", reason: "Verified copies leave fewer than two independent signals", flags,
+      source_families: families.size};
+  }
   if (families.size >= 2) {
     return {
       action: "route_normal",

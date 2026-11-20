@@ -73,7 +73,7 @@ SELECT
     fl.SIGNAL_ID,
     'supporting' AS LINK_KIND,
     CASE
-      WHEN s.SOURCE_NAME IN ('gdelt', 'google_trends_explore', 'google_trends_rss') THEN 'news'
+      WHEN s.SOURCE_NAME IN ('trend_hunter', 'gdelt', 'google_trends_explore', 'google_trends_rss') THEN 'news'
       WHEN s.SOURCE_NAME IN ('bluesky', 'tiktok', 'reddit')                          THEN 'social'
       WHEN s.SOURCE_NAME IN ('amazon_trends', 'amazon_movers')                       THEN 'commerce'
       WHEN s.SOURCE_NAME LIKE 'agent_%_discovery'                                    THEN 'other'

@@ -96,19 +96,21 @@ steps:
         WITH cand AS (
           SELECT c.value AS j FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) c
         ),
-        valid_pairs AS (
-          SELECT DISTINCT
-            cand.j:candidate_id::STRING AS candidate_id,
-            f.SIGNAL_ID,
-            f.SOURCE_NAME
+        proposed AS (
+          SELECT cand.j:candidate_id::STRING AS candidate_id, sid.value::STRING AS signal_id
           FROM cand, LATERAL FLATTEN(INPUT => cand.j:supporting_signal_ids) sid
-          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f
-            ON f.SIGNAL_ID = sid.value::STRING
+        ),
+        valid_pairs AS (
+          SELECT p.candidate_id, f.SIGNAL_ID, f.SOURCE_NAME, BOOLOR_AGG(a.SIGNAL_ID IS NOT NULL) AS was_alias
+          FROM proposed p
+          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_ARTICLE_SIGNAL_ALIASES a ON a.SIGNAL_ID=p.signal_id
+          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f ON f.SIGNAL_ID=COALESCE(a.CREDITED_SIGNAL_ID,p.signal_id)
+          GROUP BY 1,2,3
         ),
         vs AS (
           SELECT candidate_id,
                  ARRAY_AGG(SIGNAL_ID) WITHIN GROUP (ORDER BY SIGNAL_ID) AS supporting_signal_ids
-          FROM valid_pairs GROUP BY 1
+          FROM valid_pairs GROUP BY 1 HAVING COUNT(*) >= 2 OR NOT BOOLOR_AGG(was_alias)
         ),
         src_counts AS (
           SELECT candidate_id, SOURCE_NAME, COUNT(*) AS n
@@ -149,19 +151,21 @@ steps:
         WITH cand AS (
           SELECT c.value AS j FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) c
         ),
-        valid_pairs AS (
-          SELECT DISTINCT
-            cand.j:candidate_id::STRING AS candidate_id,
-            f.SIGNAL_ID,
-            f.SOURCE_NAME
+        proposed AS (
+          SELECT cand.j:candidate_id::STRING AS candidate_id, sid.value::STRING AS signal_id
           FROM cand, LATERAL FLATTEN(INPUT => cand.j:supporting_signal_ids) sid
-          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f
-            ON f.SIGNAL_ID = sid.value::STRING
+        ),
+        valid_pairs AS (
+          SELECT p.candidate_id, f.SIGNAL_ID, f.SOURCE_NAME, BOOLOR_AGG(a.SIGNAL_ID IS NOT NULL) AS was_alias
+          FROM proposed p
+          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_ARTICLE_SIGNAL_ALIASES a ON a.SIGNAL_ID=p.signal_id
+          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f ON f.SIGNAL_ID=COALESCE(a.CREDITED_SIGNAL_ID,p.signal_id)
+          GROUP BY 1,2,3
         ),
         vs AS (
           SELECT candidate_id,
                  ARRAY_AGG(SIGNAL_ID) WITHIN GROUP (ORDER BY SIGNAL_ID) AS supporting_signal_ids
-          FROM valid_pairs GROUP BY 1
+          FROM valid_pairs GROUP BY 1 HAVING COUNT(*) >= 2 OR NOT BOOLOR_AGG(was_alias)
         ),
         src_counts AS (
           SELECT candidate_id, SOURCE_NAME, COUNT(*) AS n

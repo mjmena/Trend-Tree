@@ -86,10 +86,11 @@ export default defineComponent({
                   ROW_NUMBER() OVER (
                     PARTITION BY SOURCE_NAME ORDER BY INGESTED_AT DESC
                   ) AS rn_in_source
-           FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
+           FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
            WHERE INGESTED_AT > DATEADD(hour, -${WINDOW_HOURS}, CURRENT_TIMESTAMP())
              AND COALESCE(AGENT_SESSION_ID, '') = ''
              AND COALESCE(METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
+             AND NOT EXISTS (SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_ARTICLE_SIGNAL_ALIASES a WHERE a.SIGNAL_ID=s.SIGNAL_ID)
          )
          SELECT SIGNAL_ID
          FROM unclaimed

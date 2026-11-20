@@ -125,6 +125,9 @@ signal_domains AS (
       WHEN s.SOURCE_NAME = 'bluesky'               THEN 'bsky.app'
       WHEN s.SOURCE_NAME = 'google_trends_explore' THEN 'trends.google.com'
       WHEN s.SOURCE_NAME = 'grok_live'             THEN 'x.com'
+      WHEN s.SOURCE_NAME IN ('trend_hunter','google_trends_rss') THEN LOWER(s.METADATA:publisher::VARCHAR)
+      WHEN s.SOURCE_NAME = 'gemini_other' AND PARSE_URL(s.SIGNAL_ID,1):host IS NOT NULL
+        THEN LOWER(REGEXP_REPLACE(PARSE_URL(s.SIGNAL_ID,1):host::VARCHAR, '^www[.]', ''))
       WHEN s.SOURCE_NAME = 'gdelt'
         THEN LOWER(REGEXP_REPLACE(s.METADATA:domain::STRING, '^www[.]', ''))
       WHEN STARTSWITH(s.SOURCE_NAME, 'gemini_')
@@ -147,7 +150,7 @@ signal_domains AS (
 -- cumulative count once and it stays elevated -- no phantom cliff. (issue #33)
 source_first_link AS (
   SELECT ts.TREND_ID, sd.DOMAIN, MIN(ts.LINKED_AT) AS first_linked
-  FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS ts
+  FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_SIGNAL_EVIDENCE ts
   JOIN signal_domains sd ON sd.SIGNAL_ID = ts.SIGNAL_ID
   WHERE sd.DOMAIN IS NOT NULL
   GROUP BY ts.TREND_ID, sd.DOMAIN
@@ -161,7 +164,7 @@ sources_cumulative AS (
 ),
 signal_first_link AS (
   SELECT TREND_ID, SIGNAL_ID, MIN(LINKED_AT) AS first_linked
-  FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
+  FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_SIGNAL_EVIDENCE
   GROUP BY TREND_ID, SIGNAL_ID
 ),
 signals_cumulative AS (

@@ -67,31 +67,7 @@ async function runWithRetry(connOpts, sqlText, binds) {
   }
 }
 
-const SQL = `
-MERGE INTO MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS AS target
-USING (
-  SELECT
-    s.value:SIGNAL_ID::STRING        AS SIGNAL_ID,
-    s.value:SOURCE_NAME::STRING      AS SOURCE_NAME,
-    TRY_TO_TIMESTAMP_NTZ(s.value:SIGNAL_TIMESTAMP::STRING) AS SIGNAL_TIMESTAMP,
-    s.value:SIGNAL_TITLE::STRING     AS SIGNAL_TITLE,
-    s.value:SIGNAL_TEXT::STRING      AS SIGNAL_TEXT,
-    TRY_PARSE_JSON(s.value:METADATA::STRING) AS METADATA
-  FROM TABLE(FLATTEN(INPUT => PARSE_JSON(?))) s
-) AS source
-ON target.SIGNAL_ID = source.SIGNAL_ID
-WHEN MATCHED THEN UPDATE SET
-  target.SIGNAL_TIMESTAMP = source.SIGNAL_TIMESTAMP,
-  target.SIGNAL_TITLE     = source.SIGNAL_TITLE,
-  target.SIGNAL_TEXT      = source.SIGNAL_TEXT,
-  target.METADATA         = source.METADATA
-WHEN NOT MATCHED THEN INSERT (
-  SIGNAL_ID, SOURCE_NAME, SIGNAL_TIMESTAMP, SIGNAL_TITLE, SIGNAL_TEXT, METADATA
-) VALUES (
-  source.SIGNAL_ID, source.SOURCE_NAME, source.SIGNAL_TIMESTAMP,
-  source.SIGNAL_TITLE, source.SIGNAL_TEXT, source.METADATA
-)
-`;
+const SQL = "CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(?, '', 500, 'STG_EXTERNAL_SIGNALS')";
 
 export default defineComponent({
   props: {
@@ -122,11 +98,10 @@ export default defineComponent({
       [signalsJson],
     );
 
-    const row = rows?.[0] || {};
-    $.export(
-      "$summary",
-      `${row["number of rows inserted"] ?? 0} inserted, ${row["number of rows updated"] ?? 0} updated`,
-    );
+    const raw = rows?.[0]?.MERGE_EXTERNAL_SIGNALS;
+    const result = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!result || result.error) throw new Error(result?.error || "Missing external-signals merge result");
+    $.export("$summary", `${result.signals} Gemini signals processed`);
     return rows;
   },
 });

@@ -54,6 +54,10 @@ $$
     ? AGENT_SESSION_ID
     : null;
   const batchSize = Math.max(1, Math.floor(BATCH_SIZE || 500));
+  const articleSources = new Set(['trend_hunter','gdelt','google_trends_rss','gemini_other',
+    'agent_chatgpt_discovery','agent_gemini_discovery','agent_grok_discovery']);
+  const articleCounts = {new_signals:0, repeat_sightings:0, syndicated_copies:0, unusable_records:0};
+  const signalIds = {};
   let totalProcessed = 0;
   let batchCount = 0;
 
@@ -68,11 +72,16 @@ $$
         s.value:SIGNAL_TEXT::STRING                             AS SIGNAL_TEXT,
         s.value:URL::STRING                                     AS URL,
         TRY_PARSE_JSON(s.value:METADATA::STRING)                AS METADATA,
+        s.value:REFRESH_OWNED_METADATA::BOOLEAN                 AS REFRESH_OWNED_METADATA,
         ?::STRING                                               AS AGENT_SESSION_ID
       FROM TABLE(FLATTEN(INPUT => PARSE_JSON(?))) s
       QUALIFY ROW_NUMBER() OVER (PARTITION BY SIGNAL_ID ORDER BY SIGNAL_TIMESTAMP, s.index) = 1
     ) AS source
     ON target.SIGNAL_ID = source.SIGNAL_ID
+    WHEN MATCHED AND source.REFRESH_OWNED_METADATA
+         AND source.SOURCE_NAME = 'gemini_other' AND target.SOURCE_NAME = 'gemini_other'
+    THEN UPDATE SET SIGNAL_TITLE=source.SIGNAL_TITLE, SIGNAL_TEXT=source.SIGNAL_TEXT,
+      SIGNAL_TIMESTAMP=source.SIGNAL_TIMESTAMP, METADATA=source.METADATA
     WHEN MATCHED
          AND target.AGENT_SESSION_ID IS NULL
          AND source.AGENT_SESSION_ID IS NOT NULL
@@ -89,11 +98,36 @@ $$
 
   for (let i = 0; i < signals.length; i += batchSize) {
     const batch = signals.slice(i, i + batchSize);
-    const stmt = snowflake.createStatement({
-      sqlText: mergeSql,
-      binds: [sessionId, JSON.stringify(batch)],
-    });
-    stmt.execute();
+    const articles = targetTable === 'STG_EXTERNAL_SIGNALS' && batch.some(row => articleSources.has(row && row.SOURCE_NAME));
+    if (articles) snowflake.execute({sqlText:'BEGIN TRANSACTION'});
+    try {
+      let prepared = batch;
+      if (articles) {
+        const tracked = [];
+        for (let index=0; index<batch.length; index++) {
+          const row=batch[index];
+          if (row && articleSources.has(row.SOURCE_NAME)) tracked.push(Object.assign({},row,{MERGE_INPUT_INDEX:index}));
+        }
+        const res = snowflake.execute({sqlText:'CALL MCC_RAW.MARKETING_DEV.RESOLVE_ARTICLE_SIGNALS(?)',
+                                       binds:[JSON.stringify(tracked)]});
+        res.next();
+        const result = res.getColumnValue(1);
+        const resolved = new Map(result.signals.map(row => [row.MERGE_INPUT_INDEX,row]));
+        prepared = [];
+        for (let index=0; index<batch.length; index++) {
+          const row=batch[index];
+          if (!row || !articleSources.has(row.SOURCE_NAME)) prepared.push(row);
+          else if (resolved.has(index)) prepared.push(resolved.get(index));
+        }
+        for (const key of Object.keys(articleCounts)) articleCounts[key] += result.article_counts[key];
+        Object.assign(signalIds, result.signal_ids);
+      }
+      if (prepared.length) snowflake.execute({sqlText:mergeSql, binds:[sessionId, JSON.stringify(prepared)]});
+      if (articles) snowflake.execute({sqlText:'COMMIT'});
+    } catch (err) {
+      if (articles) snowflake.execute({sqlText:'ROLLBACK'});
+      throw err;
+    }
     totalProcessed += batch.length;
     batchCount += 1;
   }
@@ -104,5 +138,7 @@ $$
     batch_size: batchSize,
     session_id: sessionId,
     target_table: targetTable,
+    article_counts: articleCounts,
+    signal_ids: signalIds,
   };
 $$;
