@@ -6,7 +6,8 @@
   "description": "Trend-to-product sourcing agent (CRMA-776) — Cloud Run service.",
   "main": "server.mjs",
   "scripts": {
-    "start": "node server.mjs"
+    "start": "node server.mjs",
+    "test": "node --test *.test.mjs"
   },
   "engines": {
     "node": ">=20"

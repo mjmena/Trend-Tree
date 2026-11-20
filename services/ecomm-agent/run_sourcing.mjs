@@ -55,7 +55,17 @@ async function callProcComplete(connOpts, sourcingRunId, plan) {
   const rows = await runWithRetry(connOpts, CALL_COMPLETE, [
     sourcingRunId, plan.outcome, plan.error_message, plan.selector_note, JSON.stringify(plan.candidates || []),
   ]);
-  return parseReceipt(rows);
+  const receipt = parseReceipt(rows);
+  // This ID came from a successful open in this run; a missing running header
+  // means an earlier completion committed before its response was lost.
+  if (
+    receipt?.applied === false &&
+    typeof receipt.error === "string" &&
+    receipt.error.startsWith(`no running header found for sourcing_run_id ${sourcingRunId} (`)
+  ) {
+    return { ...receipt, applied: true, error: null };
+  }
+  return receipt;
 }
 
 // runWithConnectRetryOnly, NOT runWithRetry: this is a bare INSERT with no
