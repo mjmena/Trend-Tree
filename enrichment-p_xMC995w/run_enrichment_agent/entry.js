@@ -611,7 +611,7 @@ async function runAgentLoop({
     parts: typeof user_message === "string" ? [{ text: user_message }] : user_message,
   }];
 
-  const tokens = { input: 0, output: 0, total: 0 };
+  const tokens = { input: 0, output: 0, thinking: 0, total: 0 };
   const reasoning_trace = [];
   const tool_calls = [];
   let cost_usd = 0;
@@ -665,11 +665,13 @@ async function runAgentLoop({
     const data = await resp.json();
     const usage = data.usageMetadata || {};
     const tin = usage.promptTokenCount || 0;
-    // candidatesTokenCount already includes thinking tokens — do NOT add thoughtsTokenCount.
-    const tout = usage.candidatesTokenCount || 0;
+    // candidatesTokenCount excludes thinking; both are billed at the output rate.
+    const thinking = usage.thoughtsTokenCount || 0;
+    const tout = (usage.candidatesTokenCount || 0) + thinking;
     tokens.input += tin;
     tokens.output += tout;
-    tokens.total = tokens.input + tokens.output;
+    tokens.thinking += thinking;
+    tokens.total += usage.totalTokenCount ?? (tin + tout);
     cost_usd += (tin / 1_000_000) * RATES_PER_M.input + (tout / 1_000_000) * RATES_PER_M.output;
 
     const candidate = (data.candidates || [])[0] || {};

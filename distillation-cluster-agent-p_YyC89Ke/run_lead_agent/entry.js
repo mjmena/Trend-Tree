@@ -491,7 +491,7 @@ async function runAgentLoop({ google_gemini, tool_names, system, user_message, c
   const tools = [{ functionDeclarations: toFunctionDeclarations(tool_names) }];
   const contents = [{ role: "user", parts: typeof user_message === "string" ? [{ text: user_message }] : user_message }];
 
-  const tokens = { input: 0, output: 0, total: 0 };
+  const tokens = { input: 0, output: 0, thinking: 0, total: 0 };
   const reasoning_trace = [];
   const tool_calls = [];
   let cost_usd = 0;
@@ -538,10 +538,13 @@ async function runAgentLoop({ google_gemini, tool_names, system, user_message, c
     const data = await resp.json();
     const usage = data.usageMetadata || {};
     const tin = usage.promptTokenCount || 0;
-    const tout = usage.candidatesTokenCount || 0;
+    // candidatesTokenCount excludes thinking; both are billed at the output rate.
+    const thinking = usage.thoughtsTokenCount || 0;
+    const tout = (usage.candidatesTokenCount || 0) + thinking;
     tokens.input += tin;
     tokens.output += tout;
-    tokens.total = tokens.input + tokens.output;
+    tokens.thinking += thinking;
+    tokens.total += usage.totalTokenCount ?? (tin + tout);
     cost_usd += (tin / 1_000_000) * RATES_PER_M.input + (tout / 1_000_000) * RATES_PER_M.output;
 
     const candidate = (data.candidates || [])[0] || {};
@@ -818,7 +821,7 @@ function emptyResult({ chain_id, max_signal_ts, started, signals_seen, skipped, 
     candidates: [], candidates_json: "[]", candidates_count: 0,
     signals_seen: signals_seen || 0,
     max_signal_ts, run_duration_ms: Date.now() - started,
-    cost_usd: 0, tokens: { input: 0, output: 0, total: 0 },
+    cost_usd: 0, tokens: { input: 0, output: 0, thinking: 0, total: 0 },
     turns: 0, stop_reason: skipped, error: error || null,
   };
 }
