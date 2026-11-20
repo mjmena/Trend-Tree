@@ -12,7 +12,7 @@
 -- overflowing source would have broken cross-source URL dedup.
 --
 -- Companion changes (same date):
---   * TASK_PROMOTE_TREND_SIGNALS link filter raised 255 -> 2048
+--   * MARKETING_TASK_PROMOTE_TREND_SIGNALS link filter raised 255 -> 2048
 --     (fct_trend_signals.sql) — its "wider than the column can't match"
 --     premise died with this widen.
 --   * google-trends RSS ingester now canonicalizes URLs (strips tracking

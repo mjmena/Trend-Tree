@@ -27,10 +27,8 @@
 -- services/lib/scrape_normalize.mjs — "one bad record never fails the
 -- whole job: a partial pull beats no pull."
 --
--- NAME DRIFT. The live object is MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT;
--- sql/fct_signals.sql declares it unprefixed as
--- TASK_PROMOTE_SIGNALS_TO_FCT. The same split exists for the trend-signals
--- task. This migration targets the name that actually runs.
+-- The task name must match sql/fct_signals.sql so this migration updates
+-- the scheduled writer rather than creating a second writer.
 --
 -- OWNERSHIP TRAP — read before re-running. CREATE OR REPLACE TASK here does
 -- NOT preserve the task's owner. Running it in a session whose CURRENT_ROLE

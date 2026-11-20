@@ -22,14 +22,14 @@
 -- the agent's per-trend classification survives end-to-end.
 --
 -- No FK enforcement to FCT_SIGNALS.SIGNAL_ID — eventual consistency is
--- by design. The 5-minute lag on TASK_PROMOTE_SIGNALS_TO_FCT means a
+-- by design. The 5-minute lag on MARKETING_TASK_PROMOTE_SIGNALS_TO_FCT means a
 -- brand-new evidence link can point at a SIGNAL_ID that doesn't yet
 -- have an FCT_SIGNALS row. That's fine — link-level use cases (dashboard
 -- top_signals, audit, counts) don't need the embedding.
 
-CREATE OR REPLACE TABLE MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS (
+CREATE TABLE IF NOT EXISTS MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS (
     TREND_ID   VARCHAR(255) NOT NULL,
-    SIGNAL_ID  VARCHAR(255) NOT NULL,
+    SIGNAL_ID  VARCHAR(16777216) NOT NULL,
     LINK_KIND  VARCHAR(20)  NOT NULL,            -- 'supporting' | 'evidence'
     LINK_TYPE  VARCHAR(20),                       -- 'news' | 'social' | 'commerce' | 'reference' | 'search_volume' | 'video' | 'other' | NULL
     LINKED_AT  TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP(),
@@ -43,7 +43,7 @@ CREATE OR REPLACE TABLE MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS (
 --
 -- 'evidence' link kind populated in a future PR (depends on enrichment
 -- writing its citations to STG with signal_kind='enrichment_citation').
-CREATE OR REPLACE TASK MCC_PRESENTATION.TREND_AGENT.TASK_PROMOTE_TREND_SIGNALS
+CREATE OR REPLACE TASK MCC_PRESENTATION.TREND_AGENT.MARKETING_TASK_PROMOTE_TREND_SIGNALS
     WAREHOUSE = MARKETING_WH
     SCHEDULE  = '5 MINUTE'
 AS
@@ -91,4 +91,8 @@ WHERE NOT EXISTS (
 )
 QUALIFY ROW_NUMBER() OVER (PARTITION BY fl.TREND_ID, fl.SIGNAL_ID ORDER BY fl.SIGNAL_ID) = 1;
 
-ALTER TASK MCC_PRESENTATION.TREND_AGENT.TASK_PROMOTE_TREND_SIGNALS RESUME;
+-- Replacement can lose the owner with warehouse USAGE; restore it before resume.
+GRANT OWNERSHIP ON TASK MCC_PRESENTATION.TREND_AGENT.MARKETING_TASK_PROMOTE_TREND_SIGNALS
+    TO ROLE MARKETING_ENGINEER COPY CURRENT GRANTS;
+
+ALTER TASK MCC_PRESENTATION.TREND_AGENT.MARKETING_TASK_PROMOTE_TREND_SIGNALS RESUME;

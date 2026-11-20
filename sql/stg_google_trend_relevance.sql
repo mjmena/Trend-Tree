@@ -1,6 +1,6 @@
 -- Staging: Google Trend relevance classification
 -- Database: MCC_RAW.MARKETING_DEV
--- Populated by TASK_CLASSIFY_GOOGLE_TRENDS (incremental, Cortex LLM)
+-- Populated by MARKETING_TASK_CLASSIFY_GOOGLE_TRENDS (incremental, Cortex LLM)
 
 CREATE TABLE IF NOT EXISTS MCC_RAW.MARKETING_DEV.STG_GOOGLE_TREND_RELEVANCE (
     TREND_ID NUMBER PRIMARY KEY,

@@ -1,10 +1,8 @@
 -- Adds the four presentation columns to the live DIM_CATALOG_PRODUCT
 -- (CRMA-1328; field rules decided on CRMA-1327).
 --
--- Run this as ONE statement. NEVER run sql/dim_catalog_product.sql against
--- the live table: it is CREATE OR REPLACE TABLE, which drops every seeded
--- row and its paid Cortex embedding. That file is the shape a fresh
--- environment gets; this file is the migration.
+-- Run this as ONE statement. sql/dim_catalog_product.sql creates only missing
+-- tables; this migration adds columns to an existing table without losing rows.
 --
 -- Run it BEFORE deploying the catalog-sync job or the ecomm agent that
 -- reference these columns — the MERGE and the retrieval query both fail

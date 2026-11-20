@@ -9,7 +9,7 @@
 -- The DT_EXTERNAL_TREND_EMBEDDINGS dynamic table reads these aggregated signals
 -- (source_name = 'amazon_trends') instead of individual products.
 --
--- Called by TASK_AGGREGATE_AMAZON on a schedule (runs before clustering).
+-- Called by MARKETING_TASK_AGGREGATE_AMAZON on a schedule (runs before clustering).
 
 CREATE OR REPLACE PROCEDURE MCC_RAW.MARKETING_DEV.PROC_AGGREGATE_AMAZON()
 RETURNS VARCHAR
