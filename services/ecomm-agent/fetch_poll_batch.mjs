@@ -30,14 +30,17 @@ const Q_POLL_BATCH = `
     GROUP BY TREND_ID
   ),
   blocking_header AS (
-    SELECT DISTINCT TREND_ID
+    SELECT TREND_ID, MAX(STARTED_AT) AS LAST_STARTED
     FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_LEDGER
     WHERE TIER = ?
       AND (
             STATUS IN ('matched', 'no_match')
+         OR (STATUS = 'failed'
+             AND STARTED_AT >= DATEADD('hour', -6, CURRENT_TIMESTAMP()))
          OR (STATUS = 'running'
              AND STARTED_AT >= DATEADD('minute', -1 * ?, CURRENT_TIMESTAMP()))
       )
+    GROUP BY TREND_ID
   )
   SELECT
     e.TREND_ID,
@@ -48,7 +51,7 @@ const Q_POLL_BATCH = `
   LEFT JOIN latest_lifecycle lc
     ON lc.TREND_ID = e.TREND_ID
   LEFT JOIN blocking_header bh
-    ON bh.TREND_ID = e.TREND_ID
+    ON bh.TREND_ID = e.TREND_ID AND bh.LAST_STARTED >= e.ENRICHED_AT
   WHERE NVL(lc.LIFECYCLE_STATUS, 'NEW') <> 'RETIRED'
     AND bh.TREND_ID IS NULL
   ORDER BY e.ENRICHED_AT ASC

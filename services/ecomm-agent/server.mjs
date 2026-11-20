@@ -39,7 +39,7 @@
 // $.respond() always returned 200):
 //   200 — the run reached a recorded terminal state, INCLUDING outcome
 //         'failed' and a freshness 'declined'. A failed header is a real,
-//         self-healing outcome (the next poll tick retries it), not a
+//         self-healing outcome (the poll retries after its cooldown), not a
 //         transport error, and a retry storm from the caller would only
 //         multiply headers.
 //   400 — malformed body (missing / non-UUID trend_id). The caller must fix

@@ -108,7 +108,7 @@ function costRowFrom({ evt, startedAt, endedAt, telemetry, status, errorMessage 
 // { connOpts, apiKey, evt, ctx } -> the run receipt the HTTP layer renders.
 // `header_recorded` tells the caller whether the run's terminal state actually
 // reached FCT_TREND_SOURCING_LEDGER: a 'failed' run whose header landed is a
-// recorded outcome the next poll tick will retry (HTTP 200), whereas a run
+// recorded outcome the poll retries after its cooldown (HTTP 200), whereas a run
 // that could not write a header at all is an infrastructure failure the
 // caller should see as a 5xx.
 export async function runSourcing({ connOpts, apiKey, evt, ctx }) {
