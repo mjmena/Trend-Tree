@@ -70,6 +70,7 @@ $$
         TRY_PARSE_JSON(s.value:METADATA::STRING)                AS METADATA,
         ?::STRING                                               AS AGENT_SESSION_ID
       FROM TABLE(FLATTEN(INPUT => PARSE_JSON(?))) s
+      QUALIFY ROW_NUMBER() OVER (PARTITION BY SIGNAL_ID ORDER BY SIGNAL_TIMESTAMP, s.index) = 1
     ) AS source
     ON target.SIGNAL_ID = source.SIGNAL_ID
     WHEN MATCHED
