@@ -29,6 +29,16 @@ USE SCHEMA MCC_PRESENTATION.TREND_AGENT;
 -- Leading cleanup — children before parents, so a previous aborted run cannot
 -- leave fixtures behind that change this run's answers.
 -- ---------------------------------------------------------------------------
+-- Session IDs must be recovered before removing their sourcing headers.
+DELETE FROM MCC_RAW.MARKETING_DEV.STG_AGENT_RUN_COSTS
+WHERE AGENT_SESSION_ID IN (
+  SELECT AGENT_SESSION_ID
+  FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_LEDGER
+  WHERE TREND_ID LIKE 'zztest-poll-%'
+) OR RUN_ID LIKE 'zztest-poll-%'
+  OR AGENT_SESSION_ID LIKE 'zztest-poll-%';
+DELETE FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_CANDIDATES
+WHERE TREND_ID LIKE 'zztest-poll-%';
 DELETE FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_LEDGER
 WHERE TREND_ID LIKE 'zztest-poll-%';
 DELETE FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
@@ -279,6 +289,16 @@ SELECT check_name, pass FROM _poll_results ORDER BY check_name;
 -- assertion would abort the script before they ever ran, leaving zztest-* rows
 -- stuck in the real tables.
 -- ---------------------------------------------------------------------------
+-- Session IDs must be recovered before removing their sourcing headers.
+DELETE FROM MCC_RAW.MARKETING_DEV.STG_AGENT_RUN_COSTS
+WHERE AGENT_SESSION_ID IN (
+  SELECT AGENT_SESSION_ID
+  FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_LEDGER
+  WHERE TREND_ID LIKE 'zztest-poll-%'
+) OR RUN_ID LIKE 'zztest-poll-%'
+  OR AGENT_SESSION_ID LIKE 'zztest-poll-%';
+DELETE FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_CANDIDATES
+WHERE TREND_ID LIKE 'zztest-poll-%';
 DELETE FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_LEDGER
 WHERE TREND_ID LIKE 'zztest-poll-%';
 DELETE FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER

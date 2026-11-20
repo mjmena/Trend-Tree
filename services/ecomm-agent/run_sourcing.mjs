@@ -111,7 +111,7 @@ function costRowFrom({ evt, startedAt, endedAt, telemetry, status, errorMessage 
 // recorded outcome the poll retries after its cooldown (HTTP 200), whereas a run
 // that could not write a header at all is an infrastructure failure the
 // caller should see as a 5xx.
-export async function runSourcing({ connOpts, apiKey, evt, ctx }) {
+export async function runSourcing({ connOpts, apiKey, evt, ctx }, { select = callSelector } = {}) {
   const startedAt = new Date();
 
   // DECLINE — the catalog freshness gate. No header, no cost row, no LLM
@@ -153,7 +153,7 @@ export async function runSourcing({ connOpts, apiKey, evt, ctx }) {
         if (!ctx.prompt || !ctx.prompt.template) {
           throw new Error("sourcing.selector prompt not found in DIM_LLM_PROMPT (IS_ACTIVE=TRUE)");
         }
-        const { emit, telemetry } = await callSelector({ apiKey, prompt: ctx.prompt, trend: ctx.trend, pool });
+        const { emit, telemetry } = await select({ apiKey, prompt: ctx.prompt, trend: ctx.trend, pool });
         selectorTelemetry = telemetry;
         plan = buildSourcingRunPlan({ pool, selectorEmit: emit });
       }
