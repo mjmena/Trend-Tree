@@ -258,6 +258,7 @@ class LedgerSimulator(RoutingFakeSnowflake):
             {
                 "PREDICTION_ID": bound["prediction_id"],
                 "PREDICTION_EVAL_ID": bound["prediction_eval_id"],
+                "CHAIN_ID": bound["chain_id"],
                 "SUBJECT_DESCRIPTOR": bound["subject_descriptor"],
                 "DIRECTIONAL_CLAIM": bound["directional_claim"],
                 "HORIZON_BAND": bound["horizon_band"],

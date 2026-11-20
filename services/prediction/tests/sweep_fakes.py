@@ -47,6 +47,15 @@ class SweepLedgerSimulator(LedgerSimulator):
 
     def query(self, sql: str, params: Mapping[str, Any] | None = None) -> list[dict[str, Any]]:
         upper = sql.upper()
+        if "EVIDENCE:GENERATION:CHAIN_ID" in upper:
+            self.calls.append(RecordedCall(sql, params, kind="query"))
+            chain_id = (params or {}).get("chain_id")
+            return [
+                {"GENERATED": 1}
+                for row in self.rows
+                if row.get("CHAIN_ID") == chain_id
+                and json.loads(row["EVIDENCE"]).get("generation", {}).get("chain_id") == chain_id
+            ][:1]
         # The live-subject read is against the ledger too, but it is a
         # different statement with a different shape -- route it before the
         # simulator's open-prediction branch, which would assert on its

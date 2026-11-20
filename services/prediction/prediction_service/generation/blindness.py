@@ -50,8 +50,8 @@ import re
 #: ``MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS`` matches ``FCT_SIGNALS``.
 #:
 #: This is the *default* grant. A caller may pass a different tuple for a
-#: statement that legitimately needs another object -- today the only one is
-#: generation/signals.py's live-subject read, which grants itself
+#: statement that legitimately needs another object -- the ledger reads in
+#: generation/signals.py each grant themselves
 #: ``FCT_PREDICTION_VERDICT_LEDGER`` and nothing else. That is deliberate and
 #: narrow: the verdict ledger is the prediction pillar's own output, not
 #: trend/heat/lifecycle state, so reading it tells the agent what the agent

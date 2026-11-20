@@ -368,6 +368,114 @@ def test_the_daily_run_re_evaluates_and_generates_in_one_request():
     assert len(ledger.writes) == 2
 
 
+@pytest.mark.parametrize("chain_override", [None, "pred-sweep-daily-override"])
+def test_a_daily_retry_re_evaluates_but_does_not_generate_another_batch(
+    monkeypatch, chain_override
+):
+    monkeypatch.setattr(
+        "prediction_service.routes.sweep.daily_chain_id", lambda: "pred-sweep-daily-fixed"
+    )
+    ledger = SweepLedgerSimulator(signals=list(SIGNAL_ROWS))
+    llm = SweepLLM(generation_reply=GENERATION_REPLY)
+    client = _client(ledger, llm)
+    request = {"daily_chain_id": True, "chain_id": chain_override}
+
+    first = client.post("/sweep", json=request, headers=AUTH_HEADERS)
+    assert first.status_code == 200, first.text
+    assert first.json()["chain_id"] == (chain_override or "pred-sweep-daily-fixed")
+    assert first.json()["predictions_minted"] == 1
+    llm.generation_reply = GENERATION_REPLY.replace("cottage cheese", "Greek yogurt")
+
+    second = client.post("/sweep", json=request, headers=AUTH_HEADERS)
+    assert second.status_code == 200, second.text
+    body = second.json()
+    assert body["chain_id"] == first.json()["chain_id"]
+    assert body["reevaluated"] == 1
+    assert body["generation_ran"] is False
+    assert "already recorded" in body["generation_note"]
+    assert body["predictions_minted"] == 0
+    assert body["generated"] == []
+    assert len({row["PREDICTION_ID"] for row in ledger.rows}) == 1
+
+
+def test_prior_day_generation_provenance_does_not_suppress_todays_generation():
+    row = open_prediction_row()
+    evidence = json.loads(row["EVIDENCE"])
+    evidence["generation"] = {"phase": "generate", "chain_id": "pred-sweep-daily-yesterday"}
+    row["EVIDENCE"] = json.dumps(evidence)
+    row["CHAIN_ID"] = "pred-sweep-daily-yesterday"
+    ledger = SweepLedgerSimulator(rows=[row], signals=list(SIGNAL_ROWS))
+
+    response = _client(ledger, SweepLLM(generation_reply=GENERATION_REPLY)).post(
+        "/sweep",
+        json={"daily_chain_id": True, "chain_id": "pred-sweep-daily-today"},
+        headers=AUTH_HEADERS,
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["reevaluated"] == 1
+    assert body["generation_ran"] is True
+    assert body["predictions_minted"] == 1
+    reevaluated_evidence = json.loads(ledger.writes[0].params["evidence"])
+    assert reevaluated_evidence["generation"]["chain_id"] == "pred-sweep-daily-yesterday"
+
+
+def test_a_manual_retry_keeps_the_requested_generation_behavior():
+    ledger = SweepLedgerSimulator(signals=list(SIGNAL_ROWS))
+    llm = SweepLLM(generation_reply=GENERATION_REPLY)
+    client = _client(ledger, llm)
+    request = {"chain_id": "manual-retry"}
+    first = client.post("/sweep", json=request, headers=AUTH_HEADERS)
+    assert first.status_code == 200, first.text
+    llm.generation_reply = GENERATION_REPLY.replace("cottage cheese", "Greek yogurt")
+
+    second = client.post("/sweep", json=request, headers=AUTH_HEADERS)
+    assert second.status_code == 200, second.text
+    assert second.json()["generation_ran"] is True
+    assert second.json()["predictions_minted"] == 1
+    assert len({row["PREDICTION_ID"] for row in ledger.rows}) == 2
+
+
+def test_a_daily_dry_run_does_not_suppress_the_first_recorded_generation():
+    ledger = SweepLedgerSimulator(signals=list(SIGNAL_ROWS))
+    client = _client(ledger, SweepLLM(generation_reply=GENERATION_REPLY))
+    request = {"daily_chain_id": True, "chain_id": "pred-sweep-daily-dry-run"}
+
+    dry_run = client.post(
+        "/sweep", json={**request, "dry_run": True}, headers=AUTH_HEADERS
+    )
+    assert dry_run.status_code == 200, dry_run.text
+    assert dry_run.json()["generation_ran"] is True
+    assert ledger.rows == []
+
+    recorded = client.post("/sweep", json=request, headers=AUTH_HEADERS)
+    assert recorded.status_code == 200, recorded.text
+    assert recorded.json()["generation_ran"] is True
+    assert recorded.json()["predictions_minted"] == 1
+
+
+def test_a_generation_history_read_failure_keeps_the_sweeps_rows():
+    class UnavailableHistory(SweepLedgerSimulator):
+        def query(self, sql, params=None):
+            if "EVIDENCE:GENERATION:CHAIN_ID" in sql.upper():
+                raise RuntimeError("generation history unavailable")
+            return super().query(sql, params)
+
+    ledger = UnavailableHistory(rows=[open_prediction_row()], signals=list(SIGNAL_ROWS))
+    response = _client(ledger, SweepLLM(generation_reply=GENERATION_REPLY)).post(
+        "/sweep", json={"daily_chain_id": True}, headers=AUTH_HEADERS
+    )
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["verdicts_written"] == 1
+    assert body["generation_ran"] is False
+    assert body["predictions_minted"] == 0
+    assert "generation pass failed" in body["generation_note"]
+    assert len(ledger.writes) == 1
+
+
 def test_a_failing_generation_pass_does_not_lose_the_sweeps_rows():
     class Exploding(SweepLedgerSimulator):
         def query(self, sql, params=None):
