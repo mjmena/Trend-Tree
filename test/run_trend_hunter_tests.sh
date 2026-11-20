@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-node --test services/trend-hunter-ingest/ingest.test.mjs
+node --test services/trend-hunter-ingest/*.test.mjs
 
 fixture=$(mktemp "${TMPDIR:-/tmp}/trend-hunter-fixture.XXXXXX")
 results=$(mktemp "${TMPDIR:-/tmp}/trend-hunter-results.XXXXXX")
 trap 'rm -f "$fixture" "$results"' EXIT
 node test/build_trend_hunter_fixture.mjs > "$fixture"
+node test/build_scheduled_article_fixture.mjs >> "$fixture"
 snow sql -c "${SNOWFLAKE_CONNECTION:-claude}" --database MCC_RAW --schema MARKETING_DEV \
   --enable-templating NONE --format json --silent -f "$fixture" > "$results"
 node --input-type=module - "$results" <<'JS'

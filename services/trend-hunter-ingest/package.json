@@ -7,7 +7,7 @@
   "main": "ingest.mjs",
   "scripts": {
     "start": "node ingest.mjs",
-    "test": "node --test ingest.test.mjs"
+    "test": "node --test *.test.mjs"
   },
   "engines": {
     "node": ">=22"

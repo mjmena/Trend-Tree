@@ -373,6 +373,26 @@ def fence_editorial(session, decision):
     return None
 
 
+def record_candidate_version(session, decision, chain_id, phase):
+    evidence = {key: decision.get(key) for key in (
+        'decision', 'decision_category', 'target_candidate_id', 'target_trend_id',
+        'et_corroboration', 'et_was_second_source', 'rationale'
+    )}
+    session.sql("""
+        INSERT INTO MCC_RAW.MARKETING_DEV.STG_TREND_HUNTER_CANDIDATE_VERSIONS
+            (CANDIDATE_ID,VERSION_AT_UTC,RECORDED_AT_UTC,PHASE,CHAIN_ID,DECISION,CANDIDATE)
+        SELECT c.CANDIDATE_ID,CONVERT_TIMEZONE('UTC',CURRENT_TIMESTAMP())::TIMESTAMP_NTZ,
+               CONVERT_TIMEZONE('UTC',CURRENT_TIMESTAMP())::TIMESTAMP_NTZ,?,?,PARSE_JSON(?),OBJECT_CONSTRUCT_KEEP_NULL(c.*)
+        FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c WHERE c.CANDIDATE_ID=?
+          AND EXISTS (SELECT 1 FROM MCC_RAW.MARKETING_DEV.STG_TREND_HUNTER_CONTROL WHERE LOCK_ID=1 AND ENABLED_AT_UTC IS NOT NULL)
+    """, params=[phase,chain_id,json.dumps(evidence),decision['candidate_id']]).collect()
+
+
+def commit_candidate_decision(session, decision, chain_id):
+    record_candidate_version(session, decision, chain_id, 'after_decision')
+    session.sql("COMMIT").collect()
+
+
 def run(session, DECISIONS, CHAIN_ID, ITERATION):
     if DECISIONS is None:
         return {'applied_count': 0, 'results': []}
@@ -452,6 +472,8 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                     results.append(recovered)
                     continue
 
+            record_candidate_version(session, d, chain_id, 'before_decision')
+
             if decision == 'PROMOTE_NEW':
                 # Insert new FCT_TRENDS row; copy candidate fields.
                 # New TREND_ID assigned by UUID_STRING(); captured via the
@@ -510,7 +532,7 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                 if et_second:
                     seed_et_ledger_v0(session, new_tid, cid, et_corr)
 
-                session.sql("COMMIT").collect()
+                commit_candidate_decision(session, d, chain_id)
                 results.append({'candidate_id': cid, 'decision': 'PROMOTE_NEW',
                                 'target_trend_id': new_tid, 'status': 'ok'})
 
@@ -530,7 +552,7 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                 apply_merge_into_existing(session, cid, target, chain_id)
 
                 audit_row['target_trend_id'] = target
-                session.sql("COMMIT").collect()
+                commit_candidate_decision(session, d, chain_id)
                 results.append({'candidate_id': cid, 'decision': 'MERGE_INTO_EXISTING',
                                 'target_trend_id': target, 'status': 'ok'})
 
@@ -552,7 +574,7 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                     apply_merge_into_existing(session, cid, leader_tid, chain_id)
                     audit_row['target_trend_id'] = leader_tid
                     audit_row['decision_category'] = cat or 'INTRA_BATCH_DUPE'
-                    session.sql("COMMIT").collect()
+                    commit_candidate_decision(session, d, chain_id)
                     results.append({'candidate_id': cid, 'decision': 'MERGE_INTO_CANDIDATE',
                                     'target_candidate_id': target_cid,
                                     'target_trend_id': leader_tid, 'status': 'ok'})
@@ -566,7 +588,7 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                             PROMOTION_DECIDED_BY = {sql_str(chain_id)}
                         WHERE CANDIDATE_ID = {sql_str(cid)}
                     """).collect()
-                    session.sql("COMMIT").collect()
+                    commit_candidate_decision(session, d, chain_id)
                     results.append({'candidate_id': cid, 'decision': 'MERGE_INTO_CANDIDATE',
                                     'target_candidate_id': target_cid,
                                     'mirrored_outcome': 'REJECT', 'status': 'ok'})
@@ -580,7 +602,7 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                             PROMOTION_DECIDED_BY = {sql_str(chain_id)}
                         WHERE CANDIDATE_ID = {sql_str(cid)}
                     """).collect()
-                    session.sql("COMMIT").collect()
+                    commit_candidate_decision(session, d, chain_id)
                     results.append({'candidate_id': cid, 'decision': 'MERGE_INTO_CANDIDATE',
                                     'target_candidate_id': target_cid,
                                     'mirrored_outcome': 'DEFER', 'status': 'ok'})
@@ -609,7 +631,7 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                     WHERE CANDIDATE_ID = {sql_str(cid)}
                 """).collect()
 
-                session.sql("COMMIT").collect()
+                commit_candidate_decision(session, d, chain_id)
                 results.append({'candidate_id': cid, 'decision': 'REJECT', 'status': 'ok'})
 
             elif decision == 'DEFER':
@@ -624,7 +646,7 @@ def run(session, DECISIONS, CHAIN_ID, ITERATION):
                     WHERE CANDIDATE_ID = {sql_str(cid)}
                 """).collect()
 
-                session.sql("COMMIT").collect()
+                commit_candidate_decision(session, d, chain_id)
                 results.append({'candidate_id': cid, 'decision': 'DEFER', 'status': 'ok'})
 
         except Exception as e:

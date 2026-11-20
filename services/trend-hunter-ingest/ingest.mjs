@@ -4,7 +4,7 @@ import {pathToFileURL} from 'node:url';
 const apiRoot = 'https://nxt.trendhunter.com/api/integrations/tie-signals/v1/';
 const mergeSql = "CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(?, '', 500, 'STG_EXTERNAL_SIGNALS')";
 
-function utc(value) {
+export function utc(value) {
   if (typeof value !== 'string' || !/(?:Z|[+-]\d{2}:\d{2})$/i.test(value)) return null;
   const time = new Date(value);
   return Number.isFinite(time.valueOf()) ? time.toISOString() : null;
@@ -63,14 +63,19 @@ function wireOriginal(text) {
   return null;
 }
 
-async function releaseProof(article, fetchDetail) {
+async function releaseProof(article, fetchDetail, cachedProof) {
   const original = wireOriginal(article.summary);
   if (original) return {original_url: original};
   if (article.text_kind !== 'full' || !/PR\s*Newswire|Business\s*Wire|Globe\s*Newswire|press release|syndicat/i.test(
     [article.source, article.url, article.summary, article.title].join(' '))) return null;
+  const read = () => detailProof(String(article.id), fetchDetail);
+  return cachedProof ? cachedProof(String(article.id), read) : read();
+}
+
+async function detailProof(id, fetchDetail) {
   let detail;
   try {
-    detail = await fetchDetail(String(article.id));
+    detail = await fetchDetail(id);
   } catch (error) {
     if (error.status === 404 || error.status === 410) return null;
     throw error;
@@ -84,7 +89,7 @@ async function releaseProof(article, fetchDetail) {
   return {text_sha256: createHash('sha256').update(body).digest('hex')};
 }
 
-async function signalFor(raw, observed, origin, from, to, fetchDetail) {
+async function signalFor(raw, observed, origin, from, to, fetchDetail, windowId, pageNumber, cachedProof) {
   const article = raw && typeof raw === 'object' ? raw : {};
   const providerId = ['number', 'string'].includes(typeof article.id) ? String(article.id).trim() || null : null;
   const original = typeof article.url === 'string' ? article.url.trim() : null;
@@ -110,15 +115,32 @@ async function signalFor(raw, observed, origin, from, to, fetchDetail) {
     publisher: validUrl ? url.hostname.toLowerCase().replace(/^www\./, '').replace(/\.$/, '') : null,
     feed_label: article.source ?? null, status: article.status ?? null, verdict: article.verdict ?? null,
     published_at_utc: published, first_seen_utc: firstSeen, first_observed_at_utc: observed, origin,
-    signal_kind: 'discovery_signal', unusable_reason: reason,
+    signal_kind: 'discovery_signal', unusable_reason: reason, window_id: windowId, page_number: pageNumber,
   };
   if (!reason) {
-    const proof = await releaseProof(article, fetchDetail);
+    const proof = await releaseProof(article, fetchDetail, cachedProof);
     if (proof) metadata.release_proof = proof;
   }
   return {SOURCE_NAME: 'trend_hunter', SIGNAL_ID: reason ? null : original, URL: metadata.original_url,
     SIGNAL_TIMESTAMP: published ?? firstSeen, SIGNAL_TITLE: title || null, SIGNAL_TEXT: summary || title || null,
     METADATA: JSON.stringify(metadata)};
+}
+
+export function validatePage(page) {
+  if (!Array.isArray(page?.data) || !(page.next_cursor === null || (typeof page.next_cursor === 'string' && page.next_cursor))) {
+    throw new Error('Invalid article page or missing next_cursor');
+  }
+}
+
+export async function preparePage({data, observed, from, to, origin, fetchDetail, windowId, pageNumber, cachedProof}) {
+  let accepted = 0;
+  const signals = [];
+  for (const article of data) {
+    if (article?.status && article.status !== 'accepted') continue;
+    if (article?.status === 'accepted') accepted++;
+    signals.push(await signalFor(article, observed, origin, from, to, fetchDetail, windowId, pageNumber, cachedProof));
+  }
+  return {signals, accepted};
 }
 
 export async function runWindow({from, to, origin, fetchPage, fetchDetail, recordPage, now = () => new Date()}) {
@@ -132,15 +154,9 @@ export async function runWindow({from, to, origin, fetchPage, fetchDetail, recor
   do {
     const page = await fetchPage({from, to, cursor});
     const observed = now().toISOString();
-    if (!Array.isArray(page?.data) || !(page.next_cursor === null || (typeof page.next_cursor === 'string' && page.next_cursor))) {
-      throw new Error('Invalid article page or missing next_cursor');
-    }
-    const signals = [];
-    for (const article of page.data) {
-      if (article?.status && article.status !== 'accepted') continue;
-      if (article?.status === 'accepted') counts.accepted_rows++;
-      signals.push(await signalFor(article, observed, origin, from, to, fetchDetail));
-    }
+    validatePage(page);
+    const {signals, accepted} = await preparePage({data: page.data, observed, from, to, origin, fetchDetail});
+    counts.accepted_rows += accepted;
     if (signals.length) {
       const stored = await recordPage(signals);
       for (const key of ['new_signals', 'repeat_sightings', 'syndicated_copies', 'unusable_records']) counts[key] += stored[key] ?? 0;
@@ -176,8 +192,7 @@ export async function withArticleRuntime(env, run) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  withArticleRuntime(process.env, runtime => runWindow({...runtime, from: process.env.TREND_HUNTER_FROM,
-    to: process.env.TREND_HUNTER_TO, origin: process.env.TREND_HUNTER_ORIGIN || 'replay'}))
+  import('./job.mjs').then(({runJob}) => withArticleRuntime(process.env, runtime => runJob(process.env, runtime)))
     .then(counts => console.log(JSON.stringify(counts)), error => {
       console.error(error.message);
       process.exitCode = 1;
