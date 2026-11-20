@@ -174,11 +174,13 @@ const batchResult = exec('SELECT UUID_STRING()');
 batchResult.next();
 const batchId = batchResult.getColumnValue(1);
 const old = exec(`
-    WITH requested AS (SELECT value::VARCHAR evidence_key FROM TABLE(FLATTEN(input=>PARSE_JSON(?))))
+    WITH requested AS (SELECT value::VARCHAR evidence_key FROM TABLE(FLATTEN(input=>PARSE_JSON(?)))),
+    tracked AS (SELECT DISTINCT SIGNAL_ID FROM MCC_RAW.MARKETING_DEV.STG_ARTICLE_EVIDENCE_KEYS WHERE HAS_TREND_HUNTER)
     SELECT k.EVIDENCE_KEY,COALESCE(a.CREDITED_SIGNAL_ID,k.SIGNAL_ID),COALESCE(a.CREDITED_URL,k.CANONICAL_URL),
-           TO_VARCHAR(COALESCE(a.CREDITED_OWNER_AT_UTC,k.OWNER_AT_UTC),'YYYY-MM-DD"T"HH24:MI:SS.FF3"Z"'),(k.HAS_TREND_HUNTER OR a.SIGNAL_ID IS NOT NULL)
+           TO_VARCHAR(COALESCE(a.CREDITED_OWNER_AT_UTC,k.OWNER_AT_UTC),'YYYY-MM-DD"T"HH24:MI:SS.FF3"Z"'),(t.SIGNAL_ID IS NOT NULL OR a.SIGNAL_ID IS NOT NULL)
     FROM MCC_RAW.MARKETING_DEV.STG_ARTICLE_EVIDENCE_KEYS k
     LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_ARTICLE_SIGNAL_ALIASES a ON a.SIGNAL_ID=k.SIGNAL_ID
+    LEFT JOIN tracked t ON t.SIGNAL_ID=k.SIGNAL_ID
     JOIN requested r ON k.EVIDENCE_KEY=r.evidence_key
     UNION ALL
     SELECT r.evidence_key,s.SIGNAL_ID,s.SIGNAL_ID,
@@ -188,12 +190,13 @@ const old = exec(`
     WHERE s.SOURCE_NAME NOT IN ('trend_hunter','gdelt','google_trends_rss','gemini_other',
                                 'agent_chatgpt_discovery','agent_gemini_discovery','agent_grok_discovery')`,
     [JSON.stringify(Array.from(keys))]);
-const owners = new Map();
+const owners = new Map(), trackedOwners = new Set();
 while (old.next()) {
     const key=old.getColumnValue(1);
     if (!owners.has(key)) owners.set(key,[]);
-    owners.get(key).push({id:old.getColumnValue(2),url:old.getColumnValue(3),
-        at:old.getColumnValue(4),tracked:old.getColumnValue(5)});
+    const id=old.getColumnValue(2);
+    if (old.getColumnValue(5)) trackedOwners.add(id);
+    owners.get(key).push({id:id,url:old.getColumnValue(3),at:old.getColumnValue(4)});
 }
 const aliases = new Map();
 function representative(owner) {
@@ -218,14 +221,20 @@ for (let i=0; i<batch.length; i++) {
     for (const key of identity.keys) {
         for (const candidate of (owners.get(key) || [])) {
             const resolved = representative(candidate);
-            if (direct || resolved.tracked || resolved.id === row.SIGNAL_ID) matches.push(resolved);
+            if (direct || trackedOwners.has(resolved.id) || resolved.id === row.SIGNAL_ID) matches.push(resolved);
         }
     }
     matches.sort((a,b) => a.at.localeCompare(b.at) || (a.batchIndex || 0)-(b.batchIndex || 0) || a.id.localeCompare(b.id));
     const previous = matches[0];
     const owner = previous || {id:direct ? identity.canonical_url : row.SIGNAL_ID,
-                              url:identity.canonical_url,at:observedAt,tracked:false,batchIndex:i};
+                              url:identity.canonical_url,at:observedAt,batchIndex:i};
     if (direct) {
+        if (Array.from(owner.id).length > 2048) {
+            meta.unusable_reason = 'signal_id_too_long';
+            observations.push({meta:meta,url:identity.canonical_url,title:row.SIGNAL_TITLE,summary:row.SIGNAL_TEXT,disposition:'unusable'});
+            counts.unusable_records++;
+            continue;
+        }
         let disposition = 'new_signal';
         if (previous) disposition = previous.url === identity.canonical_url || owners.has('provider:' + meta.observation_key)
             ? 'repeat' : 'syndicated';
@@ -233,7 +242,7 @@ for (let i=0; i<batch.length; i++) {
         else if (disposition === 'repeat') counts.repeat_sightings++;
         else counts.syndicated_copies++;
         observations.push({meta:meta,id:owner.id,url:identity.canonical_url,title:row.SIGNAL_TITLE,summary:row.SIGNAL_TEXT,disposition:disposition});
-        owner.tracked = true;
+        trackedOwners.add(owner.id);
         for (const other of matches) if (other.id !== owner.id) aliases.set(other.id,owner);
     } else {
         sightings.push({source:row.SOURCE_NAME,native_id:row.SIGNAL_ID,id:owner.id,original:identity.original_url,url:identity.canonical_url,
@@ -252,14 +261,14 @@ for (let i=0; i<batch.length; i++) {
             pending.set(JSON.stringify([key,owner.id]), {key:key, owner:owner});
         }
     }
-    if (!previous || previous.batchIndex === undefined || (!direct && row.SIGNAL_ID === owner.id && !owner.tracked)) {
+    if (!previous || previous.batchIndex === undefined || (!direct && row.SIGNAL_ID === owner.id && !trackedOwners.has(owner.id))) {
         row.REFRESH_OWNED_METADATA = row.SOURCE_NAME === 'gemini_other' && row.SIGNAL_ID === owner.id;
         row.SIGNAL_ID = owner.id;
         signals.push(row);
     }
 }
 if (pending.size) {
-    const rows = Array.from(pending.values(), p => ({key:p.key,id:p.owner.id,url:p.owner.url,at:p.owner.at,tracked:p.owner.tracked}));
+    const rows = Array.from(pending.values(), p => ({key:p.key,id:p.owner.id,url:p.owner.url,at:p.owner.at,tracked:trackedOwners.has(p.owner.id)}));
     exec(`MERGE INTO MCC_RAW.MARKETING_DEV.STG_ARTICLE_EVIDENCE_KEYS t
           USING (SELECT value v FROM TABLE(FLATTEN(input=>PARSE_JSON(?)))) s ON t.EVIDENCE_KEY=s.v:key::VARCHAR AND t.SIGNAL_ID=s.v:id::VARCHAR
           WHEN MATCHED AND s.v:tracked::BOOLEAN THEN UPDATE SET SIGNAL_ID=s.v:id::VARCHAR,

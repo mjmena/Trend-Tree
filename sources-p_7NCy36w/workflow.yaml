@@ -31,7 +31,7 @@ steps:
         ),
         cluster_size AS (
           SELECT COUNT(DISTINCT SIGNAL_ID) AS TOTAL_CLUSTER_SIZE
-          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
+          FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_SIGNAL_EVIDENCE
           WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
         )
         SELECT t.TREND_ID, t.TREND_TOPIC,
@@ -54,7 +54,7 @@ steps:
         ),
         cluster_size AS (
           SELECT COUNT(DISTINCT SIGNAL_ID) AS TOTAL_CLUSTER_SIZE
-          FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SIGNALS
+          FROM MCC_PRESENTATION.TREND_AGENT.V_TREND_SIGNAL_EVIDENCE
           WHERE TREND_ID = '{{steps.trigger.event.body.trend_id}}'
         )
         SELECT t.TREND_ID, t.TREND_TOPIC,

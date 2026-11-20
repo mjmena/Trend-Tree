@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { ET_MIN_ABSOLUTE_VOLUME, etQuerySource } from '../../agents/lib/exploding_topics.mjs';
 import { classifyCandidate } from '../../agents/lib/promotion_gate.mjs';
 
 const seed = 'trend-tree/article-week-v1';
@@ -71,11 +72,13 @@ function judge(judgment, available, packet, movement, opportunity) {
         movement.candidates.includes(s.candidate) &&
         s.candidate === judgment.et_candidate &&
         s.at <= opportunity.at &&
-        s.et_second &&
-        s.et?.matched &&
-        s.et.absolute_volume > 0 &&
+        s.et_second === true &&
+        s.et?.matched === true &&
+        Number.isFinite(s.et.absolute_volume) &&
+        s.et.absolute_volume > ET_MIN_ABSOLUTE_VOLUME &&
         s.et.keyword &&
-        s.et.candidate_query?.toLowerCase() === judgment.query.toLowerCase()
+        s.et.candidate_query?.trim().toLowerCase() === judgment.query.trim().toLowerCase() &&
+        etQuerySource({ queried: s.et.queried, candidateQuery: s.et.candidate_query }) === 'candidate_query'
     );
     if (!witness)
       throw new Error('Single-family routing requires a contemporaneous same-movement Exploding Topics decision');

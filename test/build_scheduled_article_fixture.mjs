@@ -14,7 +14,7 @@ statements.push(`CREATE TEMPORARY TABLE FIX_JOB_STG_EXTERNAL_SIGNALS
   (SIGNAL_ID VARCHAR,SOURCE_NAME VARCHAR,SIGNAL_TIMESTAMP TIMESTAMP_NTZ,SIGNAL_TITLE VARCHAR,SIGNAL_TEXT VARCHAR,
    METADATA VARIANT, URL VARCHAR, AGENT_SESSION_ID VARCHAR, INGESTED_AT TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP())`,
   `CREATE TEMPORARY TABLE FIX_JOB_FCT_TREND_SIGNALS (TREND_ID VARCHAR,SIGNAL_ID VARCHAR,LINK_KIND VARCHAR,LINK_TYPE VARCHAR,LINKED_AT TIMESTAMP_NTZ)`);
-statements.push(`CREATE TEMPORARY TABLE FIX_JOB_FCT_SIGNALS (SIGNAL_ID VARCHAR,EMBEDDED_AT TIMESTAMP_NTZ,SIGNAL_VECTOR VECTOR(FLOAT,3))`);
+statements.push(`CREATE TEMPORARY TABLE FIX_JOB_FCT_SIGNALS (SIGNAL_ID VARCHAR,SOURCE_NAME VARCHAR,EMBEDDED_AT TIMESTAMP_NTZ,SIGNAL_VECTOR VECTOR(FLOAT,3))`);
 for (const f of ['sql/stg_trend_candidates.sql','sql/alter_stg_trend_candidates_add_states.sql','sql/alter_stg_trend_candidates_add_query.sql',
   'sql/alter_stg_trend_candidates_add_et.sql','sql/stg_article_evidence.sql','sql/proc_merge_external_signals.sql',
   'sql/trend_hunter_intake.sql','sql/trend_hunter_comparison.sql']) {
@@ -70,7 +70,7 @@ statements.push(`INSERT INTO FIX_JOB_STG_EXTERNAL_SIGNALS (SIGNAL_ID,SOURCE_NAME
   UNION ALL SELECT 'native-overflow','bluesky','Third study','Trial extended',NULL,DATEADD(minute,-30,CURRENT_TIMESTAMP())
   UNION ALL SELECT 'native-selected','rss','A duplicate','Earlier claim','sess-duplicate',DATEADD(minute,-12,CURRENT_TIMESTAMP())
   UNION ALL SELECT 'native-selected','bluesky','Second study','Shop adds station',NULL,DATEADD(minute,-15,CURRENT_TIMESTAMP())`);
-statements.push(`INSERT INTO FIX_JOB_FCT_SIGNALS SELECT 'native-selected',CURRENT_TIMESTAMP()::TIMESTAMP_NTZ,[1,0,0]::VECTOR(FLOAT,3)
+statements.push(`INSERT INTO FIX_JOB_FCT_SIGNALS (SIGNAL_ID,EMBEDDED_AT,SIGNAL_VECTOR) SELECT 'native-selected',CURRENT_TIMESTAMP()::TIMESTAMP_NTZ,[1,0,0]::VECTOR(FLOAT,3)
   UNION ALL SELECT 'native-selected',DATEADD(hour,-1,CURRENT_TIMESTAMP())::TIMESTAMP_NTZ,NULL`);
 statements.push(`INSERT INTO FIX_JOB_STG_TREND_CANDIDATES (CANDIDATE_ID,CREATED_AT,TOPIC,QUERY,SUPPORTING_SIGNAL_IDS,CHAIN_ID)
   SELECT 'candidate1',CURRENT_TIMESTAMP(),'Refill stores','refill stores',ARRAY_CONSTRUCT('native-selected'),'chain-fixture'`);
@@ -178,6 +178,15 @@ statements.push(`INSERT INTO FIX_JOB_STG_EXTERNAL_SIGNALS (SIGNAL_ID,SOURCE_NAME
 statements.push(`CALL FIX_JOB_ACQUIRE_ARTICLE_COMPARISON_POOL('main','filtered-floor','sess-filtered',168,150,1600,150)`);
 check('an unusable legacy ID consumes its ranked slot before the returned IDs are checked against the floor',
   `SELECT SELECTED_COUNT=149 AND NOT PASSED_FLOOR FROM FIX_JOB_STG_TREND_HUNTER_OPPORTUNITIES WHERE CHAIN_ID='filtered-floor'`);
+statements.push(`UPDATE FIX_JOB_STG_EXTERNAL_SIGNALS SET INGESTED_AT=CURRENT_TIMESTAMP(), AGENT_SESSION_ID='sess-claimed'
+  WHERE SIGNAL_ID='https://press.example/refills'`);
+statements.push(`INSERT INTO FIX_JOB_STG_TREND_CANDIDATES (CANDIDATE_ID,TOPIC,SUPPORTING_SIGNAL_IDS,PROMOTED_TO)
+  SELECT 'promoted-copy','Refills',ARRAY_CONSTRUCT('gdelt_repeat'),'minted'`);
+statements.push("CALL FIX_JOB_ACQUIRE_ARTICLE_COMPARISON_POOL('revisit','credited-history','sess-next',48,320,1600,1)");
+check('a promoted alias excludes its owner from revisit and preserves the native-only promotion clock',
+  `SELECT COUNT(*)=1 AND COUNT_IF(s.POOL_RANK IS NULL AND NOT s.HAD_PROMOTED_CANDIDATE)=1
+   FROM FIX_JOB_STG_TREND_HUNTER_POOL_SIGNALS s JOIN FIX_JOB_STG_TREND_HUNTER_OPPORTUNITIES o USING(OPPORTUNITY_ID)
+   WHERE o.CHAIN_ID='credited-history' AND s.SIGNAL_ID='https://press.example/refills'`);
 const sql=statements.join(';\n')+';\n';
 assert.doesNotMatch(sql.replace(/^\s*--.*$/gm,''),/MCC_(?:RAW|PRESENTATION)\./);
 assert.doesNotMatch(sql,/^CREATE (?:OR REPLACE )?(?:VIEW|TABLE|FUNCTION|PROCEDURE|TASK)\b/mi);

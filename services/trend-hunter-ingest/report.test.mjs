@@ -167,6 +167,8 @@ test('active credited attribution uses receipt-time lifecycle, actual sweep, fir
         trend,
         story: 'release',
         signal: 'release',
+        selected: '2026-11-03T10:59:58Z',
+        embedded: article.embedded,
         submitted,
         batch_name: 'b',
         rank: 4,
@@ -326,7 +328,7 @@ test('a later provider copy keeps the story history without inheriting its earli
   const report = contributionReport(packet({ days, articles: [late, article], candidates: [candidate],
     trends: [{ id: 'shops', minted: '2026-10-10T00:00:00Z' }],
     links: [{ story: 'release', signal: 'release', trend: 'shops', kind: 'attributed', at: '2026-11-03T12:00:00Z' }],
-    sweeps: [{ story: 'release', signal: 'release', trend: 'shops', state: 'COLLECTED', submitted: '2026-11-03T10:00:00Z',
+    sweeps: [{ story: 'release', signal: 'release', trend: 'shops', state: 'COLLECTED', selected: '2026-11-03T09:59:59Z', submitted: '2026-11-03T10:00:00Z',
       updated: '2026-11-03T12:01:00Z', rank: 1, similarity: 0.6, embedded: article.embedded }],
   }));
   const [later, original] = report.article_cases;
@@ -348,7 +350,7 @@ test('an item arriving after sweep selection and a dormant-at-poll copy cannot i
   const report = contributionReport(packet({days,articles:[early,middle,late],trends:[{id:'shops',minted:'2026-10-01T00:00:00Z'}],
     lifecycle:[{trend:'shops',id:'quiet',status:'DORMANT',at:time('06')},{trend:'shops',id:'revived',status:'RESURGENT',at:time('09')}],
     links:[{story:'release',signal:'release',trend:'shops',kind:'attributed',at:time('12')}],
-    sweeps:[{story:'release',signal:'release',trend:'shops',state:'COLLECTED',submitted:time('10'),updated:time('12'),rank:1,similarity:0.8,embedded:time('05')}],
+    sweeps:[{story:'release',signal:'release',trend:'shops',state:'COLLECTED',selected:time('10'),submitted:time('11'),updated:time('12'),rank:1,similarity:0.8,embedded:time('05')}],
   }));
   const [a,b,c] = report.article_cases;
   assert.deepEqual(c.trend_ids, []);
@@ -435,6 +437,8 @@ test('a cancelled or already closed sweep cannot verify a later attributed link'
     trend: 'retail',
     story: 'release',
     signal: 'release',
+    selected: '2026-11-03T10:59:58Z',
+    embedded: article.embedded,
     submitted: '2026-11-03T11:00:00Z',
     rank: 1,
     similarity: 0.5,
@@ -454,6 +458,23 @@ test('a cancelled or already closed sweep cannot verify a later attributed link'
   assert.equal(result.link_cases[0].disposition, 'unverified_attribution');
 });
 
+test('active attribution uses the archived selection and embedding clocks, including a delayed batch submission', () => {
+  const selected = '2026-11-05T11:00:00Z', submitted = '2026-11-05T11:01:00Z', linked = '2026-11-05T12:00:00Z';
+  const nativeFirst = { ...article, first: '2026-11-05T11:00:20Z', eligible: '2026-11-05T11:00:20Z',
+    handled: '2026-11-05T11:00:21Z', embedded: '2026-11-02T11:00:05Z', writer: 'gdelt' };
+  const score = (item, selection) => contributionReport(packet({ days, articles: [item],
+    trends: [{ id: 'active', minted: '2026-10-01T00:00:00Z' }],
+    links: [{ story: 'release', trend: 'active', signal: 'release', kind: 'attributed', at: linked }],
+    sweeps: [{ story: 'release', trend: 'active', signal: 'release', state: 'COLLECTED', submitted, selected: selection,
+      embedded: item.embedded, updated: linked, rank: 1, similarity: 0.6 }],
+  })).outcomes.verified_active_pairs;
+  assert.equal(score(nativeFirst, selected), 0);
+  const early = { ...nativeFirst, first: '2026-11-05T10:00:00Z', eligible: '2026-11-05T10:00:00Z', handled: '2026-11-05T10:00:01Z' };
+  assert.equal(score(early, selected), 1);
+  assert.equal(score(early, null), 0);
+  assert.equal(score({ ...early, embedded: '2026-11-02T10:59:59Z' }, selected), 0);
+});
+
 test('a single-source review requires contemporaneous ET corroboration for the same movement and query', () => {
   const oneFamily = {
     ...movements,
@@ -470,12 +491,22 @@ test('a single-source review requires contemporaneous ET corroboration for the s
     chain: 'p',
     at: op2.at,
     et_second: true,
-    et: { matched: true, keyword: 'refill station', absolute_volume: 1100, candidate_query: 'refill station' },
+    et: { matched: true, keyword: 'refill station', absolute_volume: 1100,
+      candidate_query: 'refill station', queried: ' Refill Station ' },
   };
   assert.throws(
     () => contributionReport({ ...oneFamily, states: [state] }, { movements: [single] }),
     /contemporaneous/
   );
+  const withWitness = et => contributionReport(
+    { ...oneFamily, states: [{ ...state, at: op1.at, et: { ...state.et, ...et } }] },
+    { movements: [single] }
+  ).discovery.sample[0];
+  assert.equal(withWitness({}).disposition, 'paired_estimate');
+  for (const witness of [{ absolute_volume: 1 }, { queried: 'bottled water' }, { queried: null },
+                         { candidate_query: 'water bottle' }]) {
+    assert.throws(() => withWitness(witness), /contemporaneous/);
+  }
   assert.throws(
     () =>
       contributionReport(

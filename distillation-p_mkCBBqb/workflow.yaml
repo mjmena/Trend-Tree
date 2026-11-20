@@ -102,11 +102,16 @@ steps:
           FROM cand, LATERAL FLATTEN(INPUT => cand.j:supporting_signal_ids) sid
         ),
         valid_pairs AS (
-          SELECT p.candidate_id, f.SIGNAL_ID, f.SOURCE_NAME, BOOLOR_AGG(a.SIGNAL_ID IS NOT NULL) AS was_alias
+          SELECT p.candidate_id, COALESCE(a.CREDITED_SIGNAL_ID,p.signal_id) AS story_id,
+                 -- Keep an embedded alias as a witness until promotion can read the credited owner's vector.
+                 IFF(BOOLOR_AGG(f.SIGNAL_VECTOR IS NOT NULL),story_id,COALESCE(MIN(a.SIGNAL_ID),story_id)) AS SIGNAL_ID,
+                 MIN_BY(f.SOURCE_NAME,f.EMBEDDED_AT) AS SOURCE_NAME, BOOLOR_AGG(a.SIGNAL_ID IS NOT NULL) AS was_alias
           FROM proposed p
           LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_ARTICLE_SIGNAL_ALIASES a ON a.SIGNAL_ID=p.signal_id
-          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f ON f.SIGNAL_ID=COALESCE(a.CREDITED_SIGNAL_ID,p.signal_id)
-          GROUP BY 1,2,3
+          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f ON f.SIGNAL_ID=COALESCE(a.CREDITED_SIGNAL_ID,p.signal_id)
+          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS original ON original.SIGNAL_ID=a.SIGNAL_ID AND original.SIGNAL_VECTOR IS NOT NULL
+          WHERE f.SIGNAL_ID IS NOT NULL OR original.SIGNAL_ID IS NOT NULL
+          GROUP BY 1,2
         ),
         vs AS (
           SELECT candidate_id,
@@ -115,7 +120,7 @@ steps:
         ),
         src_counts AS (
           SELECT candidate_id, SOURCE_NAME, COUNT(*) AS n
-          FROM valid_pairs GROUP BY 1, 2
+          FROM valid_pairs WHERE SOURCE_NAME IS NOT NULL GROUP BY 1, 2
         ),
         sb AS (
           SELECT candidate_id, OBJECT_AGG(SOURCE_NAME, n::VARIANT) AS source_breakdown
@@ -157,11 +162,16 @@ steps:
           FROM cand, LATERAL FLATTEN(INPUT => cand.j:supporting_signal_ids) sid
         ),
         valid_pairs AS (
-          SELECT p.candidate_id, f.SIGNAL_ID, f.SOURCE_NAME, BOOLOR_AGG(a.SIGNAL_ID IS NOT NULL) AS was_alias
+          SELECT p.candidate_id, COALESCE(a.CREDITED_SIGNAL_ID,p.signal_id) AS story_id,
+                 -- Keep an embedded alias as a witness until promotion can read the credited owner's vector.
+                 IFF(BOOLOR_AGG(f.SIGNAL_VECTOR IS NOT NULL),story_id,COALESCE(MIN(a.SIGNAL_ID),story_id)) AS SIGNAL_ID,
+                 MIN_BY(f.SOURCE_NAME,f.EMBEDDED_AT) AS SOURCE_NAME, BOOLOR_AGG(a.SIGNAL_ID IS NOT NULL) AS was_alias
           FROM proposed p
           LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_ARTICLE_SIGNAL_ALIASES a ON a.SIGNAL_ID=p.signal_id
-          JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f ON f.SIGNAL_ID=COALESCE(a.CREDITED_SIGNAL_ID,p.signal_id)
-          GROUP BY 1,2,3
+          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f ON f.SIGNAL_ID=COALESCE(a.CREDITED_SIGNAL_ID,p.signal_id)
+          LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS original ON original.SIGNAL_ID=a.SIGNAL_ID AND original.SIGNAL_VECTOR IS NOT NULL
+          WHERE f.SIGNAL_ID IS NOT NULL OR original.SIGNAL_ID IS NOT NULL
+          GROUP BY 1,2
         ),
         vs AS (
           SELECT candidate_id,
@@ -170,7 +180,7 @@ steps:
         ),
         src_counts AS (
           SELECT candidate_id, SOURCE_NAME, COUNT(*) AS n
-          FROM valid_pairs GROUP BY 1, 2
+          FROM valid_pairs WHERE SOURCE_NAME IS NOT NULL GROUP BY 1, 2
         ),
         sb AS (
           SELECT candidate_id, OBJECT_AGG(SOURCE_NAME, n::VARIANT) AS source_breakdown

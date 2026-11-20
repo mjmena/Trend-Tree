@@ -149,16 +149,14 @@ function attributedPairs(packet, eligible, credit, reviews) {
     const considered = sweeps.get(key) || [];
     const availableAt = (a, signal, at, embedded) =>
       a.handled <= at && embedded && embedded <= at && credit(signal, at) === credit(a.signal, at);
-    const eligibleForSweep = (a, s) => {
-      const embedded = s.embedded || (s.signal === a.signal ? a.embedded : null);
-      return availableAt(a, s.signal, s.submitted, embedded) && hours(s.submitted, embedded) <= 72;
-    };
+    const eligibleForSweep = (a, s) => s.selected && s.selected <= s.submitted &&
+      availableAt(a, s.signal, s.selected, s.embedded) && hours(s.selected, s.embedded) <= 72;
     const sweep = considered.find((s) =>
       link && s.signal === link.signal && s.state === 'COLLECTED' && s.submitted <= link.at && s.updated >= link.at &&
-      s.rank >= 1 && s.rank <= 20 && s.similarity >= 0.35 && items.some((a) => eligibleForSweep(a, s))
+      s.rank >= 1 && s.rank <= 20 && s.similarity >= 0.35
     );
     const minted = trends.get(trend)?.minted;
-    const selection = sweep?.submitted || link?.at;
+    const selection = sweep ? sweep.selected : link?.at;
     const item_outcomes = ordered.map((a) => {
       const state = lifecycleAt(packet.lifecycle || [], trend, a.first);
       const status = state?.status || 'NEW';

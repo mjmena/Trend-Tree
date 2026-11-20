@@ -14,6 +14,33 @@ CREATE TABLE IF NOT EXISTS MCC_RAW.MARKETING_DEV.STG_TREND_HUNTER_CANDIDATE_VERS
     PHASE VARCHAR NOT NULL, CHAIN_ID VARCHAR, DECISION VARIANT, CANDIDATE VARIANT NOT NULL
 );
 
+-- Enrichment runs before the supporting-link task can publish a new candidate's evidence.
+CREATE OR REPLACE VIEW MCC_RAW.MARKETING_DEV.V_TREND_CANDIDATE_EVIDENCE COPY GRANTS AS
+WITH proposed AS (
+    SELECT c.CANDIDATE_ID, s.value::VARCHAR AS signal_id
+    FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT=>c.SUPPORTING_SIGNAL_IDS) s
+), stories AS (
+    SELECT DISTINCT p.CANDIDATE_ID, COALESCE(a.CREDITED_SIGNAL_ID,p.signal_id) AS signal_id
+    FROM proposed p LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_ARTICLE_SIGNAL_ALIASES a ON a.SIGNAL_ID=p.signal_id
+    QUALIFY BOOLOR_AGG(a.SIGNAL_ID IS NOT NULL) OVER (PARTITION BY p.CANDIDATE_ID)
+), sources AS (
+    SELECT e.CANDIDATE_ID,e.signal_id,COALESCE(MIN_BY(f.SOURCE_NAME,f.EMBEDDED_AT),MIN_BY(s.SOURCE_NAME,s.INGESTED_AT)) AS source_name
+    FROM stories e
+    LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS f ON f.SIGNAL_ID=e.signal_id
+    LEFT JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s ON s.SIGNAL_ID=e.signal_id AND f.SIGNAL_ID IS NULL
+    GROUP BY e.CANDIDATE_ID,e.signal_id
+), ids AS (
+    SELECT CANDIDATE_ID,ARRAY_AGG(signal_id) WITHIN GROUP (ORDER BY signal_id) AS signal_ids FROM sources GROUP BY CANDIDATE_ID
+), breakdown AS (
+    SELECT CANDIDATE_ID,OBJECT_AGG(source_name,n::VARIANT) AS counts
+    FROM (SELECT CANDIDATE_ID,source_name,COUNT(*) AS n FROM sources WHERE source_name IS NOT NULL GROUP BY 1,2)
+    GROUP BY CANDIDATE_ID
+)
+SELECT c.CANDIDATE_ID,c.DEDUP_OF_TREND_ID,COALESCE(i.signal_ids,c.SUPPORTING_SIGNAL_IDS) AS SUPPORTING_SIGNAL_IDS,
+       IFF(i.CANDIDATE_ID IS NULL,c.SOURCE_BREAKDOWN,COALESCE(b.counts,OBJECT_CONSTRUCT())) AS SOURCE_BREAKDOWN
+FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+LEFT JOIN ids i ON i.CANDIDATE_ID=c.CANDIDATE_ID LEFT JOIN breakdown b ON b.CANDIDATE_ID=c.CANDIDATE_ID;
+
 CREATE OR REPLACE PROCEDURE MCC_RAW.MARKETING_DEV.CAPTURE_ARTICLE_CANDIDATE_BIRTHS()
 COPY GRANTS
 RETURNS NUMBER LANGUAGE SQL EXECUTE AS CALLER AS
@@ -63,17 +90,21 @@ try {
         ), aliases AS (
             SELECT SIGNAL_ID,CREDITED_SIGNAL_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_ARTICLE_SIGNAL_ALIASES ${snapshot}
             QUALIFY ROW_NUMBER() OVER(PARTITION BY SIGNAL_ID ORDER BY VERIFIED_AT_UTC DESC,CREDITED_SIGNAL_ID)=1
+        ), credited_promotions AS (
+            SELECT DISTINCT COALESCE(a.CREDITED_SIGNAL_ID,p.SIGNAL_ID) AS signal_id
+            FROM promoted p LEFT JOIN aliases a ON a.SIGNAL_ID=p.SIGNAL_ID
         ), inputs AS (
             -- The workflow applies its slot caps before discarding empty IDs from the returned pool.
             SELECT COALESCE(s.SIGNAL_ID,'') AS SIGNAL_ID,s.SOURCE_NAME,s.SIGNAL_TITLE,s.SIGNAL_TEXT,s.METADATA,
                    CONVERT_TIMEZONE('America/New_York','UTC',s.INGESTED_AT) ingested,
                    CONVERT_TIMEZONE('America/New_York','UTC',f.EMBEDDED_AT) embedded,s.AGENT_SESSION_ID claim,
                    COALESCE(s.METADATA:signal_kind::VARCHAR,'discovery_signal') kind,
-                   p.SIGNAL_ID IS NOT NULL had_promotion,a.CREDITED_SIGNAL_ID alias_id
+                   p.SIGNAL_ID IS NOT NULL had_promotion,cp.SIGNAL_ID IS NOT NULL credited_promotion,a.CREDITED_SIGNAL_ID alias_id
             FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS ${snapshot} s
             LEFT JOIN embedded f ON f.SIGNAL_ID=s.SIGNAL_ID
             LEFT JOIN aliases a ON a.SIGNAL_ID=s.SIGNAL_ID
             LEFT JOIN promoted p ON p.SIGNAL_ID=s.SIGNAL_ID
+            LEFT JOIN credited_promotions cp ON cp.SIGNAL_ID=COALESCE(a.CREDITED_SIGNAL_ID,s.SIGNAL_ID)
             WHERE s.INGESTED_AT > CONVERT_TIMEZONE('UTC','America/New_York',DATEADD(hour,-?,?::TIMESTAMP_NTZ))
         ), numbered AS (
             SELECT i.*,ROW_NUMBER() OVER(PARTITION BY SIGNAL_ID ORDER BY ingested DESC,SOURCE_NAME,claim,
@@ -84,7 +115,7 @@ try {
             SELECT i.SIGNAL_ID,i.input_ordinal,i.SOURCE_NAME,i.ingested FROM numbered i
             LEFT JOIN tracked t ON t.SIGNAL_ID=i.SIGNAL_ID
             WHERE i.alias_id IS NULL AND i.kind='discovery_signal'
-              AND IFF(?='main',COALESCE(i.claim,'')='',i.claim LIKE 'sess-%' AND NOT i.had_promotion)
+              AND IFF(?='main',COALESCE(i.claim,'')='',i.claim LIKE 'sess-%' AND NOT i.credited_promotion)
             QUALIFY t.SIGNAL_ID IS NULL OR ROW_NUMBER() OVER(PARTITION BY i.SIGNAL_ID ORDER BY i.input_ordinal)=1
         ), eligible AS (
             SELECT SIGNAL_ID,input_ordinal,ingested FROM representatives

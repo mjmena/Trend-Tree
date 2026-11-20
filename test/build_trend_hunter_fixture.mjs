@@ -183,6 +183,51 @@ check('the same candidate enters promotion with two independent facts after its 
   `SELECT COUNT(*)=1 AND MAX(CLUSTER_SIZE)=2 AND MAX(SOURCE_COUNT)=2 AND NOT BOOLOR_AGG(ARTICLE_COPIES_ONLY)
    FROM FIX_TH_EMBEDDED_PENDING WHERE CANDIDATE_ID='pending-independent'`);
 statements.push("SELECT CANDIDATE_ID, SOURCE_BREAKDOWN, ARTICLE_COPIES_ONLY, CONFIDENCE, SPECIFICITY_SCORE FROM FIX_TH_EMBEDDED_PENDING WHERE CANDIDATE_ID='pending-independent'");
+for (const together of [false,true]) {
+  const suffix=together?'batch':'separate';
+  const redirect='https://redirect.example/'+suffix, final='https://daily.example/'+suffix;
+  const first=native('discovery-'+suffix,redirect,'agent_chatgpt_discovery');
+  first.METADATA=JSON.stringify({url:redirect,canonical_url:final});
+  stage([first]);
+  const {signals}=await preparePage({data:[{...article,id:suffix,url:final}],observed,origin:'forward',
+    from:'2026-11-01T00:00:00.000Z',to:'2026-11-02T00:00:00.000Z'});
+  const later=native('gdelt-'+suffix,redirect,'gdelt');
+  if (together) stage([...signals,later]);
+  else { stage(signals); stage([later]); }
+  check('all URL keys of the credited owner resolve in '+suffix+' submissions',
+    `SELECT (SELECT COUNT(*) FROM FIX_TH_STG_EXTERNAL_SIGNALS WHERE SIGNAL_ID IN ('discovery-${suffix}','gdelt-${suffix}'))=1
+       AND COUNT_IF(SIGNAL_ID='gdelt-${suffix}' AND CREDITED_SIGNAL_ID='discovery-${suffix}')=1 FROM FIX_TH_FCT_ARTICLE_SIGNAL_ALIASES`);
+}
+const tooLong='https://long.example/'+'a'.repeat(2048);
+const tracking='https://short.example/news?utm_content='+'a'.repeat(2048);
+await intake([{...article,id:'long-id',url:tooLong},{...article,id:'short-id',url:tracking}]);
+check('the final supporting ID limit preserves both original URLs and accepts long tracking parameters',
+  `SELECT COUNT_IF(PROVIDER_ID='long-id' AND DISPOSITION='unusable' AND REASON='signal_id_too_long'
+       AND ORIGINAL_URL=${literal(tooLong)} AND SIGNAL_ID IS NULL)=1
+   AND COUNT_IF(PROVIDER_ID='short-id' AND SIGNAL_ID='https://short.example/news' AND ORIGINAL_URL=${literal(tracking)})=1
+   FROM FIX_TH_STG_TREND_HUNTER_ARTICLES`);
+
+// Read the deployed Pipedream queries against the same native-first, verified-copy fixtures.
+function workflowQuery(file,step,trend='late') {
+  const query=read(file).split('- namespace: '+step+'\n')[1].split('      value: |-\n')[1].split('      query: |-\n')[0];
+  return isolated(query.replace(/\{\{steps\.[^}]+\}\}/g,trend));
+}
+statements.push(`CREATE TEMPORARY TABLE FIX_TH_FCT_TRENDS AS SELECT 'late' TREND_ID,'copies' CANDIDATE_ID,'Refill stores' TREND_TOPIC,
+  'Refill' TREND_NAME,'Refill' TREND_NAME_B2C,'Retail' CATEGORY,'Stores' SUBCATEGORY,
+  CURRENT_TIMESTAMP() DETECTED_AT,CURRENT_TIMESTAMP() LAST_UPDATE_AT`);
+statements.push('CREATE TEMPORARY TABLE FIX_TH_FCT_TREND_LIFECYCLE_LEDGER (TREND_ID VARCHAR,NEW_STATUS VARCHAR,NEW_HEAT NUMBER,NEW_HEAT_SMOOTHED NUMBER,EVALUATED_AT TIMESTAMP_NTZ)');
+statements.push('ALTER TABLE FIX_TH_FCT_TREND_ENRICHMENT_LEDGER ADD COLUMN PAYLOAD VARIANT');
+const enrichment='enrichment-p_xMC995w/workflow.yaml';
+for (const step of ['q_metrics','q_neighbors']) {
+  check(step+' credits the two verified copies as one story and one source before the link task runs',
+    'SELECT COUNT(*)=1 AND MAX(TOTAL_CLUSTER_SIZE)=1 AND MAX(DISTINCT_SOURCE_COUNT)=1 FROM ('+
+    workflowQuery(enrichment,step,step==='q_neighbors'?'other':'late')+')');
+}
+check('enrichment presents one original supporting article',
+  `SELECT COUNT(*)=1 AND MAX(SIGNAL_NAME)='gdelt' AND MAX(URL)=${literal(wire)} FROM (`+workflowQuery(enrichment,'q_signals')+')');
+statements.push("DELETE FROM FIX_TH_FCT_TREND_SIGNALS WHERE TREND_ID='late' AND SIGNAL_ID LIKE 'linked-%'");
+check('source metrics credit a release and an independent linked report once each',
+  'SELECT MAX(TOTAL_CLUSTER_SIZE)=2 FROM ('+workflowQuery('sources-p_7NCy36w/workflow.yaml','query_metrics')+')');
 const sql = statements.join(';\n') + ';\n';
 assert.doesNotMatch(sql, /MCC_(?:RAW|PRESENTATION)\./);
 assert.doesNotMatch(sql, /^CREATE (?:OR REPLACE )?(?:VIEW|TABLE|FUNCTION|PROCEDURE|TASK)\b/mi);

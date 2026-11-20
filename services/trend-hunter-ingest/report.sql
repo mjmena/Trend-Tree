@@ -138,13 +138,12 @@ WITH batches AS (
     SELECT b.BATCH_NAME,b.POOLS,b.STATE,CONVERT_TIMEZONE('America/New_York','UTC',b.UPDATED_AT) AS updated,CONVERT_TIMEZONE('America/New_York','UTC',b.SUBMITTED_AT) AS submitted
     FROM MCC_RAW.MARKETING_DEV.STG_ATTRIBUTION_BATCHES AT(TIMESTAMP=>$report_snapshot) b,THR_WINDOW w WHERE submitted BETWEEN w.start_at AND w.cutoff
 ), pools AS (
-    SELECT b.BATCH_NAME,b.submitted,b.state,b.updated,p.key AS trend,s.value:signal_id::VARCHAR AS signal,s.index+1 AS rank,s.value:similarity::FLOAT AS similarity
+    SELECT b.BATCH_NAME,b.submitted,b.state,b.updated,p.key AS trend,s.value:signal_id::VARCHAR AS signal,s.index+1 AS rank,s.value:similarity::FLOAT AS similarity,
+           TRY_TO_TIMESTAMP_NTZ(s.value:selected_at_utc::VARCHAR) AS selected,TRY_TO_TIMESTAMP_NTZ(s.value:embedded_at_utc::VARCHAR) AS embedded
     FROM batches b,LATERAL FLATTEN(INPUT=>b.POOLS) p,LATERAL FLATTEN(INPUT=>p.value) s
 )
-SELECT p.*,COALESCE(x.story,p.signal) AS story,CONVERT_TIMEZONE('America/New_York','UTC',f.EMBEDDED_AT) AS embedded
+SELECT p.*,COALESCE(x.story,p.signal) AS story
 FROM pools p LEFT JOIN THR_OWNERS x ON x.signal=p.signal
-LEFT JOIN MCC_PRESENTATION.TREND_AGENT.FCT_SIGNALS AT(TIMESTAMP=>$report_snapshot) f ON f.SIGNAL_ID=p.signal AND f.SIGNAL_VECTOR IS NOT NULL
-  AND CONVERT_TIMEZONE('America/New_York','UTC',f.EMBEDDED_AT)<=p.submitted
 WHERE COALESCE(x.story,p.signal) IN (SELECT story FROM THR_COHORT);
 CREATE TEMPORARY TABLE THR_TARGETS AS
 SELECT trend FROM THR_LINKS UNION SELECT trend FROM THR_SWEEPS UNION SELECT target FROM THR_AUDITS WHERE target IS NOT NULL;

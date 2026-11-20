@@ -29,11 +29,11 @@ steps:
         agg AS (
           SELECT
             (SELECT COUNT(DISTINCT f.value::STRING)
-               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+               FROM MCC_RAW.MARKETING_DEV.V_TREND_CANDIDATE_EVIDENCE c, LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
               WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}')
                  OR c.DEDUP_OF_TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}') AS TOTAL_CLUSTER_SIZE,
             (SELECT COUNT(DISTINCT k.value::STRING)
-               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => OBJECT_KEYS(c.SOURCE_BREAKDOWN)) k
+               FROM MCC_RAW.MARKETING_DEV.V_TREND_CANDIDATE_EVIDENCE c, LATERAL FLATTEN(INPUT => OBJECT_KEYS(c.SOURCE_BREAKDOWN)) k
               WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}')
                  OR c.DEDUP_OF_TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}') AS DISTINCT_SOURCE_COUNT
         )
@@ -56,11 +56,11 @@ steps:
         agg AS (
           SELECT
             (SELECT COUNT(DISTINCT f.value::STRING)
-               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
+               FROM MCC_RAW.MARKETING_DEV.V_TREND_CANDIDATE_EVIDENCE c, LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
               WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}')
                  OR c.DEDUP_OF_TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}') AS TOTAL_CLUSTER_SIZE,
             (SELECT COUNT(DISTINCT k.value::STRING)
-               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c, LATERAL FLATTEN(INPUT => OBJECT_KEYS(c.SOURCE_BREAKDOWN)) k
+               FROM MCC_RAW.MARKETING_DEV.V_TREND_CANDIDATE_EVIDENCE c, LATERAL FLATTEN(INPUT => OBJECT_KEYS(c.SOURCE_BREAKDOWN)) k
               WHERE c.CANDIDATE_ID = (SELECT CANDIDATE_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS WHERE TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}')
                  OR c.DEDUP_OF_TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}') AS DISTINCT_SOURCE_COUNT
         )
@@ -85,7 +85,7 @@ steps:
         WITH cand AS (
           SELECT c.SUPPORTING_SIGNAL_IDS
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+          JOIN MCC_RAW.MARKETING_DEV.V_TREND_CANDIDATE_EVIDENCE c
             ON c.CANDIDATE_ID = t.CANDIDATE_ID
                 OR c.DEDUP_OF_TREND_ID = t.TREND_ID
           WHERE t.TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
@@ -93,28 +93,31 @@ steps:
         sig_ids AS (
           SELECT DISTINCT f.value::STRING AS sid
           FROM cand, LATERAL FLATTEN(input => cand.SUPPORTING_SIGNAL_IDS) f
+        ), evidence AS (
+          SELECT x.*,COALESCE(NULLIF(x.METADATA:original_url::VARCHAR,''),NULLIF(x.URL,''),
+                 NULLIF(x.METADATA:url::VARCHAR,''),IFF(x.SIGNAL_ID ILIKE 'http://%' OR x.SIGNAL_ID ILIKE 'https://%',x.SIGNAL_ID,NULL)) AS evidence_url
+          FROM sig_ids JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS x ON x.SIGNAL_ID=sig_ids.sid
+          QUALIFY ROW_NUMBER() OVER (PARTITION BY x.SIGNAL_ID ORDER BY x.INGESTED_AT,x.SOURCE_NAME,x.SIGNAL_TITLE)=1
         )
         SELECT
-          x.URL,
+          x.evidence_url AS URL,
           x.SIGNAL_TITLE        AS TITLE,
           x.SOURCE_NAME         AS SIGNAL_NAME,
-          COALESCE(SPLIT_PART(SPLIT_PART(x.URL, '://', 2), '/', 1), '?') AS DOMAIN,
+          COALESCE(SPLIT_PART(SPLIT_PART(x.evidence_url, '://', 2), '/', 1), '?') AS DOMAIN,
           x.SIGNAL_TIMESTAMP    AS DETECTED_AT,
           NULL::FLOAT           AS PAGERANK_SCORE,
           NULL                  AS INGESTION_ID,
           x.SIGNAL_TEXT         AS ARTICLE_BODY,
           x.METADATA            AS SIGNAL_METADATA,
           x.SOURCE_NAME         AS X_SOURCE_NAME
-        FROM sig_ids
-        JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS x
-          ON x.SIGNAL_ID = sig_ids.sid
+        FROM evidence x
         ORDER BY x.SIGNAL_TIMESTAMP DESC NULLS LAST
         LIMIT 10
       query: |-
         WITH cand AS (
           SELECT c.SUPPORTING_SIGNAL_IDS
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+          JOIN MCC_RAW.MARKETING_DEV.V_TREND_CANDIDATE_EVIDENCE c
             ON c.CANDIDATE_ID = t.CANDIDATE_ID
                 OR c.DEDUP_OF_TREND_ID = t.TREND_ID
           WHERE t.TREND_ID = '{{steps.normalize_event.$return_value.trend_id}}'
@@ -122,21 +125,24 @@ steps:
         sig_ids AS (
           SELECT DISTINCT f.value::STRING AS sid
           FROM cand, LATERAL FLATTEN(input => cand.SUPPORTING_SIGNAL_IDS) f
+        ), evidence AS (
+          SELECT x.*,COALESCE(NULLIF(x.METADATA:original_url::VARCHAR,''),NULLIF(x.URL,''),
+                 NULLIF(x.METADATA:url::VARCHAR,''),IFF(x.SIGNAL_ID ILIKE 'http://%' OR x.SIGNAL_ID ILIKE 'https://%',x.SIGNAL_ID,NULL)) AS evidence_url
+          FROM sig_ids JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS x ON x.SIGNAL_ID=sig_ids.sid
+          QUALIFY ROW_NUMBER() OVER (PARTITION BY x.SIGNAL_ID ORDER BY x.INGESTED_AT,x.SOURCE_NAME,x.SIGNAL_TITLE)=1
         )
         SELECT
-          x.URL,
+          x.evidence_url AS URL,
           x.SIGNAL_TITLE        AS TITLE,
           x.SOURCE_NAME         AS SIGNAL_NAME,
-          COALESCE(SPLIT_PART(SPLIT_PART(x.URL, '://', 2), '/', 1), '?') AS DOMAIN,
+          COALESCE(SPLIT_PART(SPLIT_PART(x.evidence_url, '://', 2), '/', 1), '?') AS DOMAIN,
           x.SIGNAL_TIMESTAMP    AS DETECTED_AT,
           NULL::FLOAT           AS PAGERANK_SCORE,
           NULL                  AS INGESTION_ID,
           x.SIGNAL_TEXT         AS ARTICLE_BODY,
           x.METADATA            AS SIGNAL_METADATA,
           x.SOURCE_NAME         AS X_SOURCE_NAME
-        FROM sig_ids
-        JOIN MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS x
-          ON x.SIGNAL_ID = sig_ids.sid
+        FROM evidence x
         ORDER BY x.SIGNAL_TIMESTAMP DESC NULLS LAST
         LIMIT 10
     params: []
@@ -185,7 +191,7 @@ steps:
         tc_for_agg AS (
           SELECT t.TREND_ID, c.SUPPORTING_SIGNAL_IDS, c.SOURCE_BREAKDOWN
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+          JOIN MCC_RAW.MARKETING_DEV.V_TREND_CANDIDATE_EVIDENCE c
             ON c.CANDIDATE_ID = t.CANDIDATE_ID OR c.DEDUP_OF_TREND_ID = t.TREND_ID
         ),
         agg AS (
@@ -245,7 +251,7 @@ steps:
         tc_for_agg AS (
           SELECT t.TREND_ID, c.SUPPORTING_SIGNAL_IDS, c.SOURCE_BREAKDOWN
           FROM MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
-          JOIN MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c
+          JOIN MCC_RAW.MARKETING_DEV.V_TREND_CANDIDATE_EVIDENCE c
             ON c.CANDIDATE_ID = t.CANDIDATE_ID OR c.DEDUP_OF_TREND_ID = t.TREND_ID
         ),
         agg AS (
