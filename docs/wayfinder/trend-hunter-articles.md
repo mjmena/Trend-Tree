@@ -25,6 +25,8 @@ Define a one-week pilot that can tell whether Trend Hunter's third-party article
 
 ## Decisions so far
 
+- [Profile one week of Trend Hunter article intake](https://mcclatchy.atlassian.net/browse/CRMA-1912) — **Decided:** The week yielded 2,513 accepted original URLs across 204 publisher hosts. The API exposes pickup time and the current verdict.
+
 ## Not yet specified
 
 The sample may reveal whole periods or publishers where the two systems cannot be compared reliably. The map will revisit the observation window or the pilot population if that materially changes what the measured lead time means.
