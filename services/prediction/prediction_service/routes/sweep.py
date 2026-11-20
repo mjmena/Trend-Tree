@@ -49,6 +49,7 @@ from ..generation.signals import (
     SIGNALS_TABLE,
     SnowflakeLiveSubjectReader,
     SnowflakeSignalReader,
+    generation_already_recorded,
 )
 from ..matching.decide import DEFAULT_MIN_SIMILARITY
 from ..matching.isolation import MatchingIsolationViolation
@@ -372,63 +373,68 @@ def sweep_router(
             )
         else:
             try:
-                generation = generate_predictions(
-                    reader=SnowflakeSignalReader(snowflake, settings.qualify(SIGNALS_TABLE)),
-                    llm=llm,
-                    live_subjects=SnowflakeLiveSubjectReader(snowflake, table),
-                    scope=GenerationScope(
-                        lookback_hours=body.lookback_hours,
-                        signal_limit=body.signal_limit,
-                        max_predictions=body.max_predictions,
-                    ),
-                    chain_id=chain_id,
-                )
-                try:
-                    generation = saturation_phase.weigh(generation, llm=llm)
-                except Exception:
-                    log.exception(
-                        "saturation phase failed; verdicts keep generation's own numbers",
-                        extra={"chain_id": chain_id},
-                    )
-                generation_ran = True
-                model = model or generation.model
-                tokens_in += generation.input_tokens
-                tokens_out += generation.output_tokens
-                cost = (
-                    None
-                    if cost is None or generation.cost_usd is None
-                    else round(cost + generation.cost_usd, 6)
-                )
-                minted_written: set[str] = set()
-                # A same-chain retry MERGEs onto rows a previous attempt
-                # committed. Those rows exist -- reporting prediction_id: null
-                # for them would say the opposite -- so "the row is in the
-                # ledger" is written | deduplicated, while `written` keeps its
-                # narrower meaning of "this attempt inserted it".
-                minted_present: set[str] = set()
-                if not body.dry_run:
-                    report = write_verdicts(
-                        snowflake, table, generation.verdicts, chain_id=chain_id
-                    )
-                    minted_written = set(report.written)
-                    minted_present = minted_written | set(report.deduplicated)
-                minted = len(minted_written)
-                generated = [
-                    GeneratedOut(
-                        prediction_id=(
-                            v.prediction_id
-                            if v.prediction_eval_id in minted_present
-                            else None
+                if body.daily_chain_id and generation_already_recorded(
+                    snowflake, table, chain_id=chain_id
+                ):
+                    generation_note = "generation already recorded for this daily chain"
+                else:
+                    generation = generate_predictions(
+                        reader=SnowflakeSignalReader(snowflake, settings.qualify(SIGNALS_TABLE)),
+                        llm=llm,
+                        live_subjects=SnowflakeLiveSubjectReader(snowflake, table),
+                        scope=GenerationScope(
+                            lookback_hours=body.lookback_hours,
+                            signal_limit=body.signal_limit,
+                            max_predictions=body.max_predictions,
                         ),
-                        prediction_eval_id=v.prediction_eval_id,
-                        subject_descriptor=v.claim.subject_descriptor,
-                        horizon_band=v.claim.horizon_band,
-                        horizon_at=v.horizon_at.isoformat(),
-                        confidence=v.confidence,
-                        written=v.prediction_eval_id in minted_written,
+                        chain_id=chain_id,
                     )
-                    for v in generation.verdicts
-                ]
+                    try:
+                        generation = saturation_phase.weigh(generation, llm=llm)
+                    except Exception:
+                        log.exception(
+                            "saturation phase failed; verdicts keep generation's own numbers",
+                            extra={"chain_id": chain_id},
+                        )
+                    generation_ran = True
+                    model = model or generation.model
+                    tokens_in += generation.input_tokens
+                    tokens_out += generation.output_tokens
+                    cost = (
+                        None
+                        if cost is None or generation.cost_usd is None
+                        else round(cost + generation.cost_usd, 6)
+                    )
+                    minted_written: set[str] = set()
+                    # A same-chain retry MERGEs onto rows a previous attempt
+                    # committed. Those rows exist -- reporting prediction_id: null
+                    # for them would say the opposite -- so "the row is in the
+                    # ledger" is written | deduplicated, while `written` keeps its
+                    # narrower meaning of "this attempt inserted it".
+                    minted_present: set[str] = set()
+                    if not body.dry_run:
+                        report = write_verdicts(
+                            snowflake, table, generation.verdicts, chain_id=chain_id
+                        )
+                        minted_written = set(report.written)
+                        minted_present = minted_written | set(report.deduplicated)
+                    minted = len(minted_written)
+                    generated = [
+                        GeneratedOut(
+                            prediction_id=(
+                                v.prediction_id
+                                if v.prediction_eval_id in minted_present
+                                else None
+                            ),
+                            prediction_eval_id=v.prediction_eval_id,
+                            subject_descriptor=v.claim.subject_descriptor,
+                            horizon_band=v.claim.horizon_band,
+                            horizon_at=v.horizon_at.isoformat(),
+                            confidence=v.confidence,
+                            written=v.prediction_eval_id in minted_written,
+                        )
+                        for v in generation.verdicts
+                    ]
             except BlindnessViolation:
                 # A generation-phase statement reached for trend/heat state.
                 # A bug in this service -- but the sweep's rows are already in

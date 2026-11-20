@@ -1,6 +1,6 @@
 """The generation phase's warehouse reaches (CRMA-763).
 
-Two reads, both narrow, both named here so the phase's whole surface against
+Three reads, all narrow, all named here so the phase's whole surface against
 the warehouse is one file:
 
 * ``SignalReader`` -- the signal corpus, ``FCT_SIGNALS``. The phase's
@@ -9,6 +9,8 @@ the warehouse is one file:
   prediction, from the verdict ledger this service itself writes. Not trend
   state: it is the pillar's own output, read so a daily run does not re-mint
   the same subject every day (see run.py's dedupe).
+* ``generation_already_recorded`` -- whether this chain already minted a
+  prediction, so a scheduled retry can skip another generation pass.
 
 **What these Protocols do and do not buy.** They are structural typing with
 no runtime enforcement -- this repo configures no mypy or pyright, so nothing
@@ -38,7 +40,7 @@ from .blindness import assert_generation_sql
 SIGNALS_TABLE = "FCT_SIGNALS"
 
 #: The pillar's own verdict ledger, unqualified. Read-only from here, and
-#: only for the live-subject list.
+#: for the live-subject list and generation retry checks.
 VERDICT_LEDGER_TABLE = "FCT_PREDICTION_VERDICT_LEDGER"
 
 #: How many live subjects the prompt is willing to carry. A cap on prompt
@@ -134,6 +136,14 @@ ORDER BY SUBJECT_DESCRIPTOR ASC
 LIMIT %(subject_limit)s
 """
 
+GENERATION_RECORDED_QUERY = """
+SELECT 1 AS GENERATED
+FROM {table}
+WHERE CHAIN_ID = %(chain_id)s
+  AND EVIDENCE:generation:chain_id::STRING = %(chain_id)s
+LIMIT 1
+"""
+
 
 def _positive_int(name: str, value: Any) -> int:
     """Coerce a scope bound to a positive int, or refuse.
@@ -203,6 +213,16 @@ class SignalQueryRunner(Protocol):
     not enforce."""
 
     def query(self, sql: str, params: Mapping[str, Any] | None = None) -> list[dict[str, Any]]: ...
+
+
+def generation_already_recorded(
+    client: SignalQueryRunner, table: str, *, chain_id: str
+) -> bool:
+    # Re-evaluation retains earlier generation provenance under a new row chain.
+    # Both chains must match to identify predictions this run actually minted.
+    sql = GENERATION_RECORDED_QUERY.format(table=table)
+    assert_generation_sql(sql, allowed_tables=(VERDICT_LEDGER_TABLE,))
+    return bool(client.query(sql, {"chain_id": chain_id}))
 
 
 class SnowflakeSignalReader:
