@@ -37,7 +37,7 @@ const INSERT_COST_ROW = `
     STARTED_AT, ENDED_AT, DURATION_MS, MODEL,
     INPUT_TOKENS, INPUT_TOKENS_CACHED, OUTPUT_TOKENS, THINKING_TOKENS,
     TOOL_CALL_COUNT, TURN_COUNT, COST_USD, STATUS, ERROR_MESSAGE
-  ) VALUES (?, ?, ?, 1, 'ecomm-agent', ?, ?, ?, ?, ?, 0, ?, 0, ?, ?, ?, ?, ?)
+  ) VALUES (?, ?, ?, 1, 'ecomm-agent', ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)
 `;
 
 async function callProcOpen(connOpts, evt) {
@@ -79,7 +79,7 @@ async function insertCostRow(connOpts, row) {
   await runWithConnectRetryOnly(connOpts, INSERT_COST_ROW, [
     row.run_id, row.agent_session_id, row.chain_id,
     row.started_at, row.ended_at, row.duration_ms, row.model,
-    row.input_tokens, row.output_tokens, row.tool_call_count, row.turn_count,
+    row.input_tokens, row.output_tokens, row.thinking_tokens, row.tool_call_count, row.turn_count,
     row.cost_usd, row.status, row.error_message,
   ]);
 }
@@ -94,7 +94,9 @@ function costRowFrom({ evt, startedAt, endedAt, telemetry, status, errorMessage 
     duration_ms: endedAt.getTime() - startedAt.getTime(),
     model: telemetry ? SELECTOR_MODEL : null,
     input_tokens: telemetry?.tokens?.input ?? 0,
-    output_tokens: telemetry?.tokens?.output ?? 0,
+    // The fleet table separates answer and thinking; loop output bills both.
+    output_tokens: (telemetry?.tokens?.output ?? 0) - (telemetry?.tokens?.thinking ?? 0),
+    thinking_tokens: telemetry?.tokens?.thinking ?? 0,
     tool_call_count: telemetry?.tool_calls?.length ?? 0,
     turn_count: telemetry?.turns ?? 0,
     cost_usd: telemetry?.cost_usd ?? 0,

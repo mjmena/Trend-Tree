@@ -11,15 +11,18 @@
 // sql/insert_sourcing_selector_prompt.sql, which is the registration record,
 // not something this service runs).
 //
-// rates_per_m is a public-pricing ESTIMATE for gemini-3.7-flash (this repo has
-// no confirmed-invoice rate for it yet), sanity-checked against the CRMA-754
-// prototype's measured $0.0013-$0.0032/call.
+// Gemini 3.7 Flash introductory pricing expires at the UTC year boundary.
+// Source: https://ai.google.dev/gemini-api/docs/pricing#gemini-3.7-flash
 
 import { runAgentLoop } from "../lib/gemini_loop.mjs";
 import { MAX_SOURCED_PRODUCTS, formatCandidatesForPrompt } from "../lib/sourcing_run.mjs";
 
 export const SELECTOR_MODEL = "gemini-3.7-flash";
-export const SELECTOR_RATES_PER_M = { input: 0.30, output: 2.50 }; // ESTIMATE — see comment above
+export function selectorRatesPerM(now = new Date()) {
+  return now < new Date("2027-01-01T00:00:00Z")
+    ? { input: 0.75, output: 3.75 }
+    : { input: 1.50, output: 7.50 };
+}
 
 // Built per-call (not a static constant) so the `{slots}` placeholder in
 // picks.description is actually rendered — it must match the slots count
@@ -106,7 +109,7 @@ export async function callSelector({ apiKey, prompt, trend, pool, slots = MAX_SO
     max_iterations: params.max_iterations ?? 1,
     budget_usd: params.budget_usd ?? 0.02,
     per_call_max_tokens: params.per_call_max_tokens ?? 1024,
-    rates_per_m: SELECTOR_RATES_PER_M,
+    rates_per_m: selectorRatesPerM(),
   });
 
   const call = result.tool_calls.find((c) => c.name === "propose_product_selection");

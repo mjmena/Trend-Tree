@@ -198,6 +198,8 @@ function queryStuckEntities(input, ctx) {
   return { stuck: filtered, total_in_pool: pool.length };
 }
 
+const COST_ACCOUNTING_NOTE = "The November 2026 thinking-token correction adds Gemini thinking to billed output in promotion, enrichment, distillation and audit after each workflow redeploys; ecomm changes after its Cloud Run release. Earlier costs undercount and cannot be backfilled. Treat the deployment-boundary increase as an accounting correction, not a workload regression; lifecycle and attribution were corrected separately.";
+
 function queryCostBreakdown(input, ctx) {
   const pool = ctx.cost_24h || [];
   const agentSub = (input?.agent_name || "").toLowerCase();
@@ -206,7 +208,7 @@ function queryCostBreakdown(input, ctx) {
     .filter((r) => (agentSub ? String(r.AGENT || r.agent || "").toLowerCase().includes(agentSub) : true))
     .filter((r) => (modelSub ? String(r.MODEL_USED || r.model || "").toLowerCase().includes(modelSub) : true));
   const total = filtered.reduce((s, r) => s + Number(r.COST_USD || r.cost_usd || 0), 0);
-  return { rows: filtered, total_cost_usd: Math.round(total * 10000) / 10000 };
+  return { rows: filtered, total_cost_usd: Math.round(total * 10000) / 10000, accounting_note: COST_ACCOUNTING_NOTE };
 }
 
 function proposeAuditReport(input, ctx) {
@@ -275,7 +277,7 @@ async function runAgentLoop({
     parts: typeof user_message === "string" ? [{ text: user_message }] : user_message,
   }];
 
-  const tokens = { input: 0, output: 0, total: 0 };
+  const tokens = { input: 0, output: 0, thinking: 0, total: 0 };
   const reasoning_trace = [];
   const tool_calls = [];
   let cost_usd = 0;
@@ -329,10 +331,13 @@ async function runAgentLoop({
     const data = await resp.json();
     const usage = data.usageMetadata || {};
     const tin = usage.promptTokenCount || 0;
-    const tout = usage.candidatesTokenCount || 0;
+    // candidatesTokenCount excludes thinking; both are billed at the output rate.
+    const thinking = usage.thoughtsTokenCount || 0;
+    const tout = (usage.candidatesTokenCount || 0) + thinking;
     tokens.input += tin;
     tokens.output += tout;
-    tokens.total = tokens.input + tokens.output;
+    tokens.thinking += thinking;
+    tokens.total += usage.totalTokenCount ?? (tin + tout);
     cost_usd += (tin / 1_000_000) * RATES_PER_M.input + (tout / 1_000_000) * RATES_PER_M.output;
 
     const candidate = (data.candidates || [])[0] || {};
@@ -453,7 +458,7 @@ export default defineComponent({
     const orphanTrendsBlock = `active_orphan_trends: ${orphan_trends_count}\n` +
       `(live trends whose FCT_TREND_SIGNALS all point at SIGNAL_IDs not in FCT_SIGNALS — ` +
       `distillation-agent leak. Migration backlog was purged 2026-05-26; this should stay near 0.)`;
-    const cost24hBlock = fmtJson(cost_24h);
+    const cost24hBlock = `${fmtJson(cost_24h)}\n${COST_ACCOUNTING_NOTE}`;
     const catalogFreshnessBlock = buildCatalogFreshnessBlock(catalogGraded);
     // ET corroboration-oracle rescue funnel (ADR-0004). Single prefetched row.
     const etr = et_rescue;
@@ -573,7 +578,7 @@ export default defineComponent({
       loop = {
         stop_reason: "agent_loop_threw",
         turns: 0,
-        tokens: { input: 0, output: 0, total: 0 },
+        tokens: { input: 0, output: 0, thinking: 0, total: 0 },
         cost_usd: 0,
         model: MODEL,
         error_message: e.message,
