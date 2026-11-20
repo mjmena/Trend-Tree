@@ -86,7 +86,7 @@ const selectorRequest = {
   },
 };
 const telemetry = {
-  tokens: { input: 120, output: 30 },
+  tokens: { input: 120, output: 30, thinking: 7 },
   tool_calls: [{ name: "propose_product_selection" }],
   turns: 1,
   cost_usd: 0.002,
@@ -123,7 +123,7 @@ test("an empty filtered pool records no_match without calling the selector", asy
   assert.equal(calls.completions[0][1], "no_match");
   assert.deepEqual(JSON.parse(calls.completions[0][4]), []);
   assert.equal(calls.costs.length, 1);
-  assert.deepEqual(calls.costs[0].slice(6), [null, 0, 0, 0, 0, 0, "OK", null]);
+  assert.deepEqual(calls.costs[0].slice(6), [null, 0, 0, 0, 0, 0, 0, "OK", null]);
 });
 
 test("matched selection persists the filtered pool and selector telemetry", async (t) => {
@@ -155,7 +155,7 @@ test("matched selection persists the filtered pool and selector telemetry", asyn
   assert.equal(persisted[0].selected, true);
   assert.equal(persisted[0].reasoned_fit_rationale, "Keeps coffee warm.");
   assert.equal(calls.costs.length, 1);
-  assert.deepEqual(calls.costs[0].slice(7), [120, 30, 1, 1, 0.002, "OK", null]);
+  assert.deepEqual(calls.costs[0].slice(7), [120, 23, 7, 1, 1, 0.002, "OK", null]);
   assert.equal(calls.costs[0][6], result.selector_telemetry.model);
   assert.deepEqual(calls.costs[0].slice(1, 3), ["session-1", "chain-1"]);
   assert.ok(calls.costs[0][5] >= 0);
