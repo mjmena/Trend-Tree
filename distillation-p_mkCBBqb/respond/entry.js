@@ -36,6 +36,13 @@ export default defineComponent({
     const commitOk = Array.isArray(this.commit_result) || (this.commit_result && !this.commit_result.error);
 
     const claimed_signal_count = affectedRows(this.claim_signals_result);
+    const candidates_committed = affectedRows(this.commit_result);
+    const candidates_dropped = commitOk ? Math.max(0, (ar.candidates_count || 0) - candidates_committed) : 0;
+    console.log(
+      `commit_candidates: inserted ${candidates_committed}, dropped ${candidates_dropped} ` +
+      `candidates without resolvable evidence (chain=${ar.chain_id})`,
+    );
+    $.export("$summary", `${candidates_committed} committed, ${candidates_dropped} dropped`);
 
     // Promotion to FCT_TRENDS now happens in the separate promotion-p_xMC99jg
     // workflow on its own cron. Distillation no longer reports promoted/dup
@@ -48,6 +55,8 @@ export default defineComponent({
       signals_seen: ar.signals_seen || 0,
       louvain_seen: ar.louvain_seen || 0,
       candidates_count: ar.candidates_count || 0,
+      candidates_committed,
+      candidates_dropped,
       candidates_persisted: !!commitOk,
       claimed_signal_count,
       cost_usd: ar.cost_usd || 0,
