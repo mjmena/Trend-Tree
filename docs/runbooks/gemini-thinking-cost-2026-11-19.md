@@ -13,10 +13,10 @@ can be reconciled independently against the billed components. The enrichment
 response preserves this object under `llm_token_usage.agent`, which the write
 workflow persists under `PAYLOAD:llm_token_usage:agent`.
 
-The ecomm cost row records the subset in the existing `THINKING_TOKENS` column;
-its `OUTPUT_TOKENS` contains the full billed output. Do not add those two columns
-when recomputing ecomm spend. Other producers of `STG_AGENT_RUN_COSTS` can use
-different token conventions; use the producer's contract, not a fleet-wide sum.
+The ecomm cost row separates the answer into `OUTPUT_TOKENS` and thinking into
+the existing `THINKING_TOKENS` column, matching the lifecycle and attribution
+writers of `STG_AGENT_RUN_COSTS`. Add those two columns when recomputing spend;
+the loop's inclusive `tokens.output` is converted at the table-write boundary.
 
 ## Comparing costs across the release
 
@@ -29,8 +29,7 @@ cost block and from `query_cost_breakdown`.
 
 CRMA-725's proposed fleet rollup is still in open
 [PR #139](https://github.com/mjmena/Trend-Tree/pull/139); it is not part of this
-release. Any future rollup must retain this boundary and each producer's token
-convention.
+release. Any future rollup must retain this accounting boundary.
 
 ## Rates and release gates
 
@@ -71,7 +70,7 @@ ORDER BY WRITTEN_AT DESC LIMIT 5;
 Expected: `TOKEN_DELTA = 0`, positive thinking on a thinking run, and the stored
 cost equals the rounded Gemini cost plus the separately rounded reviewer cost.
 For ecomm after its Cloud Run release, reconcile `COST_USD` against
-`INPUT_TOKENS * input_rate + OUTPUT_TOKENS * output_rate` divided by one million,
+`INPUT_TOKENS * input_rate + (OUTPUT_TOKENS + THINKING_TOKENS) * output_rate` divided by one million,
 rounded to four decimals, and confirm `THINKING_TOKENS` is populated.
 
 Offline regression: `node --test agents/lib/gemini_loop.test.mjs` exercises all

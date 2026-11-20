@@ -50,7 +50,8 @@ test("a sourcing run writes reconciled output, thinking and cost to the telemetr
   });
   assert.equal(result.decision, "completed");
   assert.equal(cost.INPUT_TOKENS, 3375);
-  assert.equal(cost.OUTPUT_TOKENS, 5950 - 3375);
+  assert.equal(cost.OUTPUT_TOKENS, 830);
   assert.equal(cost.THINKING_TOKENS, 1745);
+  assert.equal(cost.INPUT_TOKENS + cost.OUTPUT_TOKENS + cost.THINKING_TOKENS, 5950);
   assert.equal(cost.COST_USD, Math.round((3375 * 0.75 + (5950 - 3375) * 3.75) / 100) / 10000);
 });

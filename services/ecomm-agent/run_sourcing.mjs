@@ -94,7 +94,8 @@ function costRowFrom({ evt, startedAt, endedAt, telemetry, status, errorMessage 
     duration_ms: endedAt.getTime() - startedAt.getTime(),
     model: telemetry ? SELECTOR_MODEL : null,
     input_tokens: telemetry?.tokens?.input ?? 0,
-    output_tokens: telemetry?.tokens?.output ?? 0,
+    // The fleet table separates answer and thinking; loop output bills both.
+    output_tokens: (telemetry?.tokens?.output ?? 0) - (telemetry?.tokens?.thinking ?? 0),
     thinking_tokens: telemetry?.tokens?.thinking ?? 0,
     tool_call_count: telemetry?.tool_calls?.length ?? 0,
     turn_count: telemetry?.turns ?? 0,
