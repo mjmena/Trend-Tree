@@ -8,6 +8,7 @@ results=$(mktemp "${TMPDIR:-/tmp}/trend-hunter-results.XXXXXX")
 trap 'rm -f "$fixture" "$results"' EXIT
 node test/build_trend_hunter_fixture.mjs > "$fixture"
 node test/build_scheduled_article_fixture.mjs >> "$fixture"
+node test/build_article_report_fixture.mjs >> "$fixture"
 snow sql -c "${SNOWFLAKE_CONNECTION:-claude}" --database MCC_RAW --schema MARKETING_DEV \
   --enable-templating NONE --format json --silent -f "$fixture" > "$results"
 node --input-type=module - "$results" <<'JS'
@@ -28,3 +29,4 @@ for (const row of rows.filter(row => row.CANDIDATE_ID)) {
 assert.deepEqual(actions, {copies:'reject', reverse:'reject', independent:'route_normal'});
 console.log('The promotion gate rejects verified copies in either order and routes the independently corroborated movement.');
 JS
+node test/check_article_report.mjs "$results"
