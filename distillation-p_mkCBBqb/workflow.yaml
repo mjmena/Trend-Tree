@@ -125,7 +125,7 @@ steps:
           cand.j:iteration::NUMBER,
           cand.j:topic::STRING,
           cand.j:query::STRING,
-          COALESCE(vs.supporting_signal_ids, ARRAY_CONSTRUCT()),
+          vs.supporting_signal_ids,
           cand.j:confidence::FLOAT,
           cand.j:specificity_score::FLOAT,
           COALESCE(sb.source_breakdown, OBJECT_CONSTRUCT()),
@@ -136,7 +136,7 @@ steps:
           cand.j:reasoning_trace,
           cand.j:dedup_of_trend_id::STRING
         FROM cand
-        LEFT JOIN vs ON vs.candidate_id = cand.j:candidate_id::STRING
+        INNER JOIN vs ON vs.candidate_id = cand.j:candidate_id::STRING
         LEFT JOIN sb ON sb.candidate_id = cand.j:candidate_id::STRING
         WHERE :1 != '[]'
       query: |-
@@ -178,7 +178,7 @@ steps:
           cand.j:iteration::NUMBER,
           cand.j:topic::STRING,
           cand.j:query::STRING,
-          COALESCE(vs.supporting_signal_ids, ARRAY_CONSTRUCT()),
+          vs.supporting_signal_ids,
           cand.j:confidence::FLOAT,
           cand.j:specificity_score::FLOAT,
           COALESCE(sb.source_breakdown, OBJECT_CONSTRUCT()),
@@ -189,7 +189,7 @@ steps:
           cand.j:reasoning_trace,
           cand.j:dedup_of_trend_id::STRING
         FROM cand
-        LEFT JOIN vs ON vs.candidate_id = cand.j:candidate_id::STRING
+        INNER JOIN vs ON vs.candidate_id = cand.j:candidate_id::STRING
         LEFT JOIN sb ON sb.candidate_id = cand.j:candidate_id::STRING
         WHERE :1 != '[]'
       params:
@@ -210,7 +210,7 @@ steps:
             TRY_TO_TIMESTAMP_NTZ('{{steps.parse_cluster_result.$return_value.max_signal_ts}}') AS LAST_SIGNAL_TS,
             {{steps.parse_cluster_result.$return_value.run_duration_ms}}::NUMBER AS RUN_DURATION_MS,
             {{steps.parse_cluster_result.$return_value.signals_seen}}::NUMBER    AS SIGNAL_COUNT,
-            {{steps.parse_cluster_result.$return_value.candidates_count}}::NUMBER AS CANDIDATE_COUNT,
+            {{steps.commit_candidates.$return_value[0]["number of rows inserted"]}}::NUMBER AS CANDIDATE_COUNT,
             {{steps.parse_cluster_result.$return_value.cost_usd}}::FLOAT          AS COST_USD
         ) source
         ON target.CURSOR_NAME = source.CURSOR_NAME
@@ -236,7 +236,7 @@ steps:
             TRY_TO_TIMESTAMP_NTZ('{{steps.parse_cluster_result.$return_value.max_signal_ts}}') AS LAST_SIGNAL_TS,
             {{steps.parse_cluster_result.$return_value.run_duration_ms}}::NUMBER AS RUN_DURATION_MS,
             {{steps.parse_cluster_result.$return_value.signals_seen}}::NUMBER    AS SIGNAL_COUNT,
-            {{steps.parse_cluster_result.$return_value.candidates_count}}::NUMBER AS CANDIDATE_COUNT,
+            {{steps.commit_candidates.$return_value[0]["number of rows inserted"]}}::NUMBER AS CANDIDATE_COUNT,
             {{steps.parse_cluster_result.$return_value.cost_usd}}::FLOAT          AS COST_USD
         ) source
         ON target.CURSOR_NAME = source.CURSOR_NAME
