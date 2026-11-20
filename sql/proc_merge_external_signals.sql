@@ -26,6 +26,7 @@ CREATE OR REPLACE PROCEDURE MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(
   BATCH_SIZE FLOAT DEFAULT 500,
   TARGET_TABLE_NAME VARCHAR DEFAULT 'STG_EXTERNAL_SIGNALS'
 )
+COPY GRANTS
 RETURNS VARIANT
 LANGUAGE JAVASCRIPT
 EXECUTE AS CALLER
@@ -96,17 +97,22 @@ $$
     )
   `;
 
+  // A scheduled page commits its signal facts, receipts, metrics and cursor in its caller's transaction.
+  const transaction = snowflake.execute({sqlText:'SELECT CURRENT_TRANSACTION()'});
+  transaction.next();
+  const hasOuterTransaction = transaction.getColumnValue(1) !== null;
   for (let i = 0; i < signals.length; i += batchSize) {
     const batch = signals.slice(i, i + batchSize);
     const articles = targetTable === 'STG_EXTERNAL_SIGNALS' && batch.some(row => articleSources.has(row && row.SOURCE_NAME));
-    if (articles) snowflake.execute({sqlText:'BEGIN TRANSACTION'});
+    const ownsTransaction = articles && !hasOuterTransaction;
+    if (ownsTransaction) snowflake.execute({sqlText:'BEGIN TRANSACTION'});
     try {
       let prepared = batch;
       if (articles) {
         const tracked = [];
         for (let index=0; index<batch.length; index++) {
           const row=batch[index];
-          if (row && articleSources.has(row.SOURCE_NAME)) tracked.push(Object.assign({},row,{MERGE_INPUT_INDEX:index}));
+          if (row && articleSources.has(row.SOURCE_NAME)) tracked.push(Object.assign({},row,{MERGE_INPUT_INDEX:index,MERGE_SESSION_ID:sessionId}));
         }
         const res = snowflake.execute({sqlText:'CALL MCC_RAW.MARKETING_DEV.RESOLVE_ARTICLE_SIGNALS(?)',
                                        binds:[JSON.stringify(tracked)]});
@@ -123,9 +129,9 @@ $$
         Object.assign(signalIds, result.signal_ids);
       }
       if (prepared.length) snowflake.execute({sqlText:mergeSql, binds:[sessionId, JSON.stringify(prepared)]});
-      if (articles) snowflake.execute({sqlText:'COMMIT'});
+      if (ownsTransaction) snowflake.execute({sqlText:'COMMIT'});
     } catch (err) {
-      if (articles) snowflake.execute({sqlText:'ROLLBACK'});
+      if (ownsTransaction) snowflake.execute({sqlText:'ROLLBACK'});
       throw err;
     }
     totalProcessed += batch.length;

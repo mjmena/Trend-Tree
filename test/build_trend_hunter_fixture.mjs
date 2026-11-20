@@ -87,10 +87,14 @@ statements.push(`CREATE TEMPORARY TABLE FIX_TH_FCT_SIGNALS (
   METADATA VARIANT,SIGNAL_VECTOR VECTOR(FLOAT,3),EMBEDDED_AT TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP())`);
 const embed = read('sql/fct_signals.sql').match(/^INSERT INTO MCC_PRESENTATION[\s\S]*?;$/m)[0];
 statements.push(isolated(embed.replace(/SNOWFLAKE\.CORTEX\.EMBED_TEXT_1024\([\s\S]*?\n    \)/,'[1,0,0]::VECTOR(FLOAT,3)')));
-const acquisition = read('distillation-p_mkCBBqb/acquire_signal_ids/entry.js');
-const acquireSql = acquisition.match(/`(WITH unclaimed AS [^`]+)`/)[1].replace(/\$\{(\w+)\}/g, (_,name) =>
-  acquisition.match(new RegExp('const '+name+' = (\\d+)'))[1]);
-statements.push('CREATE TEMPORARY TABLE FIX_TH_CLAIMABLE AS '+isolated(acquireSql));
+const candidateDdl = `CREATE TEMPORARY TABLE FIX_TH_STG_TREND_CANDIDATES (
+  CANDIDATE_ID VARCHAR,AGENT_SESSION_ID VARCHAR,CHAIN_ID VARCHAR,ITERATION INT,CREATED_AT TIMESTAMP_NTZ,TOPIC VARCHAR,
+  QUERY VARCHAR,VERDICT VARCHAR,DEDUP_OF_TREND_ID VARCHAR,REASONING VARCHAR,SUPPORTING_SIGNAL_IDS ARRAY,SOURCE_BREAKDOWN OBJECT,
+  CONFIDENCE FLOAT,SPECIFICITY_SCORE FLOAT,BUCKET VARCHAR,PROMOTED_TO VARCHAR,PROMOTED_AT TIMESTAMP_NTZ,REJECTED_AT TIMESTAMP_NTZ,DEFERRED_UNTIL TIMESTAMP_NTZ)`;
+statements.push(candidateDdl);
+statements.push(isolated(read('sql/trend_hunter_intake.sql')), isolated(read('sql/trend_hunter_comparison.sql')));
+statements.push(`CALL FIX_TH_ACQUIRE_ARTICLE_COMPARISON_POOL('main','chain-fixture','sess-fixture',168,320,1600,150)`);
+statements.push(`CREATE TEMPORARY TABLE FIX_TH_CLAIMABLE AS SELECT SIGNAL_ID FROM FIX_TH_STG_TREND_HUNTER_POOL_SIGNALS WHERE POOL_RANK IS NOT NULL`);
 check('main distillation can claim the direct and independent articles and omits the verified copy',
   `SELECT COUNT_IF(SIGNAL_ID='https://paper.example/article')=1 AND COUNT_IF(SIGNAL_ID='https://reporter.example/refill-trial')=1
     AND COUNT_IF(SIGNAL_ID='https://partner.example/refill-trial')=0 FROM FIX_TH_CLAIMABLE`);
@@ -114,11 +118,7 @@ statements.push('CREATE TEMPORARY TABLE FIX_TH_LIFECYCLE_DOMAINS AS '+isolated(l
   .replace(':1',literal('["late","direct"]')).replace('DATEADD(day, -21, CURRENT_TIMESTAMP())',"'2026-10-01'::TIMESTAMP_NTZ")));
 check('lifecycle breadth credits one linked signal per publisher for each independent article', `SELECT COUNT(*)=3
  AND MAX(SIGNAL_COUNT)=1 AND COUNT_IF(DOMAIN='partner.example')=0 FROM FIX_TH_LIFECYCLE_DOMAINS`);
-const candidateDdl = `CREATE TEMPORARY TABLE FIX_TH_STG_TREND_CANDIDATES (
-  CANDIDATE_ID VARCHAR,AGENT_SESSION_ID VARCHAR,CHAIN_ID VARCHAR,ITERATION INT,CREATED_AT TIMESTAMP_NTZ,TOPIC VARCHAR,
-  QUERY VARCHAR,VERDICT VARCHAR,DEDUP_OF_TREND_ID VARCHAR,REASONING VARCHAR,SUPPORTING_SIGNAL_IDS ARRAY,SOURCE_BREAKDOWN OBJECT,
-  CONFIDENCE FLOAT,SPECIFICITY_SCORE FLOAT,BUCKET VARCHAR,PROMOTED_AT TIMESTAMP_NTZ,REJECTED_AT TIMESTAMP_NTZ,DEFERRED_UNTIL TIMESTAMP_NTZ)`;
-statements.push(candidateDdl);
+
 statements.push(`INSERT INTO FIX_TH_STG_TREND_CANDIDATES (CANDIDATE_ID,VERDICT,SUPPORTING_SIGNAL_IDS,SOURCE_BREAKDOWN,CONFIDENCE,SPECIFICITY_SCORE)
  SELECT column1,'REAL_TREND',PARSE_JSON(column2)::ARRAY,PARSE_JSON(column3)::OBJECT,0.8,0.8 FROM VALUES
  ('copies','["gdelt_native","https://partner.example/refill-trial"]','{"gdelt":1,"google_trends_rss":1}'),

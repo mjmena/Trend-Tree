@@ -117,34 +117,12 @@ export default defineComponent({
       // publish date (weeks old), so windowing on it stranded freshly-claimed
       // discovery signals — the exact cross-source corroboration material.
       // Per-source ROW_NUMBER cap keeps the gtrss flood from dominating.
-      const poolRows = await execute(
-        conn,
-        `SELECT SIGNAL_ID
-         FROM (
-           SELECT s.SIGNAL_ID,
-                  s.INGESTED_AT,
-                  ROW_NUMBER() OVER (
-                    PARTITION BY s.SOURCE_NAME ORDER BY s.INGESTED_AT DESC
-                  ) AS rn_in_source
-           FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS s
-           WHERE s.INGESTED_AT > DATEADD(hour, -${POOL_LOOKBACK_HOURS}, CURRENT_TIMESTAMP())
-             AND s.AGENT_SESSION_ID LIKE 'sess-%'
-             AND COALESCE(s.METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
-             AND NOT EXISTS (SELECT 1 FROM MCC_PRESENTATION.TREND_AGENT.FCT_ARTICLE_SIGNAL_ALIASES a WHERE a.SIGNAL_ID=s.SIGNAL_ID)
-             AND NOT EXISTS (
-               SELECT 1
-               FROM MCC_RAW.MARKETING_DEV.STG_TREND_CANDIDATES c,
-                    LATERAL FLATTEN(INPUT => c.SUPPORTING_SIGNAL_IDS) f
-               WHERE f.value::STRING = s.SIGNAL_ID
-                 AND c.PROMOTED_TO IS NOT NULL
-             )
-         )
-         WHERE rn_in_source <= ${PER_SOURCE_CAP}
-         ORDER BY INGESTED_AT DESC
-         LIMIT ${POOL_LIMIT}`,
-        [],
+      const [pool] = await execute(conn,
+        "CALL MCC_RAW.MARKETING_DEV.ACQUIRE_ARTICLE_COMPARISON_POOL('revisit',?,?,?,?,?,?)",
+        [ev.chain_id, ev.agent_session_id, POOL_LOOKBACK_HOURS, PER_SOURCE_CAP, POOL_LIMIT, 1],
       );
-      const signal_ids = (poolRows || []).map((r) => r.SIGNAL_ID).filter(Boolean);
+      const rawIds = pool.ACQUIRE_ARTICLE_COMPARISON_POOL;
+      const signal_ids = typeof rawIds === "string" ? JSON.parse(rawIds) : rawIds;
       const pool_size = signal_ids.length;
 
       if (pool_size === 0) {

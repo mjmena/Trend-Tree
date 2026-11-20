@@ -34,6 +34,7 @@ steps:
   props:
     snowflake:
       authProvisionId: apn_yghdQYJ
+    event: "{{steps.normalize_event.$return_value}}"
 - namespace: q_cluster_signals
   runtime: nodejs20.x
   uses: "./q_cluster_signals/entry.js"
