@@ -103,6 +103,8 @@ function candidateOutcomes(packet, eligible, credit, cutoff) {
     cases.push({
       ...candidate,
       article_ids: articles.map((a) => a.id),
+      story_ids: unique(articles.map((a) => a.story)),
+      available_article_ids: available.map((a) => a.id),
       available_story_ids: unique(available.map((a) => a.story)),
       target_at_observation: unique(history.map((d) => d.target).filter(Boolean)).flatMap((target) =>
         articles.map((a) => {
@@ -139,61 +141,57 @@ function attributedPairs(packet, eligible, credit, reviews) {
     const [story, trend] = JSON.parse(key);
     const items = stories.get(story);
     if (!items) continue;
-    const item = [...items].sort((a, b) => a.first.localeCompare(b.first) || a.id.localeCompare(b.id))[0];
+    const ordered = [...items].sort((a, b) => a.first.localeCompare(b.first) || a.id.localeCompare(b.id));
     const associations = (links.get(key) || []).sort(
       (a, b) => a.at.localeCompare(b.at) || b.kind.localeCompare(a.kind)
     );
     const link = associations[0];
     const considered = sweeps.get(key) || [];
-    const sweep = considered.find((s) => {
-      if (
-        !link ||
-        s.signal !== link.signal ||
-        s.state !== 'COLLECTED' ||
-        s.submitted > link.at ||
-        s.updated < link.at ||
-        s.rank < 1 ||
-        s.rank > 20 ||
-        s.similarity < 0.35
-      )
-        return false;
-      return items.some((a) => {
-        const embedded = s.embedded || (s.signal === a.signal ? a.embedded : null);
-        return (
-          a.handled <= s.submitted &&
-          embedded &&
-          embedded <= s.submitted &&
-          hours(s.submitted, embedded) <= 72 &&
-          credit(s.signal, s.submitted) === credit(a.signal, s.submitted)
-        );
-      });
-    });
-    const state = lifecycleAt(packet.lifecycle || [], trend, item.first);
-    const status = state?.status || 'NEW';
+    const availableAt = (a, signal, at, embedded) =>
+      a.handled <= at && embedded && embedded <= at && credit(signal, at) === credit(a.signal, at);
+    const eligibleForSweep = (a, s) => {
+      const embedded = s.embedded || (s.signal === a.signal ? a.embedded : null);
+      return availableAt(a, s.signal, s.submitted, embedded) && hours(s.submitted, embedded) <= 72;
+    };
+    const sweep = considered.find((s) =>
+      link && s.signal === link.signal && s.state === 'COLLECTED' && s.submitted <= link.at && s.updated >= link.at &&
+      s.rank >= 1 && s.rank <= 20 && s.similarity >= 0.35 && items.some((a) => eligibleForSweep(a, s))
+    );
     const minted = trends.get(trend)?.minted;
-    let disposition = 'verified_active_attribution';
-    if (link && link.at <= item.first) disposition = 'already_linked';
-    else if (!minted || minted > item.first) disposition = 'not_minted_at_poll';
-    else if (['DORMANT', 'RETIRED'].includes(status)) disposition = 'inactive_at_poll';
-    else if (!link) disposition = 'considered_without_link';
-    else if (link.kind === 'supporting') disposition = 'supporting';
-    else if (link.kind !== 'attributed' || !sweep) disposition = 'unverified_attribution';
+    const selection = sweep?.submitted || link?.at;
+    const item_outcomes = ordered.map((a) => {
+      const state = lifecycleAt(packet.lifecycle || [], trend, a.first);
+      const status = state?.status || 'NEW';
+      const available = Boolean(link && (sweep ? eligibleForSweep(a, sweep) : availableAt(a, link.signal, link.at, a.embedded)));
+      let disposition = 'verified_active_attribution';
+      if (link && link.at <= a.first) disposition = 'already_linked';
+      else if (selection && selection < a.handled) disposition = 'preceded_item';
+      else if (!minted || minted > a.first) disposition = 'not_minted_at_poll';
+      else if (['DORMANT', 'RETIRED'].includes(status)) disposition = 'inactive_at_poll';
+      else if (!link) disposition = 'considered_without_link';
+      else if (link.kind === 'supporting') disposition = 'supporting';
+      else if (!available || link.kind !== 'attributed' || !sweep) disposition = 'unverified_attribution';
+      return {article:a.id, observed:a.first, status, lifecycle_id:state?.id || null, available, disposition};
+    });
+    const reference = item_outcomes.find((i) => i.disposition === 'verified_active_attribution') || item_outcomes[0];
     const prior_facts = [
       ...(packet.prior_links || []).map((l) => ({ ...l, id: l.signal })),
       ...(packet.prior_enrichments || []),
-    ].filter((f) => f.trend === trend && f.at <= item.first);
+    ].filter((f) => f.trend === trend && f.at <= reference.observed);
     cases.push({
       story,
       trend,
       article_ids: items.map((a) => a.id),
-      observed: item.first,
+      available_article_ids: item_outcomes.filter((i) => i.available).map((i) => i.article),
+      item_outcomes,
+      observed: reference.observed,
       minted,
-      status,
-      lifecycle_id: state?.id || null,
+      status: reference.status,
+      lifecycle_id: reference.lifecycle_id,
       first_link: link || null,
       sweep: sweep || null,
       considered,
-      disposition,
+      disposition: reference.disposition,
       prior_facts,
       fact_review: null,
     });
@@ -291,19 +289,27 @@ export function contributionReport(packet, reviews = {}) {
   const byStory = Map.groupBy(eligible, (a) => a.story);
   const supported = new Set(candidate_cases.flatMap((c) => c.available_story_ids));
   const attributed = new Set(verified.map((l) => l.story));
+  const knownStories = new Set([...candidate_cases.flatMap((c) => c.story_ids),
+    ...link_cases.filter((l) => l.first_link).map((l) => l.story)]);
   for (const a of article_cases) {
-    a.candidate_ids = candidate_cases.filter((c) => c.article_ids.includes(a.id)).map((c) => c.id);
-    a.trend_ids = unique(link_cases.filter((l) => l.story === a.story && l.first_link).map((l) => l.trend));
+    a.candidate_ids = candidate_cases.filter((c) => c.available_article_ids.includes(a.id)).map((c) => c.id);
+    const links = link_cases.filter((l) => l.available_article_ids.includes(a.id));
+    a.trend_ids = unique(links.map((l) => l.trend));
+    a.active_trend_ids = links.filter((l) => l.item_outcomes.some((i) =>
+      i.article === a.id && i.disposition === 'verified_active_attribution')).map((l) => l.trend);
     a.outcome_disposition =
       a.timing_disposition === 'replay'
         ? 'replay'
         : !a.story
           ? 'unusable_at_cutoff'
-          : supported.has(a.story) || attributed.has(a.story)
+          : a.candidate_ids.length || a.active_trend_ids.length
             ? 'observed_association'
             : a.trend_ids.length
               ? 'other_or_unverified_link'
-              : 'unknown_unlinked_at_cutoff';
+              : candidate_cases.some((c) => c.article_ids.includes(a.id) && c.created < a.handled) ||
+                  link_cases.some((l) => l.item_outcomes.some((i) => i.article === a.id && ['preceded_item','already_linked'].includes(i.disposition)))
+                ? 'prior_story_association'
+                : knownStories.has(a.story) ? 'story_association_without_item_credit' : 'unknown_unlinked_at_cutoff';
   }
   const days = packet.days || [];
   const forward_hours = days.reduce((sum, d) => sum + d.forward_hours, 0);
@@ -374,9 +380,7 @@ export function contributionReport(packet, reviews = {}) {
     unknown_fact_pairs: verified.filter((c) => !c.fact_review || c.fact_review.disposition === 'unknown').length,
     fresh_fact_pairs:
       fresh.length || (verified.some((c) => !c.fact_review || c.fact_review.disposition === 'unknown') ? null : 0),
-    unknown_unlinked_stories: unique(
-      article_cases.filter((a) => a.outcome_disposition === 'unknown_unlinked_at_cutoff').map((a) => a.story)
-    ).length,
+    unknown_unlinked_stories: [...byStory.keys()].filter((story) => !knownStories.has(story)).length,
   };
   return {
     window,
@@ -394,8 +398,8 @@ export function contributionReport(packet, reviews = {}) {
     link_cases,
     examples: unique(
       [
-        article_cases.find((a) => attributed.has(a.story))?.id,
-        article_cases.find((a) => supported.has(a.story))?.id,
+        article_cases.find((a) => a.active_trend_ids.length)?.id,
+        article_cases.find((a) => a.candidate_ids.length)?.id,
         article_cases.find((a) => a.outcome_disposition === 'unknown_unlinked_at_cutoff')?.id,
       ].filter(Boolean)
     ),

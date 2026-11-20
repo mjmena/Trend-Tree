@@ -26,7 +26,7 @@ for (const row of rows.filter(row => row.CANDIDATE_ID)) {
   if (typeof row.ARTICLE_COPIES_ONLY === 'string') row.ARTICLE_COPIES_ONLY = row.ARTICLE_COPIES_ONLY.toLowerCase() === 'true';
   actions[row.CANDIDATE_ID] = classifyCandidate(row).action;
 }
-assert.deepEqual(actions, {copies:'reject', reverse:'reject', independent:'route_normal'});
+assert.deepEqual(actions, {copies:'reject', reverse:'reject', independent:'route_normal','pending-owner':'reject','pending-independent':'route_normal'});
 console.log('The promotion gate rejects verified copies in either order and routes the independently corroborated movement.');
 JS
 node test/check_article_report.mjs "$results"

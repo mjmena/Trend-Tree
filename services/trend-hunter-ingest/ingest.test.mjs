@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {createProvider, createArticleStore, runWindow} from './ingest.mjs';
+import {createProvider, preparePage} from './ingest.mjs';
+import {runJob} from './job.mjs';
 
 const from = '2026-11-01T00:00:00.000Z';
 const to = '2026-11-02T00:00:00.000Z';
@@ -17,12 +18,21 @@ test('a bounded pull submits original publisher articles and observed UTC clocks
     return Response.json(requests.length === 1 ? {data: [article], next_cursor: 'opaque/01+'} :
       {data: [{...article, id: 72, status: 'rejected'}], next_cursor: null});
   }});
-  const recordPage = createArticleStore(async (sql, [payload]) => {
-    assert.match(sql, /^CALL MCC_RAW\.MARKETING_DEV\.MERGE_EXTERNAL_SIGNALS/);
-    stored.push(...JSON.parse(payload));
-    return [{MERGE_EXTERNAL_SIGNALS: {article_counts: {new_signals: 1}}}];
+  let state = {id: 'bounded', from, to, origin:'replay', page_number:0, cursor:null, counts:{accepted_rows:0}};
+  const result = await runJob({TREND_HUNTER_FROM:from, TREND_HUNTER_TO:to}, {...provider, now: () => new Date(observed),
+    intake: async (action, args) => {
+      if (action === 'open') return state;
+      if (action === 'gate' || action === 'finish') return {};
+      if (action === 'claim') return {...state, claimed:true};
+      if (action === 'receive') state.receipt = {data:args.data, observed:args.observed, next_cursor:args.next_cursor};
+      if (action === 'commit') {
+        stored.push(...args.signals);
+        state = {...state, page_number:state.page_number+1, cursor:state.receipt.next_cursor, complete:state.receipt.next_cursor===null,
+          counts:{accepted_rows:state.counts.accepted_rows+args.accepted}, receipt:null};
+      }
+      return state;
+    },
   });
-  const result = await runWindow({from, to, origin: 'replay', ...provider, recordPage, now: () => new Date(observed)});
   assert.deepEqual(requests.map(([url]) => Object.fromEntries(url.searchParams)), [
     {status: 'accepted', from, to, sort: 'oldest', limit: '100', fields: '-text'},
     {status: 'accepted', from, to, sort: 'oldest', limit: '100', fields: '-text', cursor: 'opaque/01+'},
@@ -48,13 +58,12 @@ test('a bounded pull submits original publisher articles and observed UTC clocks
 });
 
 test('invalid accepted records carry a replayable reason and never enter the signal pool', async () => {
-  const stored = [];
-  await runWindow({from, to, origin: 'forward', fetchPage: async () => ({next_cursor: null, data: [
+  const {signals:stored} = await preparePage({from, to, observed, origin: 'forward', data: [
     {...article, url: 'mailto:reader@daily.example'}, {...article, id: null, title: ' '},
     {...article, id: 73, first_seen: to}, {...article, id: 74, url: 'https://name:secret@paper.example/story'},
     {...article, id: 79, url: 'https://paper.example/'},
     {...article, id: 75, first_seen: '2026-11-01 02:00:00'}, {...article, id: 76, published_at: 'not a timestamp'},
-  ]}), recordPage: async (rows) => {stored.push(...rows); return {unusable_records: rows.length};}});
+  ]});
   const metadata = stored.map(row => JSON.parse(row.METADATA));
   assert.deepEqual(metadata.map(m => m.unusable_reason), ['invalid_original_url', 'missing_provider_id', 'outside_window',
     'invalid_original_url', 'invalid_original_url', 'invalid_first_seen', 'invalid_published_at']);
@@ -67,7 +76,7 @@ test('wire attribution in a particular full article supplies a release key while
   const source = 'https://www.prnewswire.com/news-releases/refill-stations-roll-out-302123456.html';
   const first = {...article, id: 'copy-1', url: 'https://partner.example/refills', text_kind: 'full',
     source: 'Press release partners', summary: 'New refill program.', title: 'Refills debut in local shops'};
-  const requests = [], rows = [];
+  const requests = [];
   const provider = createProvider({apiKey:'fixture',fetchImpl:async url => {
     const path = new URL(url).pathname;
     requests.push(path);
@@ -75,7 +84,8 @@ test('wire attribution in a particular full article supplies a release key while
       `First paragraph.\nView original content to download multimedia: ${source}\nSOURCE Refill Company`}});
     return Response.json({data:[first,{...article,id:77,title:first.title,text_kind:'full'}],next_cursor:null});
   }});
-  await runWindow({from,to,origin:'forward',...provider,recordPage:async signals => {rows.push(...signals);return {};}});
+  const {data} = await provider.fetchPage({from,to,cursor:null});
+  const {signals:rows} = await preparePage({from,to,observed,origin:'forward',data,fetchDetail:provider.fetchDetail});
   assert.equal(JSON.parse(rows[0].METADATA).release_proof.original_url, source);
   assert.equal(JSON.parse(rows[1].METADATA).release_proof, undefined);
   assert.equal(requests.length, 2);
@@ -86,8 +96,8 @@ test('an unavailable wire detail leaves a usable accepted article eligible on it
     if (url.pathname.endsWith('/articles/71')) return new Response(null, {status: 404});
     return Response.json({data: [{...article, source: 'Press releases', text_kind: 'full'}], next_cursor: null});
   }});
-  const rows = [];
-  await runWindow({from,to,origin:'forward',...provider,recordPage:async signals => {rows.push(...signals);return {};}});
+  const {data} = await provider.fetchPage({from,to,cursor:null});
+  const {signals:rows} = await preparePage({from,to,observed,origin:'forward',data,fetchDetail:provider.fetchDetail});
   assert.equal(rows[0].URL,article.url);
   assert.equal(JSON.parse(rows[0].METADATA).release_proof,undefined);
 });

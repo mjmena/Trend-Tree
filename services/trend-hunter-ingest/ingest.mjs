@@ -2,7 +2,6 @@ import {createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 
 const apiRoot = 'https://nxt.trendhunter.com/api/integrations/tie-signals/v1/';
-const mergeSql = "CALL MCC_RAW.MARKETING_DEV.MERGE_EXTERNAL_SIGNALS(?, '', 500, 'STG_EXTERNAL_SIGNALS')";
 
 export function utc(value) {
   if (typeof value !== 'string' || !/(?:Z|[+-]\d{2}:\d{2})$/i.test(value)) return null;
@@ -36,16 +35,6 @@ export function createProvider({apiKey, fetchImpl = fetch}) {
       if (String(detail?.id) !== String(id)) throw new Error('Mismatched Trend Hunter article detail');
       return detail;
     },
-  };
-}
-
-export function createArticleStore(query) {
-  return async function recordPage(signals) {
-    const [row] = await query(mergeSql, [JSON.stringify(signals)]);
-    const raw = row?.MERGE_EXTERNAL_SIGNALS;
-    const result = typeof raw === 'string' ? JSON.parse(raw) : raw;
-    if (!result?.article_counts || result.error) throw new Error(result?.error || 'Missing article merge counts');
-    return result.article_counts;
   };
 }
 
@@ -143,31 +132,6 @@ export async function preparePage({data, observed, from, to, origin, fetchDetail
   return {signals, accepted};
 }
 
-export async function runWindow({from, to, origin, fetchPage, fetchDetail, recordPage, now = () => new Date()}) {
-  from = utc(from);
-  to = utc(to);
-  if (!from || !to || from >= to) throw new Error('Expected increasing from and to timestamps with UTC offsets');
-  if (typeof origin !== 'string' || !origin.trim()) throw new Error('Missing window origin');
-  const counts = {accepted_rows: 0, new_signals: 0, repeat_sightings: 0, syndicated_copies: 0, unusable_records: 0};
-  let cursor = null;
-  const cursors = new Set();
-  do {
-    const page = await fetchPage({from, to, cursor});
-    const observed = now().toISOString();
-    validatePage(page);
-    const {signals, accepted} = await preparePage({data: page.data, observed, from, to, origin, fetchDetail});
-    counts.accepted_rows += accepted;
-    if (signals.length) {
-      const stored = await recordPage(signals);
-      for (const key of ['new_signals', 'repeat_sightings', 'syndicated_copies', 'unusable_records']) counts[key] += stored[key] ?? 0;
-    }
-    cursor = page.next_cursor;
-    if (cursor !== null && cursors.has(cursor)) throw new Error('Repeated article page cursor');
-    cursors.add(cursor);
-  } while (cursor !== null);
-  return counts;
-}
-
 export async function withArticleRuntime(env, run) {
   const provider = createProvider({apiKey: env.TREND_HUNTER_ARTICLES_API_KEY});
   for (const name of ['SNOWFLAKE_ACCOUNT', 'SNOWFLAKE_USER', 'SNOWFLAKE_PRIVATE_KEY']) {
@@ -185,7 +149,7 @@ export async function withArticleRuntime(env, run) {
     conn.execute({sqlText, binds, complete: (err, stmt, rows) => err ? reject(err) : resolve(rows)});
   });
   try {
-    return await run({...provider, query, recordPage: createArticleStore(query)});
+    return await run({...provider, query});
   } finally {
     await new Promise(resolve => conn.destroy(resolve));
   }

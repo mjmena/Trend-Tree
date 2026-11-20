@@ -223,7 +223,7 @@ const op1 = {
   selected_count: 151,
   native_count: 150,
 };
-const op2 = { ...op1, id: 'revisit-2', at: '2026-11-03T12:00:00Z', lane: 'revisit', floor: 1 };
+const op2 = { ...op1, id: 'revisit-2', at: '2026-11-03T12:00:00Z', lane: 'revisit', floor: 1, native_groups_known:true, augmented_groups_known:true };
 const candidate = {
   id: 'refills',
   created: '2026-11-03T14:00:00Z',
@@ -239,6 +239,7 @@ const row = (op, arm, signal, source) => ({
   source,
   title: signal,
   rank: 1,
+  batch: op.lane === 'revisit' ? 0 : null,
   ingested: op.at,
   embedded: op.at,
   origin: source === 'trend_hunter' ? 'forward' : null,
@@ -287,6 +288,85 @@ test('compares reviewed first qualifying opportunities for the same movement, pr
   assert.equal(report.discovery.positive, 1);
   const future = { ...review, judgments: [call(op1, 'native', ['native-news', 'social'])] };
   assert.throws(() => contributionReport(movements, { movements: [future] }), /available|opportunity/i);
+});
+
+test('native copies retain their dated evidence before verification, and a known release counts once', () => {
+  const earlier = { ...row(op1,'native','native-copy','gdelt'), title:'Native reporting before verification' };
+  const data = {...movements, aliases:[{signal:'native-copy',story:'release',verified:'2026-11-03T08:00:00Z'}],
+    pools:[...movements.pools, earlier, row(op1,'native','release','google_trends_rss')]};
+  const native = (ids) => ({...review, judgments: [call(op1,'augmented',['release','social']),call(op1,'native',ids)]});
+  const report = contributionReport(data,{movements:[native(['native-copy','social'])]});
+  assert.equal(report.discovery.sample[0].native.first.at,op1.at);
+  const copy = report.discovery.sample[0].native.packets[0].evidence.find((r) => r.signal === 'native-copy');
+  assert.equal(copy.title,earlier.title);
+  assert.equal(copy.story,'native-copy');
+  assert.equal(copy.independent_story,'release');
+  assert.throws(() => contributionReport(data,{movements:[native(['native-copy','release'])]}), /independent/);
+});
+
+test('revisit evidence must share a dispatched batch, and unknown earlier native groups censor a later estimate', () => {
+  const split = { ...movements, pools: movements.pools.map((s) => s.op === op2.id && s.signal === 'native-news' ? {...s,batch:1} : s) };
+  assert.throws(() => contributionReport(split, {movements:[review]}), /batch|opportunity/i);
+  assert.equal(contributionReport(split).discovery.sample[0].native.packets.at(-1).disposition, 'below_gate');
+  const truncated = {...split, pools:split.pools.map((s) => s.signal==='native-news' ? {...s,batch:null} : s)};
+  assert.throws(() => contributionReport(truncated, {movements:[review]}), /batch|opportunity/i);
+  const earlier = {...op2,id:'uncaptured',at:'2026-11-03T09:00:00Z',native_groups_known:false};
+  const unknown = {...movements, opportunities:[op1,earlier,op2], pools:[
+    ...movements.pools,row(earlier,'native','social','bluesky'),row(earlier,'native','native-news','gdelt'),
+  ]};
+  const sample = contributionReport(unknown, {movements:[review]}).discovery.sample[0];
+  assert.equal(sample.native.packets.find((p) => p.op === earlier.id).disposition, 'unknown_revisit_groups');
+  assert.equal(sample.native.first.earlier_unknown,true);
+  assert.equal(sample.estimated_lead_hours,null);
+});
+
+test('a later provider copy keeps the story history without inheriting its earlier candidate or link', () => {
+  const late = { ...article, id: 'later-copy', first: '2026-11-05T10:00:00Z', eligible: '2026-11-05T10:00:00Z',
+    handled: '2026-11-05T10:01:00Z' };
+  const report = contributionReport(packet({ days, articles: [late, article], candidates: [candidate],
+    trends: [{ id: 'shops', minted: '2026-10-10T00:00:00Z' }],
+    links: [{ story: 'release', signal: 'release', trend: 'shops', kind: 'attributed', at: '2026-11-03T12:00:00Z' }],
+    sweeps: [{ story: 'release', signal: 'release', trend: 'shops', state: 'COLLECTED', submitted: '2026-11-03T10:00:00Z',
+      updated: '2026-11-03T12:01:00Z', rank: 1, similarity: 0.6, embedded: article.embedded }],
+  }));
+  const [later, original] = report.article_cases;
+  assert.deepEqual(original.candidate_ids, ['refills']);
+  assert.deepEqual(original.trend_ids, ['shops']);
+  assert.deepEqual(later.candidate_ids, []);
+  assert.deepEqual(later.trend_ids, []);
+  assert.equal(later.outcome_disposition, 'prior_story_association');
+  assert.deepEqual(report.examples, [original.id]);
+  assert.equal(report.outcomes.stories_supporting_candidates, 1);
+  assert.equal(report.outcomes.verified_active_pairs, 1);
+});
+
+test('an item arriving after sweep selection and a dormant-at-poll copy cannot inherit an active attribution', () => {
+  const time = (hour) => '2026-11-03T' + hour + ':00:00Z';
+  const early = {...article,first:time('05'),eligible:time('05'),handled:time('05'),embedded:time('05')};
+  const middle = {...early,id:'dormant-copy',first:time('07'),eligible:time('07'),handled:time('07')};
+  const late = {...early,id:'after-selection',first:time('11'),eligible:time('11'),handled:time('11')};
+  const report = contributionReport(packet({days,articles:[early,middle,late],trends:[{id:'shops',minted:'2026-10-01T00:00:00Z'}],
+    lifecycle:[{trend:'shops',id:'quiet',status:'DORMANT',at:time('06')},{trend:'shops',id:'revived',status:'RESURGENT',at:time('09')}],
+    links:[{story:'release',signal:'release',trend:'shops',kind:'attributed',at:time('12')}],
+    sweeps:[{story:'release',signal:'release',trend:'shops',state:'COLLECTED',submitted:time('10'),updated:time('12'),rank:1,similarity:0.8,embedded:time('05')}],
+  }));
+  const [a,b,c] = report.article_cases;
+  assert.deepEqual(c.trend_ids, []);
+  assert.equal(c.outcome_disposition, 'prior_story_association');
+  assert.deepEqual(a.active_trend_ids, ['shops']);
+  assert.deepEqual(b.active_trend_ids, []);
+  assert.equal(report.link_cases[0].item_outcomes.find((i) => i.article === middle.id).disposition,'inactive_at_poll');
+  assert.equal(report.outcomes.verified_active_pairs,1);
+  assert.equal(report.outcomes.unknown_unlinked_stories,0);
+});
+
+test('a pre-existing candidate identifies a story without granting an incoming article earlier support', () => {
+  const earlier = {...candidate, created:'2026-11-02T01:00:00Z'};
+  const report = contributionReport(packet({days, articles:[article], candidates:[earlier]}));
+  assert.equal(report.article_cases[0].outcome_disposition,'prior_story_association');
+  assert.deepEqual(report.article_cases[0].candidate_ids,[]);
+  assert.equal(report.outcomes.stories_supporting_candidates,0);
+  assert.equal(report.outcomes.unknown_unlinked_stories,0);
 });
 
 test('counts a measured zero only across seven covered days and names each unmatched story and pending outcome', () => {

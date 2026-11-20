@@ -64,7 +64,8 @@ try {
             SELECT SIGNAL_ID,CREDITED_SIGNAL_ID FROM MCC_PRESENTATION.TREND_AGENT.FCT_ARTICLE_SIGNAL_ALIASES ${snapshot}
             QUALIFY ROW_NUMBER() OVER(PARTITION BY SIGNAL_ID ORDER BY VERIFIED_AT_UTC DESC,CREDITED_SIGNAL_ID)=1
         ), inputs AS (
-            SELECT s.SIGNAL_ID,s.SOURCE_NAME,s.SIGNAL_TITLE,s.SIGNAL_TEXT,s.METADATA,
+            -- The workflow applies its slot caps before discarding empty IDs from the returned pool.
+            SELECT COALESCE(s.SIGNAL_ID,'') AS SIGNAL_ID,s.SOURCE_NAME,s.SIGNAL_TITLE,s.SIGNAL_TEXT,s.METADATA,
                    CONVERT_TIMEZONE('America/New_York','UTC',s.INGESTED_AT) ingested,
                    CONVERT_TIMEZONE('America/New_York','UTC',f.EMBEDDED_AT) embedded,s.AGENT_SESSION_ID claim,
                    COALESCE(s.METADATA:signal_kind::VARCHAR,'discovery_signal') kind,
@@ -73,23 +74,26 @@ try {
             LEFT JOIN embedded f ON f.SIGNAL_ID=s.SIGNAL_ID
             LEFT JOIN aliases a ON a.SIGNAL_ID=s.SIGNAL_ID
             LEFT JOIN promoted p ON p.SIGNAL_ID=s.SIGNAL_ID
-            WHERE NULLIF(s.SIGNAL_ID,'') IS NOT NULL AND s.INGESTED_AT > CONVERT_TIMEZONE('UTC','America/New_York',DATEADD(hour,-?,?::TIMESTAMP_NTZ))
+            WHERE s.INGESTED_AT > CONVERT_TIMEZONE('UTC','America/New_York',DATEADD(hour,-?,?::TIMESTAMP_NTZ))
         ), numbered AS (
             SELECT i.*,ROW_NUMBER() OVER(PARTITION BY SIGNAL_ID ORDER BY ingested DESC,SOURCE_NAME,claim,
                 HASH(SIGNAL_TITLE,SIGNAL_TEXT,METADATA)) input_ordinal FROM inputs i
+        ), tracked AS (
+            SELECT DISTINCT SIGNAL_ID FROM MCC_RAW.MARKETING_DEV.STG_ARTICLE_EVIDENCE_KEYS ${snapshot} WHERE HAS_TREND_HUNTER
         ), representatives AS (
-            SELECT SIGNAL_ID,input_ordinal,SOURCE_NAME,ingested FROM numbered
-            WHERE alias_id IS NULL AND kind='discovery_signal'
-              AND IFF(?='main',COALESCE(claim,'')='',claim LIKE 'sess-%' AND NOT had_promotion)
-            QUALIFY ROW_NUMBER() OVER(PARTITION BY SIGNAL_ID ORDER BY input_ordinal)=1
+            SELECT i.SIGNAL_ID,i.input_ordinal,i.SOURCE_NAME,i.ingested FROM numbered i
+            LEFT JOIN tracked t ON t.SIGNAL_ID=i.SIGNAL_ID
+            WHERE i.alias_id IS NULL AND i.kind='discovery_signal'
+              AND IFF(?='main',COALESCE(i.claim,'')='',i.claim LIKE 'sess-%' AND NOT i.had_promotion)
+            QUALIFY t.SIGNAL_ID IS NULL OR ROW_NUMBER() OVER(PARTITION BY i.SIGNAL_ID ORDER BY i.input_ordinal)=1
         ), eligible AS (
             SELECT SIGNAL_ID,input_ordinal,ingested FROM representatives
-            QUALIFY ROW_NUMBER() OVER(PARTITION BY SOURCE_NAME ORDER BY ingested DESC,SIGNAL_ID)<=?
+            QUALIFY ROW_NUMBER() OVER(PARTITION BY SOURCE_NAME ORDER BY ingested DESC,SIGNAL_ID,input_ordinal)<=?
         ), selected AS (
-            SELECT SIGNAL_ID,input_ordinal,ROW_NUMBER() OVER(ORDER BY ingested DESC,SIGNAL_ID) pool_rank FROM eligible QUALIFY pool_rank<=?
+            SELECT SIGNAL_ID,input_ordinal,ROW_NUMBER() OVER(ORDER BY ingested DESC,SIGNAL_ID,input_ordinal) pool_rank FROM eligible QUALIFY pool_rank<=?
         )
         SELECT ?,i.SIGNAL_ID,i.input_ordinal,i.SOURCE_NAME,i.SIGNAL_TITLE,i.SIGNAL_TEXT,i.METADATA,i.ingested,i.embedded,i.claim,
-               i.kind,i.had_promotion,COALESCE(i.alias_id,i.SIGNAL_ID),p.pool_rank
+               i.kind,i.had_promotion,COALESCE(i.alias_id,i.SIGNAL_ID),IFF(i.SIGNAL_ID='',NULL,p.pool_rank)
         FROM numbered i LEFT JOIN selected p ON p.SIGNAL_ID=i.SIGNAL_ID AND p.input_ordinal=i.input_ordinal`,[LOOKBACK_HOURS,observed,LANE,SOURCE_CAP,POOL_LIMIT,id]);
     const pool = execute(`SELECT ARRAY_AGG(SIGNAL_ID) WITHIN GROUP(ORDER BY POOL_RANK)
         FROM MCC_RAW.MARKETING_DEV.STG_TREND_HUNTER_POOL_SIGNALS WHERE OPPORTUNITY_ID=? AND POOL_RANK IS NOT NULL`,[id]);

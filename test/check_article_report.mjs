@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -42,6 +42,15 @@ assert.deepEqual(
   ['old-fact']
 );
 assert.equal(report.discovery.median_estimated_lead_hours, null);
+const capture = JSON.parse(readFileSync(process.argv[2], 'utf8')).flat();
+const packet = (section) => capture.filter((r) => r.SECTION === section).map(({DATA}) => typeof DATA === 'string' ? JSON.parse(DATA) : DATA);
+const opportunities = packet('opportunities');
+assert.equal(opportunities.find((o) => o.ID === 'revisit-same').NATIVE_GROUPS_KNOWN, true);
+assert.equal(opportunities.find((o) => o.ID === 'revisit-different').NATIVE_GROUPS_KNOWN, false);
+const batches = (op, arm) => Object.fromEntries(packet('pools').filter((r) => r.OP === op && r.ARM === arm).map((r) => [r.SIGNAL,r.BATCH ?? null]));
+assert.deepEqual(batches('revisit-same','native'), {'batch-a':0,'batch-b':0,'batch-c':1,omitted:null});
+assert.deepEqual(batches('revisit-different','augmented'), {'batch-a':0,'batch-b':0,'batch-c':1,omitted:null});
+assert.deepEqual(batches('revisit-different','native'), {'batch-a':null,'batch-b':null,'batch-c':null});
 const nativePackets = report.discovery.sample[0].native.packets;
 assert.deepEqual(
   nativePackets[0].evidence.map((e) => e.signal),

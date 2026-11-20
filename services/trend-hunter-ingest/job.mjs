@@ -70,6 +70,7 @@ export async function runJob(env, {query, intake = warehouse(query), fetchPage, 
   }
   const call = (action, args = {}) => intake(action, {execution, attempt, ...args});
   const request = providerRequest(call, now, sleep);
+  const token = randomUUID();
   let state = await call('open', {origin, from, to, now: now().toISOString()});
   let outcome = state.id ? 'complete' : 'current';
   let retryAt;
@@ -77,10 +78,18 @@ export async function runJob(env, {query, intake = warehouse(query), fetchPage, 
     while (!state.complete && state.id) {
       const {id, page_number, from, to, cursor} = state;
       if (!state.receipt) {
-        const page = await request(fetchPage, {from, to, cursor});
-        const observed = now().toISOString();
-        validatePage(page);
-        state = await call('receive', {id, page_number, data: articleMetadata(page.data), next_cursor: page.next_cursor, observed});
+        state = await request(async () => {
+          const claim = await call('claim', {id, page_number, token});
+          if (!claim.claimed) return claim;
+          const page = await fetchPage({from, to, cursor});
+          const observed = now().toISOString();
+          validatePage(page);
+          return call('receive', {id, page_number, token, data: articleMetadata(page.data), next_cursor: page.next_cursor, observed});
+        });
+        if (state.busy) {
+          outcome = 'in_progress';
+          break;
+        }
         continue;
       }
       const cachedProof = async (providerId, read) => {
@@ -96,13 +105,13 @@ export async function runJob(env, {query, intake = warehouse(query), fetchPage, 
     }
   } catch (error) {
     if (!(error instanceof RateLimited)) {
-      await call('finish', {outcome: 'failed'});
+      await call('finish', {outcome: 'failed', id: state.id, token});
       throw error;
     }
     outcome = 'rate_limited';
     retryAt = error.retryAt;
   }
-  await call('finish', {outcome});
+  await call('finish', {outcome, id: state.id, token});
   return {execution, window_id: state.id ?? null, origin, from: state.from, to: state.to,
     outcome, pages: state.page_number ?? 0, ...state.counts, ...(retryAt && {retry_at: retryAt})};
 }

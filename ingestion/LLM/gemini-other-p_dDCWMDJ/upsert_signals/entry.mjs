@@ -2,12 +2,8 @@
 //
 // MERGEs fetched signals into STG_EXTERNAL_SIGNALS.
 //
-// Direct snowflake-sdk connection with bounded retry (issue #46): the
-// snowflake-execute-sql-query registry action's proxy (sqlProxyClient)
-// intermittently failed with "Error contacting database". Connect-phase
-// failures always retry; execute-phase failures retry only on
-// connection-level signatures (the MERGE is idempotent, so a retry is
-// safe either way).
+// A lost database reply can follow a successful commit. Retrying preserves the signal ID,
+// and each committed submission records a native receipt for that provider response.
 //
 // Reads `signals_json` directly from steps.fetch_source.$return_value
 // and passes it as a real bind param, replacing the old $$...$$ inlining.
