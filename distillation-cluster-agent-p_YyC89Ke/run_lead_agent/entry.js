@@ -234,7 +234,7 @@ const LEAD_ONLY_SCHEMAS = {
           description:
             "A single atomic, consumer-vernacular search term — the ingredient, product, or practice a shopper would actually type into a search box. NOT the compound behavior, NOT a coined marketing label, NOT industry jargon (e.g. 'retailtainment', 'agentic commerce'), and NOT a fresh internet-slang neologism that catalogs lag on (e.g. '-maxxing' coinages). Prefer the established noun a category already has over a clever phrase. This is a join key to external keyword APIs (Exploding Topics, Google Trends) — it is graded on whether those catalogs recognize it, so reach for the plainest term that still names THIS trend specifically. If a subagent returned a refined candidate with a query, carry that query through.",
         },
-        supporting_signal_ids: { type: "array", items: { type: "string" } },
+        supporting_signal_ids: { type: "array", items: { type: "string" }, minItems: 2 },
         confidence: { type: "number" },
         specificity_score: { type: "number" },
         verdict: { type: "string", enum: ["REAL_TREND", "DUPLICATE_OF"] },
@@ -426,9 +426,15 @@ function proposeTrendCandidate(input, ctx) {
   if (!String(input?.query ?? "").trim()) {
     return { accepted: false, error: "query is required: call propose_trend_candidate again with the atomic consumer-vernacular search term for this candidate." };
   }
+  const poolIds = new Set((ctx.signal_pool || []).map((signal) => signal.signal_id));
+  const proposedIds = Array.isArray(input.supporting_signal_ids) ? input.supporting_signal_ids : [];
+  const supportingSignalIds = [...new Set(proposedIds.filter((id) => typeof id === "string" && poolIds.has(id)))];
+  if (supportingSignalIds.length < 2) {
+    return { accepted: false, error: "A candidate needs at least 2 distinct supporting signal IDs from signal_pool; call propose_trend_candidate again with valid evidence." };
+  }
   ctx.proposed_candidates = ctx.proposed_candidates || [];
   ctx.proposed_candidates.push({
-    ...input, candidate_id: cryptoRandomId(),
+    ...input, supporting_signal_ids: supportingSignalIds, candidate_id: cryptoRandomId(),
     chain_id: ctx.chain_id, iteration: ctx.iteration, agent_session_id: ctx.agent_session_id,
   });
   return { accepted: true, accepted_count: ctx.proposed_candidates.length, candidate_id: ctx.proposed_candidates[ctx.proposed_candidates.length - 1].candidate_id };
