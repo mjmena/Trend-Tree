@@ -8,8 +8,8 @@
 -- This file is DOCUMENTARY and is the reference copy. The executable copy lives
 -- in services/ecomm-agent/fetch_poll_batch.mjs, which differs only in bind
 -- syntax (`?` positional there vs `:tier` / `:stale_minutes` / `:limit` here).
--- Keep the two in sync — test/sourcing_poll.test.sql exercises this shape and
--- is the thing that catches them drifting apart.
+-- services/ecomm-agent/fetch_poll_batch.test.mjs checks both copies against
+-- the query exercised by test/sourcing_poll.test.sql.
 --
 -- Three arms decide eligibility, and each is a decision worth stating:
 --
@@ -27,17 +27,9 @@
 --      decide sourceability, so the poll never claims a trend the run would
 --      then have to fail.
 --
---   3. NOT ALREADY HANDLED. A header blocks the trend only when it is terminal-
---      and-successful ('matched' / 'no_match') or genuinely in flight ('running'
---      inside the staleness window). Two exclusions carry the story's
---      self-healing requirement:
---        * 'failed' NEVER blocks. The next tick retries it. There is no
---          dead-letter table and no operator step.
---        * 'running' older than :stale_minutes never blocks either. A run
---          killed mid-flight (Cloud Run reclaiming the instance, a crash after
---          'open') leaves a 'running' header nothing will ever complete;
---          without this arm that trend is parked forever. PROC_SOURCING_APPLY's
---          own header comment explicitly assigns this guard here.
+--   3. NOT ALREADY HANDLED. Headers before the latest real enrichment are obsolete.
+--      Success blocks until re-enrichment; failure blocks for six hours.
+--      Running headers expire after :stale_minutes so crashes remain retryable.
 --
 -- A freshness DECLINE writes no header at all, by design (see
 -- services/ecomm-agent/run_sourcing.mjs). So a declined trend reads as "no
@@ -63,14 +55,17 @@ enriched AS (
   GROUP BY TREND_ID
 ),
 blocking_header AS (
-  SELECT DISTINCT TREND_ID
+  SELECT TREND_ID, MAX(STARTED_AT) AS LAST_STARTED
   FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_LEDGER
   WHERE TIER = :tier
     AND (
           STATUS IN ('matched', 'no_match')
+       OR (STATUS = 'failed'
+           AND STARTED_AT >= DATEADD('hour', -6, CURRENT_TIMESTAMP()))
        OR (STATUS = 'running'
            AND STARTED_AT >= DATEADD('minute', -1 * :stale_minutes, CURRENT_TIMESTAMP()))
     )
+  GROUP BY TREND_ID
 )
 SELECT
   e.TREND_ID,
@@ -81,7 +76,7 @@ JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
 LEFT JOIN latest_lifecycle lc
   ON lc.TREND_ID = e.TREND_ID
 LEFT JOIN blocking_header bh
-  ON bh.TREND_ID = e.TREND_ID
+  ON bh.TREND_ID = e.TREND_ID AND bh.LAST_STARTED >= e.ENRICHED_AT
 WHERE NVL(lc.LIFECYCLE_STATUS, 'NEW') <> 'RETIRED'
   AND bh.TREND_ID IS NULL
 ORDER BY e.ENRICHED_AT ASC

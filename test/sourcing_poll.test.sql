@@ -69,7 +69,11 @@ INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS (TREND_ID, CANDIDATE_ID)
   UNION ALL SELECT 'zztest-poll-running',     'zztest-poll-cand'
   UNION ALL SELECT 'zztest-poll-stalerun',    'zztest-poll-cand'
   UNION ALL SELECT 'zztest-poll-novector',    'zztest-poll-cand'
-  UNION ALL SELECT 'zztest-poll-othertier',   'zztest-poll-cand';
+  UNION ALL SELECT 'zztest-poll-othertier',   'zztest-poll-cand'
+  UNION ALL SELECT 'zztest-poll-cooldown',    'zztest-poll-cand'
+  UNION ALL SELECT 'zztest-poll-rematched',   'zztest-poll-cand'
+  UNION ALL SELECT 'zztest-poll-renomatch',   'zztest-poll-cand'
+  UNION ALL SELECT 'zztest-poll-resourced',   'zztest-poll-cand';
 
 -- ---------------------------------------------------------------------------
 -- Enrichment rows. WRITTEN_AT values are deliberately distinct and out of
@@ -96,7 +100,14 @@ INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_ENRICHMENT_LEDGER
   -- A real enrichment row that never got a vector is not sourceable.
   UNION ALL SELECT 'zztest-poll-e11', 'zztest-poll-novector',    '2026-01-11 00:00:00'::TIMESTAMP_NTZ, 'enrichment', NULL
   -- No FCT_TRENDS row exists for this one — the inner JOIN must drop it.
-  UNION ALL SELECT 'zztest-poll-e12', 'zztest-poll-noidentity',  '2026-01-12 00:00:00'::TIMESTAMP_NTZ, 'enrichment', _zz_poll_vec();
+  UNION ALL SELECT 'zztest-poll-e12', 'zztest-poll-noidentity',  '2026-01-12 00:00:00'::TIMESTAMP_NTZ, 'enrichment', _zz_poll_vec()
+  UNION ALL SELECT 'zztest-poll-e13', 'zztest-poll-cooldown',    '2025-12-31 00:00:00'::TIMESTAMP_NTZ, 'enrichment', _zz_poll_vec()
+  UNION ALL SELECT 'zztest-poll-e14', 'zztest-poll-rematched',   '2026-01-13 00:00:00'::TIMESTAMP_NTZ, 'enrichment', _zz_poll_vec()
+  UNION ALL SELECT 'zztest-poll-e15', 'zztest-poll-renomatch',   '2026-01-14 00:00:00'::TIMESTAMP_NTZ, 'enrichment', _zz_poll_vec()
+  UNION ALL SELECT 'zztest-poll-e16', 'zztest-poll-resourced',   '2026-01-15 00:00:00'::TIMESTAMP_NTZ, 'enrichment', _zz_poll_vec()
+  UNION ALL SELECT 'zztest-poll-e17', 'zztest-poll-rematched',   '2026-03-02 00:00:00'::TIMESTAMP_NTZ, 'enrichment', _zz_poll_vec()
+  UNION ALL SELECT 'zztest-poll-e18', 'zztest-poll-renomatch',   '2026-03-03 00:00:00'::TIMESTAMP_NTZ, 'enrichment', _zz_poll_vec()
+  UNION ALL SELECT 'zztest-poll-e19', 'zztest-poll-resourced',   '2026-03-04 00:00:00'::TIMESTAMP_NTZ, 'enrichment', _zz_poll_vec();
 
 -- ---------------------------------------------------------------------------
 -- Lifecycle rows. 'retired' carries two evaluations to prove the query reads
@@ -110,21 +121,26 @@ INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_LIFECYCLE_LEDGER
   UNION ALL SELECT 'zztest-poll-l3', 'zztest-poll-retired', '2026-02-02 00:00:00'::TIMESTAMP_NTZ, 'RETIRED';
 
 -- ---------------------------------------------------------------------------
--- Sourcing headers. STARTED_AT for the two 'running' rows is relative to NOW,
+-- Sourcing headers. STARTED_AT for running and failed rows is relative to NOW,
 -- not a literal, because staleness is measured against CURRENT_TIMESTAMP().
 -- ---------------------------------------------------------------------------
 INSERT INTO MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_LEDGER
   (SOURCING_RUN_ID, TREND_ID, TIER, STARTED_AT, STATUS)
             SELECT 'zztest-poll-h1', 'zztest-poll-matched',   'shopify', '2026-03-01 00:00:00'::TIMESTAMP_NTZ, 'matched'
   UNION ALL SELECT 'zztest-poll-h2', 'zztest-poll-nomatch',   'shopify', '2026-03-01 00:00:00'::TIMESTAMP_NTZ, 'no_match'
-  -- A failed header must NOT block: the next tick retries it. No dead-letter.
-  UNION ALL SELECT 'zztest-poll-h3', 'zztest-poll-failed',    'shopify', '2026-03-01 00:00:00'::TIMESTAMP_NTZ, 'failed'
+  -- A failed header outside the six-hour cooldown must be retried.
+  UNION ALL SELECT 'zztest-poll-h3', 'zztest-poll-failed',    'shopify', DATEADD('minute', -361, CURRENT_TIMESTAMP()), 'failed'
   -- In flight 5 minutes ago — inside the 30-minute window, must block.
   UNION ALL SELECT 'zztest-poll-h4', 'zztest-poll-running',   'shopify', DATEADD('minute', -5,  CURRENT_TIMESTAMP()), 'running'
   -- 'running' 90 minutes ago is a crashed run: stale, re-takeable, must NOT block.
   UNION ALL SELECT 'zztest-poll-h5', 'zztest-poll-stalerun',  'shopify', DATEADD('minute', -90, CURRENT_TIMESTAMP()), 'running'
   -- A terminal header on a DIFFERENT tier must not block the shopify tier.
-  UNION ALL SELECT 'zztest-poll-h6', 'zztest-poll-othertier', 'zztest-tier', '2026-03-01 00:00:00'::TIMESTAMP_NTZ, 'matched';
+  UNION ALL SELECT 'zztest-poll-h6', 'zztest-poll-othertier', 'zztest-tier', '2026-03-01 00:00:00'::TIMESTAMP_NTZ, 'matched'
+  UNION ALL SELECT 'zztest-poll-h7', 'zztest-poll-cooldown',  'shopify', DATEADD('minute', -359, CURRENT_TIMESTAMP()), 'failed'
+  UNION ALL SELECT 'zztest-poll-h8', 'zztest-poll-rematched', 'shopify', '2026-03-01 00:00:00'::TIMESTAMP_NTZ, 'matched'
+  UNION ALL SELECT 'zztest-poll-h9', 'zztest-poll-renomatch', 'shopify', '2026-03-01 00:00:00'::TIMESTAMP_NTZ, 'no_match'
+  UNION ALL SELECT 'zztest-poll-h10','zztest-poll-resourced', 'shopify', '2026-03-01 00:00:00'::TIMESTAMP_NTZ, 'matched'
+  UNION ALL SELECT 'zztest-poll-h11','zztest-poll-resourced', 'shopify', '2026-03-04 00:00:00'::TIMESTAMP_NTZ, 'no_match';
 
 -- ---------------------------------------------------------------------------
 -- The production query, verbatim from sql/sourcing_poll_query.sql, with the
@@ -147,14 +163,17 @@ enriched AS (
   GROUP BY TREND_ID
 ),
 blocking_header AS (
-  SELECT DISTINCT TREND_ID
+  SELECT TREND_ID, MAX(STARTED_AT) AS LAST_STARTED
   FROM MCC_PRESENTATION.TREND_AGENT.FCT_TREND_SOURCING_LEDGER
   WHERE TIER = 'shopify'
     AND (
           STATUS IN ('matched', 'no_match')
+       OR (STATUS = 'failed'
+           AND STARTED_AT >= DATEADD('hour', -6, CURRENT_TIMESTAMP()))
        OR (STATUS = 'running'
            AND STARTED_AT >= DATEADD('minute', -1 * 30, CURRENT_TIMESTAMP()))
     )
+  GROUP BY TREND_ID
 )
 SELECT
   e.TREND_ID,
@@ -165,7 +184,7 @@ JOIN MCC_PRESENTATION.TREND_AGENT.FCT_TRENDS t
 LEFT JOIN latest_lifecycle lc
   ON lc.TREND_ID = e.TREND_ID
 LEFT JOIN blocking_header bh
-  ON bh.TREND_ID = e.TREND_ID
+  ON bh.TREND_ID = e.TREND_ID AND bh.LAST_STARTED >= e.ENRICHED_AT
 WHERE NVL(lc.LIFECYCLE_STATUS, 'NEW') <> 'RETIRED'
   AND bh.TREND_ID IS NULL
   -- TEST-ONLY CLAUSE, not present in sql/sourcing_poll_query.sql. There are
@@ -189,8 +208,8 @@ LIMIT 2;
 -- Assertions
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE TEMPORARY TABLE _poll_results AS
-SELECT 'exactly the five eligible fixtures are claimed' AS check_name,
-       (SELECT COUNT(*) FROM _poll_claimed) = 5 AS pass
+SELECT 'exactly the seven eligible fixtures are claimed' AS check_name,
+       (SELECT COUNT(*) FROM _poll_claimed) = 7 AS pass
 
 UNION ALL SELECT 'a trend with NO lifecycle row yet is live and claimed (a freshly promoted trend must not be skipped)',
        (SELECT COUNT(*) FROM _poll_claimed WHERE TREND_ID = 'zztest-poll-nolifecycle') = 1
@@ -216,8 +235,20 @@ UNION ALL SELECT 'a matched header blocks its trend — a sourced trend is not r
 UNION ALL SELECT 'a no_match header blocks its trend just as a matched one does',
        (SELECT COUNT(*) FROM _poll_claimed WHERE TREND_ID = 'zztest-poll-nomatch') = 0
 
-UNION ALL SELECT 'a FAILED header does NOT block: the next tick retries it, which is the whole self-healing requirement',
+UNION ALL SELECT 'a FAILED header older than six hours is retried',
        (SELECT COUNT(*) FROM _poll_claimed WHERE TREND_ID = 'zztest-poll-failed') = 1
+
+UNION ALL SELECT 'a FAILED header just inside six hours blocks the oldest trend so newer work can proceed',
+       (SELECT COUNT(*) FROM _poll_claimed WHERE TREND_ID = 'zztest-poll-cooldown') = 0
+
+UNION ALL SELECT 'a re-enriched trend is claimed again after a matched header',
+       (SELECT COUNT(*) FROM _poll_claimed WHERE TREND_ID = 'zztest-poll-rematched') = 1
+
+UNION ALL SELECT 'a re-enriched trend is claimed again after a no_match header',
+       (SELECT COUNT(*) FROM _poll_claimed WHERE TREND_ID = 'zztest-poll-renomatch') = 1
+
+UNION ALL SELECT 'the latest blocking header at the enrichment timestamp prevents re-sourcing',
+       (SELECT COUNT(*) FROM _poll_claimed WHERE TREND_ID = 'zztest-poll-resourced') = 0
 
 UNION ALL SELECT 'a running header 5 minutes old BLOCKS — this is the in-flight guard that stops two ticks double-firing one trend',
        (SELECT COUNT(*) FROM _poll_claimed WHERE TREND_ID = 'zztest-poll-running') = 0
@@ -231,7 +262,8 @@ UNION ALL SELECT 'a terminal header on a DIFFERENT tier does not block the shopi
 UNION ALL SELECT 'claims come back oldest-enrichment-first, so the backfill drains in order and never starves the oldest work',
        (SELECT ARRAY_AGG(TREND_ID) WITHIN GROUP (ORDER BY ENRICHED_AT ASC) FROM _poll_claimed)
          = ARRAY_CONSTRUCT('zztest-poll-nolifecycle', 'zztest-poll-failed', 'zztest-poll-stable',
-                           'zztest-poll-stalerun', 'zztest-poll-othertier')
+                           'zztest-poll-stalerun', 'zztest-poll-othertier', 'zztest-poll-rematched',
+                           'zztest-poll-renomatch')
 
 UNION ALL SELECT 'the cap takes the OLDEST two, not an arbitrary two',
        (SELECT ARRAY_AGG(TREND_ID) WITHIN GROUP (ORDER BY ENRICHED_AT ASC) FROM _poll_capped)

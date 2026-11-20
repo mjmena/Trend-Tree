@@ -67,8 +67,8 @@ does not overfit to one 187-product catalog, but no second tier is built.
 9. As the pipeline operator, I want sourcing to run outside the dispatcher chain, so that a
    sourcing failure can never break or slow promotion → enrichment → write.
 10. As the pipeline operator, I want a failed sourcing run recorded as a distinct header
-    state and retried by the next poll tick, so that failures self-heal instead of parking
-    a trend silently forever.
+    state and retried after a six-hour cooldown, so failures self-heal without starving
+    newer trends or parking a trend silently forever.
 11. As the pipeline operator, I want the ~443 already-enriched live trends sourced
     automatically by the same poll condition, so that backfill needs no bespoke machinery.
 12. As the pipeline operator, I want any future path that writes a real enrichment row to
@@ -193,14 +193,16 @@ cannot, so a second tier appends without DDL change.
   prerequisite (see Provisioning below).
 - The poll condition is an anti-join: trends holding a **real (non-seed) enrichment ledger
   row** — the seed rows written at promotion carry topic-only vectors and must be excluded
-  — and no sourcing header for the (trend, tier). Live (non-retired) trends only.
+  — and no blocking sourcing header started at or after that enrichment for the
+  (trend, tier). Live (non-retired) trends only.
 - Sourcing therefore runs strictly **after the enrichment write**, because the write is
   what creates the persisted trend vector the poll condition keys on.
 - **In-flight guard**: the header is written at run start with `STATUS='running'`, and the
   same anti-join skips it. A header still `running` after **30 minutes** is stale and
   re-takeable, so a crashed run cannot park a trend.
-- A failed run leaves the trend matching the poll condition (the `failed` header does not
-  satisfy it), so the next tick retries — self-healing by construction.
+- A failed run blocks its trend for **six hours** from its start, then becomes retryable.
+  A newer real enrichment makes an older sourcing header obsolete, including successful
+  `matched` and `no_match` results, so the updated vector gets sourced again.
 - Cron cadence: **every 15 minutes**, processing a bounded batch of **25 trends per tick**,
   oldest enrichment first. The dashboard's dynamic table already lags 15 minutes, so no
   consumer can perceive faster delivery. First-tick backlog is the ~443 live enriched
