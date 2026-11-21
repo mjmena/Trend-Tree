@@ -438,17 +438,18 @@ steps:
     sql:
       value: |-
         CALL MCC_RAW.MARKETING_DEV.PROC_PROMOTION_APPLY(
-          PARSE_JSON($${{steps.run_lead_agent.$return_value.bundle_json}}$$),
+          PARSE_JSON(:1),
           '{{steps.normalize_event.$return_value.chain_id}}',
           {{steps.normalize_event.$return_value.iteration}}
         )
       query: |-
         CALL MCC_RAW.MARKETING_DEV.PROC_PROMOTION_APPLY(
-          PARSE_JSON($${{steps.run_lead_agent.$return_value.bundle_json}}$$),
+          PARSE_JSON(:1),
           '{{steps.normalize_event.$return_value.chain_id}}',
           {{steps.normalize_event.$return_value.iteration}}
         )
-      params: []
+      params:
+      - "{{steps.run_lead_agent.$return_value.bundle_json}}"
 - namespace: q_unenriched_trends
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3

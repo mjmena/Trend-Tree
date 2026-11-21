@@ -93,7 +93,7 @@ steps:
         WHERE PUB_DATE >= DATEADD(day, -14, CURRENT_TIMESTAMP())
           AND LENGTH(TREND_TITLE) >= 5
           AND EXISTS (
-            SELECT 1 FROM TABLE(FLATTEN(INPUT => PARSE_JSON($${{steps.generate_search_terms.$return_value.terms_json}}$$))) t
+            SELECT 1 FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) t
             WHERE CONTAINS(LOWER(TREND_TITLE), LOWER(t.value::STRING))
           )
         ORDER BY PUB_DATE DESC
@@ -104,12 +104,13 @@ steps:
         WHERE PUB_DATE >= DATEADD(day, -14, CURRENT_TIMESTAMP())
           AND LENGTH(TREND_TITLE) >= 5
           AND EXISTS (
-            SELECT 1 FROM TABLE(FLATTEN(INPUT => PARSE_JSON($${{steps.generate_search_terms.$return_value.terms_json}}$$))) t
+            SELECT 1 FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) t
             WHERE CONTAINS(LOWER(TREND_TITLE), LOWER(t.value::STRING))
           )
         ORDER BY PUB_DATE DESC
         LIMIT 20
-      params: []
+      params:
+      - "{{steps.generate_search_terms.$return_value.terms_json}}"
 - namespace: aggregate
   runtime: nodejs20.x
   uses: "./aggregate/entry.js"
@@ -135,7 +136,7 @@ steps:
             r.value:headline_metric::FLOAT   AS HEADLINE_METRIC,
             r.value:headline_metric_name::STRING AS HEADLINE_METRIC_NAME,
             r.value:metrics                  AS METRICS
-          FROM TABLE(FLATTEN(INPUT => PARSE_JSON($${{steps.aggregate.$return_value.records_json}}$$))) r
+          FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) r
         ) AS source
         ON target.TREND_ID = source.TREND_ID AND target.SOURCE_NAME = source.SOURCE_NAME
         WHEN MATCHED THEN UPDATE SET
@@ -159,7 +160,7 @@ steps:
             r.value:headline_metric::FLOAT   AS HEADLINE_METRIC,
             r.value:headline_metric_name::STRING AS HEADLINE_METRIC_NAME,
             r.value:metrics                  AS METRICS
-          FROM TABLE(FLATTEN(INPUT => PARSE_JSON($${{steps.aggregate.$return_value.records_json}}$$))) r
+          FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) r
         ) AS source
         ON target.TREND_ID = source.TREND_ID AND target.SOURCE_NAME = source.SOURCE_NAME
         WHEN MATCHED THEN UPDATE SET
@@ -174,7 +175,8 @@ steps:
           source.TREND_ID, source.SOURCE_NAME, source.HEADLINE_METRIC,
           source.HEADLINE_METRIC_NAME, source.METRICS
         )
-      params: []
+      params:
+      - "{{steps.aggregate.$return_value.records_json}}"
 - namespace: merge_gsc_terms
   runtime: nodejs20.x
   uses: snowflake-execute-sql-query@0.2.3
@@ -189,7 +191,7 @@ steps:
             r.value:trend_id::STRING                 AS TREND_ID,
             r.value:term::STRING                     AS TERM,
             LOWER(TRIM(r.value:term::STRING))        AS TERM_NORM
-          FROM TABLE(FLATTEN(INPUT => PARSE_JSON($${{steps.aggregate.$return_value.gsc_terms_json}}$$))) r
+          FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) r
         ) AS source
         ON target.TREND_ID = source.TREND_ID AND target.TERM_NORM = source.TERM_NORM
         WHEN NOT MATCHED THEN INSERT (
@@ -204,7 +206,7 @@ steps:
             r.value:trend_id::STRING                 AS TREND_ID,
             r.value:term::STRING                     AS TERM,
             LOWER(TRIM(r.value:term::STRING))        AS TERM_NORM
-          FROM TABLE(FLATTEN(INPUT => PARSE_JSON($${{steps.aggregate.$return_value.gsc_terms_json}}$$))) r
+          FROM TABLE(FLATTEN(INPUT => PARSE_JSON(:1))) r
         ) AS source
         ON target.TREND_ID = source.TREND_ID AND target.TERM_NORM = source.TERM_NORM
         WHEN NOT MATCHED THEN INSERT (
@@ -212,7 +214,8 @@ steps:
         ) VALUES (
           source.TREND_ID, source.TERM, source.TERM_NORM
         )
-      params: []
+      params:
+      - "{{steps.aggregate.$return_value.gsc_terms_json}}"
 - namespace: respond
   runtime: nodejs20.x
   uses: "./respond/entry.js"
