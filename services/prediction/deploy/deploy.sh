@@ -168,6 +168,14 @@ PROJECT=mcc-crm-automations
 REGION=us-east4
 SERVICE=trend-tree-prediction
 REPO=mcc
+# The image tag is the git SHA, so it must name code that exists.
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "refusing to deploy from a dirty tree — the image tag is the git SHA, so an" >&2
+  echo "image built from uncommitted work would be untraceable and un-rollback-able." >&2
+  echo "Commit (or stash) first:" >&2
+  git status --short >&2
+  exit 1
+fi
 GIT_SHA="$(git rev-parse --short HEAD)"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}/${SERVICE}:${GIT_SHA}"
 BASE=python:3.12-slim
