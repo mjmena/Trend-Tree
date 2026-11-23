@@ -64,6 +64,7 @@ function destroy(conn) {
 export default defineComponent({
   props: {
     snowflake: { type: "app", app: "snowflake" },
+    event: { type: "object" },
   },
   async run({ $ }) {
     const auth = this.snowflake.$auth;
@@ -78,27 +79,12 @@ export default defineComponent({
     });
 
     try {
-      const rows = await execute(
-        conn,
-        `WITH unclaimed AS (
-           SELECT SIGNAL_ID,
-                  INGESTED_AT,
-                  ROW_NUMBER() OVER (
-                    PARTITION BY SOURCE_NAME ORDER BY INGESTED_AT DESC
-                  ) AS rn_in_source
-           FROM MCC_RAW.MARKETING_DEV.STG_EXTERNAL_SIGNALS
-           WHERE INGESTED_AT > DATEADD(hour, -${WINDOW_HOURS}, CURRENT_TIMESTAMP())
-             AND COALESCE(AGENT_SESSION_ID, '') = ''
-             AND COALESCE(METADATA:signal_kind::STRING, 'discovery_signal') = 'discovery_signal'
-         )
-         SELECT SIGNAL_ID
-         FROM unclaimed
-         WHERE rn_in_source <= ${PER_SOURCE_CAP}
-         ORDER BY INGESTED_AT DESC
-         LIMIT ${POOL_LIMIT}`,
-        [],
+      const [pool] = await execute(conn,
+        "CALL MCC_RAW.MARKETING_DEV.ACQUIRE_ARTICLE_COMPARISON_POOL('main',?,?,?,?,?,?)",
+        [this.event.chain_id, this.event.agent_session_id, WINDOW_HOURS, PER_SOURCE_CAP, POOL_LIMIT, MIN_POOL],
       );
-      const ids = (Array.isArray(rows) ? rows : []).map((r) => r.SIGNAL_ID).filter(Boolean);
+      const raw = pool.ACQUIRE_ARTICLE_COMPARISON_POOL;
+      const ids = typeof raw === "string" ? JSON.parse(raw) : raw;
 
       if (ids.length < MIN_POOL) {
         $.flow.exit(`Only ${ids.length} unclaimed signals available — waiting for ${MIN_POOL}`);

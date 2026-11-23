@@ -10,6 +10,12 @@ const POOL = toPool([
   { SIGNAL_ID: "s2", SOURCE_NAME: "bluesky", SIGNAL_TIMESTAMP: "2026-11-02T08:00:00", SIGNAL_TITLE: null, SIGNAL_TEXT: null, SIMILARITY: 0.4 },
 ]);
 
+test("the stored batch pool keeps the warehouse selection and embedding clocks", () => {
+  const [item] = toPool([{ SIGNAL_ID: "s1", SELECTED_AT_UTC: "2026-11-03T11:00:01.123Z", EMBEDDED_AT_UTC: "2026-11-02T10:00:00.345Z" }]);
+  assert.equal(item.selected_at_utc, "2026-11-03T11:00:01.123Z");
+  assert.equal(item.embedded_at_utc, "2026-11-02T10:00:00.345Z");
+});
+
 test("filterAttributions keeps in-pool pairs with an allowed link_type, once each", () => {
   const { kept, dropped } = filterAttributions([
     { signal_id: "s1", link_type: "news" },
